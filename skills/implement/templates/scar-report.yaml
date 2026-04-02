@@ -1,0 +1,15 @@
+task_id: <task-id>
+completion_status: done  # done | done_with_concerns | blocked
+
+known_shortcuts:
+  - "<description of shortcut taken>"
+
+silent_failure_conditions:
+  - "<condition under which this silently fails>"
+
+assumptions_made:
+  - assumption: "<what was assumed>"
+    verified: false
+
+debt_registered: false
+debt_location: null
