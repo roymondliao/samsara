@@ -1,0 +1,10 @@
+feature: <feature-name>
+status: pending  # pending | in_progress | done | blocked
+
+tasks:
+  - id: task-1
+    title: "<task description>"
+    status: pending  # pending | in_progress | done | blocked | completion_unverified
+    scar_count: null
+    unresolved_assumptions: null
+    depends_on: []

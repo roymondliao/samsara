@@ -1,0 +1,28 @@
+feature: <feature-name>
+coverage_type: verified  # verified | prayer (prayer = only happy paths, REJECTED)
+
+scenarios:
+  # --- Death paths first ---
+  - name: "<Silent failure description>"
+    type: death_path
+    given: "<precondition>"
+    when: "<action>"
+    then:
+      - "<observable outcome>"
+
+  # --- Degradation paths ---
+  - name: "<Degradation description>"
+    type: degradation
+    given: "<precondition>"
+    when: "<action>"
+    then:
+      - "<observable outcome>"
+
+  # --- Happy paths with evidence ---
+  - name: "<Success description>"
+    type: happy_path
+    given: "<precondition>"
+    when: "<action>"
+    then:
+      - "<observable outcome>"
+      - "<evidence chain requirement>"
