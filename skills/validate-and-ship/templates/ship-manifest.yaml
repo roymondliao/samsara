@@ -1,0 +1,18 @@
+delivered_capability: "<what was delivered>"
+
+known_failure_modes:
+  - mode: "<failure description>"
+    severity: degradation  # crash | degradation | silent_corruption
+    detection: "<how it's detected>"
+
+accepted_risks:
+  - risk: "<risk description>"
+    accepted_by: "human"
+    expires: "YYYY-MM-DD"
+
+silent_failure_surface: low  # low | medium | high
+
+monitoring_hooks:
+  - "<monitoring description>"
+
+kill_switch: "<how to disable this feature>"
