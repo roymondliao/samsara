@@ -80,10 +80,17 @@ samsara/
 | writing-skills | done | SKILL.md |
 | code-reviewer agent | done | agents/code-reviewer.md |
 
-### Phase 2: Fast Track + Debugging — NOT STARTED
+### Phase 2: Fast Track + Debugging — DONE (2026-04-07)
 
-- **Fast Track**：低風險路徑（bug fix、config 修改、小型 refactor）。簡化版流程，但 death test 仍然先行。見 `docs/samsara/design.md` 的 Fast Track 章節和 `docs/samsara/develop.md` 的陰面版 Fast Track。
-- **Debugging**：陰面 systematic debugging。對應 superpowers 的 `systematic-debugging` 但用向死而驗重寫。
+- **Fast Track**：獨立 skill，入口 gate + 4 步簡化流程。產出 `changes/` 下的 `fast-track.yaml`。
+- **Debugging**：四階段陰面 debugging（Interrogate → Root Cause → Hypothesis & Death Test → Fix）。產出 `bugfix/` 目錄。
+
+| Component | Status | Files |
+|-----------|--------|-------|
+| fast-track | done | SKILL.md + 1 template |
+| debugging | done | SKILL.md + 1 support + 3 templates |
+| bootstrap update | done | Added fast-track + debugging to skill list |
+| version bump | done | 0.1.1 → 0.2.0 |
 
 ### Phase 3: Auto Iteration Implementation — NOT STARTED
 
