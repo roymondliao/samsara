@@ -96,15 +96,40 @@ samsara/
 
 自動迭代實作。基於北極星指標的數據驅動優化循環。見 `docs/samsara/design.md` 的迭代章節。
 
+### Phase 4: Multi-Platform Support — NOT STARTED
+
+支援 Codex、Gemini CLI、Windsurf 三個平台的安裝。
+
+**策略**：採用 agency-agents 的 source → convert → install 模式（非 OpenSpec 的 TypeScript adapter 模式），並補上 agency-agents 缺少的 update 機制。
+- 現有 SKILL.md（markdown + YAML frontmatter）作為 single source of truth
+- `scripts/convert.sh`：轉換成各平台格式
+- `scripts/install.sh`：自動偵測已安裝的工具 + 首次安裝
+- `scripts/update.sh`：偵測已安裝的平台 + 比對版本/內容差異 + 同步更新（agency-agents 缺少此功能）
+
+**目標平台格式：**
+
+| 平台 | 路徑 | Scope | 格式差異 |
+|------|------|-------|---------|
+| Claude Code | `.claude-plugin/` | project | 現有格式，無需轉換 |
+| Codex | `~/.codex/skills/` | home | SKILL.md 格式類似 |
+| Gemini CLI | `~/.gemini/extensions/` | home | Extension model，最小 frontmatter |
+| Windsurf | `.windsurf/` 或 `.windsurfrules` | project | 可能需合併成單一 rules 文件 |
+
+**Reference：**
+- `reference_opensource/OpenSpec` — 24 平台 adapter pattern，程式化生成
+- `reference_opensource/agency-agents` — 11 平台 convert + install scripts，Bash
+
 ## Design Documents
 
-- **Spec**: `docs/superpowers/specs/2026-04-01-samsara-harness-design.md`
-- **Plan**: `docs/superpowers/plans/2026-04-02-samsara-harness-phase1.md`
+- **Phase 1 Spec**: `docs/superpowers/specs/2026-04-01-samsara-harness-design.md`
+- **Phase 1 Plan**: `docs/superpowers/plans/2026-04-02-samsara-harness-phase1.md`
+- **Phase 2 Spec**: `docs/superpowers/specs/2026-04-07-samsara-phase2-design.md`
+- **Phase 2 Plan**: `docs/superpowers/plans/2026-04-07-samsara-phase2.md`
 
 ## Key Design Decisions
 
 1. 完全取代 superpowers，不共存
-2. 僅支援 Claude Code（不做 multi-platform）
+2. Phase 1-3 僅支援 Claude Code；Phase 4 擴展至 Codex、Gemini CLI、Windsurf
 3. Monorepo 子模組（可獨立安裝）
 4. 陰面約束內建在各 skill，通用約束透過 bootstrap 注入
 5. 狀態追蹤全部用 YAML（不用 markdown table）
