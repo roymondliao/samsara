@@ -1,0 +1,9 @@
+type: fast_track
+description: "<one-sentence scope>"
+death_clause: "<if ___ happens, this change is failed>"
+acceptance:
+  - "<acceptance criterion>"
+scar_tag: none  # none | N (item count)
+scar_items: []
+files_changed:
+  - "<file path>"
