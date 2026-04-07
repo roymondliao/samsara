@@ -42,4 +42,6 @@ description: Injected at session start — establishes samsara axiom, agent cons
 - **samsara:planning** — research 完成後。產出 plan + acceptance + tasks
 - **samsara:implement** — plan 就緒後。death test first 的實作流程
 - **samsara:validate-and-ship** — 實作完成後。驗屍 + 交付
+- **samsara:fast-track** — 低風險小改動。簡化流程但 death test 仍先行
+- **samsara:debugging** — production failure。四階段陰面 debugging
 - **samsara:writing-skills** — 用向死而驗的方式寫新 skill
