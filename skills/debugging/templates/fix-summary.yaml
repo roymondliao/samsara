@@ -1,0 +1,8 @@
+fix_description: "<what was fixed>"
+death_test_added: true
+files_changed:
+  - "<file path>"
+regression_check: pass  # pass | fail
+silent_failure_conditions:
+  - "<under what conditions this fix silently fails again>"
+scar_tag: none  # none | N (item count)

@@ -1,0 +1,11 @@
+hypothesis: "<root cause hypothesis>"
+evidence:
+  - "<evidence supporting hypothesis>"
+root_cause: "<confirmed root cause>"
+why_hidden: "<why did the system let it hide>"
+accomplices:
+  - component: "<which fallback/catch/default helped it hide>"
+    role: "<what it did to make the bug invisible>"
+timeline:
+  last_known_good: "<last confirmed working timestamp>"
+  suspected_introduction: "<commit/deploy suspected of introducing bug>"

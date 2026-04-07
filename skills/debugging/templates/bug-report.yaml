@@ -1,0 +1,6 @@
+title: "<bug description>"
+reported_by: "<source — user / monitoring / internal>"
+failure_level: 1  # 1: visible crash | 2: degradation disguise | 3: false success | 4: silent rot
+impact_scope: "<how many users/requests affected>"
+duration_undetected: "<time from breaking to discovery>"
+reproduction: "<can reproduce locally? steps>"
