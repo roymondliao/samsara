@@ -1,16 +1,16 @@
 {
-  "hooks": [
-    {
-      "matcher": "startup|clear|compact",
-      "event": "SessionStart",
-      "hooks": [
-        {
-          "type": "command",
-          "command": "bash hooks/session-start",
-          "timeout": 5000,
-          "synchronous": true
-        }
-      ]
-    }
-  ]
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start\"",
+            "timeout": 5000
+          }
+        ]
+      }
+    ]
+  }
 }
