@@ -44,4 +44,5 @@ description: Injected at session start — establishes samsara axiom, agent cons
 - **samsara:validate-and-ship** — 實作完成後。驗屍 + 交付
 - **samsara:fast-track** — 低風險小改動。簡化流程但 death test 仍先行
 - **samsara:debugging** — production failure。四階段陰面 debugging
+- **samsara:codebase-map** — 生成/更新專案的陰面 codebase map。掃描 modules、分析靜默失敗面、隱性耦合
 - **samsara:writing-skills** — 用向死而驗的方式寫新 skill
