@@ -1,0 +1,39 @@
+project: "<project name>"
+last_updated: "YYYY-MM-DD"
+staleness_threshold_days: 7
+generated_by: "samsara:codebase-map"
+
+# --- Layer 1: Summary ---
+summary:
+  module_count: 0
+  silent_failure_surface: low  # low | medium | high
+  rot_hotspots:
+    - "<module>: <rot risk description> (level N)"
+  high_risk_coupling_count: 0
+  assumption_inventory_count: 0
+
+# --- Layer 2: Module Index ---
+modules:
+  - name: "<module name>"
+    path: "<directory path>"
+    responsibility: "<one sentence>"
+    death_impact: unknown  # high | medium | low | unknown
+    rot_risk_count: 0
+    hidden_coupling_count: 0
+    dependencies: []
+
+# --- Infrastructure ---
+infrastructure:
+  build:
+    tool: "<build tool>"
+    test_command: "<command>"
+    build_command: "<command>"
+  config_sources:
+    - "<source description>"
+  data_flow:
+    entry_points:
+      - "<entry point>"
+    storage:
+      - "<storage technology>"
+    external_services:
+      - "<service name>"

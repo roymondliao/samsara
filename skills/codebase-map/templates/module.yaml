@@ -1,0 +1,33 @@
+name: "<module name>"
+path: "<directory path>"
+responsibility: "<one sentence>"
+last_analyzed: "YYYY-MM-DD"
+
+# --- Yang side ---
+dependencies: []
+interfaces:
+  - "<public API / entry point>"
+key_files:
+  - "<most important file>"
+
+# --- Yin side ---
+death_impact: "<what breaks if this module disappears>"
+
+rot_risks:
+  - zone: "<file:function or file:line-range>"
+    failure_level: 1  # 1: visible crash | 2: degradation disguise | 3: false success | 4: silent rot
+    description: "<what happens silently>"
+    confidence: medium  # high | medium | low
+    last_verified: "YYYY-MM-DD"
+
+hidden_coupling:
+  - type: "<shared_table / shared_config / event_bus / shared_filesystem / implicit_ordering>"
+    with: "<coupled module>"
+    risk: "<what breaks silently when one side changes>"
+    confidence: medium  # high | medium | low
+
+assumptions:
+  - assumption: "<what is assumed>"
+    evidence: "<file:line>"
+    owner: "<who made this assumption>"
+    verified: false
