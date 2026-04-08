@@ -109,9 +109,32 @@ samsara/
 | bootstrap update | done | Added codebase-map to skill list (8 total) |
 | version bump | done | 0.2.0 → 0.3.0 |
 
-### Phase 4: Auto Iteration Implementation — NOT STARTED
+### Phase 4: Auto Iteration — NOT STARTED (概念已定義)
 
-自動迭代實作。基於北極星指標的數據驅動優化循環。見 `docs/samsara/design.md` 的迭代章節。
+> 陰面的精神，陽面的框架，太極混元的意識。
+
+**重新定義**：不是「數據驅動的優化循環」（design.md 的陽面描述）。而是：
+
+> 一個自動化的系統自我審問機制 — 從「系統哪裡在假裝健康」出發，附帶陽面的指標改善。
+
+**核心哲學**：
+- 陽面 iteration 問「系統變好了嗎」
+- 陰面 iteration 問「系統還能出賣自己嗎」
+- 太極混元：每次改善同時記錄代價（cost_of_improvement + signal_lost + degradation_conditions）
+
+**自動化迴圈（半自動，Phase 4 v1）**：
+```
+陰面診斷（系統哪裡假裝健康）→ 排序（最危險的腐爛點）→ 提出修改方案 → [Human Gate] → 實作 → 雙面驗證（陽面指標 + 陰面代價）→ 保留/丟棄 → 更新 codebase-map + iteration-log → 下一輪
+```
+
+**終止條件（陰面版）**：
+- signal_lost 累積過高（系統看不見自己的失敗）
+- 陰面代價超過陽面收益
+- rot_risks 歸零但 confidence 全是 low（看起來完美但判斷不可靠）
+
+**演進路徑**：B（半自動 + human gate）→ A（全自動 + 事後 review）→ C（全自動 + 終止條件 human gate）
+
+**Reference**：Karpathy autoresearch（陽面自動化原型），反轉為陰面出發
 
 ### Phase 5: Multi-Platform Support — NOT STARTED
 
