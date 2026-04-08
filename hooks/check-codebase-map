@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# Check codebase-map freshness and inject status into session context
+# Only injects when map is missing or stale — zero token cost when fresh
+
+set -euo pipefail
+
+codebase_map_status="not_applicable"
+
+if [ -n "${CLAUDE_PROJECT_DIR:-}" ]; then
+    map_file="${CLAUDE_PROJECT_DIR}/.samsara/codebase-map.yaml"
+    if [ ! -f "$map_file" ]; then
+        codebase_map_status="missing"
+    else
+        # macOS: stat -f %m, Linux: stat -c %Y
+        last_modified=$(stat -f %m "$map_file" 2>/dev/null || stat -c %Y "$map_file" 2>/dev/null || echo 0)
+        now=$(date +%s)
+        age_days=$(( (now - last_modified) / 86400 ))
+        if [ "$age_days" -gt 7 ]; then
+            codebase_map_status="stale_${age_days}_days"
+        else
+            codebase_map_status="fresh_${age_days}_days"
+        fi
+    fi
+fi
+
+# Build context message based on status
+case "$codebase_map_status" in
+    missing)
+        context_msg="Codebase Map Status: MISSING. 此專案尚無 codebase map，建議執行 /samsara:codebase-map 來生成。"
+        ;;
+    stale_*)
+        days="${codebase_map_status#stale_}"
+        days="${days%_days}"
+        context_msg="Codebase Map Status: STALE (${days} days). Codebase map 已 ${days} 天未更新，建議執行 /samsara:codebase-map 來更新。"
+        ;;
+    fresh_*)
+        # Fresh — no need to inject anything, zero token cost
+        exit 0
+        ;;
+    not_applicable)
+        # Not in a project directory — no need to inject
+        exit 0
+        ;;
+esac
+
+# Escape for JSON
+escape_for_json() {
+    local s="$1"
+    s="${s//\\/\\\\}"
+    s="${s//\"/\\\"}"
+    s="${s//$'\n'/\\n}"
+    s="${s//$'\r'/\\r}"
+    s="${s//$'\t'/\\t}"
+    printf '%s' "$s"
+}
+
+escaped_msg=$(escape_for_json "$context_msg")
+
+printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$escaped_msg"
+
+exit 0
