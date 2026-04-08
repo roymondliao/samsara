@@ -92,46 +92,22 @@ samsara/
 | bootstrap update | done | Added fast-track + debugging to skill list |
 | version bump | done | 0.1.1 → 0.2.0 |
 
-### Phase 3: Codebase Map — NOT STARTED
+### Phase 3: Codebase Map — DONE (2026-04-08)
 
-獨立 skill `samsara:codebase-map`，掃描目標專案生成/更新陰面 codebase map。
+獨立 skill `samsara:codebase-map` + 3 個 explorer agents + bootstrap hook 檢查。
 
-**核心理念**：不只是「系統長什麼樣」（陽面），更要回答「系統在哪裡假裝健康」（陰面）。
+**核心理念**：不只「系統長什麼樣」（陽面），更回答「系統在哪裡假裝健康」（陰面）。
 
-**Skill 設計**：
-- **Skill**：獨立的 `samsara:codebase-map`，負責生成和更新
-- **Bootstrap 輕量檢查**：session start 檢查 codebase-map.yaml 是否存在 + 最後更新日期，過舊則提醒
-- **其他 skill 只讀**：research / planning / debugging / fast-track 引用 codebase-map，不負責生成
-
-**陰面維度（每個 module 附帶）**：
-- `death_impact`：如果消失，什麼會痛
-- `rot_risks`：最可能靜默腐爛的地方 + failure_level (1-4) + confidence
-- `hidden_coupling`：import 裡看不到的隱性依賴（shared state / implicit config / schema）
-- `assumptions`：未驗證的假設 + 假設來源
-
-**分層載入（方案 C：兩層文件）**：
-```
-project/.samsara/
-├── codebase-map.yaml      # Layer 1+2: summary + module index (~300 tokens)
-└── modules/               # Layer 3: 每個 module 獨立 (~100 tokens each)
-    ├── auth.yaml
-    ├── billing.yaml
-    └── ...
-```
-
-載入時機：
-- Bootstrap：讀 codebase-map.yaml 的 summary 部分（rot_hotspots + 關鍵數字）→ ~50 tokens
-- Skill 入口：讀完整 codebase-map.yaml（summary + module index）→ ~300 tokens
-- 需要深入時：按需讀 modules/<name>.yaml → ~100 tokens per module
-
-**觸發時機**：
-- 首次進入專案（不存在時）
-- 手動執行 `/samsara:codebase-map`（大改動後）
-- Bootstrap 提醒後使用者決定更新
-
-**Reference**：
-- feature-dev 的 code-explorer agent（平行探索 codebase 作為掃描策略）
-- samsara example.md 的失敗分類學（failure level 1-4）和核心診斷七問
+| Component | Status | Files |
+|-----------|--------|-------|
+| codebase-map skill | done | SKILL.md + 2 templates |
+| structure-explorer agent | done | agents/structure-explorer.md |
+| infra-explorer agent | done | agents/infra-explorer.md |
+| yin-explorer agent | done | agents/yin-explorer.md |
+| check-codebase-map hook | done | hooks/check-codebase-map |
+| hooks.json update | done | Added second SessionStart command |
+| bootstrap update | done | Added codebase-map to skill list (8 total) |
+| version bump | done | 0.2.0 → 0.3.0 |
 
 ### Phase 4: Auto Iteration Implementation — NOT STARTED
 
