@@ -2,6 +2,7 @@
 name: code-reviewer
 description: Yin-side code review agent — asks deletion before correctness, identifies dishonest naming and silent rot paths
 model: sonnet
+effort: high
 tools:
   - Glob
   - Grep
