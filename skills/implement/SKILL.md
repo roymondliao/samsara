@@ -23,7 +23,7 @@ digraph implement {
     node [shape=box];
     compound=true;
 
-    start [label="讀取 index.yaml\n分析 task 依賴" shape=doublecircle];
+    start [label="讀取 index.yaml\n分析 task 依賴\n+ TaskCreate per task" shape=doublecircle];
     mode [label="選擇執行模式？" shape=diamond];
 
     subgraph cluster_implementer {
@@ -39,7 +39,7 @@ digraph implement {
 
     review [label="主 agent: Code Review\n（dispatch code-reviewer）"];
     fix [label="Implementer 修正" style=dashed];
-    update [label="主 agent: 更新 index.yaml\nstatus + scar_count"];
+    update [label="主 agent: 更新 index.yaml\n+ TaskUpdate completed"];
     more [label="還有 task？" shape=diamond];
     commit [label="主 agent: Commit\n（全部 task 完成後）"];
     gate [label="使用者確認？" shape=diamond];
@@ -67,9 +67,24 @@ digraph implement {
 }
 ```
 
+## Progress Tracking
+
+On entry, after reading `index.yaml`, create a TaskCreate item for each task to provide real-time UI progress. `index.yaml` remains the source of truth — TaskCreate is its UI projection.
+
+```
+Read index.yaml
+  → For each task: TaskCreate({ title: "Task N: {title}", status: "open" })
+
+After each task's review passes:
+  → Update index.yaml (status, scar_count)
+  → TaskUpdate({ status: "completed" }) for the corresponding task
+```
+
+Always update both together. Never update one without the other.
+
 ## Execution Mode Selection
 
-On entry, analyze `index.yaml` for task dependencies, then ask:
+On entry, analyze `index.yaml` for task dependencies, create TaskCreate items for each task, then ask:
 
 > 「Plan 中有 N 個 tasks。
 >
@@ -123,7 +138,7 @@ This order is mandatory. Death test before unit test. Scar report before report.
 
 10. Dispatch `samsara:code-reviewer` for yin-side review
 11. If Critical issues → implementer fixes → re-review
-12. Update `index.yaml` — set status, scar_count, unresolved_assumptions
+12. Update `index.yaml` — set status, scar_count, unresolved_assumptions + TaskUpdate the corresponding task to `completed`
 13. Proceed to next task
 
 ### After all tasks complete
