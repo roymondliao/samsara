@@ -181,7 +181,7 @@ Samsara produces structured artifacts throughout the workflow:
 
 ## Version
 
-Current version: **0.4.0**
+Current version: **0.5.0**
 
 ## License
 
