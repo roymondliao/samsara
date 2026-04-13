@@ -36,13 +36,63 @@ description: Injected at session start — establishes samsara axiom, agent cons
 3. 每次被要求優化時先問：「值得優化嗎？還是不應該存在？」
 4. 遇到模糊需求時，不選最合理解釋繼續——讓模糊本身可見
 
+## Skill Matching（強制）
+
+When the user describes work, you MUST invoke the matching samsara skill using the Skill tool BEFORE any response. This is not optional. Do not answer, clarify, or explore code before invoking.
+
+If you think there is even a 1% chance a samsara skill applies, invoke it.
+
+```dot
+digraph samsara_routing {
+    rankdir=TB;
+    node [shape=box];
+
+    bootstrap [label="samsara-bootstrap\n(session start 注入)" shape=doublecircle];
+    input [label="使用者描述問題/任務"];
+    classify [label="Agent 分類" shape=diamond];
+
+    fast_track [label="samsara:fast-track\n(簡化流程)"];
+    research [label="samsara:research"];
+    planning [label="samsara:planning"];
+    implement [label="samsara:implement"];
+    validate [label="samsara:validate-and-ship"];
+    debugging [label="samsara:debugging\n(四階段陰面 debugging)"];
+
+    fix_size [label="Fix 規模？" shape=diamond];
+    done [label="完成" shape=doublecircle];
+
+    bootstrap -> input;
+    input -> classify;
+    classify -> fast_track [label="低風險小改動\n+ 使用者確認"];
+    classify -> research [label="新功能/新需求"];
+    classify -> debugging [label="production failure"];
+
+    research -> planning [label="human gate"];
+    planning -> implement [label="human gate"];
+    implement -> validate [label="human gate"];
+    validate -> done [label="human choose"];
+
+    fast_track -> done;
+    debugging -> fix_size;
+    fix_size -> fast_track [label="小 fix"];
+    fix_size -> implement [label="大 fix"];
+}
+```
+
+**Default rule:** When intent is unclear, invoke `samsara:research`. Research can survive being invoked unnecessarily; shipping without research cannot.
+
 ## 可用 Skills
 
+**Entry Skills（入口 — 根據意圖分流）：**
 - **samsara:research** — 新功能/新問題的起點。產出 kickoff + problem autopsy
+- **samsara:fast-track** — 低風險小改動。簡化流程但 death test 仍先行
+- **samsara:debugging** — production failure。四階段陰面 debugging
+
+**Chain Skills（鏈式 — 由前一階段觸發，不直接 invoke）：**
 - **samsara:planning** — research 完成後。產出 plan + acceptance + tasks
 - **samsara:implement** — plan 就緒後。death test first 的實作流程
 - **samsara:validate-and-ship** — 實作完成後。驗屍 + 交付
-- **samsara:fast-track** — 低風險小改動。簡化流程但 death test 仍先行
-- **samsara:debugging** — production failure。四階段陰面 debugging
-- **samsara:codebase-map** — 生成/更新專案的陰面 codebase map。掃描 modules、分析靜默失敗面、隱性耦合
+
+**Utility Skills（工具性 — 按需使用）：**
+- **samsara:codebase-map** — 進入新專案或 codebase 大幅變動後
 - **samsara:writing-skills** — 用向死而驗的方式寫新 skill
