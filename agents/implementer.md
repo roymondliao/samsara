@@ -59,19 +59,9 @@ This order cannot be swapped. Death test before unit test. Scar report before re
 
 ## Scar Report
 
-After implementation, produce a scar report as YAML:
+After implementation, produce a scar report as YAML at `scar-reports/task-N-scar.yaml`.
 
-```yaml
-task_id: task-N
-scars:
-  - type: silent_failure | assumption | edge_case | missing_test
-    description: "<what can go wrong>"
-    severity: high | medium | low
-    mitigation: "<what was done about it, or 'none — accepted risk'>"
-unresolved_assumptions:
-  - assumption: "<what is assumed true>"
-    consequence_if_wrong: "<what breaks>"
-```
+**Use the exact schema provided in your dispatch prompt** (injected from `scar-schema.yaml`). Do not invent your own format. The schema defines: `task_id`, `completion_status`, `known_shortcuts`, `silent_failure_conditions`, `assumptions_made` (with `verified` flag), `debt_registered`, `debt_location`, and an optional `narrative` field.
 
 A task without a scar report has status `completion_unverified`, not `done`.
 

@@ -16,6 +16,8 @@ The agent definition (`agents/implementer.md`) sets defaults: `model: sonnet`, `
 
 ## Template
 
+Before composing the dispatch prompt, read `templates/scar-schema.yaml` from the implement skill directory. Paste its full content into the **Scar Report Format** section below.
+
 ```
 Agent tool:
   subagent_type: "samsara:implementer"
@@ -33,6 +35,10 @@ Agent tool:
     ## Task
 
     [Paste FULL TEXT of task-N.md — do not summarize, do not truncate]
+
+    ## Scar Report Format
+
+    [Paste FULL CONTENT of scar-schema.yaml — the subagent cannot read this file]
 
     ## Working Directory
 

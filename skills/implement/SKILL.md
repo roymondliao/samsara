@@ -131,7 +131,7 @@ This order is mandatory. Death test before unit test. Scar report before report.
 5. Run unit tests — verify they fail (red)
 6. Implement minimal code to pass all tests
 7. Run all tests — verify they pass (green)
-8. Write scar report → `scar-reports/task-N-scar.yaml` (see support file `scar-report.md`)
+8. Write scar report → `scar-reports/task-N-scar.yaml` (read `templates/scar-schema.yaml` for the exact format)
 9. Report back (do NOT commit)
 
 ### Main agent（review + bookkeeping）

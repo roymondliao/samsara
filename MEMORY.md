@@ -176,3 +176,4 @@ samsara/
 6. 流程用 Graphviz digraph 描述（不用 ASCII art）
 7. Implement 支援三種執行模式（parallel/sequential subagent, inline）
 8. 每個階段之間有 human gate
+9. Dispatch-template as context injection pattern — subagent 無法讀取 skill support files，所以 shared artifacts（schema, templates）由主 agent 透過 dispatch-template 注入到 subagent prompt 中。Canonical source 存為獨立檔案（如 `scar-schema.yaml`），dispatch-template 指示主 agent 讀取並 paste。此 pattern 已被 overview.md + task files 的注入驗證可行。
