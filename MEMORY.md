@@ -109,6 +109,19 @@ samsara/
 | bootstrap update | done | Added codebase-map to skill list (8 total) |
 | version bump | done | 0.2.0 → 0.3.0 |
 
+### Continuous Learning — External (not samsara-owned)
+
+Continuous-learning is **shared infrastructure at kaleidoscope-tools root**, NOT
+a samsara component. Knowledge belongs to the project, not the tool.
+
+Location: `hooks/`, `agents/learnings-observer.md`, `skills/recall-learnings/`,
+`skills/review-learnings/`, `scripts/`, `tests/` — all at repo root.
+
+This session discovered **ISSUE-001** (planning template allows File Map to
+contradict Key Decisions) as a samsara framework bug. See `samsara/issue.md`.
+
+Design docs: `changes/2026-04-15_continuous-learning/`
+
 ### Phase 4: Auto Iteration — NOT STARTED (概念已定義)
 
 > 陰面的精神，陽面的框架，太極混元的意識。
