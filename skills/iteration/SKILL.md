@@ -95,7 +95,7 @@ User triages each item. AI can suggest classifications but user decides.
 
 For each item triaged as `fix`, ordered by signal_lost contribution (highest first):
 
-1. Dispatch `samsara:implementer` with fix context (use dispatch-template pattern)
+1. Dispatch `samsara:implementer` with fix context (see Fix Dispatch Guidance below)
 2. Implementer writes death test for the specific scar item → implements fix → scar report
 3. Main agent: code review (dispatch `samsara:code-reviewer`)
 4. If review passes → **per-fix commit** (commit message references original scar item)
@@ -106,6 +106,20 @@ For each item triaged as `fix`, ordered by signal_lost contribution (highest fir
 - Reclassify the item from `fix` to `defer` with reason: `"implementer blocked: <reason>"`
 - Log the reclassification in iteration-log
 - Continue to the next fix item
+
+### Fix Dispatch Guidance
+
+Fix dispatch differs from initial implementation dispatch. The dispatch-template pattern applies but the context is different:
+
+| | Initial Impl Dispatch | Fix Dispatch |
+|---|---|---|
+| **Task context** | Paste full `task-N.md` | Paste the **scar item description** + the **file(s) involved** |
+| **Architecture context** | Curate from `overview.md` | Curate from `overview.md` + include **relevant scar reports from other tasks** if the fix involves cross-task code |
+| **Goal framing** | "Implement Task N: [title]" | "Fix scar item: [description]. The current code [does X], but it should [do Y] to address [silent failure / unverified assumption / shortcut]" |
+| **Scope** | Defined by task file | Defined by the scar item — keep the fix minimal and focused |
+| **Scar schema** | Paste `scar-schema.yaml` | Same — paste `scar-schema.yaml` (the fix also produces a scar report) |
+
+**Key difference:** Fix dispatch must include enough surrounding code context for the implementer to understand the scar item. Read the relevant file(s) and paste the affected sections into the prompt.
 
 ## Step 4: Round Check + Safety Valve
 
