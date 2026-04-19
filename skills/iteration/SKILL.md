@@ -57,11 +57,12 @@ Read all `scar-reports/task-N-scar.yaml` files. Collect remaining items:
 
 Calculate initial `signal_lost`:
 ```
-signal_lost = count(assumptions_made where verified == false)
+signal_lost = count(known_shortcuts)
             + count(silent_failure_conditions)
+            + count(assumptions_made where verified == false)
 ```
 
-Only count items from the remaining set (exclude Level 1 resolved items).
+All three scar categories contribute. Only count items from the remaining set (exclude Level 1 resolved items).
 
 **Parse failure handling:** If a scar report does not conform to `scar-schema.yaml` (e.g., markdown format, old plain-string format), list the file explicitly:
 
