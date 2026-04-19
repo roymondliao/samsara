@@ -25,7 +25,7 @@ Samsara 是一個 Claude Code plugin，基於「向死而驗」哲學打造的 A
 ### Skill Chain
 
 ```
-research → planning → implement → validate-and-ship
+research → planning → implement (含 Level 1 task iteration) → iteration (Level 2, 可選) → validate-and-ship
    (每個階段之間有 human gate，使用者確認後才流轉)
 ```
 
@@ -45,10 +45,16 @@ samsara/
 │   │   ├── death-first-spec.md          # 支援文件：死路先行 BDD
 │   │   ├── task-format.md               # 支援文件：self-contained task 格式
 │   │   └── templates/
-│   ├── implement/                       # Step 4: Death Test First + Scar Report
+│   ├── implement/                       # Step 4: Death Test First + Scar Report + Level 1 Self-Iteration
 │   │   ├── SKILL.md
 │   │   ├── scar-report.md              # 支援文件
+│   │   ├── dispatch-template.md        # subagent dispatch 模板
 │   │   └── templates/
+│   │       └── scar-schema.yaml        # scar report schema（single source of truth）
+│   ├── iteration/                       # Step 4.5: Level 2 Feature-Level Iteration
+│   │   ├── SKILL.md
+│   │   └── templates/
+│   │       └── iteration-log.yaml      # iteration log 模板
 │   ├── validate-and-ship/              # Step 5 + 6: Validation + Ship
 │   │   ├── SKILL.md
 │   │   ├── ship-manifest.md            # 支援文件
@@ -122,34 +128,35 @@ contradict Key Decisions) as a samsara framework bug. See `samsara/issue.md`.
 
 Design docs: `changes/2026-04-15_continuous-learning/`
 
-### Phase 4: Auto Iteration — NOT STARTED (概念已定義)
+### Phase 4: Auto Iteration (Dual-Level) — DONE (2026-04-19)
 
-> 陰面的精神，陽面的框架，太極混元的意識。
+雙層 iteration 機制，讓 scar report 從靜態文件變成 resolution pipeline。
 
-**重新定義**：不是「數據驅動的優化循環」（design.md 的陽面描述）。而是：
+**核心設計**：兩層 iteration 對應兩個陰面觀察點：
+- **Level 1 (task-level)**：融入 implement — implementer 完成 task 後自我審視 scar items，修 task scope 內的 actionable items。產出接近完善的 partial function。
+- **Level 2 (feature-level)**：新 skill `samsara:iteration` — 所有 tasks 完成後，aggregate 剩餘 scars，處理 cross-task patterns 和 system composition 的 emergent rot。
 
-> 一個自動化的系統自我審問機制 — 從「系統哪裡在假裝健康」出發，附帶陽面的指標改善。
+**Flow**：`implement (含 Level 1) → commit → Level 2 iteration (可選) → validate-and-ship`
 
-**核心哲學**：
-- 陽面 iteration 問「系統變好了嗎」
-- 陰面 iteration 問「系統還能出賣自己嗎」
-- 太極混元：每次改善同時記錄代價（cost_of_improvement + signal_lost + degradation_conditions）
+**Safety valve**：max 3 rounds, signal_lost 停滯偵測, net rot increase 偵測
 
-**自動化迴圈（半自動，Phase 4 v1）**：
-```
-陰面診斷（系統哪裡假裝健康）→ 排序（最危險的腐爛點）→ 提出修改方案 → [Human Gate] → 實作 → 雙面驗證（陽面指標 + 陰面代價）→ 保留/丟棄 → 更新 codebase-map + iteration-log → 下一輪
-```
+**終止條件**：繼續修的代價超過 rot 本身的風險（human judgment via gate）
 
-**終止條件（陰面版）**：
-- signal_lost 累積過高（系統看不見自己的失敗）
-- 陰面代價超過陽面收益
-- rot_risks 歸零但 confidence 全是 low（看起來完美但判斷不可靠）
+| Component | Status | Files |
+|-----------|--------|-------|
+| scar-schema.yaml 擴展（resolved_items, deferred flag） | done | templates/scar-schema.yaml |
+| implementer.md Level 1 self-iteration | done | agents/implementer.md |
+| implement SKILL.md 更新（execution order + transition） | done | skills/implement/SKILL.md |
+| iteration skill (Level 2) | done | skills/iteration/SKILL.md |
+| iteration-log template | done | skills/iteration/templates/iteration-log.yaml |
+| bootstrap routing update | done | skills/samsara-bootstrap/SKILL.md |
+| version bump | done | 0.5.1 → 0.6.0 |
 
-**演進路徑**：B（半自動 + human gate）→ A（全自動 + 事後 review）→ C（全自動 + 終止條件 human gate）
+### Phase 5: Security & Privacy Review — NOT STARTED
 
-**Reference**：Karpathy autoresearch（陽面自動化原型），反轉為陰面出發
+> 使用 coding agent 本身 build-in 的 security & privacy review 功能來檢查代碼和配置，不額外實作或是引入新工具，因為這非 Samsara 的本質。
 
-### Phase 5: Multi-Platform Support — NOT STARTED
+### Phase 6: Multi-Platform Support — NOT STARTED
 
 支援 Codex、Gemini CLI、Windsurf 三個平台的安裝。
 
@@ -182,7 +189,7 @@ Design docs: `changes/2026-04-15_continuous-learning/`
 ## Key Design Decisions
 
 1. 完全取代 superpowers，不共存
-2. Phase 1-4 僅支援 Claude Code；Phase 5 擴展至 Codex、Gemini CLI、Windsurf
+2. Phase 1-4 僅支援 Claude Code；Phase 6 擴展至 Codex、Gemini CLI、Windsurf
 3. Monorepo 子模組（可獨立安裝）
 4. 陰面約束內建在各 skill，通用約束透過 bootstrap 注入
 5. 狀態追蹤全部用 YAML（不用 markdown table）

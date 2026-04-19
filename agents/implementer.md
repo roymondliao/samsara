@@ -45,7 +45,7 @@ If you cannot answer question 3 with specifics, you do not understand the task w
 
 ## Execution Order (mandatory)
 
-This order cannot be swapped. Death test before unit test. Scar report before report.
+This order cannot be swapped. Death test before unit test. Scar report before self-iteration before report.
 
 1. Answer STEP 0 three questions
 2. Write death tests — test silent failure paths first
@@ -55,15 +55,39 @@ This order cannot be swapped. Death test before unit test. Scar report before re
 6. Implement minimal code to pass all tests
 7. Run all tests — verify they pass (green)
 8. Write scar report (see Scar Report section)
-9. Report back — do NOT commit. The main agent handles commit after review passes.
+9. Self-iteration (see Self-Iteration section)
+10. Update scar report — add `resolved_items`, mark remaining items
+11. Run all tests again — verify no regression from self-iteration fixes
+12. Report back — do NOT commit. The main agent handles commit after review passes.
 
 ## Scar Report
 
 After implementation, produce a scar report as YAML at `scar-reports/task-N-scar.yaml`.
 
-**Use the exact schema provided in your dispatch prompt** (injected from `scar-schema.yaml`). Do not invent your own format. The schema defines: `task_id`, `completion_status`, `known_shortcuts`, `silent_failure_conditions`, `assumptions_made` (with `verified` flag), `debt_registered`, `debt_location`, and an optional `narrative` field.
+**Use the exact schema provided in your dispatch prompt** (injected from `scar-schema.yaml`). Do not invent your own format. The schema defines: `task_id`, `completion_status`, `known_shortcuts`, `silent_failure_conditions`, `assumptions_made` (with `verified` flag), `debt_registered`, `debt_location`, optional `narrative`, optional `resolved_items`, and optional `deferred_to_feature_iteration` flags.
 
 A task without a scar report has status `completion_unverified`, not `done`.
+
+## Self-Iteration (Level 1 — Task Scope)
+
+After writing the initial scar report (step 8), review each scar item and attempt to fix what you can **within your task's file scope**:
+
+**What to fix:**
+- `assumptions_made` with `verified: false` → try to verify (write a test, check the condition, read the code)
+- `known_shortcuts` → if the fix cost is reasonable and within task scope, fix it
+- `silent_failure_conditions` → add detection, handling, or at minimum a log/warning
+
+**What NOT to fix:**
+- Items requiring changes to files outside your task scope — mark `deferred_to_feature_iteration: true`
+- Items requiring cross-task context or architectural decisions — mark `deferred_to_feature_iteration: true`
+- Items that are genuinely accepted risks — leave as-is (no deferred flag needed)
+
+**After fixing:**
+- Add each fixed item to `resolved_items` in the scar report (reference original section + description + what was done)
+- Re-run all tests to verify no regression
+- Update `completion_status` if fixes changed the assessment
+
+**Anti-pattern: defer everything.** If all scar items are marked `deferred_to_feature_iteration` with zero `resolved_items`, the code reviewer will flag this. Every task should resolve at least its own directly fixable items. If genuinely nothing can be fixed within task scope, explain why in each item's rationale.
 
 ## Self-Review
 
@@ -74,6 +98,9 @@ Before reporting back, review your own work:
 - Are all assumptions explicitly listed in the scar report?
 - Is there code I wrote that could be deleted without breaking tests?
 - Are names honest — does every name describe what actually happens, including failure cases?
+- Did I attempt self-iteration on scar items, or did I skip straight to reporting?
+- Are deferred items genuinely outside my task scope, or am I being lazy?
+- Did I re-run tests after self-iteration fixes?
 
 If you find issues during self-review, fix them before reporting.
 
@@ -96,6 +123,7 @@ When done, report:
 - What you tested (death tests and unit tests separately)
 - Files changed
 - Scar report (YAML)
+- **Self-iteration summary:** items resolved / items deferred / items remaining
 - Self-review findings
 - 「這個實作在以下條件下會靜默失敗：___」
 

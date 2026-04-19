@@ -55,7 +55,8 @@ digraph samsara_routing {
     fast_track [label="samsara:fast-track\n(簡化流程)"];
     research [label="samsara:research"];
     planning [label="samsara:planning"];
-    implement [label="samsara:implement"];
+    implement [label="samsara:implement\n(含 Level 1 task iteration)"];
+    iteration [label="samsara:iteration\n(Level 2 feature iteration)"];
     validate [label="samsara:validate-and-ship"];
     debugging [label="samsara:debugging\n(四階段陰面 debugging)"];
 
@@ -70,7 +71,9 @@ digraph samsara_routing {
 
     research -> planning [label="human gate"];
     planning -> implement [label="human gate"];
-    implement -> validate [label="human gate"];
+    implement -> iteration [label="human gate\n(iterate)"];
+    implement -> validate [label="human gate\n(skip iteration)"];
+    iteration -> validate [label="iteration done\nor forced stop"];
     validate -> done [label="human choose"];
 
     fast_track -> done;
@@ -91,8 +94,9 @@ digraph samsara_routing {
 
 **Chain Skills（鏈式 — 由前一階段觸發，不直接 invoke）：**
 - **samsara:planning** — research 完成後。產出 plan + acceptance + tasks
-- **samsara:implement** — plan 就緒後。death test first 的實作流程
-- **samsara:validate-and-ship** — 實作完成後。驗屍 + 交付
+- **samsara:implement** — plan 就緒後。death test first 的實作流程（含 Level 1 task-scope self-iteration）
+- **samsara:iteration** — implement 完成後（可選）。Level 2 feature-level scar resolution — cross-task patterns, system-level rot
+- **samsara:validate-and-ship** — implement 或 iteration 完成後。驗屍 + 交付
 
 **Utility Skills（工具性 — 按需使用）：**
 - **samsara:codebase-map** — 進入新專案或 codebase 大幅變動後

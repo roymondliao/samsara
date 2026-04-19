@@ -12,17 +12,20 @@ completion_status: done  # done | done_with_concerns | blocked
 
 known_shortcuts:
   # What corners were cut? What would you do differently with more time?
-  - "description of shortcut taken"
+  - description: "description of shortcut taken"
+    deferred_to_feature_iteration: false  # OPTIONAL — true if this item cannot be fixed within task scope
 
 silent_failure_conditions:
   # Under what conditions will this implementation silently produce wrong results?
-  - "description of silent failure condition"
+  - description: "description of silent failure condition"
+    deferred_to_feature_iteration: false  # OPTIONAL — true if this item cannot be fixed within task scope
 
 assumptions_made:
   # What was assumed to be true? Mark verified: true only if you tested it.
   - assumption: "what was assumed"
     verified: false  # true | false
     note: "evidence if verified, consequence if not"
+    deferred_to_feature_iteration: false  # OPTIONAL — true if verification requires cross-task context
 
 debt_registered: true  # true if any known_shortcuts or silent_failure_conditions exist
 debt_location: "file:line or description"  # null if debt_registered is false
@@ -30,6 +33,13 @@ debt_location: "file:line or description"  # null if debt_registered is false
 narrative: |  # OPTIONAL — use only when structured fields above cannot capture the full scar context
   Free-form markdown for complex scars that need detailed explanation.
   Omit this field entirely if the structured fields are sufficient.
+
+resolved_items:  # OPTIONAL — items fixed during task-level self-iteration (Level 1)
+  # Each entry references what was fixed and how.
+  # Only present after self-iteration; omit if no self-iteration was performed.
+  - original_section: "known_shortcuts | silent_failure_conditions | assumptions_made"
+    original_description: "the item that was fixed"
+    resolution: "what was done to fix it"
 
 # --- Rules ---
 #
@@ -40,30 +50,43 @@ narrative: |  # OPTIONAL — use only when structured fields above cannot captur
 #    - blocked: cannot complete due to external dependency
 # 3. debt_registered must be true if any known_shortcuts or silent_failure_conditions exist
 # 4. narrative is optional — only use when structured fields cannot capture the scar
+# 5. deferred_to_feature_iteration is optional — defaults to false if omitted
+#    Use true only when the item genuinely requires cross-task context to fix.
+#    All items deferred without rationale will be flagged by code reviewer.
+# 6. resolved_items is optional — present only after task-level self-iteration.
+#    Each resolved item must reference the original section and description.
+# 7. Backward compatibility: scar reports without deferred flags or resolved_items
+#    are valid. Missing deferred flag = false. Missing resolved_items = no self-iteration.
 
-# --- Verbatim Example ---
+# --- Verbatim Example (with self-iteration) ---
 #
 # task_id: task-2
 # completion_status: done_with_concerns
 #
 # known_shortcuts:
-#   - "PDF validity check only verifies file exists, not that it is a valid PDF"
-#   - "Sort order is insertion order (topic alphabetical → yaml order), spec did not define sort logic"
+#   - description: "Sort order is insertion order, spec did not define sort logic"
+#     deferred_to_feature_iteration: true  # needs cross-task discussion on global sort strategy
 #
 # silent_failure_conditions:
-#   - "Topic folders not matching [0-9]{2}_* pattern are silently ignored with no warning"
-#   - "_metadata.yaml with papers: null (not empty list) is silently converted to empty list"
+#   - description: "Topic folders not matching [0-9]{2}_* pattern are silently ignored"
+#     # deferred_to_feature_iteration omitted = false (was fixed in self-iteration)
 #
 # assumptions_made:
 #   - assumption: "All topic folder names match [0-9]{2}_* pattern"
 #     verified: true
-#     note: "All 10 current folders match"
+#     note: "All 10 current folders match — verified during self-iteration"
 #   - assumption: "yaml.safe_load float normalization with :.5f is correct for all arxiv_id lengths"
 #     verified: false
-#     note: "If arxiv_id has suffix longer than 5 digits, trailing digits are lost"
-#   - assumption: "Insertion order for recommended_next is acceptable to users"
-#     verified: false
-#     note: "No user feedback collected; may need explicit sort logic later"
+#     note: "If suffix > 5 digits, trailing digits lost"
+#     deferred_to_feature_iteration: true  # needs cross-task audit of all arxiv_id handling
 #
 # debt_registered: true
-# debt_location: "scripts/paper_scan.py — non-standard topic folder detection, sort logic"
+# debt_location: "scripts/paper_scan.py — sort logic, float normalization"
+#
+# resolved_items:
+#   - original_section: "silent_failure_conditions"
+#     original_description: "Topic folders not matching [0-9]{2}_* pattern are silently ignored"
+#     resolution: "Added warning log for non-matching folders in scan loop"
+#   - original_section: "assumptions_made"
+#     original_description: "All topic folder names match [0-9]{2}_* pattern"
+#     resolution: "Wrote test verifying all 10 folders match — assumption now verified"

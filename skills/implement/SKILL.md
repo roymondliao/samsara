@@ -120,7 +120,7 @@ Do not proceed to next task with open Critical issues. Do not commit until all t
 
 ## Per-Task Execution Order
 
-This order is mandatory. Death test before unit test. Scar report before report.
+This order is mandatory. Death test before unit test. Scar report before self-iteration before report.
 
 ### Implementer（subagent 或 inline）
 
@@ -132,18 +132,20 @@ This order is mandatory. Death test before unit test. Scar report before report.
 6. Implement minimal code to pass all tests
 7. Run all tests — verify they pass (green)
 8. Write scar report → `scar-reports/task-N-scar.yaml` (read `templates/scar-schema.yaml` for the exact format)
-9. Report back (do NOT commit)
+9. Self-iteration (Level 1) — review scar items, fix task-scope actionable items, update scar report with `resolved_items` and `deferred_to_feature_iteration` flags
+10. Run all tests — verify no regression from self-iteration fixes
+11. Report back (do NOT commit)
 
 ### Main agent（review + bookkeeping）
 
-10. Dispatch `samsara:code-reviewer` for yin-side review
-11. If Critical issues → implementer fixes → re-review
-12. Update `index.yaml` — set status, scar_count, unresolved_assumptions + TaskUpdate the corresponding task to `completed`
-13. Proceed to next task
+12. Dispatch `samsara:code-reviewer` for yin-side review
+13. If Critical issues → implementer fixes → re-review
+14. Update `index.yaml` — set status, scar_count, unresolved_assumptions + TaskUpdate the corresponding task to `completed`
+15. Proceed to next task
 
 ### After all tasks complete
 
-14. Commit all changes
+16. Commit all changes
 
 ## Yin-Side Constraints
 
@@ -174,8 +176,16 @@ These are non-negotiable:
 
 ## Transition
 
-All tasks complete, then ask:
+All tasks complete. Calculate remaining scar items:
+- Count items across all `scar-reports/` where `deferred_to_feature_iteration: true` or items without `resolved_items` coverage
+- These are the **feature-level items** that Level 1 self-iteration could not resolve
 
-> 「Implementation 完成。N 個 tasks 已執行，共 M 個 scar report items。確認後進入 Validation？」
+Then ask:
 
-使用者確認後，invoke `samsara:validate-and-ship` skill。
+> 「Implementation 完成。N 個 tasks 已執行，共 M 個 scar report items（Level 1 self-iteration 已處理 R 個，剩餘 K 個 feature-level items）。
+>
+> (A) 進入 Iteration — 審視 feature-level scar items（cross-task patterns, system-level rot）
+> (B) Skip — 直接進入 Validation（剩餘 items 由 validate-and-ship 的 failure budget review 處理）」
+
+- 使用者選 A → invoke `samsara:iteration`
+- 使用者選 B → invoke `samsara:validate-and-ship`（向後兼容，等同原本流程）
