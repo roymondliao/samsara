@@ -101,6 +101,12 @@ For each item triaged as `fix`, ordered by signal_lost contribution (highest fir
 4. If review passes → **per-fix commit** (commit message references original scar item)
 5. Recalculate signal_lost after each fix
 
+**Blocked fix fallback:** If implementer reports BLOCKED or NEEDS_CONTEXT for a fix item:
+- Do NOT retry the same item in the next round
+- Reclassify the item from `fix` to `defer` with reason: `"implementer blocked: <reason>"`
+- Log the reclassification in iteration-log
+- Continue to the next fix item
+
 ## Step 4: Round Check + Safety Valve
 
 After processing all fix items in this round:
