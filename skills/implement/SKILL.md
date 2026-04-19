@@ -132,20 +132,21 @@ This order is mandatory. Death test before unit test. Scar report before self-it
 6. Implement minimal code to pass all tests
 7. Run all tests — verify they pass (green)
 8. Write scar report → `scar-reports/task-N-scar.yaml` (read `templates/scar-schema.yaml` for the exact format)
-9. Self-iteration (Level 1) — review scar items, fix task-scope actionable items, update scar report with `resolved_items` and `deferred_to_feature_iteration` flags
-10. Run all tests — verify no regression from self-iteration fixes
-11. Report back (do NOT commit)
+9. Self-iteration (Level 1) — review scar items, fix task-scope actionable items
+10. Update scar report — add `resolved_items` for fixed items, mark remaining items with `deferred_to_feature_iteration` flags where applicable
+11. Run all tests — verify no regression from self-iteration fixes
+12. Report back (do NOT commit)
 
 ### Main agent（review + bookkeeping）
 
-12. Dispatch `samsara:code-reviewer` for yin-side review
-13. If Critical issues → implementer fixes → re-review
-14. Update `index.yaml` — set status, scar_count, unresolved_assumptions + TaskUpdate the corresponding task to `completed`
-15. Proceed to next task
+13. Dispatch `samsara:code-reviewer` for yin-side review
+14. If Critical issues → implementer fixes → re-review
+15. Update `index.yaml` — set status, scar_count, unresolved_assumptions + TaskUpdate the corresponding task to `completed`
+16. Proceed to next task
 
 ### After all tasks complete
 
-16. Commit all changes
+17. Commit all changes
 
 ## Yin-Side Constraints
 
