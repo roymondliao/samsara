@@ -26,8 +26,8 @@ digraph iteration {
     triage [label="Triage（human gate）\n每個 remaining item:\nfix / accept / defer\nFocus: cross-task patterns"];
     fix [label="Fix\n復用 implementer agent\nper-fix commit\nscar report per fix"];
     round_check [label="Round check\nsignal_lost 下降？\n還有 fix items？" shape=diamond];
-    gate [label="Human gate\n繼續？停止？\n值得延遲 ship 嗎？" shape=diamond];
-    safety [label="Safety valve check" shape=diamond];
+    safety [label="Safety valve check\n(advisory)" shape=diamond];
+    gate [label="Human gate\n繼續？停止？\n(safety warnings shown)" shape=diamond];
     log [label="寫 iteration-log.yaml"];
     exit [label="Exit → validate-and-ship" shape=doublecircle];
 
@@ -37,12 +37,11 @@ digraph iteration {
     triage -> fix [label="有 fix items"];
     triage -> log [label="全部 accept/defer"];
     fix -> round_check;
-    round_check -> safety [label="有更多 items"];
+    round_check -> gate [label="有更多 items"];
     round_check -> log [label="全部處理完"];
-    safety -> gate [label="within limits"];
-    safety -> log [label="forced stop\n(max rounds / stagnation)"];
-    gate -> triage [label="繼續"];
-    gate -> log [label="停止"];
+    gate -> safety;
+    safety -> triage [label="within limits\n+ user: 繼續"];
+    safety -> log [label="user: 停止\n(with or without\nsafety warning)"];
     log -> exit;
 }
 ```
@@ -102,11 +101,11 @@ For each item triaged as `fix`, ordered by signal_lost contribution (highest fir
 4. If review passes → **per-fix commit** (commit message references original scar item)
 5. Recalculate signal_lost after each fix
 
-**Blocked fix fallback:** If implementer reports BLOCKED or NEEDS_CONTEXT for a fix item:
-- Do NOT retry the same item in the next round
-- Reclassify the item from `fix` to `defer` with reason: `"implementer blocked: <reason>"`
-- Log the reclassification in iteration-log
-- Continue to the next fix item
+**Blocked fix handling:** If implementer reports BLOCKED or NEEDS_CONTEXT for a fix item:
+- Do NOT retry the same item automatically in the next round
+- Present to user: 「Fix item "[description]" 被 implementer 回報 BLOCKED: [reason]。(A) 提供更多 context 重試 (B) 重新分類為 defer」
+- User decides — do not auto-reclassify without human judgment
+- Log the outcome in iteration-log
 
 ### Fix Dispatch Guidance
 
