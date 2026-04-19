@@ -57,6 +57,13 @@ resolved_items:  # OPTIONAL — items fixed during task-level self-iteration (Le
 #    Each resolved item must reference the original section and description.
 # 7. Backward compatibility: scar reports without deferred flags or resolved_items
 #    are valid. Missing deferred flag = false. Missing resolved_items = no self-iteration.
+# 8. Plain string format backward compatibility: older scar reports may use plain strings
+#    for known_shortcuts and silent_failure_conditions instead of objects:
+#      known_shortcuts:
+#        - "plain string description"
+#    When aggregating (e.g., Level 2 iteration), treat plain strings as:
+#      {description: "the string", deferred_to_feature_iteration: false}
+#    Do not reject or silently skip plain string format items.
 
 # --- Verbatim Example (with self-iteration) ---
 #
