@@ -112,9 +112,18 @@ The prompt provides per-task context. Follow the template in `./dispatch-templat
 
 After each subagent completes (status DONE or DONE_WITH_CONCERNS):
 
-1. **Code review** — dispatch `subagent_type: "samsara:code-reviewer"` with the diff. See `./dispatch-template.md` for review dispatch format. The code-reviewer covers spec compliance, deletion analysis, naming honesty, silent rot paths, and correctness.
-2. If code-reviewer reports Critical issues → implementer fixes → re-review.
-3. Review passes → main agent updates `index.yaml` (status, scar_count, unresolved_assumptions).
+1. **Parallel code review** — dispatch BOTH reviewers in the **same message** to enable parallel execution:
+   - `samsara:code-reviewer` (yin) — spec compliance, deletion analysis, naming honesty, silent rot paths, correctness
+   - `samsara:code-quality-reviewer` (quality) — structural truth-telling: S/O/L/I/D + Cohesion/Coupling/DRY/Pattern
+
+   See `./dispatch-template.md` for both dispatch templates.
+
+2. **Aggregation rule** — main agent MUST receive BOTH review outputs before proceeding:
+   - Both pass → proceed to index.yaml update
+   - Either reviewer reports Critical issues → implementer fixes → re-review (dispatch both again)
+   - Only one review output received → **FAIL with "missing reviewer" error** — do NOT assume absent reviewer = PASS. Re-dispatch the missing reviewer before proceeding.
+
+3. Review passes (both) → main agent updates `index.yaml` (status, scar_count, unresolved_assumptions).
 
 Do not proceed to next task with open Critical issues. Do not commit until all tasks complete.
 
@@ -139,8 +148,9 @@ This order is mandatory. Death test before unit test. Scar report before self-it
 
 ### Main agent（review + bookkeeping）
 
-13. Dispatch `samsara:code-reviewer` for yin-side review
-14. If Critical issues → implementer fixes → re-review
+13. **Parallel dispatch both reviewers in the same message** — `samsara:code-reviewer` (yin) and `samsara:code-quality-reviewer` (quality). See `./dispatch-template.md` for both dispatch templates.
+    - Both outputs must arrive. A reviewer output that did not arrive is **not** the same as PASS or PASS_WITH_CONCERNS — it is an absent output. If only one review output is received → **FAIL with "missing reviewer" error**. Re-dispatch the missing reviewer (max 2 retries); if it still does not arrive, escalate and do not proceed.
+14. If either reviewer reports Critical issues → implementer fixes → re-review (both reviewers again)
 15. Update `index.yaml` — set status, scar_count, unresolved_assumptions + TaskUpdate the corresponding task to `completed`
 16. Proceed to next task
 
@@ -163,12 +173,14 @@ These are non-negotiable:
 - Make subagent read task or overview files (paste full text — see `./dispatch-template.md`)
 - Use generic `general-purpose` subagent — always use `samsara:implementer`
 - Skip yin-side review (dispatch `samsara:code-reviewer`)
-- Proceed to next task while code-reviewer has open Critical issues
+- Skip `code-quality-reviewer` dispatch — both reviewers are required; skipping one means the review is incomplete
+- Proceed to next task while code-reviewer or code-quality-reviewer has open Critical issues
 - Dispatch multiple implementer subagents in parallel (file conflicts)
 - Ignore subagent NEEDS_CONTEXT or BLOCKED status — provide context or escalate
 - Accept a task as DONE without a scar report
 - Let subagent commit — only the main agent commits, after all tasks complete
-- Update index.yaml before code-reviewer passes
+- Update index.yaml before both code-reviewer and code-quality-reviewer pass
+- Assume an absent review output means PASS — missing reviewer output is always a FAIL
 
 ## Support Files
 

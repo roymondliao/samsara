@@ -67,12 +67,31 @@ Agent tool:
 
 ## Review Dispatch
 
-After the implementer reports back (status DONE or DONE_WITH_CONCERNS), dispatch yin-side code review:
+After the implementer reports back (status DONE or DONE_WITH_CONCERNS), dispatch BOTH reviewers in parallel.
+
+**Dispatch both in the same message to enable parallel execution.** Two separate Agent calls in one message run concurrently; dispatching them in separate messages runs them sequentially and doubles wall-clock time.
+
+**Aggregation rule:** Main agent MUST receive BOTH review outputs before proceeding. If only one output arrives, that is a FAIL with "missing reviewer" error — never assume absent reviewer = PASS. Re-dispatch the missing reviewer.
 
 ```
-Agent tool:
+Agent tool (1st — yin reviewer):
   subagent_type: "samsara:code-reviewer"
-  description: "Review Task N: [task title]"
+  description: "Yin review Task N: [task title]"
+  prompt: |
+    Review the following changes for Task N: [task title]
+
+    ## Task Requirements
+    [Paste acceptance criteria from task-N.md]
+
+    ## Changed Files
+    [List the files the implementer modified]
+
+    ## Diff
+    [Paste the unstaged diff of the implementer's changes]
+
+Agent tool (2nd — quality reviewer, dispatch in same message as above):
+  subagent_type: "samsara:code-quality-reviewer"
+  description: "Quality review Task N: [task title]"
   prompt: |
     Review the following changes for Task N: [task title]
 
@@ -86,6 +105,6 @@ Agent tool:
     [Paste the unstaged diff of the implementer's changes]
 ```
 
-If the code-reviewer reports FAIL or PASS_WITH_CONCERNS with Critical issues, the implementer must fix before proceeding.
+Both reviewers must report back. If either reports FAIL or PASS_WITH_CONCERNS with Critical issues, the implementer must fix before proceeding.
 
-After review passes → update `index.yaml` → proceed to next task. Commit only after all tasks complete.
+After both reviews pass → update `index.yaml` → proceed to next task. Commit only after all tasks complete.

@@ -97,9 +97,24 @@ For each item triaged as `fix`, ordered by signal_lost contribution (highest fir
 
 1. Dispatch `samsara:implementer` with fix context (see Fix Dispatch Guidance below)
 2. Implementer writes death test for the specific scar item → implements fix → scar report
-3. Main agent: code review (dispatch `samsara:code-reviewer`)
-4. If review passes → **per-fix commit** (commit message references original scar item)
-5. Recalculate signal_lost after each fix
+3. Main agent: parallel dispatch `samsara:code-reviewer` AND `samsara:code-quality-reviewer` (single message, two Agent calls, no shared state)
+4. Await both review outputs — **aggregation rule applies** (see below)
+5. If both reviewers PASS → **per-fix commit** (commit message references original scar item)
+6. Recalculate signal_lost after each fix
+
+### Review Aggregation Rule (Per-Fix)
+
+Both reviewers must PASS before the per-fix commit is allowed. Either reviewer returning FAIL blocks the commit.
+
+| Outcome | Action |
+|---|---|
+| Both PASS | Per-fix commit allowed |
+| Either FAIL | Block per-fix commit — implementer must fix and re-review |
+| Missing reviewer (only one output received) | **FAIL with "missing reviewer" error** — block per-fix commit, log the missing reviewer by name, re-dispatch (max 2 retries); if still missing after retries, escalate and do not proceed |
+
+**Missing reviewer handling:** If the main agent receives only one review output (the other dispatcher returned nothing or timed out), this is a **FAIL with "missing reviewer" error** — do NOT assume absent reviewer = PASS. Log the missing reviewer by name and re-dispatch. Bounded retry: max 2 re-dispatch attempts. If both retries still produce no output, escalate to the user and do not proceed with the per-fix commit. This is a structural block, not an advisory warning.
+
+**Re-review rule:** After implementer fixes issues from FAIL, dispatch both reviewers in parallel again. Do not dispatch only the reviewer that failed — both must re-review after any code change.
 
 **Blocked fix handling:** If implementer reports BLOCKED or NEEDS_CONTEXT for a fix item:
 - Do NOT retry the same item automatically in the next round
@@ -158,6 +173,8 @@ Write `iteration-log.yaml` to the feature's `changes/` directory. Use template `
 - Silently exclude scar reports that don't parse (list parse failures explicitly)
 - Continue after safety valve triggers without human confirmation
 - Accept items without expiry dates
+- Skip `code-quality-reviewer` dispatch — both reviewers are required per fix; skipping one means the review is incomplete
+- Assume an absent review output means PASS — missing reviewer output is always a FAIL
 
 **Watch for:**
 - Accept ratio > 80% with zero fixes → cargo-cult triage warning

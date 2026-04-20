@@ -40,7 +40,7 @@ digraph fast_track {
     autopsy [label="Step 1: Quick Autopsy\n- 一句話 scope\n- 一句話：怎麼可能悄悄壞掉"];
     spec [label="Step 2: Inline Spec + Death Clause\n- 驗收標準 inline\n- death clause: 如果___發生，視為失敗"];
     impl [label="Step 3: Implement\n- Death test 先行（即使 fast track）\n- Unit test\n- 實作"];
-    review [label="Step 4: Quick Review + Ship\n- 簡化 code review（能刪？命名說謊？）\n- 寫 fast-track.yaml\n- Commit"];
+    review [label="Step 4: Quick Review + Ship\n- yin: 能刪？命名說謊？\n- quality: C5/C6/C7/C8\n- 寫 fast-track.yaml\n- Commit"];
     done [label="完成" shape=doublecircle];
 
     start -> gate;
@@ -70,7 +70,20 @@ digraph fast_track {
 
 ## Step 4: Quick Review + Scar Tag + Ship
 
-- Simplified code review: Can anything be deleted? Are names lying?
+Inline review — main agent self-checks both yin and quality. No subagent dispatch.
+
+**Yin questions:**
+- Can anything be deleted? (zero-cost deletion test)
+- Are names lying? (do names describe what actually happens, including failures?)
+
+**Quality questions** (selected from C5/C6/C7/C8 — the 4 criteria most likely to be violated in changes < 100 lines; full 8 criteria in `samsara/references/code-quality.md`):
+- **C5 Reuse**: Did this change introduce a duplicate helper or inline logic that already has a single home elsewhere?
+- **C6 Clear Structure**: Is every new boundary justified — "why here, not there"? Is any function/variable misplaced?
+- **C7 Elegant Logic**: Are there extra variables, wrappers, or abstractions introduced that serve no protection?
+- **C8 No Redundancy**: Does any new code state a fact already encoded somewhere else — two sources of truth for the same thing?
+
+Selection rationale: For typical small changes (bug fix, config, dep update, small refactor under 100 lines), the quality risks most likely to be introduced silently are: duplicating logic that already exists (C5), placing code in the wrong boundary (C6), adding unnecessary abstraction (C7), and restating facts already encoded elsewhere (C8). C1 Readability is ambient and covered by the naming yin question. C2 Maintainability and C3 Extensibility are architectural concerns unlikely to surface in <100 lines. C4 Debuggability overlaps with the yin reviewer's silent-rot scope.
+
 - Write `fast-track.yaml` to `changes/` directory
 - Commit with `[scar:none]` or `[scar:N items]` tag
 
@@ -79,11 +92,13 @@ digraph fast_track {
 - **Death test first** — even for fast track, this order cannot be skipped
 - **Gate defaults to full workflow** — positive evidence required to enter Fast Track
 - **Every commit tagged** — `[scar:none]` or `[scar:N items]`
+- **Quality symmetry** — fast-track's Step 4 review must check both yin (deletion, naming) and quality (C5/C6/C7/C8) faces; checking only one face is an incomplete review
 
 ## Output
 
-Single file at `changes/YYYY-MM-DD_<description>/fast-track.yaml`:
+Single file at `changes/YYYY-MM-DD_<description>/fast-track.yaml`.
 
+Example:
 ```yaml
 type: fast_track
 description: "<one-sentence scope>"
@@ -96,4 +111,17 @@ scar_items:
   - "<scar item if any>"
 files_changed:
   - "<file path>"
+quality_checklist:
+  - criterion: "C5 Reuse"
+    checked: false  # fill true only after active review — a specific observation is required in note
+    note: "<what was observed — must be specific, not a template copy>"
+  - criterion: "C6 Clear Structure"
+    checked: false
+    note: "<what was observed — must be specific, not a template copy>"
+  - criterion: "C7 Elegant Logic"
+    checked: false
+    note: "<what was observed — must be specific, not a template copy>"
+  - criterion: "C8 No Redundancy"
+    checked: false
+    note: "<what was observed — must be specific, not a template copy>"
 ```
