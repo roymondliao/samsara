@@ -156,7 +156,39 @@ Design docs: `changes/2026-04-15_continuous-learning/`
 
 > 使用 coding agent 本身 build-in 的 security & privacy review 功能來檢查代碼和配置，不額外實作或是引入新工具，因為這非 Samsara 的本質。
 
-### Phase 6: Multi-Platform Support — NOT STARTED
+### Phase 6: Execution Model Scope — NOT STARTED
+
+**發現日期**：2026-04-21（在 `2026-04-19_yin-coding-spirit` feature ship 前夕討論中浮現）
+
+**觀察**：整套 samsara skills 和 agents（含 `samsara:code-reviewer`、`samsara:code-quality-reviewer`、9 yin principles、8 outcome criteria C1-C8）都是以 imperative code（Python / TS / Go / Rust 等）為預設 execution model 設計的。現代軟體工程包含多種 execution model，每種的「悄悄失敗」死法不同：
+
+| Execution Model | 例子 | 與 code 不同的死法 |
+|----------------|-----|------------------|
+| Imperative code | Python, Go, TS | Stack trace 可追、exception model 明確 |
+| Declarative IaC | Terraform, Pulumi, CloudFormation | State drift、provider lock、apply blast radius |
+| Container specs | Dockerfile, OCI | Base image tag drift、layer cache poisoning、secrets in layers |
+| Orchestration | Kubernetes YAML, Helm, Kustomize | Template render 出空值被 K8s 接受、values cascade 悄悄覆蓋 |
+| Data pipelines | Airflow DAG, dbt, Dagster | 上游 schema 變動但 task 不失敗、partial batch |
+| CI/CD | GitHub Actions, Jenkinsfile | Secret exposure、runner drift、step 順序依賴 |
+| ML configs | Hydra, W&B sweeps | Hyperparameter interaction、reproducibility |
+
+**為什麼這是框架層級的問題而非內容缺口**：Samsara 的唯一公理「存在即責任」在 declarative 系統中意義不同 — 一個 unused Terraform resource 不是 dead weight，是每月燒 cloud cost 的活損失 + security surface。這改變了 yin principles 的權重，不是補幾個 worked example 就能解決。
+
+**當前立場（2026-04-21）**：
+- 所有現有 skills 和 agents 的隱含 scope = imperative code
+- `samsara:code-quality-reviewer` 的 reference 只以 Python 驗證過 3 個 fixtures（見 `2026-04-19_yin-coding-spirit` ship-manifest 的 known_failure_mode「Koan-to-code translation miss」）
+- 未對 IaC / container / orchestration / pipeline / CI/CD / ML configs 做過 scope 宣告或 Gate
+
+**可能的解法方向（未決）**：
+- **A**：單一 universal reviewer — 把 principles 抽象到 execution-model-agnostic（風險：變虛，rubber stamp 風險放大）
+- **B**：Sibling reviewers by execution model — `samsara:iac-quality-reviewer`、`samsara:pipeline-quality-reviewer` 等（風險：維護成本 × N、registry lag 風險放大）
+- **C**：Wrapper 既有 tool — tflint / hadolint / helm lint / OPA policy，subagent 翻譯 tool output 到 samsara 語彙（成本最低、獨立於 samsara principles）
+
+**待累積的信號**：真實 IaC / pipeline review 請求達到 10+ 次，再決定 A/B/C。
+
+**短期行動（P0, 建議 Phase 5 之前或同期完成）**：在既有 reviewer agents 加入 execution-model Gate — 遇到非 imperative code file types（`.tf / Dockerfile / helm charts / *.pkr.hcl / airflow DAG` 等）時主動 decline，回報 out of scope。禁止假裝能審。
+
+### Phase 7: Multi-Platform Support — NOT STARTED
 
 支援 Codex、Gemini CLI、Windsurf 三個平台的安裝。
 
@@ -189,7 +221,7 @@ Design docs: `changes/2026-04-15_continuous-learning/`
 ## Key Design Decisions
 
 1. 完全取代 superpowers，不共存
-2. Phase 1-4 僅支援 Claude Code；Phase 6 擴展至 Codex、Gemini CLI、Windsurf
+2. Phase 1-4 僅支援 Claude Code；Phase 7 擴展至 Codex、Gemini CLI、Windsurf
 3. Monorepo 子模組（可獨立安裝）
 4. 陰面約束內建在各 skill，通用約束透過 bootstrap 注入
 5. 狀態追蹤全部用 YAML（不用 markdown table）

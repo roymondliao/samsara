@@ -73,8 +73,9 @@ After the implementer reports back (status DONE or DONE_WITH_CONCERNS), dispatch
 
 **Aggregation rule:** Main agent MUST receive BOTH review outputs before proceeding. If only one output arrives, that is a FAIL with "missing reviewer" error — never assume absent reviewer = PASS. Re-dispatch the missing reviewer.
 
+### Yin reviewer
 ```
-Agent tool (1st — yin reviewer):
+Agent tool:
   subagent_type: "samsara:code-reviewer"
   description: "Yin review Task N: [task title]"
   prompt: |
@@ -88,10 +89,13 @@ Agent tool (1st — yin reviewer):
 
     ## Diff
     [Paste the unstaged diff of the implementer's changes]
+```
 
-Agent tool (2nd — quality reviewer, dispatch in same message as above):
+### Code Quality reviewer
+```
+Agent tool:
   subagent_type: "samsara:code-quality-reviewer"
-  description: "Quality review Task N: [task title]"
+  description: "Code quality review Task N: [task title]"
   prompt: |
     Review the following changes for Task N: [task title]
 
