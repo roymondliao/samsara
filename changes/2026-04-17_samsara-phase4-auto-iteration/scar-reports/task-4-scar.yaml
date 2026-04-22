@@ -1,0 +1,20 @@
+task_id: task-4
+completion_status: done_with_concerns
+
+known_shortcuts:
+  - description: "Safety valve max rounds hardcoded to 3 in prose — not configurable without editing SKILL.md"
+  - description: "signal_lost counts all items equally — a critical silent failure weighs the same as a minor shortcut"
+
+silent_failure_conditions:
+  - description: "If implementer dispatch for a scar fix fails (BLOCKED/NEEDS_CONTEXT), the iteration loop has no explicit fallback — the item stays in fix queue indefinitely until human gate stops"
+
+assumptions_made:
+  - assumption: "implementer dispatch-template pattern works for scar fix context (different from initial implementation context)"
+    verified: false
+    note: "Fix context is narrower (single scar item) but may need more surrounding code context than initial impl"
+  - assumption: "per-fix commit works correctly in cowork/inline mode"
+    verified: false
+    note: "Cowork mode may not naturally produce per-fix commits — main agent must enforce"
+
+debt_registered: true
+debt_location: "skills/iteration/SKILL.md — safety valve configurability, signal_lost weighting, blocked fix fallback"

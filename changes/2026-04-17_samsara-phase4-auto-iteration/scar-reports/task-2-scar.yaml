@@ -1,0 +1,20 @@
+task_id: task-2
+completion_status: done_with_concerns
+
+known_shortcuts:
+  - description: "Self-iteration quality entirely depends on implementer agent's self-discipline — no external enforcement beyond code reviewer flagging empty resolved_items"
+
+silent_failure_conditions:
+  - description: "If context window is nearly exhausted after implementation + tests, self-iteration step may be truncated or skipped silently by the agent"
+
+assumptions_made:
+  - assumption: "Subagent will have sufficient context window remaining for self-iteration after implementation + tests + scar report"
+    verified: false
+    note: "Complex tasks may consume most of context before reaching self-iteration step"
+  - assumption: "Code reviewer will catch cases where all items are deferred without justification"
+    verified: false
+    note: "Depends on code-reviewer.md including this check — not yet updated"
+    deferred_to_feature_iteration: true
+
+debt_registered: true
+debt_location: "agents/implementer.md — context window pressure on self-iteration; code-reviewer.md needs corresponding update to check for defer-all anti-pattern"

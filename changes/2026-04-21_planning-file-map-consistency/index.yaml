@@ -1,0 +1,10 @@
+feature: research-planning-completeness-gate
+status: pending
+
+tasks:
+  - id: task-1
+    title: "Update Planning skill — add Step 1.5 Pre-thinking with Information Assumptions artifact"
+    status: done
+    scar_count: 4
+    unresolved_assumptions: 4
+    depends_on: []

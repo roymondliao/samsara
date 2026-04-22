@@ -1,0 +1,288 @@
+task_id: task-2
+completion_status: done_with_concerns
+
+# Yin code-reviewer audit (dispatched after implementation) found 2 Critical + 4 Important.
+# All 2 Critical resolved by main agent surgical fix; Important items resolved or acknowledged.
+# See resolved_items section at bottom for full list.
+
+known_shortcuts:
+  - description: |
+      The output format table uses a pipe-table with Pass/Concern/UNKNOWN inline, which is
+      illustrative but does not enforce that reviewers fill in every row. If the agent
+      skips a principle row in the table, the omission is invisible in the output.
+      No structural enforcement exists in the prompt to require all 9 rows be present.
+    deferred_to_feature_iteration: false
+
+  - description: |
+      T5's corrected regex `[[:space:]|]X[[:space:]|]` (for matching S/O/L/I/D in table
+      format) is fragile to output format changes. If the agent format changes from the
+      current `| S | ...` pipe-table to e.g., `## S:` heading format, T5 will not detect
+      the principles. This is a separate concern from the backslash-pipe bug that was
+      fixed during red→green (see resolved_items for that). The CORRECTED regex's residual
+      fragility is a known shortcut accepted for this task; fixing it would require a more
+      general parser (overkill for a smoke test).
+    deferred_to_feature_iteration: false
+
+  - description: |
+      The "koan-to-real-code translation" guidance in the agent prompt tells the reviewer to
+      "ask the judgment question directly against the code" and gives one example (S principle).
+      This guidance is thin. The Task 1 scar identified this as the critical path: if the agent
+      cannot translate abstract koans to concrete code patterns, the reference degrades to
+      philosophical recitation. No concrete translation examples are present in the agent prompt
+      because the reference is language-agnostic and examples would bind it to a language.
+      The actual translation quality is unverified until Task 5 (integration validation).
+    deferred_to_feature_iteration: true
+
+silent_failure_conditions:
+  - description: |
+      If the agent skips Step 1 (Read reference) and proceeds directly to review — either
+      because the dispatch context already contains partial knowledge of the principles, or
+      because the model's context window contains the reference from a prior read — the
+      "reference unavailable → UNKNOWN" hard stop is bypassed. The agent produces a verdict
+      that looks valid but is not grounded in the current reference file. First discovered:
+      if someone edits code-quality.md after dispatch begins.
+    deferred_to_feature_iteration: true
+
+  - description: |
+      The validation script (agent-structure.sh) validates the agent definition file's
+      structure but cannot validate actual agent behavior at dispatch time. An agent
+      could pass all 16 structural tests while still rubber-stamping in practice
+      (e.g., LLM producing "Pass: code looks clean" without file:line). The anti-rubber-stamp
+      clause exists in the prompt, but prompt compliance is not mechanically enforced.
+      First discovered: Task 5 fixture dispatch test.
+    deferred_to_feature_iteration: true
+
+  - description: |
+      The D2 test checks the first 50 lines for scope boundary keywords. If the agent file
+      is reorganized (e.g., a long frontmatter section pushes the scope boundary past line 50),
+      D2 would fail — but this is a test failure, not a silent failure. The silent variant:
+      if the scope boundary section is present but written vaguely enough that the LLM
+      doesn't treat it as a hard constraint (e.g., "you may also review silent rot if
+      relevant" phrasing sneaks in during a future edit), the test would still pass while
+      behavior drifts toward Death Case 3 (Scope Violation).
+    deferred_to_feature_iteration: false
+
+assumptions_made:
+  - assumption: |
+      sonnet is sufficient for this task. The review procedure requires reading a reference
+      file, pattern-matching 9 principles against code, and producing structured output.
+      This is within sonnet's demonstrated capabilities.
+    verified: false
+    note: |
+      No evidence to the contrary. Task 5 integration validation is the first empirical test.
+      If sonnet produces systematically shallow verdicts on the fixture, consider upgrading
+      to opus. Not upgrading proactively because cost control is an explicit concern per
+      architecture context.
+    deferred_to_feature_iteration: true
+
+  - assumption: |
+      The agent will be dispatched with the working directory set such that
+      `samsara/references/code-quality.md` resolves correctly (i.e., relative to the repo root).
+      If the dispatcher CWD is different, the reference Read will fail and the agent will
+      correctly return UNKNOWN — but the review pipeline will stall rather than produce an
+      actionable result.
+    verified: false
+    note: |
+      The reference path is relative. Task 3/4 (wiring) must verify that the dispatch
+      context provides the correct CWD. If not verified before wiring, every review will
+      return UNKNOWN silently until someone checks the dispatch logs.
+    deferred_to_feature_iteration: true
+
+  - assumption: |
+      The yin reviewer (code-reviewer.md) will always be dispatched alongside this agent,
+      not instead of it. The scope boundary in this agent says "refer to samsara:code-reviewer"
+      — if the yin reviewer is not in the dispatch chain, those referrals go nowhere.
+    verified: false
+    note: |
+      Depends on Task 3/4 wiring. If Task 3/4 dispatches only the quality reviewer without
+      the yin reviewer, referred issues silently drop.
+    deferred_to_feature_iteration: true
+
+  - assumption: |
+      The I principle's "Name-level promise" koan overlap with yin reviewer naming honesty
+      is handled by the scope boundary section (section 1, "Special case" paragraph). The
+      agent will correctly classify interface-level naming violations under I and defer
+      behavior-level naming violations to the yin reviewer.
+    verified: false
+    note: |
+      The prompt provides the distinction but cannot guarantee correct application at
+      inference time. Task 5 integration test should include a fixture that has both types
+      at the same site.
+    deferred_to_feature_iteration: true
+
+debt_registered: true
+debt_location: |
+  samsara/agents/code-quality-reviewer.md — koan-to-code translation guidance is thin
+  (Task 1 scar critical path, deferred to Task 5 validation).
+  tests/samsara/code-quality-reviewer/agent-structure.sh — T5's CORRECTED regex has
+  residual fragility to output format changes (the original backslash-pipe bug was
+  fixed and is in resolved_items; this is a distinct, forward-looking concern about
+  the corrected pattern); D2 test has a silent-drift variant if scope boundary
+  wording weakens over future edits.
+
+narrative: |
+  ## Decision Log
+
+  ### Scope boundary placement
+  The task required scope boundary in the "first 50 lines." The sibling code-reviewer.md
+  has its constraints at the end of the file. I placed the Scope Boundary section
+  immediately after the identity paragraph (before any review procedure) — this ensures
+  the LLM sees the constraints before any instructions that could override them.
+  Death Case 3 (Scope Violation) is most likely to occur if the agent proceeds through
+  the review procedure before reading its own exclusions.
+
+  ### UNKNOWN semantics
+  The Task 1 scar explicitly flagged UNKNOWN inflation risk. The agent prompt uses the
+  reference's precise framing: "UNKNOWN is a structural judgment: the principle cannot be
+  applied to this code" and adds an explicit counter-instruction for the epistemic case:
+  "If the principle applies but you lack context, produce Concern with 'insufficient
+  context to verify [principle].'" This makes UNKNOWN inflation harder — the model has
+  an explicit alternative for the "I'm unsure" case.
+
+  ### Anti-rubber-stamp enforcement
+  The anti-rubber-stamp clause appears in two places: (1) in the Review Procedure Step 5
+  under "Anti-rubber-stamp rule for PASS," and (2) in the Constraints section as a
+  bullet. Redundancy is intentional — the prompt is designed to be read sequentially;
+  placing the rule at both the procedure level and the constraints level increases the
+  chance it survives context compression in long reviews.
+
+  ### T5 regex bug during implementation
+  The initial T5 check used backslash-pipe `\|` in an ERE context (grep -qE), treating
+  it as literal text rather than alternation. The agent file uses `| S |` table format,
+  not `S —` or `S:` heading format, so the original regex never matched. Fixed during
+  the red→green cycle by switching to `[[:space:]|]X[[:space:]|]` pattern. The scar
+  records this so a future test maintainer knows the regex is format-sensitive.
+
+resolved_items:
+  - original_section: "bug_during_implementation"
+    original_description: |
+      T5 regex bug during red→green cycle: backslash-pipe `\|` used as ERE alternation,
+      which is literal-match not alternation — test would not detect missing S/O/L/I/D
+      principles. This was a bug in the FIRST draft of T5, caught before task completion.
+    resolution: |
+      Changed loop patterns to ERE-correct `[[:space:]|]S[[:space:]|]` matching
+      table-formatted principle names. Verified 16/16 pass after fix.
+      (Note: the CORRECTED pattern is still fragile to output format changes — this is
+      recorded as a separate outstanding item in known_shortcuts, not here.)
+
+  - original_section: "known_shortcuts"
+    original_description: |
+      Output format table does not enforce all 9 rows present — missing row is invisible
+      (equivalent to unchecked PASS)
+    resolution: |
+      Added explicit enforcement statement above the table in the Output Format section:
+      "All 9 rows MUST be present. Omitting a principle row is equivalent to an unchecked
+      PASS — it will be treated as malformed output." Also added T12 to agent-structure.sh
+      to verify this enforcement statement is present. 18/18 tests pass.
+
+  - original_section: "silent_failure_conditions"
+    original_description: |
+      Scope boundary drift: if "you may also review" style permissive language sneaks into
+      agent prompt via future edit, D2 test would still pass while behavior violates scope
+    resolution: |
+      Added T11 to agent-structure.sh that detects scope-drift expansion patterns
+      ("may also review", "including security", "security issues if/when/where", etc.)
+      and FAILs if found. Provides detection for the most common drift pattern. Verified
+      T11 passes on current agent (no drift patterns present). 18/18 tests pass.
+
+  - original_section: "silent_failure_conditions"
+    original_description: |
+      Agent may skip Step 1 (Read reference) if context window already contains principles
+    resolution: |
+      Strengthened Step 1 header to "(mandatory — do not skip)" and added explicit
+      instruction: "Do not use your memory of the principles as a substitute for reading
+      the file. The file is the authority; your memory is not." This is prompt-level
+      enforcement only — mechanical enforcement remains deferred to Task 5.
+
+  # --- Yin code-reviewer audit resolved items (post-implementation review) ---
+
+  - original_section: "yin_audit_critical_1"
+    original_description: |
+      Frontmatter description declared 3-state output (PASS/FAIL/UNKNOWN) but agent body
+      defined 4 states (PASS/PASS_WITH_CONCERNS/FAIL/UNKNOWN). Dispatcher routing on
+      description contract would miss PASS_WITH_CONCERNS.
+    resolution: |
+      Updated frontmatter description to:
+      "Produces PASS/PASS_WITH_CONCERNS/FAIL/UNKNOWN verdicts with mandatory file:line
+      evidence on any non-UNKNOWN output."
+      Contract now matches implementation (four states).
+
+  - original_section: "yin_audit_critical_2"
+    original_description: |
+      C1-C8 outcome criteria definitions duplicated inline (lines 120-128) AND in
+      the mandatory reference file. Unlabeled second source of truth — LLM may use
+      inline version after a reference update, silent drift undetected.
+    resolution: |
+      Removed inline C1-C8 definitions. Replaced with single sentence pointing to the
+      reference as the sole authoritative definition: "The authoritative definitions
+      of C1–C8 live in the reference file. Use the criterion name as a handle in your
+      output; if you need the full definition, consult the reference. This agent body
+      deliberately does not restate the criterion definitions — duplicating them would
+      create a second source of truth that can silently drift from the reference."
+
+  - original_section: "yin_audit_important_1"
+    original_description: |
+      Yin-reviewer referral format (→ Refer to samsara:code-reviewer: [description])
+      did not require file:line evidence — asymmetric with quality findings which
+      MUST include file:line.
+    resolution: |
+      Updated referral format to require file:line symmetric with own findings:
+      "→ Refer to samsara:code-reviewer at <file:line>: [brief description]".
+      Added: "A referral without file:line is not actionable downstream and will
+      be treated as malformed."
+
+  - original_section: "yin_audit_important_2"
+    original_description: |
+      "Insufficient context to verify [principle]" produces Concern, but Step 4
+      severity classification gave no guidance. LLM could classify "I'm unsure"
+      as Critical, producing FAIL verdicts not grounded in evidence.
+    resolution: |
+      Added severity default for "insufficient context" Concerns:
+      "Insufficient context Concerns default to severity Suggestion (not Critical
+      or Important), unless you can name a specific missing context that — if
+      provided — would plausibly change the severity. This prevents 'I'm unsure'
+      from producing FAIL verdicts."
+
+  - original_section: "yin_audit_important_3"
+    original_description: |
+      agent-structure.sh header comment at line 22 said T10 = write-tools exclusion.
+      But T3 is the write-tools test; T10 tests I-principle naming-honesty overlap.
+      Header comment was lying about T10's scope.
+    resolution: |
+      Rewrote entire T-prefix comment block in header to accurately describe all
+      12 unit tests (T1-T12), matching current body behavior including the
+      self-iteration additions (T11, T12).
+
+  - original_section: "yin_audit_important_4"
+    original_description: |
+      Scar report contradiction: known_shortcuts[1] listed "T5 regex fragile" as
+      outstanding debt; resolved_items[0] listed T5 regex as fixed during red→green.
+      Reviewer read these as the same item (incorrectly) and flagged inconsistency.
+    resolution: |
+      Rephrased both entries to make the distinction explicit:
+      - known_shortcuts[1]: the CORRECTED regex has residual fragility to output
+        format changes (forward-looking concern about the corrected pattern)
+      - resolved_items[0]: the ORIGINAL backslash-pipe bug in the first draft was
+        fixed during red→green (past bug)
+      These are two distinct items; both correctly retained in their respective
+      sections with cross-references.
+
+  # --- Round 2 out-of-scope observation fix ---
+
+  - original_section: "yin_round2_out_of_scope_3_template_drift"
+    original_description: |
+      Round 2 re-review VERIFIED all 6 in-scope items but flagged an out-of-scope
+      drift: the Output Format example on line 167 still used the OLD referral
+      format ("- → Refer to samsara:code-reviewer: [brief description at file:line]")
+      while the prose on line 28-30 had been correctly updated to the NEW format
+      ("→ Refer to samsara:code-reviewer at <file:line>: [brief description]").
+      This is a DRY violation in the agent's own documentation — two places
+      telling the same lie. A reviewer copying the template verbatim would
+      produce malformed referrals despite the prose requirement.
+    resolution: |
+      Synchronized line 167 template to match the prose format. Both sites now
+      agree: referrals must carry file:line outside the description brackets.
+      Smoke tests still pass (18/18). Scar lesson: when updating a format rule,
+      grep for all instances of the old format — fixing the prose without
+      fixing the template is the exact failure mode this agent is designed
+      to catch.

@@ -1,0 +1,166 @@
+task_id: task-5
+completion_status: done_with_concerns
+
+# Task 5 is the integration validation gate. It surfaced one real deployment bug
+# (registry lag) and two acceptance-calibration gaps (severity distribution + fixture
+# over-engineering claim). None of these invalidate the agent itself.
+
+known_shortcuts:
+  - description: >
+      Single dispatch per fixture — variance not measured. Reviewer outputs may drift
+      between runs; the acceptance matching used one sample per fixture. Task 5 spec
+      itself flagged this as a known shortcut; not fixed here. Follow-up: run each
+      fixture 2-3 times, take majority.
+    deferred_to_feature_iteration: true
+
+  - description: >
+      Validation used prompt-injected simulation via general-purpose subagent, not
+      native samsara:code-quality-reviewer dispatch. The full agent body (scope boundary,
+      reference protocol, review procedure, output format, constraints) was injected as
+      the simulator's system prompt, so the PROMPT LOGIC was tested end-to-end. But the
+      NATIVE DISPATCH mechanism (Claude Code Agent tool with frontmatter-defined model/
+      effort/tools config) was not exercised. Native re-validation required after Claude
+      Code session restart to refresh the Agent registry.
+    deferred_to_feature_iteration: true
+
+  - description: >
+      The two acceptance divergences (junior.py Critical count; over_engineered.py
+      pattern miss) are not conclusively agent bugs or reference gaps — they are
+      calibration uncertainties. Resolving them requires either strengthening the
+      reference's severity rubric / Pattern koan, OR weakening the acceptance bars.
+      User judgment required; not fixable in Task 5 scope.
+    deferred_to_feature_iteration: true
+
+silent_failure_conditions:
+  - description: >
+      Claude Code agent registry does NOT hot-reload agent files added mid-session.
+      A user who creates a new agent file and immediately tries to dispatch it in the
+      same session will get "Agent type not found" — looks like a missing file, but the
+      file exists. This is a runtime integration hazard external to the feature code,
+      but it affects the feature's observable behavior: Task 3 and Task 4's wiring
+      (parallel dispatch of code-quality-reviewer) will silently fail in the session
+      where code-quality-reviewer was first authored.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      Simulated dispatch via general-purpose subagent with injected prompt may diverge
+      from native dispatch in subtle ways: (a) general-purpose has ALL tools including
+      Write/Edit, while native reviewer has only Read/Glob/Grep/Bash — a simulated
+      reviewer COULD modify files against agent constraints and the Write/Edit guardrail
+      wouldn't fire; (b) model/effort defaults differ (general-purpose uses parent
+      inheritance; native uses sonnet/high). The 3 simulated reviewers did not in fact
+      modify any file, so the first divergence did not surface this time, but the risk
+      exists if simulation is re-used as a standing substitute for native dispatch.
+    deferred_to_feature_iteration: true
+
+assumptions_made:
+  - assumption: >
+      Three fixtures (junior.py, clean.py, over_engineered.py) byte-identical to sources
+      via md5 comparison.
+    verified: true
+    note: >
+      MD5 hashes match (junior: cdcfb7fe51a616b30b5a097c438fa62d; clean: 3427a31cadcffbe9b4852a61031558ac;
+      over_engineered: 2ed1ac51088dac889fc9e8552e51bfe7) against their respective sources.
+
+  - assumption: >
+      Prompt-injected general-purpose simulation is a faithful proxy for native
+      samsara:code-quality-reviewer dispatch when the purpose is agent-prompt
+      validation (not registry/dispatch validation).
+    verified: false
+    note: >
+      Structurally plausible — the agent body IS the system prompt, so injecting it
+      reproduces the agent's instruction-following behavior. But this is unverified
+      against a native dispatch baseline (pending session restart). Follow-up comparison
+      required.
+    deferred_to_feature_iteration: true
+
+  - assumption: >
+      en-is-output.py (the over_engineered fixture) is genuinely over-abstracted for a
+      single-script use case in a way the code-quality-reviewer should flag.
+    verified: false
+    note: >
+      Simulated reviewer examined all 8 classes and found each had a single death-reason
+      documented in its docstring, earning S and Cohesion passes per-class. The reviewer
+      did NOT flag the module-level "8 classes where 3 would do" judgment. This may mean
+      (a) the fixture is in fact reasonably abstracted given the explicit death-reason
+      discipline, or (b) the reference's Pattern koan doesn't surface module-level
+      over-decomposition. The fixture label "over-engineered" came from the 2x2
+      experiment's intuitive characterization, not empirical validation.
+    deferred_to_feature_iteration: true
+
+  - assumption: >
+      Acceptance bar of ">= 3 Critical" on junior.py is the right calibration.
+    verified: false
+    note: >
+      Simulated reviewer produced 1 Critical + 5 Important on junior.py. Per the agent's
+      severity rubric (Critical = silent wrong results / invisible dependency; Important
+      = raises maintenance cost), the reviewer's classification is internally consistent.
+      Whether multi-responsibility main() and cohesion violations deserve Critical is a
+      calibration question between the reference's severity rubric and the acceptance's
+      expectation.
+    deferred_to_feature_iteration: true
+
+debt_registered: true
+debt_location: >
+  Claude Code agent registry lag (runtime/deployment) — external to feature code but
+  affects observability; documented in validation-results.md "Dispatch Mechanism Note".
+  Acceptance calibration for junior.py severity distribution + over_engineered.py
+  pattern coverage — may need reference strengthening or acceptance revision.
+
+narrative: |
+  Task 5 is the integration gate, and it surfaced three findings the first 4 tasks
+  could not have found on paper:
+
+  1. **Registry lag (silent deployment bug):** Native samsara:code-quality-reviewer
+     dispatch failed three times with "Agent type not found." This is not an agent
+     bug — the agent file is correct and passes all 18 structural tests. It is a
+     Claude Code runtime constraint: new agents don't register mid-session. The
+     feature as implemented WILL work once the user restarts Claude Code; there is
+     no code change required. But during the session in which this feature was
+     authored, the parallel-dispatch wiring cannot actually be exercised. This is
+     documented in validation-results.md as the primary deployment note.
+
+  2. **junior.py severity distribution:** The simulated reviewer correctly returned
+     FAIL, correctly identified all the structural rot the acceptance listed
+     (multi-responsibility main, unmarked bets, cohesion violation, implicit coupling,
+     naked pattern), but classified most as Important rather than Critical. Per the
+     agent body's explicit severity rubric, this is defensible — Critical is reserved
+     for silent wrong results / invisible dependencies, and most structural rot
+     falls under "raises maintenance cost" = Important. The acceptance bar of
+     ">= 3 Critical" may have been calibrated too demanding, OR the reference's
+     severity mapping needs strengthening. Not resolved in Task 5 scope.
+
+  3. **over_engineered.py pattern miss:** The simulated reviewer examined each of 8
+     classes and found each had a documented single death-reason, earning per-class
+     S/Cohesion passes. The reviewer did not step back to the module level and ask
+     "are 8 classes necessary for this task?" This is a meta-level Pattern question
+     (the "named bundle of assumptions" koan applied at module composition, not
+     per-class). Either the reference's Pattern koan should explicitly surface
+     module-level over-decomposition, or the fixture is in fact not as over-engineered
+     as the acceptance assumed. Both are plausible; user judgment required.
+
+  **Scope boundary held:** All 3 simulated reviewers correctly referred silent-rot,
+  naming honesty, and correctness concerns to samsara:code-reviewer via the required
+  "→ Refer to samsara:code-reviewer at <file:line>:" format. Zero scope drift into
+  yin territory. This is the most important positive finding — the agent does not
+  duplicate the yin reviewer.
+
+  **Anti-rubber-stamp held:** clean.py received PASS with 9 file:line observations
+  across its 9 Pass rows. No naked "PASS / no issues" output. This is the second
+  most important positive finding — the PASS verdict carries its evidence.
+
+  Feature verification status: PASS_WITH_CONCERNS. The core agent behavior is validated
+  via simulation. Three concerns (registry lag, severity calibration, fixture
+  assumption) are all deferred to validate-and-ship phase for user triage.
+
+resolved_items:
+  - original_section: known_shortcuts
+    original_description: >
+      Early draft of validation-results.md risked claiming "feature verified" without
+      distinguishing simulated vs native dispatch, which would have been the exact
+      naming-honesty trap Task 1's |||true|||-masking bug previously exhibited.
+    resolution: >
+      Validation results explicitly separate "agent body validated" (true) from
+      "native dispatch validated" (deferred) in the Dispatch Mechanism Note and the
+      Gate Decision section. The word "simulated" appears in every context where it
+      applies. No claim that registry-lag is "fixed" — it is documented as deferred.

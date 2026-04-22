@@ -1,0 +1,260 @@
+task_id: task-1
+completion_status: done_with_concerns
+
+known_shortcuts:
+  - description: |
+      v2 的 9 原則 authoritative framing 完全來自 research dialogue 1 的 yin-SOLID
+      重定義 + 我們 synthesis 的 Cohesion/Coupling/DRY/Pattern 四條。沒有 external
+      philosophical 文獻作為 corroboration。若 dialogue 1 的 framing 日後被發現有
+      邏輯問題，此 reference 整份結構要重審。
+    deferred_to_feature_iteration: false
+
+  - description: |
+      v2 的 koan 是我的 draft，每條原則 3 個 koan。Koan 的「畫面感 + spirit」平衡
+      沒有經過他人 review——可能有誘人 miss-read（讀者看 koan 形成直覺但判斷方向
+      偏離 axiom）。這在 Task 5 integration validation 或首次實地使用時會暴露。
+    deferred_to_feature_iteration: true
+
+  - description: |
+      Outcome cross-reference table 的 mapping 是我的 judgment call。v2 initial
+      draft 把 C5 (Reuse) 定義為 outcome 但沒有任何 principle map 到——
+      unreachable term。Yin reviewer 抓到後修正為 DRY → C5+C8+C2。此修正之後，
+      每個 outcome (C1-C8) 都至少被一個 principle map 到（bipartite completeness
+      hold）。但 mapping 本身未經實地驗證，多個 principle 可能同時 surface 同一
+      outcome，agent 可能分類不一致。
+    deferred_to_feature_iteration: true
+
+  - description: |
+      Koan "Name-level promise" 在 I principle（介面宣告 `sort()` 實作 `shuffle()`）
+      和 yin reviewer 的 dishonest-naming scope 有重疊。dialogue 1 把它放在 I，
+      v2 沿用，但 yin reviewer audit 指出 overlap——可能造成 reviewer agent
+      flag 同問題兩次。未明確移除或重置。
+    deferred_to_feature_iteration: true
+
+  - description: |
+      No code examples 意味 Task 5 的 fixtures 必須由 reviewer agent 自己做
+      「抽象 (koan) → 具體 (真實 code)」的翻譯。這個翻譯能力變成 critical path。
+      Task 2 的 agent prompt 需要 explicit 指示如何 pattern-match koan 到
+      真實 code，否則 reference 的價值退化為哲學朗誦。
+    deferred_to_feature_iteration: false
+
+silent_failure_conditions:
+  - description: |
+      Principle → outcome cross-ref table 若 drift，無自動化更新。T4 smoke test 只
+      enforce 9 個 principle headers 存在，不 enforce cross-ref table mapping
+      和 headers 一致。新加 principle 或刪除 principle 時，cross-ref 不會自動同步。
+    deferred_to_feature_iteration: true
+
+  - description: |
+      Reviewer agent 若不 read 此 reference（fallback to memory / 讀失敗靜默），
+      會 fall through 到未驗證的 default behavior。此 reference 本身沒有 fallback
+      mechanism；agent 的 "UNKNOWN when unreadable" 行為由 Task 2 的 agent prompt
+      負責。若 Task 2 實作有 bug，reference 無法自救。
+    deferred_to_feature_iteration: true
+
+assumptions_made:
+  - assumption: |
+      9 原則（S/O/L/I/D + Cohesion/Coupling + DRY + Pattern）是 code-level quality
+      的 complete structural framework。
+    verified: false
+    note: |
+      基於 dialogue 1 的 yin-philosophy + bipartite completeness（每個 outcome
+      都至少被一個 principle 對應）確認。但不排除 blind spots。
+    deferred_to_feature_iteration: true
+
+  - assumption: |
+      Koan 格式（短句 + 畫面感 + 無具體 code）能讓 reviewer agent 有效 pattern-match
+      到真實 code。
+    verified: false
+    note: |
+      Task 5 integration validation 是第一次實測。
+    deferred_to_feature_iteration: true
+
+  - assumption: |
+      `samsara/references/` 是正確的 directory convention。
+    verified: false
+    note: |
+      未在 samsara README 文件化新 convention。
+    deferred_to_feature_iteration: true
+
+  - assumption: |
+      選擇 α+δ（純敘事 + koan）而非 β+δ（pseudo-code + koan）的決定。
+    verified: true
+    note: |
+      通過 /level-analysis 三層評估，User 採納 Principal 觀點。
+
+debt_registered: true
+debt_location: |
+  samsara/references/code-quality.md — 9 principles framing 來自 samsara-native
+  synthesis, not external corroboration; koan quality self-reviewed only;
+  outcome cross-ref mapping is judgment call; no code examples means agent
+  pattern-match ability is critical path; I principle's "Name-level promise"
+  koan overlaps with yin reviewer's dishonest-naming scope.
+
+narrative: |
+  ## Decision Log: v1 → v2 Pivot (and v2 re-audit)
+
+  ### v1 (初版, 649 行, Python-bound, 8-criteria 結構)
+
+  初版建立在 planning 階段的 translation loss 上——我把 user 在研究中期列出的
+  8 outcome criteria 誤升格為 reference 的 primary structure，把 research
+  dialogue 1 建立的 yin 9 原則 framework 降級為附屬。範例部分用了 Python code
+  snippets from experiment outputs，綁死語言。
+
+  Yin code-reviewer 對 v1 做 audit 找到 3 Critical + 5 Important。Surgical fix
+  了 3 Critical + 1 Important，smoke test 8/8 pass。
+
+  但 v1 的 primary structure 本身是錯的——這個 deeper issue 是在 user review
+  階段浮現，不是 code-reviewer 抓到的。
+
+  ### User critique (導致 v2 pivot)
+
+  1. v1 不是 samsara 遵循的 SOLID/Cohesion/Coupling/Design Pattern 精神
+  2. Python code examples 把 reference 綁死某語言
+
+  ### /level-analysis 三層評估
+
+  Senior 傾向 β+δ（operational），Staff 混合，Principal 強烈建議 α+δ
+  （strategic positioning）。User 採納 Principal 觀點。
+
+  ### v2 (9 yin 原則結構, language-agnostic, koan-based)
+
+  v2 重寫：9 principles + Axiom + Why + Koans + Judgment + Cross-ref。
+  新 smoke test 7/7 pass。
+
+  ### v2 yin re-audit (重要的 loop-closing)
+
+  V2 寫完後 dispatch 第二輪 yin code-reviewer，找到 3 Critical + 4 Important +
+  2 Suggestions，verdict **FAIL**：
+
+  **3 Critical:**
+  1. **D principle 命名誤導**：v2 的 D axiom 是 dialogue 1 的 Mother Rule 3 逐字
+     引用，不是 DIP 的 reframing。Reviewer 指出 DIP 的 canonical 意義是
+     dependency direction，v2 完全沒涵蓋。
+     - FIX: 在 D section 加「Note on reframing」段明述這是 deliberate
+       philosophical reframing，原 DIP 的 dependency direction 意義被吸收到
+       Coupling principle 的 implicit dependency 概念下。
+  2. **C5 Reuse orphan**：outcome legend 定義 C5 但 cross-ref table 無 principle
+     map 到——unreachable term。
+     - FIX: DRY mapping 加 C5（DRY 違反必然產生 C5 違反）。同時補 S → C1
+       (Readability) 的 missing mapping。
+  3. **⚠️ 最嚴重：v1 scar report 虛假 resolved_item**：scar 宣稱 v2 smoke
+     test 移除了 `|| true` masking（「保留這個 lesson」），但 reviewer grep
+     發現 v2 T6 + T7 共 3 處仍有 `|| true`。**我寫新 test 時複製了 v1 的 bug，
+     卻在 scar report 自欺說學到了教訓**。這是 samsara 最嚴重的失敗類型：
+     scar record 本身 dishonest。
+     - FIX: 實際移除 v2 的 `|| true` (3 處)；T6 regex 同時補強
+       (match MUST preceded by uppercase)；scar report 顯化這次 self-deception。
+
+  **4 Important:**
+  - UNKNOWN 指導語意矛盾 ("when unsure" vs "when doesn't apply")：FIX 收緊為
+    "when the principle cannot be applied"。
+  - S → C4 mapping 弱，C1 缺失：FIX 替換。
+  - Single-impl interface koan 放 D 但也可放 I：FIX 加 cross-framing note。
+  - T6 regex 有 gap：FIX 改進正則。
+
+  **2 Suggestions:**
+  - I "Name-level promise" koan 和 yin reviewer scope 重疊：deferred（dialogue
+    1 原本這樣放）。
+  - Closing "return to axioms" 是 wish 不是 mechanism：deferred（低優先）。
+
+  ### Scar 誠實度的 lesson
+
+  這次 audit 最重要的發現不是 D principle 或 C5，而是**我在 scar report 裡
+  自欺**——寫「保留這個 lesson」的同時複製了 bug。這暴露了 scar report 本身
+  可以成為 compliance theater：我填了正面 narrative，但 ground truth 不支持。
+
+  Yin reviewer 用 grep 戳破我的 narrative——這正是 samsara 精神運作的具體案例。
+  未來寫 scar report 的「resolved」claim 時，每個都要能被具體 grep/test 驗證，
+  不能只是「我自覺學到了」。
+
+resolved_items:
+  # v1-era resolved (from first code-reviewer audit)
+  - original_section: "known_shortcuts"
+    original_description: |
+      v1 reference-structure.sh T1-T3 誤稱 "death tests" 但只驗 format
+    resolution: |
+      Relabeled to "Format checks (structural presence)" in v2.
+
+  - original_section: "assumptions_made"
+    original_description: |
+      v1 Criterion 5 的 bad example (SecretScrubber) 文字自承不是 reuse 問題
+    resolution: |
+      v1 已 archived；v2 不使用 code examples 避免此類 classification drift。
+
+  - original_section: "silent_failure_conditions"
+    original_description: |
+      v1 source line refs 會隨 code 重構 drift
+    resolution: |
+      v2 完全移除 source line references — 無 code examples 就無 line drift
+      可能性。
+
+  # v1 → v2 structural pivot
+  - original_section: "structural"
+    original_description: |
+      v1 以 8 outcome criteria 作為 primary structure，脫離 research 的 yin 9
+      原則 framework (translation loss in planning)
+    resolution: |
+      v2 重新以 yin 9 原則作為 primary structure；8 outcome criteria 降級為
+      cross-reference table。
+
+  - original_section: "structural"
+    original_description: |
+      v1 使用 Python code examples，違背 samsara philosophy-layer 戰略定位
+    resolution: |
+      v2 完全 language-agnostic；koan 形式呈現 violation shapes。
+
+  - original_section: "structural"
+    original_description: |
+      v1 的 smoke test 仍基於 8-criteria 結構，對 v2 無意義
+    resolution: |
+      重寫 smoke test for v2，7 tests 含新 T3 enforce no language-specific
+      code blocks，7/7 pass。
+
+  # v2 yin re-audit resolved
+  - original_section: "yin_re_audit_critical_1"
+    original_description: |
+      D principle axiom 是 Mother Rule 3 逐字引用，未明述為 DIP 的 reframing，
+      讀者會誤以為 D 覆蓋 dependency direction
+    resolution: |
+      在 D section 加 "Note on reframing" 段：明述 yin-D 刻意 reframing DIP
+      從 dependency-direction 到 abstraction-visibility；canonical DIP 的
+      dependency direction 已被 Coupling 的 implicit dependency concept 吸收。
+
+  - original_section: "yin_re_audit_critical_2"
+    original_description: |
+      C5 Reuse 在 legend 定義但無 principle 對應 (unreachable outcome)；
+      S → C4 mapping 弱，C1 缺失
+    resolution: |
+      Cross-ref table 修正：DRY mapping 加 C5（成為 C5+C8+C2）；
+      S mapping 替換為 C1+C2+C6（移除 C4，加 C1 更直接因果）。
+      Bipartite completeness 恢復——每個 outcome 都至少被一個 principle map 到。
+
+  - original_section: "yin_re_audit_critical_3_SEVERE"
+    original_description: |
+      ⚠️ 最嚴重：v1 scar report 虛假 resolved_item——宣稱 v2 smoke test 移除了
+      `|| true` masking，但實際 T6+T7 共 3 處仍有 `|| true`。scar report 本身
+      dishonest，self-deception compliance theater
+    resolution: |
+      1. 實際從 T6 line 99 + T7 lines 110-111 移除 `|| true` (3 處)
+      2. T6 regex 同時補強——改為 `(^|[^a-z`])(MUST NOT|MUST)([^a-z-]|$)|禁止`
+         可 match uppercase-preceded MUST (e.g., "Appendix: MUST")
+      3. 此 scar entry 顯化 self-deception，作為 scar report 誠實度的 lesson
+      4. Smoke test 7/7 重跑後仍 pass
+
+  - original_section: "yin_re_audit_important_1"
+    original_description: |
+      UNKNOWN 指導語意矛盾：「when you are unsure」vs「when principle doesn't apply」
+      兩種 semantics 並存，誘發 UNKNOWN inflation
+    resolution: |
+      How to use 段落的 UNKNOWN 定義收緊為「when the principle cannot be applied
+      to this code」——結構性 not applicable 才回 UNKNOWN；若 applicable 但
+      unable to judge，應該回 Concern with "insufficient context"。
+
+  - original_section: "yin_re_audit_important_3"
+    original_description: |
+      Single-implementation interface koan 放 D 但也可放 I (Ghost Promises) 角度
+    resolution: |
+      Koan 加一段 cross-framing note：說明此 pattern 同時出現在 D lens
+      (abstraction-as-soundproofing) 和 I lens (methods without real callers)；
+      agent 可依實際 audit 視角選擇歸類。

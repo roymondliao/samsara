@@ -1,0 +1,120 @@
+task_id: task-3
+completion_status: done_with_concerns
+
+known_shortcuts:
+  - description: >
+      dispatch-template.md's code-quality-reviewer block uses the same generic diff/requirements
+      prompt structure as the yin reviewer. In practice the quality reviewer might benefit from
+      additional context about code structure (e.g., which structural principles are most relevant
+      for this type of change), but providing that context requires per-task judgment the template
+      cannot pre-populate.
+    deferred_to_feature_iteration: true
+
+  - description: >
+      dispatch-template.md's aggregation rule section instructs "re-dispatch the missing reviewer
+      (max 2 retries); if it still does not arrive, escalate and do not proceed." This sets a
+      bounded retry limit but does not define what "escalate" means in practice — a human-in-the-
+      loop pause, an error log, or something else.
+    deferred_to_feature_iteration: true
+
+silent_failure_conditions:
+  - description: >
+      A main agent could parse "both must arrive" but decide to treat a PASS_WITH_CONCERNS (no
+      Critical issues) from one reviewer as equivalent to PASS, then not notice the second
+      reviewer never responded. Mitigated in SKILL.md step 13: "A reviewer output that did not
+      arrive is NOT the same as PASS or PASS_WITH_CONCERNS — it is an absent output." Also in
+      the Never list: "Assume an absent review output means PASS."
+
+  - description: >
+      If a future edit to SKILL.md restructures the review section (e.g., extracts it to a
+      separate file), the section-boundary anchors used by the test (sed -n '/Subagent Review/,
+      /Per-Task Execution/p') will break silently — tests will pass on empty matched text,
+      masking missing content. No current mitigation; tests would need a content-aware rewrite.
+    deferred_to_feature_iteration: true
+
+assumptions_made:
+  - assumption: >
+      Claude Code's Agent tool dispatches multiple calls in the same message concurrently
+      (not sequentially). The dispatch-template.md instructs "same message for parallel
+      execution" based on this assumption.
+    verified: true
+    note: >
+      Architecture context in the dispatch prompt states this was confirmed in a 2×2 experiment.
+      The samsara framework and plan overview reference this as a confirmed behavior.
+
+  - assumption: >
+      The main agent receiving two review outputs in one response can reliably identify which
+      output came from which reviewer (by the subagent_type or description field), enabling
+      correct aggregation.
+    verified: false
+    note: >
+      Not verified within this task. If the main agent cannot distinguish the two outputs,
+      it may apply the wrong aggregation logic or count one output as both. Task 5 is cited
+      as the intended integration validation point.
+    deferred_to_feature_iteration: true
+
+  - assumption: >
+      The existing samsara:code-reviewer agent definition is compatible with being dispatched
+      in parallel alongside samsara:code-quality-reviewer — no shared state, no lock contention,
+      no ordering requirement between the two.
+    verified: true
+    note: >
+      Both are read-only reviewers (no Edit/Write tools). No shared state possible. The
+      architecture context explicitly states "No shared state."
+
+debt_registered: true
+debt_location: >
+  samsara/skills/implement/SKILL.md (escalation path for persistent retry failure undefined);
+  samsara/skills/implement/dispatch-template.md (quality reviewer template has no structural
+  context hints);
+  tests/samsara/code-quality-reviewer/implement-wiring.sh (section-boundary anchors brittle
+  to SKILL.md restructuring)
+
+narrative: |
+  The core wiring is straightforward: two edits to SKILL.md (Mode B and Mode A review paths)
+  and one edit to dispatch-template.md. The aggregation rule is the load-bearing addition —
+  without it, a silent-skip of code-quality-reviewer would be undetectable.
+
+  The main unresolved concern is runtime verification: we can test that the instruction text
+  is correct, but cannot test within this task that a live main agent actually dispatches both
+  reviewers and correctly aggregates the two outputs. That verification belongs in an integration
+  test or Task 5 smoke test.
+
+  One subtle risk: the "same message = parallel" assumption is load-bearing for the wall-clock
+  savings motivation. If Claude Code changes this behavior, the dispatch will silently become
+  sequential without any test catching it. The test suite validates text structure, not runtime
+  execution order.
+
+resolved_items:
+  - original_section: known_shortcuts
+    original_description: >
+      Initial draft of aggregation rule only covered "both pass" and "either fails" branches,
+      omitting the "only one output received" branch.
+    resolution: >
+      Added explicit third branch to both SKILL.md aggregation rule and dispatch-template.md:
+      "Only one review output received → FAIL with 'missing reviewer' error". Also added to
+      Never list: "Assume an absent review output means PASS — missing reviewer output is
+      always a FAIL."
+
+  - original_section: known_shortcuts
+    original_description: >
+      Aggregation rule had no retry limit — infinite re-dispatch loop theoretically possible.
+    resolution: >
+      Added "max 2 retries" and "escalate and do not proceed" to SKILL.md step 13. Retry
+      is now bounded; escalation is required if retries exhaust.
+
+  - original_section: silent_failure_conditions
+    original_description: >
+      Absent reviewer output could be confused with PASS_WITH_CONCERNS — wording was ambiguous.
+    resolution: >
+      Added explicit disambiguation to SKILL.md step 13: "A reviewer output that did not arrive
+      is NOT the same as PASS or PASS_WITH_CONCERNS — it is an absent output." Strengthened the
+      Never list entry to match.
+
+  - original_section: silent_failure_conditions
+    original_description: >
+      T3 test initially only checked for two of the three aggregation branches (both-pass and
+      either-fail). Missing-reviewer branch was not tested.
+    resolution: >
+      T3 test updated to check all three branches including missing-reviewer block. Test passes
+      only when all three patterns appear in SKILL.md.

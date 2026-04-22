@@ -1,0 +1,63 @@
+delivered_capability: "samsara:code-quality-reviewer agent + parallel dispatch wiring + fast-track quality symmetry — yin + quality review as sibling layers across implement/iteration/fast-track skills"
+
+known_failure_modes:
+  - mode: "Registry lag — newly-added agent file not loaded until Claude Code session restart; parallel dispatch fails with 'Agent type not found' on first session"
+    severity: degradation
+    detection: "Error surfaces immediately at first dispatch in post-commit session; fails loudly, not silently"
+
+  - mode: "Behavioral verification gap — smoke tests validate instruction-text structure, not runtime execution (parallel dispatch may run sequentially; reviewer may skip reference read; main agent may miscount outputs)"
+    severity: silent_corruption
+    detection: "No automated detection. Long-horizon signal: fast-track.yaml quality_checklist audit — if > 20% show empty or formulaic notes, corruption warning triggered"
+
+  - mode: "Calibration uncertainty — reviewer severity rubric and acceptance Critical count thresholds not empirically calibrated against > 1 real sample; junior-grade code may receive lower Critical count than acceptance expects"
+    severity: degradation
+    detection: "PASS rate > 85% sustained over 3 months on reviewed commits = corruption signal; manual audit of Critical distribution vs expected every N commits"
+
+  - mode: "Koan-to-code translation miss at module level — reviewer applies principles per-class correctly but may not step back to ask module-level questions (e.g., 'are 8 classes necessary for this task?'). Surfaced during integration on over_engineered fixture."
+    severity: silent_corruption
+    detection: "Qualitative review of reviewer outputs against known-over-engineered samples; no automated test"
+
+  - mode: "Scar integrity drift — Level 1 scar reports may claim items resolved that weren't; pattern historically caught by Round 2 yin review + grep verification"
+    severity: degradation
+    detection: "Yin reviewer scar-integrity audit (existing mechanism); Round 2 review catches drift between narrative claim and resolved_items"
+
+accepted_risks:
+  - risk: "Native parallel dispatch of samsara:code-quality-reviewer is unverified — validated via prompt-injected simulation only (registry lag blocked native dispatch during authoring session)"
+    accepted_by: "human"
+    expires: "2026-04-27"  # one week — typical session-restart cadence
+
+  - risk: "Calibration gaps in severity rubric and acceptance thresholds — pending real-world usage data"
+    accepted_by: "human"
+    expires: "2026-07-20"  # 3 months — align with corruption-signal review window
+
+  - risk: "Koan-to-code translation quality relies on reference language-agnostic koans + single worked example; untested for principles beyond the 3 fixtures in validation"
+    accepted_by: "human"
+    expires: "2026-07-20"
+
+silent_failure_surface: high
+# Rationale: ~12 silent_failure_conditions across 6 task scar reports, plus
+# behavioral verification gap affecting all text-based smoke tests.
+
+monitoring_hooks:
+  - "fast-track.yaml quality_checklist field — audit for empty/formulaic notes to detect corruption"
+  - "review verdict distribution — watch for PASS rate > 85% sustained (possible rubber-stamping)"
+  - "cross-skill drift — periodic diff of implement/SKILL.md vs iteration/SKILL.md aggregation rule sections"
+  - "Round 2 yin review of scar reports — grep-based integrity check against narrative claims"
+
+kill_switch: |
+  To disable the code-quality-reviewer in the review path without removing
+  the agent definition:
+  1. Edit samsara/skills/implement/SKILL.md Subagent Review section (lines
+     ~111-126) and Main agent section (lines ~149-155): remove the
+     samsara:code-quality-reviewer dispatch, revert to single yin reviewer.
+  2. Edit samsara/skills/iteration/SKILL.md Step 3 Fix loop (lines ~98-103):
+     same — revert to single yin reviewer dispatch + aggregation rule.
+  3. Edit samsara/skills/fast-track/SKILL.md Step 4 checklist: remove the
+     C5/C6/C7/C8 quality questions and quality_checklist schema field.
+  4. The agent file (samsara/agents/code-quality-reviewer.md) and reference
+     (samsara/references/code-quality.md) can remain — they become unused
+     files, not active rot paths.
+
+  No data migration needed. No downstream consumer depends on the review
+  pipeline's specific output format (review results are consumed by main
+  agent at review time, not persisted).

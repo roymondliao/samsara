@@ -1,0 +1,99 @@
+feature: samsara-phase4-auto-iteration
+coverage_type: verified
+
+scenarios:
+  # --- Death paths first ---
+  - name: "Silent failure - cargo-cult self-iteration defers all items to Level 2"
+    type: death_path
+    given: "implementer completes a task with 3+ actionable scar items in task scope"
+    when: "self-iteration marks all items as deferred_to_feature_iteration without attempting any fix"
+    then:
+      - "code reviewer must flag empty resolved_items as suspicious"
+      - "scar report must not have all items deferred without rationale per item"
+
+  - name: "Silent failure - cargo-cult triage marks all items as accept at Level 2"
+    type: death_path
+    given: "feature-level iteration receives 5+ remaining scar items"
+    when: "triage marks all items as accept with no fix items"
+    then:
+      - "iteration must emit warning: accept ratio > 80% with zero fixes"
+      - "iteration-log must record triage anomaly"
+
+  - name: "Silent failure - fix introduces equal or more rot than it resolves"
+    type: death_path
+    given: "iteration round (Level 1 or Level 2) fixes N scar items"
+    when: "fix scar reports contain >= N new silent_failure_conditions"
+    then:
+      - "net scar increase must be detected and reported"
+      - "at Level 2: iteration-log records fixes_scar_count >= fixes_applied"
+
+  - name: "Silent failure - Level 1 self-iteration modifies files outside task scope"
+    type: death_path
+    given: "implementer is working on task-N with defined file scope"
+    when: "self-iteration modifies files belonging to other tasks"
+    then:
+      - "code reviewer must detect out-of-scope changes"
+      - "out-of-scope fixes must be reverted and deferred to feature-level iteration"
+
+  - name: "Silent failure - non-conforming scar reports silently skipped at Level 2"
+    type: death_path
+    given: "scar-reports/ contains files not conforming to scar-schema.yaml"
+    when: "Level 2 aggregates scar items"
+    then:
+      - "non-conforming files must be explicitly listed as parse failures"
+      - "triaged count must match total scar file count, or mismatch reported"
+
+  # --- Degradation paths ---
+  - name: "Degradation - Level 2 iteration interrupted mid-round"
+    type: degradation
+    given: "feature-level iteration in middle of fix round"
+    when: "session interrupted"
+    then:
+      - "per-fix commits preserved"
+      - "iteration-log records partial round with decision: interrupted"
+
+  - name: "Degradation - safety valve forces Level 2 termination"
+    type: degradation
+    given: "Level 2 iteration hits max rounds or signal_lost stagnation"
+    when: "safety valve triggers"
+    then:
+      - "remaining items listed explicitly"
+      - "iteration-log records decision: forced_stop with reason"
+      - "validate-and-ship receives remaining items as accepted_risks input"
+
+  # --- Happy paths with evidence ---
+  - name: "Success - Level 1 self-iteration resolves task-scope items"
+    type: happy_path
+    given: "implementer completes task with actionable scar items"
+    when: "self-iteration fixes items within task scope"
+    then:
+      - "scar report has resolved_items section with fixed items"
+      - "remaining_items only contains items genuinely outside task scope or accepted"
+      - "signal_lost for this task decreases after self-iteration"
+
+  - name: "Success - Level 2 iteration reduces feature-level signal_lost"
+    type: happy_path
+    given: "all tasks complete with remaining cross-task scar items"
+    when: "feature-level iteration runs one or more rounds"
+    then:
+      - "signal_lost after iteration < signal_lost before"
+      - "iteration-log records per-round signal_lost"
+      - "each fix has own commit and scar report"
+
+  - name: "Success - user skips Level 2 (backward compatible)"
+    type: happy_path
+    given: "implement completed"
+    when: "user chooses skip at Level 2 entry gate"
+    then:
+      - "flow proceeds directly to validate-and-ship"
+      - "no iteration-log created"
+      - "behavior identical to current implement → validate-and-ship flow"
+
+  - name: "Success - Level 2 triage classifies all items with rationale"
+    type: happy_path
+    given: "remaining scar items from all tasks aggregated"
+    when: "Level 2 triage phase completes"
+    then:
+      - "every item has status: fix / accept / defer"
+      - "accept items have expiry_date and rationale"
+      - "fix items ordered by signal_lost contribution"

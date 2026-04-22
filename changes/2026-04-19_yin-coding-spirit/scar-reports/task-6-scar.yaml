@@ -1,0 +1,223 @@
+task_id: task-6
+completion_status: done_with_concerns
+
+# Yin code-reviewer audit found 2 Critical + 3 Important.
+# Critical issues were in scar report integrity (not SKILL.md itself).
+# This report has been rewritten to correct the integrity breach.
+# See resolved_items section for audit resolution detail.
+
+known_shortcuts:
+  - description: >
+      D4 test measures "checklist bullet items" via pattern `^\- \*\*C[0-9]` globally
+      across SKILL.md, not scoped to the Step 4 section. Currently this works because
+      only Step 4's checklist bullets match this pattern. If a future editor adds
+      C5/C6/C7/C8 bullet items elsewhere in SKILL.md with this exact bold format
+      (e.g., in an example or reference section), D4 would over-count. The test is
+      brittle to structural changes. Fixing would require scoping grep to the
+      Step 4 section only (e.g., via awk between headers), which is over-engineering
+      for a smoke test.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      Selection rationale for C5/C6/C7/C8 (excluding C1/C2/C3/C4 for small changes)
+      is inline prose in SKILL.md Step 4. The rationale was not empirically validated
+      against historical fast-track change types — it's based on heuristic reasoning
+      about which criteria are most likely to surface in <100-line changes. Different
+      change types (bug fix vs config change vs dep update) may have different
+      dominant quality risks not covered by this fixed subset. In particular,
+      dependency updates may meaningfully touch C3 Extensibility, which the rationale
+      excludes. This is acknowledged but not fixed — feedback loop requires actual
+      fast-track usage over time.
+    deferred_to_feature_iteration: true
+
+  - description: >
+      Fast-track's review surface grew from 2 questions (yin only) to 6 questions
+      (2 yin + 4 quality). The "fast" identity relies on staying inline (no subagent
+      dispatch), not on question count. SKILL.md's description field and the entry
+      gate do not explicitly define what "fast" means operationally — readers may
+      assume "fast" = "fewer questions" rather than "inline execution." This is an
+      unlabeled boundary assumption (OCP violation at the skill level). Yin reviewer
+      audit flagged this as an Important issue; main agent acknowledges but has not
+      revised SKILL.md to explicitly define "fast = inline execution" — this
+      semantics clarification is a fast-track skill-level design decision outside
+      Task 6's scope (modifying Step 4 checklist, not rewriting skill identity).
+    deferred_to_feature_iteration: true
+
+silent_failure_conditions:
+  - description: >
+      quality_checklist field in fast-track.yaml is a schema template. Main agent
+      running fast-track could copy the template and fill `checked: true` with
+      formulaic notes without actually reviewing the criterion. The corruption
+      signature is identical to a genuine review from the file alone — no audit
+      mechanism enforces that `note:` fields contain specific, change-relevant
+      observations. The `checked: false` default (see resolved_items) makes the
+      lazy-copy visually wrong but adds only one keystroke before forgery is
+      complete; it is a mitigation, not a resolution. This remains a genuine silent
+      failure condition of schema-only enforcement.
+    deferred_to_feature_iteration: true
+
+  - description: >
+      If a future editor adds a 5th quality bullet with a different bold format
+      (e.g., "**Readability**:" instead of "**C5 Reuse**:"), D4's pattern would
+      not catch it. The defense against quality-checklist inflation beyond 4 items
+      is format-dependent. Paired with the known_shortcut about D4's global scope
+      (rather than Step-4-only scope), this creates a maintenance trap.
+    deferred_to_feature_iteration: true
+
+assumptions_made:
+  - assumption: >
+      C5/C6/C7/C8 are the most relevant criteria for changes <100 lines across all
+      fast-track change types (bug fix, config, dep update, small refactor).
+    verified: false
+    note: >
+      Reasoning based on the dispatch prompt's architectural analysis, not validated
+      against historical fast-track changes. Yin reviewer audit specifically flagged
+      that dependency updates may meaningfully touch C3 Extensibility, which this
+      subset excludes. Feedback requires actual fast-track usage over time to
+      empirically confirm or revise the subset.
+    deferred_to_feature_iteration: true
+
+  - assumption: >
+      The quality_checklist: field will be read by the agent running fast-track and
+      genuinely filled in, not copied verbatim from the template.
+    verified: false
+    note: >
+      No enforcement mechanism exists. The field appears in fast-track.yaml outputs
+      if the agent follows the schema, but "followed" is indistinguishable from
+      "copied" without a human reader checking that note values are specific.
+      `checked: false` defaults (mitigation, not resolution) are the weak structural
+      signal; actual verification requires downstream audit.
+    deferred_to_feature_iteration: true
+
+  - assumption: >
+      "Fast" in fast-track means "inline execution with no subagent dispatch" — not
+      "small number of review questions". Task 6 added 4 quality questions, bringing
+      the total to 6; this does not erode the "fast" identity under the inline-is-fast
+      interpretation.
+    verified: false
+    note: >
+      This interpretation is not explicitly documented in SKILL.md. Yin reviewer
+      audit flagged the ambiguity. Confirming this interpretation formally would
+      require editing SKILL.md's description/entry gate to define "fast" —
+      outside Task 6's scope but flagged as follow-up.
+    deferred_to_feature_iteration: true
+
+debt_registered: true
+debt_location: >
+  samsara/skills/fast-track/SKILL.md — "fast" identity semantics unlabeled
+  (fast = inline vs fast = fewer-questions); selection rationale for C5/C6/C7/C8
+  not empirically validated.
+  tests/samsara/code-quality-reviewer/fast-track-checklist.sh — D4 pattern
+  scope is global-file not Step-4-only; format-dependent match.
+
+narrative: |
+  ## Decision Log
+
+  ### Quality criteria selection (C5/C6/C7/C8)
+
+  Selected C5 Reuse, C6 Clear Structure, C7 Elegant Logic, C8 No Redundancy as the
+  4 quality criteria for fast-track inline review. The dispatch prompt provided this
+  as the default selection for small-change relevance; Task 6 subagent accepted the
+  rationale directly.
+
+  Rationale: C1 Readability is largely ambient (the naming-honesty yin question
+  covers adjacent concerns); C2 Maintainability and C3 Extensibility are architectural
+  (unlikely to surface in <100 lines); C4 Debuggability overlaps with yin reviewer's
+  silent-rot scope.
+
+  Yin reviewer audit flagged that C3 exclusion is weak for dependency updates
+  specifically — a valid concern that this rationale does not address. Marked as
+  known_shortcut + assumption; requires empirical feedback to revise.
+
+  ### Quality checklist template design
+
+  The `quality_checklist:` schema field in fast-track.yaml has:
+  - `criterion`: criterion name (from 8)
+  - `checked`: boolean defaulting to false (forces editor to flip to true)
+  - `note`: specific observation (instructed: "must be specific, not template copy")
+
+  **This is mitigation, not resolution, of the template-copy failure mode.** The
+  `checked: false` default makes lazy copy visually wrong (all criteria appear
+  unchecked), but an agent filling `checked: true` and writing a formulaic note
+  ("reviewed; looks fine") would pass the schema without genuine review.
+
+  Yin reviewer audit Round 2 correctly called out that an earlier version of this
+  scar report classified this mitigation as a "resolved_item" — which was a
+  naming-honesty violation: the silent failure was NOT resolved, only its surface
+  visibility changed. This scar has been rewritten to keep the template-copy
+  failure in silent_failure_conditions (where it belongs) and to honestly label
+  the `checked: false` change as mitigation rather than resolution.
+
+  ### Dot-diagram update (genuine resolution)
+
+  The dot-diagram's Step 4 node label was updated from the old yin-only summary
+  to explicitly show both faces ("yin: 能刪？命名說謊？ / quality: C5/C6/C7/C8").
+  This is a genuine fix — the diagram now matches the Step 4 prose. Correctly
+  listed in resolved_items.
+
+  An earlier version of this scar report listed this in both known_shortcuts
+  ("left as-is") AND resolved_items ("updated") — contradictory. Yin reviewer audit
+  Round 2 caught this; scar rewritten to keep only the resolved_items entry.
+
+  ### Scar integrity lesson
+
+  This report has been through **two rewrites**:
+  1. Initial (subagent output): classified `checked: false` as resolved, retained
+     stale "left as-is" known_shortcut for dot-diagram alongside the "updated"
+     resolved_item — two integrity breaches.
+  2. Current (post-yin-audit rewrite): template-copy correctly remains a silent
+     failure; dot-diagram correctly only in resolved_items; all classifications
+     match what actually happened.
+
+  This pattern (scar narrative drifting from ground truth) is the same one Task 1
+  surfaced with the `|| true` self-deception. Yin review of scar reports is
+  becoming a reliable mechanism for catching this drift; worth recording as a
+  samsara framework-level observation for future iteration.
+
+resolved_items:
+  - original_section: "bug_during_implementation"
+    original_description: >
+      D4 test originally counted all C-criterion mentions globally across SKILL.md,
+      including rationale prose and schema template entries — would have counted
+      well more than 4 even with exactly 4 bullet items in Step 4.
+    resolution: >
+      Rewrote D4 to match only `^\- \*\*C[0-9]` pattern, which targets bullet-item
+      format specifically. Verified correctly counts 4 at current content.
+      (Note: the corrected pattern has residual global-scope fragility — recorded
+      as a separate outstanding item in known_shortcuts, not here.)
+
+  - original_section: "known_shortcuts"
+    original_description: >
+      Dot-diagram Step 4 node label still showed old yin-only summary
+      "簡化 code review（能刪？命名說謊？）" — inconsistent with Step 4 prose
+      which now includes quality questions.
+    resolution: >
+      Updated dot-diagram label to "yin: 能刪？命名說謊？ / quality: C5/C6/C7/C8".
+      Diagram now honestly reflects both faces of the review.
+
+  # --- Yin code-reviewer audit Round 2 resolved items (scar integrity fixes) ---
+
+  - original_section: "yin_audit_critical_1_scar_integrity"
+    original_description: >
+      Prior scar report classified `checked: true → checked: false` template change
+      as a resolved_item for the template-copy silent failure. This was a
+      misclassification: `checked: false` is mitigation (makes lazy copy visually
+      wrong) but does not resolve the failure (an agent can still fill
+      `checked: true` with formulaic notes and pass). The silent failure remains
+      real. Listing it as resolved misrepresented the state of defense.
+    resolution: >
+      Reclassified in this rewrite: template-copy failure correctly remains in
+      silent_failure_conditions (not resolved_items); `checked: false` change
+      is noted as mitigation in the narrative Decision Log, not as resolution.
+      Labeling now matches actual defense state.
+
+  - original_section: "yin_audit_critical_2_scar_integrity"
+    original_description: >
+      Prior scar report listed the dot-diagram update in BOTH known_shortcuts
+      ("intentionally terse, left as-is") AND resolved_items ("updated to include
+      quality criteria"). These are contradictory — the shortcut entry should have
+      been removed when the item was resolved.
+    resolution: >
+      Removed stale known_shortcut entry in this rewrite. Dot-diagram update
+      appears only in resolved_items (where it belongs, since the diagram was in
+      fact updated).

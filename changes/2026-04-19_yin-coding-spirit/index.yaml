@@ -1,0 +1,98 @@
+feature: samsara-code-quality-reviewer
+status: implementation_complete_with_concerns  # all 6 tasks done_with_concerns; 3 feature-level items deferred to validate-and-ship
+
+tasks:
+  - id: task-1
+    title: "Write samsara/references/code-quality.md — 9 yin principles, language-agnostic"
+    status: done_with_concerns
+    scar_count: 7  # 5 known_shortcuts + 2 silent_failure_conditions
+    unresolved_assumptions: 3  # 3 deferred assumptions
+    depends_on: []
+    resolved_items: 7  # 4 from v1 code-review + 3 from v1→v2 structural pivot
+    notes: |
+      Significant v1→v2 pivot: v1 (Python-bound, 8-criteria structure) was
+      archived locally (not shipped in git — research-only artifact) after user
+      review identified the translation loss from research → planning. v2 uses
+      9 yin principles as primary structure with language-agnostic koans. New
+      smoke test (v2-compatible) 7/7 pass. See scar-reports/task-1-scar.yaml
+      narrative for full decision log.
+
+  - id: task-2
+    title: "Write samsara/agents/code-quality-reviewer.md — agent definition"
+    status: done_with_concerns
+    scar_count: 5  # 2 known_shortcuts + 3 silent_failure_conditions/assumptions_made
+    unresolved_assumptions: 2
+    depends_on: [task-1]
+    resolved_items: 7  # 2 Critical + 4 Important from Round 1 + 1 Round 2 out-of-scope template drift
+    notes: |
+      Round 1 yin review FAIL (2 Critical + 4 Important); all 6 items surgically
+      fixed. Round 2 re-review RE-REVIEW PASS on all 6. Round 2 also flagged
+      3 out-of-scope observations; #3 (output format template drift — line 167
+      still used old referral format) was fixed inline and logged. Smoke tests
+      18/18 pass throughout.
+
+  - id: task-3
+    title: "Wire parallel dispatch into samsara:implement skill"
+    status: done_with_concerns
+    scar_count: 6  # 2 known_shortcuts + 3 silent_failure_conditions + 1 assumption
+    unresolved_assumptions: 1
+    depends_on: [task-2]
+    resolved_items: 3  # 3 from Level 1 self-iteration
+    notes: |
+      14/14 implement-wiring tests pass. Modified SKILL.md + dispatch-template.md with
+      parallel dispatch instructions, aggregation rule (3 branches), retry cap + escalation,
+      and two Never entries. Yin cross-task review Round 2 found 2 Suggestions (D1 conflated
+      assertion + asymmetric phrasing) — both accepted as low-priority deferred items.
+
+  - id: task-4
+    title: "Wire parallel dispatch into samsara:iteration skill"
+    status: done_with_concerns
+    scar_count: 6  # 2 known_shortcuts + 3 silent_failure_conditions + 1 assumption
+    unresolved_assumptions: 0
+    depends_on: [task-2]
+    resolved_items: 6  # 2 from Level 1 self-iteration + 4 from Round 2 cross-task fix
+    notes: |
+      12/12 iteration-wiring tests pass (grew from 11 after Round 2 added T8). Modified
+      SKILL.md with parallel dispatch, aggregation rule, retry cap + escalation, and two
+      Never entries mirroring implement/SKILL.md. Yin cross-task review Round 2 found
+      2 Critical (drift) + 4 Important — all fixed inline: (1) aggregation vocabulary
+      aligned to "FAIL with missing reviewer error"; (2) retry cap (max 2) + escalation
+      added; (3) Never entries added; (4) scar integrity fixed (resolved_items for
+      previously-unresolved deferred-false items); (5) D1 rewritten from trivial file
+      existence check to genuine retry-cap+escalation death test; (6) T8 added to guard
+      Never entries. Cross-skill drift now resolved.
+
+  - id: task-5
+    title: "Integration validation — run reviewer on 3 fixtures, document results"
+    status: done_with_concerns
+    scar_count: 9  # 3 known_shortcuts + 2 silent_failure_conditions + 4 assumptions (3 unverified)
+    unresolved_assumptions: 3
+    depends_on: [task-3, task-4]
+    resolved_items: 1  # Anti-naming-honesty trap avoided in validation-results.md wording
+    notes: |
+      Integration gate executed. 3 fixtures (junior/clean/over_engineered) reviewed via
+      prompt-injected simulation (native dispatch blocked by Claude Code registry lag —
+      new agent not loaded mid-session). Results: clean.py FULL MATCH (PASS + file:line
+      evidence); junior.py PARTIAL (FAIL verdict ✓, Critical count 1 vs ≥3 expected —
+      severity calibration question); over_engineered.py PARTIAL (Important on coupling
+      ✓, but missed over-abstraction pattern — reference koan question). Scope boundary
+      held: 3 reviews refer silent-rot to yin with correct file:line format.
+      Feature verification: PASS_WITH_CONCERNS. 3 deferred items for validate-and-ship
+      phase: (1) native dispatch re-validation after session restart; (2) junior.py
+      severity calibration; (3) over_engineered.py pattern koan scope.
+
+  - id: task-6
+    title: "Extend fast-track Step 4 checklist for quality symmetry (inline, no subagent dispatch)"
+    status: done_with_concerns
+    scar_count: 5  # 3 known_shortcuts + 2 silent_failure_conditions
+    unresolved_assumptions: 3
+    depends_on: [task-1]
+    resolved_items: 4  # 2 from initial (D4 pattern, dot-diagram) + 2 scar integrity fixes from Round 2
+    notes: |
+      Yin Round 2 audit found 2 Critical scar integrity breaches: (a) checked:false
+      template change misclassified as resolved for template-copy silent failure
+      (was mitigation, not resolution); (b) dot-diagram listed in both
+      known_shortcuts (left as-is) and resolved_items (updated). Scar report
+      rewritten to fix both breaches. Agent diff unchanged — fixes were scar-level
+      only. Closed by inline scar rewrite; no FAIL verdict requires formal
+      re-dispatch.

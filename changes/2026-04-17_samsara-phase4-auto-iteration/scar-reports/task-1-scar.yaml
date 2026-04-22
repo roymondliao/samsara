@@ -1,0 +1,20 @@
+task_id: task-1
+completion_status: done_with_concerns
+
+known_shortcuts:
+  - description: "known_shortcuts and silent_failure_conditions items changed from plain strings to objects with description + deferred flag — this is a breaking change for any code that parses scar reports expecting plain strings"
+    deferred_to_feature_iteration: true
+
+silent_failure_conditions:
+  - description: "resolved_items references original items by description text (free-form match), not by index or ID — if the original description is edited, the reference breaks silently"
+
+assumptions_made:
+  - assumption: "Existing scar reports (plain string format for known_shortcuts/silent_failure_conditions) will still be parseable"
+    verified: false
+    note: "Schema changed items from strings to objects. Old format scar reports in llm-wiki use plain strings. Level 2 aggregate must handle both formats."
+  - assumption: "deferred_to_feature_iteration defaults to false when omitted"
+    verified: true
+    note: "Explicitly documented in Rules section"
+
+debt_registered: true
+debt_location: "scar-schema.yaml — backward compat for plain string items needs explicit handling in Level 2 aggregate logic"

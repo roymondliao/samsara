@@ -1,0 +1,52 @@
+feature: samsara-phase4-auto-iteration
+status: done
+
+tasks:
+  - id: task-1
+    title: "Extend scar-schema.yaml with resolved_items and deferred flag"
+    status: done_with_concerns
+    scar_count: 3
+    unresolved_assumptions: 1
+    depends_on: []
+
+  - id: task-2
+    title: "Add self-iteration step to implementer.md (Level 1)"
+    status: done_with_concerns
+    scar_count: 3
+    unresolved_assumptions: 2
+    depends_on: [task-1]
+
+  - id: task-3
+    title: "Update implement/SKILL.md per-task execution order and transition"
+    status: done
+    scar_count: 1
+    unresolved_assumptions: 0
+    depends_on: [task-2]
+
+  - id: task-4
+    title: "Create iteration skill SKILL.md for feature-level iteration (Level 2)"
+    status: done_with_concerns
+    scar_count: 4
+    unresolved_assumptions: 2
+    depends_on: [task-1]
+
+  - id: task-5
+    title: "Create iteration-log.yaml template"
+    status: done
+    scar_count: 0
+    unresolved_assumptions: 0
+    depends_on: [task-4]
+
+  - id: task-6
+    title: "Update samsara-bootstrap skill chain and routing graph"
+    status: done
+    scar_count: 1
+    unresolved_assumptions: 0
+    depends_on: [task-4]
+
+  - id: task-7
+    title: "Update MEMORY.md Phase 4 status and directory structure"
+    status: done
+    scar_count: 1
+    unresolved_assumptions: 0
+    depends_on: [task-1, task-2, task-3, task-4, task-5, task-6]

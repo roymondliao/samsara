@@ -1,0 +1,78 @@
+feature: research-planning-completeness-gate
+coverage_type: verified
+
+scenarios:
+  # --- Death paths first ---
+
+  - name: "Silent failure - gate passes but misses architectural decision"
+    type: death_path
+    given: "Research has Key Decision 'Shared, not samsara-exclusive' with no constraint derivation, plus other decisions that ARE complete"
+    when: "Planning runs Step 1.5 completeness validation"
+    then:
+      - "Planning must flag the incomplete decision — not just check whether ANY decision is missing, but check ALL decisions individually"
+      - "Gate must NOT pass because other decisions are complete"
+      - "Gap report must name the specific incomplete decision verbatim"
+      - "Planning must stop before writing Tech Spec or File Map"
+
+  - name: "Silent failure - Planning self-derives and labels as Research-confirmed"
+    type: death_path
+    given: "Research has Key Decision with missing constraint derivation"
+    when: "Planning encounters the gap and proceeds to write File Map"
+    then:
+      - "Planning must NOT write any File Map entry that is not directly derivable from a stated Research constraint"
+      - "Any self-derived path must be flagged as 'gap — not Research-confirmed'"
+      - "Planning output must include gap report as mandatory artifact before any File Map content"
+
+  - name: "Silent failure - gap filled by agent without human review"
+    type: death_path
+    given: "Planning returns gap report to Research; Research agent derives a constraint and adds it to kickoff.md"
+    when: "Human gate is reached for Research confirmation"
+    then:
+      - "Human must see the gap report alongside the new constraint"
+      - "New constraint must be visibly marked as 'added to fill gap from Planning'"
+      - "Human gate must require explicit confirmation of the new constraint, not just the original Research document"
+
+  - name: "Unknown outcome - ambiguous scope decision"
+    type: death_path
+    given: "Research has Key Decision 'Replace ECC continuous-learning-v2' — unclear if this has file placement implications"
+    when: "Planning runs Step 1.5 completeness validation"
+    then:
+      - "Planning must classify scope as 'ambiguous' — not skip it and not assume 'no architectural scope'"
+      - "Planning must surface the ambiguity to human with a specific question"
+      - "Planning must not proceed until human resolves the ambiguity"
+      - "State must be recorded as: ambiguous_scope, not missing_constraint"
+
+  # --- Degradation paths ---
+
+  - name: "Degradation - gate exists but classification heuristic is too narrow"
+    type: degradation
+    given: "Planning Step 1.5 exists but only checks for explicit 'shared/plugin-specific' language"
+    when: "Research has architectural scope implied by context, not stated explicitly"
+    then:
+      - "Planning must document its classification reasoning, not just the yes/no result"
+      - "If classification was based on keyword matching only, it must be marked: confidence: low"
+      - "Low-confidence classifications must be surfaced to human before proceeding"
+
+  # --- Happy paths with evidence ---
+
+  - name: "Success - Research complete, Planning proceeds"
+    type: happy_path
+    given: "Research kickoff has Key Decision 'Shared, not samsara-exclusive' with constraint: 'files must not be inside any plugin directory, must be in scripts/ or project root'"
+    when: "Planning runs Step 1.5 completeness validation"
+    then:
+      - "Planning classifies the decision as: architectural_scope: true"
+      - "Planning finds constraint derivation present"
+      - "Planning records: validation_result: complete, constraint_source: research_confirmed"
+      - "Planning proceeds to Tech Spec with no gap report written"
+      - "File Map entries are directly derivable from the stated constraint"
+
+  - name: "Success - gap detected, returned, filled, confirmed, Planning proceeds"
+    type: happy_path
+    given: "Planning detects missing constraint, returns gap report; Research adds constraint; human confirms"
+    when: "Planning re-reads Research and re-runs Step 1.5"
+    then:
+      - "Gap report from first pass is present as artifact"
+      - "New constraint is marked as 'gap-fill, confirmed YYYY-MM-DD'"
+      - "Step 1.5 now passes — all architectural decisions have confirmed constraints"
+      - "Planning proceeds to Tech Spec"
+      - "File Map entries reference the constraint that was gap-filled"

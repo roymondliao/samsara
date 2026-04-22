@@ -1,0 +1,128 @@
+feature: samsara-code-quality-reviewer
+coverage_type: verified
+
+scenarios:
+  # ═══════════════════════════════════════════════════════════════
+  # Death paths first
+  # ═══════════════════════════════════════════════════════════════
+
+  - name: "Silent false PASS on known-junior code"
+    type: death_path
+    given: "samsara:code-quality-reviewer 被餵給 hooks/scripts/observe-learnings.py (已知 junior-level：8 個 silent except, main() 做 6 件事, stringly-typed state_paths)"
+    when: "reviewer 被 dispatch 做 review"
+    then:
+      - "reviewer 必須回 FAIL（不可回 PASS）"
+      - "Critical issues 必須 >= 3"
+      - "至少一個 Critical 必須引用 'main() 職責過多'（criterion 6: 結構明確）"
+      - "至少一個 Critical 必須引用 'state_paths 回傳 dict 缺乏契約'（criterion 1, 4）"
+      - "至少一個 Critical 必須引用 'silent except 未標記 rationale'（criterion 7: 優雅邏輯——silence 必須有理由）"
+
+  - name: "Compliance theater detection — spurious wrapping"
+    type: death_path
+    given: "一份 code 把單一值包成 dataclass 僅為通過 'contract explicitness' 形式"
+    when: "reviewer 被 dispatch"
+    then:
+      - "reviewer 必須辨識 over-wrapping 為 Critical 或 Important（criterion 7: 無多餘抽象）"
+      - "reviewer 不得僅因 'dataclass 存在' 就判 Criterion 6 為滿足"
+      - "output 必須引用具體 file:line 說明 wrapping 沒有帶來 information gain"
+
+  - name: "Scope violation — duplicating yin reviewer"
+    type: death_path
+    given: "一份 diff 同時含 silent except（yin scope）和 flat main()（quality scope）"
+    when: "code-quality-reviewer 被 dispatch"
+    then:
+      - "reviewer 的 Critical issues 不得提及 'silent except'、'silent rot'、'dishonest naming'"
+      - "reviewer 必須只報告結構、reuse、冗餘、可讀性、契約類 issues"
+      - "若 reviewer 要提到 silent except，必須標註 'out of scope - see yin reviewer'"
+
+  - name: "Unknown outcome — diff contains no reviewable code"
+    type: death_path
+    given: "diff 只包含 *.md、*.yaml、*.json 或 binary 檔變更"
+    when: "reviewer 被 dispatch"
+    then:
+      - "reviewer 回 UNKNOWN (或 'N/A - not code')，不可回 PASS"
+      - "output 必須明確說明 'diff contains no reviewable Python/source code'"
+      - "caller (main agent) 必須把 UNKNOWN 當作 '非失敗也非通過'，視情境決定是否需要其他 review"
+
+  - name: "Parallel dispatch silent skip"
+    type: death_path
+    given: "samsara:implement 改動後，dispatch 流程有 bug 導致只 dispatch 一個 reviewer"
+    when: "implementer DONE，main agent 收集 review 結果"
+    then:
+      - "main agent 必須驗證收到兩份 review output（code-reviewer + code-quality-reviewer）"
+      - "若只收到一份，main agent 必須 block commit 並 log 'missing reviewer'"
+      - "絕不可預設 '沒回來的 reviewer 算 PASS'"
+
+  - name: "Rubber-stamp PASS without evidence"
+    type: death_path
+    given: "reviewer 對任意 diff 都回 PASS"
+    when: "reviewer 回傳結果"
+    then:
+      - "PASS output 必須包含至少 1 個具體 file:line 觀察（即使是 Suggestion 層級）"
+      - "'PASS / no issues found' 而無具體引用 = 視為 malformed output，main agent 必須 treat as FAIL"
+      - "用於長期 metric 追蹤：PASS rate > 85% 持續 3 個月 = corruption signal"
+
+  - name: "Fast-track inline review asymmetry — checks yin but not quality"
+    type: death_path
+    given: "使用者選 samsara:fast-track 路徑做小改動；Step 4 的 inline review checklist 僅含 yin 問題（能刪？命名說謊？）"
+    when: "main agent 走完 Step 4 並寫 fast-track.yaml"
+    then:
+      - "Step 4 的 checklist 必須同時包含 yin 問題（≥ 2 條）和 quality 問題（≥ 3 條 from 8 criteria）"
+      - "fast-track.yaml 必須包含 `quality_checklist:` 欄位，列出被檢查的 criteria + 觀察 note"
+      - "僅檢查 yin 而未檢查 quality = silent 失敗（code 通過 fast-track 但違反 8 條 quality criteria）"
+      - "Detection: audit fast-track commits——若 > 20% 的 fast-track.yaml 的 quality_checklist 為空或 all-true-no-note，視為 corruption signal"
+
+  # ═══════════════════════════════════════════════════════════════
+  # Degradation paths
+  # ═══════════════════════════════════════════════════════════════
+
+  - name: "Degradation - partial reviewable content in diff"
+    type: degradation
+    given: "diff 混合了 .py 和 .yaml 檔，其中 .py 是真的 code 變更，.yaml 是 config"
+    when: "reviewer 被 dispatch"
+    then:
+      - "reviewer 必須只 review .py 部分，並在 output 明確標示 'skipped: *.yaml (out of scope)'"
+      - "output 必須包含 degraded_mode: partial_review 訊號"
+      - "不可假裝 review 了整份 diff 而回 PASS"
+
+  - name: "Degradation - reference file temporarily unavailable"
+    type: degradation
+    given: "samsara/references/code-quality.md 因 git state 或路徑問題讀取失敗"
+    when: "reviewer 被 dispatch"
+    then:
+      - "reviewer 必須 explicit output 'reference file not found, cannot perform quality review'"
+      - "reviewer 必須回 UNKNOWN，不可用『記憶中的 criteria』fallback（那會 drift）"
+      - "caller 必須把此狀況視為 reviewer 失效，不是通過"
+
+  # ═══════════════════════════════════════════════════════════════
+  # Happy paths with evidence chain
+  # ═══════════════════════════════════════════════════════════════
+
+  - name: "Success - clean Pythonic refactor PASSes with evidence"
+    type: happy_path
+    given: "reviewer 被餵給 experiment/outputs/en-must-output.py (clean free-function Pythonic style, frozen dataclass, 15-line main())"
+    when: "reviewer 被 dispatch"
+    then:
+      - "reviewer 回 PASS 或 PASS_WITH_CONCERNS"
+      - "output 必須引用至少 1 個具體 file:line 觀察（證明有真的分析，不是 rubber-stamp）"
+      - "output 可以有 Suggestion 級別 items（例如: 可以更明確的 type hints），但無 Critical"
+      - "output 的 Summary 必須列出 'Checked criteria: <list of 8>' 確認 active review"
+
+  - name: "Success - parallel dispatch returns both results"
+    type: happy_path
+    given: "implementer 完成一個 task，main agent 進入 review 階段"
+    when: "main agent 並行 dispatch code-reviewer 和 code-quality-reviewer"
+    then:
+      - "兩個 subagent 都成功回傳 output"
+      - "main agent aggregation 必須明確記錄 'yin_review: PASS, quality_review: PASS/FAIL'"
+      - "commit decision 的 evidence chain 必須包含兩份 review 的 output references"
+      - "index.yaml 更新時必須記錄 quality_review 的結果"
+
+  - name: "Success - known over-engineered code flagged correctly"
+    type: happy_path
+    given: "reviewer 被餵給 experiment/outputs/en-is-output.py (8 classes in 215-line-equivalent file, potential over-OOP)"
+    when: "reviewer 被 dispatch"
+    then:
+      - "reviewer 至少回 Important issue（over-abstraction for a single-script use case）"
+      - "Issue 必須引用 criterion 7（無多餘抽象）"
+      - "reviewer 不得因為『class 多 = 結構好』就放過這份 code"

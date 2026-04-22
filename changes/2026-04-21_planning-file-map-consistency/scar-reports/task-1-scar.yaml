@@ -1,0 +1,48 @@
+task_id: task-1
+completion_status: done_with_concerns
+
+known_shortcuts:
+  - description: "The examples in Step 1.5 (File Map, Tech Spec interface, Acceptance Criteria) are illustrative but finite — an agent could treat them as a de facto checklist, defeating the 'no fixed checklist' principle."
+    deferred_to_feature_iteration: false
+
+  - description: "The diagram's loop-back edge (prethink -> start) shows 'back to Research' but the actual Research skill has no step for receiving gap reports from Planning. The close-loop is partially one-sided — Planning knows how to reject, Research doesn't know how to receive structured gap reports."
+    deferred_to_feature_iteration: true
+
+silent_failure_conditions:
+  - description: "An agent can produce a perfunctory assumption list ('I am assuming Research is complete. No gaps identified.') that appears to satisfy Step 1.5 but performs no real reasoning. The framework cannot detect low-quality pre-thinking — only the human gate can catch this, and only if the human reads the artifact carefully."
+    deferred_to_feature_iteration: false
+
+  - description: "The 'absence means this step was skipped' enforcement relies on the code-reviewer checking for the artifact's presence in Planning output. If code-reviewer doesn't receive Planning session transcripts (only diffs), it cannot verify Step 1.5 was executed."
+    deferred_to_feature_iteration: true
+
+assumptions_made:
+  - assumption: "Planning agents read and follow SKILL.md steps in order, including new steps inserted mid-skill"
+    verified: false
+    note: "No runtime enforcement exists. Compliance is text-instruction only. If agents summarize or skip steps, Step 1.5 will not execute."
+    deferred_to_feature_iteration: true
+
+  - assumption: "Human reviewing the Information Assumptions artifact will apply high-dimensional judgment to catch gaps the agent missed"
+    verified: false
+    note: "This is the designed intent (AI-native floor/ceiling model), but humans can rubber-stamp the artifact without reading it. Framework cannot enforce human attention."
+    deferred_to_feature_iteration: true
+
+  - assumption: "The three examples given in Step 1.5 (File Map, Tech Spec, Acceptance Criteria) are representative enough that agents will generalize the pattern to other plan sections"
+    verified: false
+    note: "If agents only apply pre-thinking to the three named sections and skip others, gaps in unnamed sections (e.g., Task Decomposition scope) will go undetected."
+    deferred_to_feature_iteration: false
+
+debt_registered: true
+debt_location: "samsara/skills/planning/SKILL.md:Step 1.5 — examples risk becoming implicit checklist; samsara/skills/research/SKILL.md — no gap-report reception step (out of scope for this task)"
+
+resolved_items:
+  - original_section: "known_shortcuts"
+    original_description: "Examples in Step 1.5 could be treated as a de facto checklist"
+    resolution: "Changed prefix to 'Common patterns (illustrative only — do NOT treat these as a checklist)' and added explicit warning against checklist use."
+
+  - original_section: "silent_failure_conditions"
+    original_description: "Accepted gaps not carried forward as documented assumptions — silent rot"
+    resolution: "Added 'Accepted gaps must be carried forward' section to human gate. Human accepting a gap must document it as undocumented assumption in Tech Spec. Diagram updated: prethink -> human_pt -> spec (accept gap) with 'document as undoc. assumption' label."
+
+  - original_section: "silent_failure_conditions"
+    original_description: "Diagram prethink->start loop created phantom internal loop, not human gate stop"
+    resolution: "Added explicit human_pt node (Human gate: review artifact). prethink -> human_pt on gaps/unknowns. human_pt -> start (return to Research) or -> spec (accept gap). Removed false prethink->start direct loop."

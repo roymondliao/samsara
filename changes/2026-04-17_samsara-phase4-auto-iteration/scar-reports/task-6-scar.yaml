@@ -1,0 +1,15 @@
+task_id: task-6
+completion_status: done
+
+known_shortcuts:
+  - description: "Bootstrap digraph is documentation not enforced routing — agent may still invoke skills out of order"
+
+silent_failure_conditions: []
+
+assumptions_made:
+  - assumption: "Adding iteration node to bootstrap digraph does not significantly increase token count for session injection"
+    verified: true
+    note: "Added ~5 lines to digraph and ~1 line to skill list — negligible impact"
+
+debt_registered: true
+debt_location: "samsara-bootstrap/SKILL.md — routing is advisory, not enforced"

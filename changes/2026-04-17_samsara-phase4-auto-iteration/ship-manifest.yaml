@@ -1,0 +1,45 @@
+delivered_capability: "Dual-level auto iteration — Level 1 task-scope self-iteration in implementer + Level 2 feature-level iteration skill with triage-fix-verify loop, safety valve, and human gates"
+
+known_failure_modes:
+  - mode: "Level 2 aggregation over-counts remaining items — accepted risks without resolved_items coverage are counted as 'unaddressed'"
+    severity: degradation
+    detection: "inflated K count in implement transition message biases user toward unnecessary iteration"
+  - mode: "Code reviewer defer-all check only fires when ALL items are deferred AND resolved_items is empty — partial defer without rationale is not caught"
+    severity: degradation
+    detection: "review scar reports manually for deferred items lacking rationale"
+  - mode: "Context window exhaustion silently truncates self-iteration in complex tasks"
+    severity: silent_corruption
+    detection: "scar reports with no resolved_items and no deferred flags — indistinguishable from 'no self-iteration performed'"
+
+accepted_risks:
+  - risk: "Subagent context window may be insufficient for self-iteration"
+    accepted_by: "human"
+    expires: "2026-10-19"
+  - risk: "resolved_items uses free-form description match, not ID reference"
+    accepted_by: "human"
+    expires: "2026-10-19"
+  - risk: "Self-iteration quality depends on agent self-discipline"
+    accepted_by: "human"
+    expires: "2026-10-19"
+  - risk: "Safety valve max rounds hardcoded to 3"
+    accepted_by: "human"
+    expires: "2027-01-19"
+  - risk: "signal_lost counts all items equally without severity weighting"
+    accepted_by: "human"
+    expires: "2027-01-19"
+  - risk: "Per-fix commit enforcement in cowork/inline mode not validated"
+    accepted_by: "human"
+    expires: "2026-10-19"
+
+silent_failure_surface: medium
+# 3 known silent failure paths:
+# 1. Context window truncation silently skips self-iteration
+# 2. Aggregation over-count inflates iteration nudge
+# 3. Partial defer without rationale not caught by reviewer
+
+monitoring_hooks:
+  - "Code reviewer step 4 (Scar Report Integrity) checks for empty resolved_items + all-deferred anti-pattern"
+  - "Level 2 iteration safety valve monitors signal_lost stagnation and net rot increase"
+  - "iteration-log.yaml provides audit trail for each round's decisions"
+
+kill_switch: "User selects (B) Skip at implement transition gate — bypasses all iteration, equivalent to pre-Phase-4 flow"

@@ -1,0 +1,15 @@
+task_id: task-3
+completion_status: done
+
+known_shortcuts:
+  - description: "Remaining scar items count (K) is described in prose, not a formula — main agent must manually count deferred + unresolved items across all scar reports"
+
+silent_failure_conditions: []
+
+assumptions_made:
+  - assumption: "implement/SKILL.md step numbers (1-16) align with implementer.md step numbers (1-12)"
+    verified: true
+    note: "Both updated in this session — SKILL.md describes the main flow, implementer.md describes implementer-internal flow"
+
+debt_registered: true
+debt_location: "implement/SKILL.md transition — remaining items count logic is descriptive, could benefit from a formula"

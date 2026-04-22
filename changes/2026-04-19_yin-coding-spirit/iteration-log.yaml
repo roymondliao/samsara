@@ -1,0 +1,54 @@
+feature: "samsara-code-quality-reviewer"
+signal_lost_initial: 41
+
+rounds:
+  - round: 1
+    signal_lost_before: 41
+    items_triaged: 6   # 6 cross-task patterns (not 41 individual items)
+    triage_result:
+      fix: []
+      accept: []
+      defer:
+        - "P1 — Koan-to-code translation quality (Tasks 1, 2, 5 cross-reference). No fix applied: Task 5 empirical data showed 8/9 principles translate correctly; only Pattern missed at module-level on over_engineered.py. User decision to defer until more real-world usage provides sample larger than n=3 fixtures. Targeted fix (Pattern-specific module-level guidance) is cheap if later warranted."
+        - "P2 — Behavioral verification gap (Tasks 2, 3, 4, 5 cross-reference). Text-based smoke tests cannot enforce runtime behavior (reference read, parallel dispatch, reviewer output counting, aggregation). User decision to defer: this is a categorical limitation of the test medium, not a specific bug. The fast-track quality_checklist audit hook provides a long-horizon corruption metric; behavioral verification is delegated there and to manual review of fast-track commits at >20% corruption threshold."
+        - "P3 — Calibration uncertainty (Tasks 1, 5 cross-reference). Severity rubric (Critical vs Important) in reference is abstract, and acceptance.yaml threshold (>= 3 Critical on junior.py) was a planning-time intuition. Task 5 empirical result: 1 Critical + 5 Important. User decision to defer fixing both sides because no side has ground truth — neither the rubric nor the threshold has been calibrated against > 1 real sample."
+        - "P4 — Deployment integration gap: Claude Code Agent registry lag. User decision to defer: this is external runtime constraint, not feature-scope. Documented in validation-results.md; native dispatch re-validation will happen naturally on next session start."
+        - "P5 — Scar integrity drift (already resolved across Tasks 1, 2, 6). Not re-triaged: the mechanism (yin Round 2 review catching scar self-deception) worked in all three cases. This is not a deferred risk — it is a retired concern."
+        - "P6 — Cross-skill vocabulary drift (already resolved across Tasks 3, 4). Also retired: Round 2 cross-task yin review caught it and inline fixes aligned iteration/SKILL.md to implement/SKILL.md canonical form."
+    fixes_applied: 0
+    fixes_scar_count: 0
+    signal_lost_after: 41
+    decision: stop
+    decision_reason: |
+      User chose "先不修" after reviewing proposed fixes for P1 and P3. Level 2 triage
+      classified 2 patterns as already-resolved (P5, P6) and 4 patterns as defer. Zero
+      fixes applied in this iteration round.
+
+      Honest triage note (safety valve observation): defer ratio is 100% (4/4 open
+      patterns deferred; 2/6 total already-resolved). This triggers the "cargo-cult
+      triage" advisory warning in principle — BUT the defer rationale for each pattern
+      is evidence-based, not avoidance:
+        - P1/P3: fix would require ground truth that only real-world usage provides
+        - P2: categorical limitation of text tests (no local fix exists)
+        - P4: external runtime constraint (not feature scope)
+
+      The deferred items will be revisited by validate-and-ship's failure budget review
+      and by future actual use of the reviewer (corruption signal tracking via
+      fast-track.yaml quality_checklist + rate of PASS / FAIL distribution over time).
+
+# --- Notes ---
+#
+# Signal_lost counting methodology:
+#   - Task 1: 5 known_shortcuts + 2 silent_failures + 3 unverified assumptions = 10
+#   - Task 2: 3 known_shortcuts (net after resolved) + 2 silent_failures (net) + 4 assumptions = 9
+#     (scar has ~8 distinct remaining items after accounting for resolved_items overlap)
+#   - Task 3: 2 known_shortcuts + 1 silent_failure + 1 assumption = 4
+#   - Task 4: 1 known_shortcut + 2 silent_failures + 0 assumptions (all verified post-Round 2) = 3
+#   - Task 5: 3 known_shortcuts + 2 silent_failures + 3 assumptions = 8
+#   - Task 6: 3 known_shortcuts + 2 silent_failures + 3 assumptions = 8
+#   - Aggregate: ~42 (reported as 41 in round due to Task 2 internal resolved overlap)
+#
+# This log records triage at the PATTERN level, not at the individual-item level,
+# because the 41 items naturally cluster into 6 cross-task patterns and triaging each
+# item separately would produce 41 near-identical defer entries with no decision
+# differentiation. The pattern-level record is honest about the scope of the triage.

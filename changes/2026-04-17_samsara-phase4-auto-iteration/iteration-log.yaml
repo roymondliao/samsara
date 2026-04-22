@@ -1,0 +1,54 @@
+feature: "samsara-phase4-auto-iteration"
+signal_lost_initial: 9
+
+rounds:
+  - round: 1
+    signal_lost_before: 9
+    items_triaged: 13
+    triage_result:
+      fix:
+        - "code-reviewer.md missing scar report integrity checks and defer-all anti-pattern detection"
+        - "scar-schema.yaml breaking change — plain string items no longer parseable"
+        - "blocked fix in iteration loop has no fallback — item stays in queue indefinitely"
+      accept:
+        - description: "Subagent context window may be insufficient for self-iteration"
+          expiry_date: "2026-10-19"
+          rationale: "Environment limitation — revisit when model context windows increase significantly"
+        - description: "resolved_items uses free-form description match, not ID reference"
+          expiry_date: "2026-10-19"
+          rationale: "High cost (ID system), low benefit (description edits are rare in v1)"
+        - description: "Context window exhaustion may silently truncate self-iteration"
+          expiry_date: "2026-10-19"
+          rationale: "Same root cause as context window limitation"
+        - description: "Self-iteration quality depends on agent self-discipline"
+          expiry_date: "2026-10-19"
+          rationale: "Inherent to prompt-based systems. Partially mitigated by code-reviewer fix #1"
+        - description: "Safety valve max rounds hardcoded to 3"
+          expiry_date: "2027-01-19"
+          rationale: "v1 sufficient. Human gate allows early stop regardless"
+        - description: "signal_lost counts all items equally without severity weighting"
+          expiry_date: "2027-01-19"
+          rationale: "v1 sufficient. Human triage compensates for lack of weighting"
+      defer:
+        - "Dispatch-template suitability for scar fix context (different from initial impl)"
+        - "Per-fix commit enforcement in cowork/inline mode"
+    fixes_applied: 3
+    fixes_scar_count: 0
+    signal_lost_after: 6
+    decision: continue
+    decision_reason: "user chose to continue — 2 deferred items may be actionable"
+
+  - round: 2
+    signal_lost_before: 6
+    items_triaged: 2
+    triage_result:
+      fix:
+        - "Dispatch-template suitability — added fix dispatch guidance to iteration SKILL.md"
+      accept: []
+      defer:
+        - "Per-fix commit in cowork/inline mode — user decided cowork is an edge case, not worth special handling"
+    fixes_applied: 1
+    fixes_scar_count: 0
+    signal_lost_after: 5
+    decision: stop
+    decision_reason: "user chose to stop — remaining items are all accepted risks or user-decided defers"

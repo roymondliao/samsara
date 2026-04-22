@@ -1,0 +1,158 @@
+task_id: task-4
+completion_status: done_with_concerns
+
+known_shortcuts:
+  - description: >
+      Aggregation rule was written independently from Task 3 (implement/SKILL.md) as required by dispatch instructions.
+      Structural consistency between iteration and implement skill dispatch specs has NOT been verified — it is the
+      main agent's responsibility at review time. If Task 3's aggregation rule uses different wording, naming, or
+      table structure, future maintainers will face two diverging specs for the same concept.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      signal_lost recalculation interaction with code-quality review results is not addressed.
+      The task spec flags this as out-of-scope, but the concern is real: if a quality reviewer returns FAIL
+      and a re-fix introduces new scar items, signal_lost may not accurately reflect the quality dimension.
+      The current signal_lost formula (known_shortcuts + silent_failure_conditions + unverified assumptions)
+      does not count "reviewer-flagged quality issues" as a distinct signal. This means quality rot can grow
+      without affecting the signal_lost metric.
+    deferred_to_feature_iteration: true
+
+silent_failure_conditions:
+  - description: >
+      A main agent following the skill could dispatch the two reviewers sequentially (two separate messages)
+      rather than in parallel (one message with two Agent calls). The SKILL.md now includes "single message,
+      two Agent calls" language and test T6 checks for this phrase, but the enforcement mechanism is textual —
+      a runtime agent could still execute sequentially and the text test would still pass.
+
+  - description: >
+      "Missing reviewer" detection relies on the main agent actively noticing that only one output was received.
+      If the main agent does not count outputs explicitly, a dropped dispatcher call produces no error signal.
+      The SKILL.md states the block rule, but the mechanism for counting received outputs is behavioral,
+      not structural — no text-pattern test can verify runtime behavior of a main agent.
+
+  - description: >
+      The aggregation rule table row "Missing reviewer" defines the action as "re-dispatch the missing reviewer."
+      If re-dispatch fails again (e.g., the reviewer agent is unavailable), there is no escalation path defined —
+      the skill could loop or silently fall through to the human gate without explicit error.
+
+assumptions_made:
+  - assumption: >
+      The `samsara:code-quality-reviewer` agent (Task 2) is wired and callable — its agent file exists and passes
+      all structural tests. Task 4 depends on this being true.
+    verified: true
+    note: >
+      Verified by running agent-structure.sh (18/18 PASS) against
+      samsara/agents/code-quality-reviewer.md. Agent exists, has required frontmatter,
+      correct tools config, and all structural clauses present.
+
+  - assumption: >
+      The iteration skill's per-fix commit rule is independent of and compatible with the new two-reviewer
+      aggregation rule — adding a two-reviewer gate does not change the meaning of "per-fix commit."
+    verified: true
+    note: >
+      Verified by reading the full iteration SKILL.md. The per-fix commit rule in Yin-Side Constraints
+      and Red Flags are unchanged. The new aggregation rule adds a pre-condition ("both PASS") to the
+      existing per-fix commit step without redefining what a per-fix commit means.
+
+  - assumption: >
+      Task 3 (implement/SKILL.md parallel dispatch) is being implemented with structurally equivalent
+      aggregation rule semantics. If Task 3 uses different terminology or omits the missing-reviewer
+      clause, this task's spec will drift from the implement skill spec.
+    verified: true
+    note: >
+      Verified post-hoc by main-agent yin cross-task review (Round 2). Drift was confirmed real:
+      vocabulary mismatch + missing retry cap + missing Never entries. Inline fix applied to
+      iteration/SKILL.md to align with implement/SKILL.md canonical form. See resolved_items
+      entry "yin_round2_cross_task_drift_shortcut_resolution" for the full fix record.
+    deferred_to_feature_iteration: false
+
+debt_registered: true
+debt_location: "samsara/skills/iteration/SKILL.md — Review Aggregation Rule (Per-Fix) section; tests/samsara/code-quality-reviewer/iteration-wiring.sh"
+
+narrative: |
+  The core wiring (parallel dispatch + aggregation rule + missing-reviewer block) is complete and verified
+  by 11/11 tests passing (4 death tests, 7 unit tests). The main concern flagged is drift from Task 3's
+  aggregation spec — both tasks were required to write aggregation rules independently, so consistency
+  is a post-hoc review concern, not something this task can resolve.
+
+  The signal_lost / quality-review interaction is flagged as a known gap but genuinely deferred — it requires
+  changes to the signal_lost formula definition, which is outside this task's file scope.
+
+  All three silent_failure_conditions describe behavioral runtime limits that text-pattern tests cannot verify.
+  They are left in the scar as permanent known gaps — they are not fixable within task scope.
+
+resolved_items:
+  - original_section: known_shortcuts
+    original_description: >
+      Re-review rule ("dispatch both reviewers after any code change, not just the one that failed") is stated
+      as a constraint in the SKILL.md text but has no corresponding test — silent violation possible.
+    resolution: >
+      Added test T7 to iteration-wiring.sh: checks that SKILL.md contains language explicitly naming
+      "both must re-review" or equivalent in the re-review context. Verified T7 passes GREEN (1 match found
+      at "both must re-review after any code change"). Test file now has 11 tests total (was 9).
+
+  - original_section: silent_failure_conditions
+    original_description: >
+      No enforcement that dispatch is "single message" (parallel) rather than two sequential messages.
+    resolution: >
+      Added test T6 to iteration-wiring.sh: checks that SKILL.md contains "single message" language.
+      This is a textual guard — it cannot enforce runtime parallelism but makes the requirement
+      explicitly inspectable. Verified T6 passes GREEN. Residual behavioral risk documented in
+      updated silent_failure_conditions entry.
+
+  # --- Main-agent cross-task review (Round 2) resolved items ---
+
+  - original_section: known_shortcuts
+    original_description: >
+      Cross-skill drift shortcut (known_shortcuts[0]): iteration vs implement aggregation rule
+      consistency was not verified mid-flight; deferred_to_feature_iteration: false claimed
+      in-scope fixability but had no resolved_items record. Main-agent yin review confirmed
+      drift was real: vocabulary mismatch ("Block per-fix commit — log" vs "FAIL with missing
+      reviewer error") and missing retry cap / escalation path in iteration skill.
+    resolution: >
+      Main agent inline fix (post-cross-task review):
+      (1) Aligned aggregation table row "Missing reviewer" vocabulary to match implement/SKILL.md:
+          now uses "FAIL with 'missing reviewer' error" as canonical phrase.
+      (2) Added bounded retry cap (max 2 retries) + escalation path, mirroring implement/SKILL.md
+          step 13's semantics. This closes the unbounded re-dispatch loop silent failure.
+      (3) Added two Never entries to Red Flags: "Skip code-quality-reviewer dispatch" and
+          "Assume an absent review output means PASS", mirroring implement/SKILL.md Never list.
+      Cross-skill drift is now resolved; both specs describe missing-reviewer handling in
+      structurally equivalent terms.
+
+  - original_section: silent_failure_conditions
+    original_description: >
+      silent_failure_conditions[2]: aggregation rule "re-dispatch the missing reviewer" had no
+      escalation path — re-dispatch failure would loop or silently fall through.
+    resolution: >
+      Rewrote the aggregation table row and prose to include "max 2 retries" + explicit
+      escalation to the user if retries are exhausted. This converts the previously-unbounded
+      loop into a bounded structural block with defined termination conditions. Added D1 test
+      (replacing the trivial "file exists" check) that verifies retry cap + escalation keywords
+      are present — D1 now fails RED if either the retry cap or escalation clause is removed.
+
+  - original_section: assumptions_made
+    original_description: >
+      assumptions_made[2]: cross-task structural equivalence assumption was verified: false +
+      deferred_to_feature_iteration: false + no resolved_items — a scar integrity contradiction
+      (claimed in-scope but not fixed, not resolved, not genuinely deferred).
+    resolution: >
+      Assumption is now verified: true via main-agent yin review that explicitly compared
+      implement/SKILL.md and iteration/SKILL.md aggregation sections, identified drift, and
+      inline-fixed iteration/SKILL.md to match implement's canonical form. The verification
+      evidence is this review + the corresponding inline edits recorded in the two resolved
+      items above.
+
+  # --- D1 test quality fix (Round 2) ---
+
+  - original_section: known_shortcuts
+    original_description: >
+      iteration-wiring.sh D1 was a trivial file-existence check — it would pass both before
+      and after any wiring change, providing no RED→GREEN signal. Death test in name only.
+    resolution: >
+      Rewrote D1 as a genuine death test: now checks that missing-reviewer re-dispatch has
+      BOTH a bounded retry cap AND an escalation path present in SKILL.md. D1 would fail RED
+      if either component were missing (the exact silent failure mode flagged by the main-agent
+      review). Also added T8 to guard the new Red Flags Never entries. Test suite grew from
+      11 to 12 tests; all 12 pass GREEN after inline fixes.

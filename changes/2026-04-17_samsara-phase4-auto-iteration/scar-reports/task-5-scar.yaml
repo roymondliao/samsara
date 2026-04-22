@@ -1,0 +1,14 @@
+task_id: task-5
+completion_status: done
+
+known_shortcuts: []
+
+silent_failure_conditions: []
+
+assumptions_made:
+  - assumption: "YAML format is sufficient to express all iteration states including interrupted and partial rounds"
+    verified: true
+    note: "Schema includes decision: interrupted and notes that round data may be partial"
+
+debt_registered: false
+debt_location: null
