@@ -1,0 +1,19 @@
+task_id: task-2
+completion_status: done
+
+known_shortcuts:
+  - description: "fast-track flow does not go through security-privacy-review — it has its own simplified ship path. This is by design (user specified: only paths to validate-and-ship need the gate), but means fast-track changes bypass security review."
+
+silent_failure_conditions:
+  - description: "If a new skill is added in the future that transitions directly to validate-and-ship without going through security-privacy-review, the gate will be silently bypassed for that path. No automated check enforces the routing invariant."
+
+assumptions_made:
+  - assumption: "Only implement (option B) and iteration had direct edges to validate-and-ship"
+    verified: true
+    note: "Grep confirmed — no other skills invoke samsara:validate-and-ship except security-privacy-review itself"
+  - assumption: "fast-track does not need security-privacy-review gate"
+    verified: true
+    note: "User confirmed fast-track has its own flow — routing principle was 'paths to validate-and-ship'"
+
+debt_registered: true
+debt_location: "skills/samsara-bootstrap/SKILL.md — no automated routing invariant enforcement"

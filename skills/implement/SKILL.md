@@ -43,7 +43,7 @@ digraph implement {
     more [label="還有 task？" shape=diamond];
     commit [label="主 agent: Commit\n（全部 task 完成後）"];
     gate [label="使用者確認？" shape=diamond];
-    next [label="invoke samsara:validate-and-ship" shape=doublecircle];
+    next [label="invoke samsara:security-privacy-review\nor samsara:iteration" shape=doublecircle];
 
     start -> mode;
     mode -> step0 [label="A/B: dispatch\n(paste full text)" lhead=cluster_implementer];
@@ -198,7 +198,7 @@ Then ask:
 > 「Implementation 完成。N 個 tasks 已執行，共 M 個 scar report items（Level 1 self-iteration 已處理 R 個，剩餘 K 個 feature-level items）。
 >
 > (A) 進入 Iteration — 審視 feature-level scar items（cross-task patterns, system-level rot）
-> (B) Skip — 直接進入 Validation（剩餘 items 由 validate-and-ship 的 failure budget review 處理）」
+> (B) Skip — 直接進入 Security & Privacy Review（剩餘 items 由 validate-and-ship 的 failure budget review 處理）」
 
 - 使用者選 A → invoke `samsara:iteration`
-- 使用者選 B → invoke `samsara:validate-and-ship`（向後兼容，等同原本流程）
+- 使用者選 B → invoke `samsara:security-privacy-review`

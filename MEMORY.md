@@ -55,6 +55,8 @@ samsara/
 │   │   ├── SKILL.md
 │   │   └── templates/
 │   │       └── iteration-log.yaml      # iteration log 模板
+│   ├── security-privacy-review/        # Step 4.75: Security & Privacy Review Gate
+│   │   └── SKILL.md
 │   ├── validate-and-ship/              # Step 5 + 6: Validation + Ship
 │   │   ├── SKILL.md
 │   │   ├── ship-manifest.md            # 支援文件
@@ -115,19 +117,6 @@ samsara/
 | bootstrap update | done | Added codebase-map to skill list (8 total) |
 | version bump | done | 0.2.0 → 0.3.0 |
 
-### Continuous Learning — External (not samsara-owned)
-
-Continuous-learning is **shared infrastructure at kaleidoscope-tools root**, NOT
-a samsara component. Knowledge belongs to the project, not the tool.
-
-Location: `hooks/`, `agents/learnings-observer.md`, `skills/recall-learnings/`,
-`skills/review-learnings/`, `scripts/`, `tests/` — all at repo root.
-
-This session discovered **ISSUE-001** (planning template allows File Map to
-contradict Key Decisions) as a samsara framework bug. See `samsara/issue.md`.
-
-Design docs: `changes/2026-04-15_continuous-learning/`
-
 ### Phase 4: Auto Iteration (Dual-Level) — DONE (2026-04-19)
 
 雙層 iteration 機制，讓 scar report 從靜態文件變成 resolution pipeline。
@@ -152,9 +141,17 @@ Design docs: `changes/2026-04-15_continuous-learning/`
 | bootstrap routing update | done | skills/samsara-bootstrap/SKILL.md |
 | version bump | done | 0.5.1 → 0.6.0 |
 
-### Phase 5: Security & Privacy Review — NOT STARTED
+### Phase 5: Security & Privacy Review — DONE (2026-04-22)
 
-> 使用 coding agent 本身 build-in 的 security & privacy review 功能來檢查代碼和配置，不額外實作或是引入新工具，因為這非 Samsara 的本質。
+獨立 chain skill `samsara:security-privacy-review`，位於 implement/iteration 之後、validate-and-ship 之前。Platform-agnostic — 使用平台內建 security & privacy review 能力，不自建工具。Human gate on issues + inline fix loop (max 3 rounds)。
+
+| Component | Status | Files |
+|-----------|--------|-------|
+| security-privacy-review skill | done | skills/security-privacy-review/SKILL.md |
+| bootstrap routing update | done | skills/samsara-bootstrap/SKILL.md |
+| implement transition update | done | skills/implement/SKILL.md |
+| iteration transition update | done | skills/iteration/SKILL.md |
+| version bump | done | 0.6.1 → 0.7.0 |
 
 ### Phase 6: Execution Model Scope — NOT STARTED
 

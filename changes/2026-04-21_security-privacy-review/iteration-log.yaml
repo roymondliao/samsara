@@ -1,0 +1,35 @@
+feature: "security-privacy-review-gate"
+signal_lost_initial: 7
+
+rounds:
+  - round: 1
+    signal_lost_before: 7
+    items_triaged: 7
+    triage_result:
+      fix: []
+      accept:
+        - description: "File coverage reporting is instructional but not enforced — agent can skip without detection"
+          expiry_date: "2026-10-22"
+          rationale: "Enforcement requires structured output schema — re-evaluate after 10 real usages"
+        - description: "No automated check enforces routing invariant — new skills could bypass security gate"
+          expiry_date: "2026-10-22"
+          rationale: "Routing lint overhead too high for ~10 skills — re-evaluate if skill count exceeds 15"
+        - description: "Platform capability detection relies on agent self-assessment"
+          expiry_date: "2026-10-22"
+          rationale: "Runtime property, skill already makes degradation visible via human gate"
+        - description: "No fallback checklist when platform has no security review capability"
+          expiry_date: "2026-10-22"
+          rationale: "Target platforms should all have built-in capability. Handle no-capability case later if observed."
+        - description: "Inline fix + commit during fix loop may affect validate-and-ship expectations — unverified"
+          expiry_date: "2026-07-22"
+          rationale: "validate-and-ship reads scar-reports/ and index.yaml, not raw diff. Fix commits are part of branch naturally."
+        - description: "Max 3 rounds safety valve is arbitrary — unverified"
+          expiry_date: "2026-07-22"
+          rationale: "Matches iteration skill's safety valve. Adjust based on real usage."
+      defer:
+        - "fast-track bypasses security-privacy-review — by design, but changes reach repo without security gate"
+    fixes_applied: 0
+    fixes_scar_count: 0
+    signal_lost_after: 7
+    decision: stop
+    decision_reason: "user chose to stop — all items accepted or deferred, no fix items"

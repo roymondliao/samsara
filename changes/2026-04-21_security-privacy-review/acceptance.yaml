@@ -1,0 +1,82 @@
+feature: security-privacy-review-gate
+coverage_type: verified
+
+scenarios:
+  # --- Death paths first ---
+  - name: "Silent failure - review tool silently skips file types"
+    type: death_path
+    given: "feature branch with changes in .sh, .yaml, and .ts files"
+    when: "security-privacy-review runs"
+    then:
+      - "skill must report which file types / files were included in the review"
+      - "if a file type was not reviewed, it must be explicitly flagged, not silently omitted"
+
+  - name: "Silent failure - empty diff treated as pass"
+    type: death_path
+    given: "security-privacy-review invoked but git diff against base branch returns empty"
+    when: "skill computes the diff"
+    then:
+      - "skill must flag empty diff as unusual state"
+      - "must NOT silently report pass on an empty diff"
+      - "present to human: 'diff 為空，是否預期？(A) 繼續 (B) 停止檢查'"
+
+  - name: "Silent failure - platform has no security review capability"
+    type: death_path
+    given: "coding agent platform does not have built-in security review"
+    when: "skill attempts to invoke platform security review"
+    then:
+      - "skill must detect the absence and make degradation visible"
+      - "must NOT silently skip the entire review step"
+      - "present to human: '當前平台無內建 security review 能力。(A) 手動確認後繼續 (B) 停止'"
+
+  - name: "Silent failure - partial or timed-out review treated as pass"
+    type: death_path
+    given: "security review tool returns incomplete results or times out"
+    when: "skill receives review results"
+    then:
+      - "result state must be unknown, never pass"
+      - "present to human with explicit unknown state and options"
+
+  - name: "Silent failure - fix loop produces new vulnerabilities"
+    type: death_path
+    given: "inline fix for a security issue"
+    when: "re-run security review after fix"
+    then:
+      - "re-review must cover the FULL diff (not just the fix delta)"
+      - "new issues introduced by the fix must be caught"
+
+  # --- Degradation paths ---
+  - name: "Degradation - fix loop exceeds max rounds"
+    type: degradation
+    given: "3 rounds of fix + re-review completed, issues remain"
+    when: "round 3 completes with remaining issues"
+    then:
+      - "skill must stop automatic fix loop"
+      - "present remaining issues to human with explicit accept-risk option"
+      - "if human accepts, risk acceptance must carry forward to validate-and-ship"
+
+  # --- Happy paths with evidence ---
+  - name: "Success - no issues found"
+    type: happy_path
+    given: "feature branch with committed changes"
+    when: "security-privacy-review completes"
+    then:
+      - "skill reports pass with summary of what was reviewed"
+      - "transition to validate-and-ship"
+
+  - name: "Success - issues found, fixed, re-review passes"
+    type: happy_path
+    given: "security review finds issues"
+    when: "human confirms fixes, inline fix applied, re-review passes"
+    then:
+      - "each fix is committed"
+      - "final re-review covers full diff including fixes"
+      - "transition to validate-and-ship after pass"
+
+  - name: "Success - unknown state handled by human"
+    type: happy_path
+    given: "security review returns unknown state"
+    when: "human chooses to manually confirm and continue"
+    then:
+      - "human's manual confirmation is recorded"
+      - "transition to validate-and-ship proceeds"

@@ -1,0 +1,24 @@
+feature: security-privacy-review-gate
+status: done
+
+tasks:
+  - id: task-1
+    title: "Create security-privacy-review SKILL.md"
+    status: done_with_concerns
+    scar_count: 5
+    unresolved_assumptions: 2
+    depends_on: []
+
+  - id: task-2
+    title: "Update routing — bootstrap, implement, iteration transitions"
+    status: done
+    scar_count: 3
+    unresolved_assumptions: 0
+    depends_on: []
+
+  - id: task-3
+    title: "Version bump + MEMORY.md update"
+    status: done
+    scar_count: 0
+    unresolved_assumptions: 0
+    depends_on: [task-1, task-2]

@@ -1,0 +1,41 @@
+delivered_capability: "Independent chain skill `samsara:security-privacy-review` — platform-agnostic security & privacy review gate between implement/iteration and validate-and-ship, with human gate + inline fix loop"
+
+known_failure_modes:
+  - mode: "Agent skips file coverage reporting (instructional but not enforced)"
+    severity: silent_corruption
+    detection: "Human notices review summary lacks file list — no automated detection"
+  - mode: "Future skill added with direct transition to validate-and-ship bypasses security gate"
+    severity: silent_corruption
+    detection: "Manual audit of bootstrap routing graph when adding new skills"
+  - mode: "Platform has no security review capability and human confirms without actually reviewing"
+    severity: degradation
+    detection: "accept_risk carry-forward to validate-and-ship — ship manifest records the skip"
+
+accepted_risks:
+  - risk: "File coverage reporting is instructional, not enforced"
+    accepted_by: "human"
+    expires: "2026-10-22"
+  - risk: "No automated routing invariant enforcement"
+    accepted_by: "human"
+    expires: "2026-10-22"
+  - risk: "Platform capability detection relies on agent self-assessment"
+    accepted_by: "human"
+    expires: "2026-10-22"
+  - risk: "No fallback checklist when platform has no security review capability"
+    accepted_by: "human"
+    expires: "2026-10-22"
+  - risk: "Inline fix + commit during fix loop interference with validate-and-ship — unverified"
+    accepted_by: "human"
+    expires: "2026-07-22"
+  - risk: "Max 3 rounds safety valve is arbitrary"
+    accepted_by: "human"
+    expires: "2026-07-22"
+
+silent_failure_surface: medium
+# 3 known silent failure paths: file coverage skip, routing bypass, human rubber-stamp on no-capability
+
+monitoring_hooks:
+  - "Iteration-log expiry dates (2026-07-22 and 2026-10-22) — re-evaluate accepted risks on those dates"
+  - "When adding new skills to samsara, verify routing graph still routes through security-privacy-review"
+
+kill_switch: "Remove `security-privacy-review` from bootstrap routing graph and revert implement/iteration transitions to point directly at validate-and-ship (3 file edits)"

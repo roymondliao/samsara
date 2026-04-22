@@ -29,7 +29,7 @@ digraph iteration {
     safety [label="Safety valve check\n(advisory)" shape=diamond];
     gate [label="Human gate\n繼續？停止？\n(safety warnings shown)" shape=diamond];
     log [label="寫 iteration-log.yaml"];
-    exit [label="Exit → validate-and-ship" shape=doublecircle];
+    exit [label="Exit → security-privacy-review" shape=doublecircle];
 
     entry -> empty;
     empty -> triage [label="yes"];
@@ -189,6 +189,6 @@ Write `iteration-log.yaml` to the feature's `changes/` directory. Use template `
 
 Iteration complete (by human choice, all items processed, or safety valve). Then:
 
-> 「Iteration 完成。R 輪執行，signal_lost: N₀ → N_final。K items fixed, J items accepted, D items deferred。進入 Validation。」
+> 「Iteration 完成。R 輪執行，signal_lost: N₀ → N_final。K items fixed, J items accepted, D items deferred。進入 Security & Privacy Review。」
 
-Invoke `samsara:validate-and-ship` skill.
+Invoke `samsara:security-privacy-review` skill.

@@ -1,0 +1,14 @@
+task_id: task-3
+completion_status: done
+
+known_shortcuts: []
+
+silent_failure_conditions: []
+
+assumptions_made:
+  - assumption: "0.7.0 is the correct next version (no unreleased changes between 0.6.1 and now)"
+    verified: true
+    note: "git log shows 0.6.1 was the latest version bump commit"
+
+debt_registered: false
+debt_location: null

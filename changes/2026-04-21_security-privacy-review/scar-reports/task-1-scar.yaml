@@ -1,0 +1,23 @@
+task_id: task-1
+completion_status: done_with_concerns
+
+known_shortcuts:
+  - description: "Platform capability detection is left to the executing agent's judgment — no programmatic check defined. Agent must self-report 'no capability' which relies on honest self-assessment."
+
+silent_failure_conditions:
+  - description: "'Report which files were included in the review' is instructional but not enforced — agent can skip this without the skill detecting omission"
+  - description: "The skill says 'use platform built-in capability' but does not define a fallback review checklist for when no platform tool exists and human chooses manual confirm. Human may confirm without actually reviewing."
+
+assumptions_made:
+  - assumption: "git diff <base-branch>...HEAD correctly captures all committed changes from implement/iteration"
+    verified: true
+    note: "This is standard git three-dot diff semantics — verified by git documentation"
+  - assumption: "Inline fix + commit during fix loop does not interfere with validate-and-ship's diff expectations"
+    verified: false
+    note: "validate-and-ship reads scar-reports/ and index.yaml, not raw diff. Fix commits become part of the branch. Should be safe but unverified."
+  - assumption: "Max 3 rounds is a reasonable safety valve"
+    verified: false
+    note: "Arbitrary choice. If real-world usage shows 3 is too few (complex security fixes) or too many (wasting time), needs adjustment."
+
+debt_registered: true
+debt_location: "skills/security-privacy-review/SKILL.md — file coverage reporting, manual confirm fallback"
