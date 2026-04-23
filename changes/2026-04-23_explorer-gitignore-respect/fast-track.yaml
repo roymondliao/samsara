@@ -1,0 +1,25 @@
+type: fast_track
+description: "Add git ls-files as primary file discovery method in structure-explorer and infra-explorer agents to respect .gitignore"
+death_clause: "If agent in a git repo still scans .git/ or .venv/ files during codebase-map exploration, this change is failed"
+acceptance:
+  - "Both agent definitions instruct using git ls-files -co --exclude-standard as primary file discovery"
+  - "Fallback guidance provided for non-git repos using find with standard exclusions"
+  - "yin-explorer unaffected (does not do file discovery)"
+scar_tag: none
+scar_items: []
+files_changed:
+  - agents/structure-explorer.md
+  - agents/infra-explorer.md
+quality_checklist:
+  - criterion: "C5 Reuse"
+    checked: true
+    note: "Guidance text is identical in both agents — necessary duplication since agents are independently dispatched and share no context"
+  - criterion: "C6 Clear Structure"
+    checked: true
+    note: "Placed as Step 0 in Exploration Process — first thing agent does before any analysis, correct position"
+  - criterion: "C7 Elegant Logic"
+    checked: true
+    note: "Single git ls-files command with one conditional fallback. No unnecessary abstraction"
+  - criterion: "C8 No Redundancy"
+    checked: true
+    note: "No new source of truth created — leverages project's existing .gitignore as the authority"
