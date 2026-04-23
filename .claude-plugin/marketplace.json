@@ -1,0 +1,28 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "samsara-marketplace",
+  "metadata": {
+    "version": "0.7.0",
+    "description": "向死而驗 — Death-first development workflow. Existential accountability for every line of code."
+  },
+  "owner": {
+    "name": "Roymond Liao",
+    "email": "roymond20@gmail.com"
+  },
+  "plugins": [
+    {
+      "name": "samsara",
+      "description": "向死而驗 — Death-first development workflow. Existential accountability for every line of code.",
+      "source": "./",
+      "category": "development",
+      "author": {
+        "name": "Roymond Liao"
+      },
+      "homepage": "https://github.com/roymondliao/samsara",
+      "repository": "https://github.com/roymondliao/samsara",
+      "keywords": ["workflow", "harness", "death-first", "samsara"],
+      "tags": ["skills", "agents", "hooks"],
+      "strict": false
+    }
+  ]
+}
