@@ -1,0 +1,42 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uv sync:*)",
+      "Bash(uv run pytest:*)",
+      "Read",
+      "Write",
+      "Edit",
+      "TaskList",
+      "TaskUpdate",
+      "WebFetch",
+      "WebSearch",
+      "Bash(mkdir -p:*)",
+      "Bash(git:*)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(~/.aws/**)",
+      "Bash(rm:*)",
+      "Bash(rm -rf:*)",
+      "Bash(unlink:*)",
+      "Bash(rmdir:*)",
+      "Bash(chmod:*)",
+      "Bash(chown:*)",
+      "Bash(chgrp:*)",
+      "Bash(del:*)",
+      "Bash(erase:*)",
+      "Bash(rmdir /s:*)",
+      "Bash(icacls:*)",
+      "Bash(takeown:*)"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledPlugins": {
+    "claude-mem@thedotmack": false,
+    "superpowers@claude-plugins-official": true,
+    "feature-dev@claude-plugins-official": true,
+    "code-simplifier@claude-plugins-official": true
+  },
+  "outputStyle": "Explanatory"
+}

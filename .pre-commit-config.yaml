@@ -1,0 +1,48 @@
+default_language_version:
+    python: python3.14
+
+exclude: |
+  (?x)(
+    .*uv.lock |
+    .*_static |
+    .*ipynb |
+    ^data/
+  )
+
+repos:
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v6.0.0
+  hooks:
+    - id: check-yaml
+    - id: end-of-file-fixer
+    - id: trailing-whitespace
+    - id: detect-aws-credentials
+    - id: detect-private-key
+    - id: name-tests-test
+    - id: check-merge-conflict
+    - id: check-added-large-files
+      args: ['--maxkb=50000']
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  rev: v0.15.5
+  hooks:
+    - id: ruff-check
+      args: [ --fix ]
+    - id: ruff-format
+- repo: https://github.com/pre-commit/mirrors-mypy
+  rev: v1.15.0
+  hooks:
+    - id: mypy
+      args:
+        - --namespace-packages
+        - --explicit-package-bases
+        - --disallow-untyped-defs
+        - --ignore-missing-imports
+      additional_dependencies:
+        - pydantic>=2.12.5
+        - wandb
+        - types-PyYAML
+        - PyYAML
+- repo: https://github.com/pappasam/toml-sort
+  rev: v0.24.2
+  hooks:
+    - id: toml-sort-fix
