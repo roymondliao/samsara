@@ -47,7 +47,7 @@ of the file(s) under review.
 
 1. Do NOT fallback to your memory of the principles.
 2. Do NOT fallback to generic code review heuristics.
-3. Do NOT fallback to `samsara/references/code-quality.md`.
+3. Do NOT fallback to `references/code-quality.md`.
 4. Do NOT produce a PASS or FAIL verdict.
 5. Return immediately with:
 
@@ -55,7 +55,7 @@ of the file(s) under review.
 ## Code Quality Review — UNKNOWN
 
 Status: UNKNOWN
-Reason: no reference file for execution model: {domain} — samsara/references/{domain}-quality.md could not be read.
+Reason: no reference file for execution model: {domain} — references/{domain}-quality.md could not be read.
 Action required: verify reference file exists at the expected path before re-dispatching.
 ```
 
@@ -71,11 +71,11 @@ Determine the execution model of the file(s) under review. This step MUST run be
 
 Read the file and identify which domain it belongs to. Known domains and their reference files:
 
-- `code` → `samsara/references/code-quality.md` — imperative/OOP code (Python, TypeScript, Go, Rust, Java, etc.)
-- `iac` → `samsara/references/iac-quality.md` — declarative infrastructure (Terraform, OpenTofu)
-- `container` → `samsara/references/container-quality.md` — container definitions (Dockerfile, Containerfile)
-- `pipeline` → `samsara/references/pipeline-quality.md` — CI/CD pipelines (GitHub Actions, Jenkins, GitLab CI, Airflow)
-- `orchestration` → `samsara/references/orchestration-quality.md` — orchestration manifests (Kubernetes, Helm)
+- `code` → `references/code-quality.md` — imperative/OOP code (Python, TypeScript, Go, Rust, Java, etc.)
+- `iac` → `references/iac-quality.md` — declarative infrastructure (Terraform, OpenTofu)
+- `container` → `references/container-quality.md` — container definitions (Dockerfile, Containerfile)
+- `pipeline` → `references/pipeline-quality.md` — CI/CD pipelines (GitHub Actions, Jenkins, GitLab CI, Airflow)
+- `orchestration` → `references/orchestration-quality.md` — orchestration manifests (Kubernetes, Helm)
 
 If the file does not belong to any known domain, or you cannot confidently determine its execution model, set domain = UNKNOWN.
 
@@ -98,17 +98,17 @@ Attempt to read the reference file. If the read fails for any reason (not found,
 ## Code Quality Review — UNKNOWN
 
 Status: UNKNOWN
-Reason: no reference file for execution model: {domain} — samsara/references/{domain}-quality.md could not be read.
+Reason: no reference file for execution model: {domain} — references/{domain}-quality.md could not be read.
 Action required: verify reference file exists at the expected path before re-dispatching.
 ```
-Do NOT fall back to `samsara/references/code-quality.md`. Do NOT proceed to Step 1.
+Do NOT fall back to `references/code-quality.md`. Do NOT proceed to Step 1.
 
 **Case 3 — Domain determined and reference file readable:**
 Proceed to Step 1 with the reference file.
 
 ### Step 1: Read the reference (mandatory — do not skip)
 
-Read the reference file identified in Step 0: `samsara/references/{domain}-quality.md`.
+Read the reference file identified in Step 0: `references/{domain}-quality.md`.
 
 You MUST do this before producing any verdict. Do not proceed to Step 2 if the
 read fails — return UNKNOWN immediately (see Step 0 Case 2 above).
@@ -202,7 +202,7 @@ When citing concerns, include the relevant outcome criteria name (e.g., `C6 Clea
 
 ### Reference
 - Domain: [code / iac / container / pipeline / orchestration / UNKNOWN]
-- Read: samsara/references/{domain}-quality.md [confirm: yes / UNAVAILABLE]
+- Read: references/{domain}-quality.md [confirm: yes / UNAVAILABLE]
 - Applicability: [all 9 principles applicable / N principles excluded: list them]
 
 ### Principle Verdicts

@@ -30,11 +30,11 @@ Apply these as the judgment standard across every review step:
 
 Determine the execution model of the file under review. Known domains and their reference files:
 
-- `code` → `samsara/references/code-review.md` — imperative/OOP code (Python, TypeScript, Go, Rust, Java, etc.)
-- `iac` → `samsara/references/iac-review.md` — declarative infrastructure (Terraform, OpenTofu)
-- `container` → `samsara/references/container-review.md` — container definitions (Dockerfile, Containerfile)
-- `pipeline` → `samsara/references/pipeline-review.md` — CI/CD pipelines (GitHub Actions, Jenkins, GitLab CI, Airflow)
-- `orchestration` → `samsara/references/orchestration-review.md` — orchestration manifests (Kubernetes, Helm)
+- `code` → `references/code-review.md` — imperative/OOP code (Python, TypeScript, Go, Rust, Java, etc.)
+- `iac` → `references/iac-review.md` — declarative infrastructure (Terraform, OpenTofu)
+- `container` → `references/container-review.md` — container definitions (Dockerfile, Containerfile)
+- `pipeline` → `references/pipeline-review.md` — CI/CD pipelines (GitHub Actions, Jenkins, GitLab CI, Airflow)
+- `orchestration` → `references/orchestration-review.md` — orchestration manifests (Kubernetes, Helm)
 
 If the file does not belong to any known domain, or you cannot confidently determine its execution model, set domain = UNKNOWN.
 
@@ -57,7 +57,7 @@ Return immediately with:
 
 Status: UNKNOWN
 Reason: no reference file for execution model: {domain}
-Action required: create samsara/references/{domain}-review.md before dispatching {domain} files to this agent.
+Action required: create references/{domain}-review.md before dispatching {domain} files to this agent.
 ```
 
 **Outcome C — Domain determined and reference file exists:**
@@ -153,7 +153,7 @@ what to look for in this domain (logic errors, off-by-one, race conditions, secu
 ### Domain
 - File: [filename]
 - Domain: [domain detected by router]
-- Reference: samsara/references/[domain]-review.md [confirm: read / UNAVAILABLE]
+- Reference: references/[domain]-review.md [confirm: read / UNAVAILABLE]
 
 ### Critical Issues
 - **[file:line]** <description>

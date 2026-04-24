@@ -63,6 +63,15 @@ rather than scoring it here.
 "I — Ghost Promises" and "DRY — Duplication Is a Lie Splitting". Both appear in this
 file with explicit rationale. All other 7 principles apply and must be reviewed.
 
+**Coverage transfer:** The concerns that I and DRY would catch are not lost — they are
+covered by other applicable principles:
+- **I → L + D**: Interface contract violations in IaC manifest as silent breach across
+  module versions (L) or abstraction that swallows signals (D). See the L and D sections.
+- **DRY → S + Cohesion**: Intra-environment resource duplication surfaces as multiple
+  death-reasons per module (S) or elements without shared lifecycle (Cohesion). Note:
+  cross-environment duplication (dev/staging/prod) is intentional in IaC and is NOT a
+  DRY violation.
+
 The structured representation below is equivalent to the prose above and is provided
 for machine-readable extraction. Both say the same thing: two principles are excluded.
 
