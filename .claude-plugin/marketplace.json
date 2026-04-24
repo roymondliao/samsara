@@ -2,7 +2,7 @@
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "samsara-marketplace",
   "metadata": {
-    "version": "0.7.0",
+    "version": "0.8.0",
     "description": "向死而驗 — Death-first development workflow. Existential accountability for every line of code."
   },
   "owner": {
