@@ -39,9 +39,9 @@ Do not score them. Do not classify them as Critical/Important/Suggestion under y
 
 **This agent's criteria come exclusively from the reference file. Do not use memory.**
 
-Before starting any review, run Step 0 (router) to determine which reference file
-to read. The reference file path is NOT hardcoded — it is determined by the file
-extension, directory path, or content of the file(s) under review.
+Before starting any review, run Step 0 to determine which reference file to read.
+The reference file path is NOT hardcoded — it is determined by the execution model
+of the file(s) under review.
 
 **If the reference file is unavailable (path not found, permission error, empty file, or any read failure):**
 
@@ -67,70 +67,33 @@ The UNKNOWN-on-unreadable-reference rule is a hard stop, not a fallback. The rev
 
 ### Step 0: Determine execution model (mandatory — run before any other step)
 
-Identify the domain of the file(s) under review using two passes. The domain
-determines which reference file to load. This step MUST run before Step 1.
+Determine the execution model of the file(s) under review. This step MUST run before Step 1.
 
-#### Pass 1: Extension + directory (deterministic)
+Read the file and identify which domain it belongs to. Known domains and their reference files:
 
-Inspect the file path and extension. Match against the table below. The first
-match wins.
+- `code` → `samsara/references/code-quality.md` — imperative/OOP code (Python, TypeScript, Go, Rust, Java, etc.)
+- `iac` → `samsara/references/iac-quality.md` — declarative infrastructure (Terraform, OpenTofu)
+- `container` → `samsara/references/container-quality.md` — container definitions (Dockerfile, Containerfile)
+- `pipeline` → `samsara/references/pipeline-quality.md` — CI/CD pipelines (GitHub Actions, Jenkins, GitLab CI, Airflow)
+- `orchestration` → `samsara/references/orchestration-quality.md` — orchestration manifests (Kubernetes, Helm)
 
-| File pattern | Domain |
-|---|---|
-| `.py`, `.ts`, `.tsx`, `.js`, `.jsx`, `.go`, `.rs`, `.java`, `.rb`, `.c`, `.cpp`, `.cs`, `.kt`, `.swift` | `code` |
-| `.tf`, `.tf.json`, `.tfvars`, `.tofu` | `iac` |
-| `Dockerfile`, `*.dockerfile`, `Containerfile` | `container` |
-| path contains `.github/workflows/` AND file ends with `.yml` or `.yaml`; OR filename is `Jenkinsfile`; OR filename is `.gitlab-ci.yml` | `pipeline` |
-| `k8s/**/*.yaml`, `helm/**/*.yaml`, `charts/**/*.yaml` | `orchestration` |
-| All other files | → proceed to Pass 2 |
+If the file does not belong to any known domain, or you cannot confidently determine its execution model, set domain = UNKNOWN.
 
-If Pass 1 matches: skip Pass 2. Domain is determined.
+#### Step 0 outcomes — three cases, each with a hard stop
 
-#### Pass 2: Content heuristic (first ~20 lines only)
-
-Read the first ~20 lines of the file using `Read` with `limit: 20` (not a full
-file read). Match against the table below.
-
-**If the file appears to have a long header block** (license text, copyright
-notice, or extensive comments before any code), extend the scan to the first
-~40 lines before concluding no match. Do not extend beyond 40 lines — patterns
-appearing after line 40 are not reliable domain signals.
-
-| Keyword patterns present | Domain |
-|---|---|
-| Any of: `resource "`, `data "`, `variable "`, `terraform {`, `provider "` | `iac` |
-| Any of: `FROM `, `RUN `, `COPY `, `ENTRYPOINT`, `CMD [` | `container` |
-| Any of: `apiVersion:`, `kind: Deployment`, `kind: Service`, `kind: ConfigMap` | `orchestration` |
-| All three of: `on:` AND `jobs:` AND `steps:` | `pipeline` |
-| Any of: `dag = DAG(`, `@task`, `with DAG(`, `@dag` | `pipeline` (Airflow) |
-| No match | → UNKNOWN |
-
-**Important disambiguation for IaC patterns:** The pattern is `resource "` (with
-the opening double-quote). This prevents misclassifying YAML keys like `Resources:`
-(CloudFormation) or `resource:` (plain YAML) as IaC. Only the Terraform HCL syntax
-`resource "` followed by a quote triggers the IaC match.
-
-Negative examples that must NOT match IaC:
-- `Resources:` → CloudFormation YAML key (no quote after `resource`)
-- `resource:` → plain YAML key (colon, not quote; different capitalization)
-- `resources:` → Kubernetes YAML section (lowercase, colon, no quote)
-
-#### Step 0 failure modes — three cases, each with a hard stop
-
-**Case 1 — Domain = UNKNOWN (both passes failed):**
+**Case 1 — Domain = UNKNOWN:**
 Return immediately with:
 ```
 ## Code Quality Review — UNKNOWN
 
 Status: UNKNOWN
-Reason: unable to determine execution model for this file — extension not recognized and content inspection found no matching patterns.
+Reason: unable to determine execution model for this file.
 Action required: ensure the file path and content are correct, or add domain routing for this file type.
 ```
 Do NOT proceed to Step 1. Do NOT attempt to apply any principles.
 
 **Case 2 — Domain determined but reference file unreadable:**
-Construct the reference file path: `samsara/references/{domain}-quality.md`
-Attempt to read it. If the read fails for any reason (not found, permission error, empty):
+Attempt to read the reference file. If the read fails for any reason (not found, permission error, empty):
 ```
 ## Code Quality Review — UNKNOWN
 
@@ -141,7 +104,7 @@ Action required: verify reference file exists at the expected path before re-dis
 Do NOT fall back to `samsara/references/code-quality.md`. Do NOT proceed to Step 1.
 
 **Case 3 — Domain determined and reference file readable:**
-Proceed to Step 1 with the path `samsara/references/{domain}-quality.md`.
+Proceed to Step 1 with the reference file.
 
 ### Step 1: Read the reference (mandatory — do not skip)
 
