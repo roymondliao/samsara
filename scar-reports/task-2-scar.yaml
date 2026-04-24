@@ -1,0 +1,203 @@
+task_id: task-2
+completion_status: done_with_concerns
+
+known_shortcuts:
+  - description: >
+      Koans were written from theoretical Terraform patterns and general IaC domain
+      knowledge, not from reviewing real production Terraform codebases. The violation
+      shapes may not match the actual forms violations take in practice. For example,
+      the "SSM shadow dependency" Coupling koan describes a clear anti-pattern, but
+      the actual discovery mechanism (how does a reviewer spot an undeclared SSM
+      dependency in a plan diff?) is left to the reviewer's inference. A koan written
+      from a real code review would describe the exact artifact — the variable, the
+      data source, the assume-role pattern — that signals the violation.
+    deferred_to_feature_iteration: true
+
+  - description: >
+      The DRY exclusion boundary condition — "intra-environment duplication is a
+      genuine DRY violation" — is described in the DRY section's Why excluded prose
+      but not reinforced by a koan or judgment question. If a reviewer reads only
+      the UNKNOWN verdict instruction for DRY and misses the boundary condition prose,
+      they will not catch intra-module resource duplication that the exclusion was not
+      intended to protect. The exclusion's nuance is buried rather than surfaced.
+    deferred_to_feature_iteration: false
+
+silent_failure_conditions:
+  - description: >
+      The excluded principles (I and DRY) each have a "Produce UNKNOWN" instruction
+      embedded in their section body. If the reviewer reads only the Applicability
+      section's excluded_principles list and then skips to Step 3 without reading the
+      full principle sections, they will produce UNKNOWN correctly but without the
+      coverage transfer rationale. The rationale ("concerns covered by L and D",
+      "concerns covered by S and Cohesion") is only in the section body. Silent failure
+      mode: reviewer produces UNKNOWN correctly but callers don't know where those
+      concerns are actually reviewed, so they may not verify coverage.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      The DRY exclusion rationale explicitly acknowledges that intra-environment
+      duplication "is rare enough to catch via S and Cohesion indirectly." If a
+      reviewer never tests this claim — never verifies that an intra-module duplicated
+      resource actually triggers an S or Cohesion Concern — the coverage transfer is
+      asserted but unverified. A real case of intra-module resource duplication could
+      pass through all 7 applicable principles without a Concern if the S and Cohesion
+      framings are applied loosely.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      The "Stage prop module" koan under D — The Soundproof Wall describes a module
+      wrapping exactly one resource for exactly one use case. This koan is structurally
+      similar to the single-implementation interface in code-quality.md, where that
+      violation was explicitly noted as also visible under the I lens. In IaC, I is
+      excluded, so the D lens is the only available angle. However, the koan's phrasing
+      ("adds no parameterization and is never reused") requires the reviewer to know
+      usage context beyond the diff under review. A reviewer seeing only the module
+      definition — not its callers — cannot determine whether it is "never reused."
+      This koan may produce false UNKNOWN verdicts (insufficient context) on violations
+      that are detectable in principle.
+    deferred_to_feature_iteration: false
+
+assumptions_made:
+  - assumption: >
+      Excluding DRY entirely is the correct boundary. The DRY exclusion was premised
+      on the risk that reviewers without IaC experience would flag cross-environment
+      duplication as harmful. However, there may be intra-environment duplication
+      patterns in IaC that are genuinely harmful and not caught by S or Cohesion —
+      for example, two `aws_iam_policy_document` data sources in the same module
+      encoding the same permission set. The exclusion may be too broad.
+    verified: false
+    note: >
+      Cannot be verified without running the reviewer against real Terraform codebases
+      and checking whether S and Cohesion judgment questions actually catch
+      intra-module duplication cases that DRY would have flagged. If this assumption
+      is wrong, the reviewer silently misses intra-environment duplication that matters.
+      The DRY section's "boundary condition" prose is a partial mitigation — it
+      acknowledges the gap — but does not solve it.
+    deferred_to_feature_iteration: true
+
+  - assumption: >
+      The I principle exclusion rationale ("module outputs are not interface contracts;
+      coverage transfers to L and D") is accurate. The risk is that there exist IaC
+      scenarios where I would have caught something that neither L nor D will catch —
+      specifically, phantom outputs (outputs declared with no callers) that signal
+      architectural confusion rather than silent breach or soundproofing failure.
+    verified: false
+    note: >
+      The L and D sections were written with I's coverage in mind. L covers
+      "misleading module surfaces across versions"; D covers "abstraction that swallows
+      signals." A phantom output — one declared for a "future caller" — is genuinely
+      not caught by either. It would surface as dead configuration (no callers) rather
+      than as a principle violation. This gap is accepted: phantom outputs are a
+      cleanliness concern, not a structural truth-telling failure. If this assumption
+      is wrong, the gap means unused outputs are never flagged under any principle.
+    deferred_to_feature_iteration: false
+
+  - assumption: >
+      The 7 applicable principles produce non-overlapping concerns in the IaC domain.
+      In code-quality.md, the D principle explicitly notes overlap with I ("single-
+      implementation interface" appears under both D and I lenses). In iac-quality.md,
+      I is excluded, so the D section's "Stage prop module" koan has no secondary lens
+      to cross-reference. The assumption is that this exclusion does not create
+      confusion about which principle to apply at the D/S overlap (both describe
+      resource-without-purpose patterns).
+    verified: true
+    note: >
+      Verified by reading both S and D sections. S asks "what breaks if this
+      disappears?" (responsibility angle); D asks "does this abstraction make failures
+      harder to trace?" (visibility angle). The "Stage prop module" under D is distinct
+      from the S "Ghost structure" koan: a stage prop adds module path indirection to
+      error messages (visibility concern); a ghost resource has no dependents (death-
+      reason concern). They can co-occur but they are asking different questions.
+      The overlap is a reviewer enrichment, not a confusion.
+    deferred_to_feature_iteration: false
+
+  - assumption: >
+      The principle names in the excluded_principles list ("I — Ghost Promises" and
+      "DRY — Duplication Is a Lie Splitting") exactly match the names the
+      code-quality-reviewer agent uses in its Step 3 table. This is a naming contract
+      required by task-1-scar.yaml.
+    verified: true
+    note: >
+      Verified by reading code-quality-reviewer.md Step 3 table header and the
+      principle name format used across code-quality.md. The names match the format
+      used in the code domain reference and in task-1-scar.yaml's explicit note about
+      this naming contract. The YAML block in the Applicability section uses the exact
+      strings: "I — Ghost Promises" and "DRY — Duplication Is a Lie Splitting".
+    deferred_to_feature_iteration: false
+
+debt_registered: true
+debt_location: >
+  references/iac-quality.md DRY section (exclusion boundary condition in prose only,
+  not reinforced by a koan — risk of reviewer missing intra-module duplication gap);
+  references/iac-quality.md Cohesion/S overlap on intra-module duplication (coverage
+  transfer from DRY is asserted but untested);
+  references/iac-quality.md D section "Stage prop module" koan (requires caller
+  context not always available in a diff review)
+
+narrative: >
+  This task creates the first IaC-specific quality reference for the samsara framework.
+  The primary authoring risk was not structural — the principle framework maps clearly
+  to IaC with 7 of 9 principles applying — but epistemic: koans written from
+  theoretical patterns rather than production Terraform review experience may not
+  match the actual violation shapes reviewers encounter. The theoretical patterns chosen
+  (unpinned providers, ignore_changes without rationale, cross-module SSM dependencies,
+  multi-AZ dev environments) are canonical IaC anti-patterns, but their koan form may
+  need refinement after real reviews.
+
+  The DRY exclusion is the highest-risk decision in this reference. The rationale is
+  sound for cross-environment duplication, but the exclusion may also protect
+  intra-environment duplication that should be flagged. The "boundary condition" note
+  in the DRY section acknowledges this, but acknowledgment is not detection. The
+  assumption that S and Cohesion catch what DRY would have caught is unverified.
+
+  The I exclusion is lower-risk. The coverage transfer to L and D is well-justified,
+  and the one genuine gap (phantom outputs) is an accepted risk: phantom outputs are
+  dead configuration, not structural lying, and fall outside the principle framework's
+  concern regardless of domain.
+
+resolved_items:
+  - original_section: known_shortcuts
+    original_description: >
+      The DRY exclusion boundary condition is described in prose but not reinforced
+      by a koan or judgment question, risking reviewer missing intra-module duplication.
+    resolution: >
+      Added explicit prose in the DRY "Why excluded" section naming the boundary
+      condition and providing two concrete examples of IaC duplication that ARE genuine
+      DRY violations (intra-environment resource block duplication, divergent version
+      pins across environments). The DRY section also explicitly states that the
+      coverage transfer is to S and Cohesion, giving reviewers a redirect for
+      intra-module cases. The shortcut remains (no koan, no judgment question for
+      the boundary case) but the boundary is now named rather than implicit.
+
+  - original_section: assumptions_made
+    original_description: >
+      The principle names in excluded_principles must match the code-quality-reviewer
+      agent's Step 3 table exactly.
+    verified: true
+    resolution: >
+      Verified by cross-reading code-quality-reviewer.md and code-quality.md principle
+      name formats. The YAML block in the Applicability section uses the exact strings
+      required by task-1-scar.yaml's naming contract note.
+
+  - original_section: assumptions_made
+    original_description: >
+      S and D principle overlap at "resource without purpose" pattern — assumed
+      non-overlapping but needs verification.
+    verified: true
+    resolution: >
+      Read both S and D sections after writing. Confirmed the questions are distinct:
+      S asks about death-reason (what breaks if it disappears), D asks about visibility
+      (does it make signals harder to trace). The "Stage prop module" under D and
+      "Ghost structure" under S can co-occur but address different structural concerns.
+      No confusion produced.
+
+  - original_section: silent_failure_conditions
+    original_description: >
+      The "Stage prop module" koan under D requires knowing whether the module is
+      "never reused" — context not available from the module definition alone.
+    resolution: >
+      Rewrote the Stage prop module koan to enumerate observable signals within the
+      module definition: no variable {} blocks, hardcoded resource arguments, no
+      for_each or count. A reviewer can now identify the pattern from the module
+      file itself without needing caller context. Added "Detectable within the module
+      definition:" clause to make this explicit.

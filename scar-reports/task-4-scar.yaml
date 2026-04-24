@@ -1,0 +1,133 @@
+task_id: task-4
+completion_status: done_with_concerns
+
+known_shortcuts:
+  - description: >
+      Step 5 (Correctness) patterns for IaC are intentionally limited to Terraform-generic patterns.
+      Provider-specific semantics (AWS IAM evaluation order, GCP propagation delays, Azure resource
+      lifecycle quirks) are explicitly excluded with a note in the reference. A reviewer using this
+      file cannot catch provider-specific correctness issues — they will flag them as Important with
+      a note that "provider-level verification is required." This is a known scope reduction, not an
+      oversight.
+    deferred_to_feature_iteration: true
+
+  - description: >
+      The "Zombie security group rules" detection pattern in Step 1 assumes the reviewer can see the
+      full association graph (which resources reference the security group ID). In a diff-only review
+      (not full codebase), this is often impossible. The reference says "flag as Critical" but a
+      reviewer with partial visibility may need to downgrade to Important with a note — this nuance
+      is covered in Pattern Application Notes but not in the Step 1 section itself, creating an
+      inconsistency between the step instruction and the notes.
+    deferred_to_feature_iteration: false
+
+silent_failure_conditions:
+  - description: >
+      The severity distinction for `ignore_changes` (Critical for `all`, Important for named lists)
+      is stated in the preamble of the Step 3 section but a reviewer could miss the preamble and
+      apply only the per-bullet severity. If the preamble is skipped, `ignore_changes = all` and
+      `ignore_changes = [tags]` would both receive the Important severity from their respective
+      bullets. The structure does not enforce that the preamble is read first.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      The "Dead Outputs" pattern distinguishes child module outputs (Critical) from root module
+      outputs (Important when no consumer is visible). This requires the reviewer to know whether
+      the file is a child module or a root module — which may not be determinable from the file
+      alone. If a root module is reviewed without context, a dead output may be incorrectly
+      escalated to Critical.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      The reference file covers Terraform HCL (.tf) only. OpenTofu (.tofu) has a separate extension
+      mapped by the router, but the patterns are written assuming Terraform semantics. If OpenTofu
+      diverges from Terraform in lifecycle behavior, ignore_changes semantics, or provider constraint
+      syntax, the patterns would produce incorrect guidance silently — no flag to indicate
+      "OpenTofu-specific behavior not covered."
+    deferred_to_feature_iteration: true
+
+assumptions_made:
+  - assumption: >
+      Step 4 (Scar Report Integrity) requires no IaC-specific adaptation. The scar schema applies
+      the same way regardless of whether the reviewed file is Python, Terraform, or a Dockerfile.
+    verified: false
+    note: >
+      Carried forward from task-3-scar.yaml (assumptions_made item 2). No IaC-specific scar reports
+      exist yet to verify against. The schema's categories (known_shortcuts, silent_failure_conditions,
+      assumptions_made) map reasonably to IaC concepts (e.g., silent_failure_conditions maps to
+      state drift risks). If IaC reviews develop domain-specific scar patterns — such as "resource
+      drift" or "plan/apply divergence" — Step 4 would need domain-specific extensions. Currently
+      unverifiable without live IaC review execution.
+    deferred_to_feature_iteration: false
+
+  - assumption: >
+      The severity distinction `ignore_changes = [tags]` → Important (not Critical) is correct.
+      The rationale: named ignore_changes creates a bounded blind spot (specific attributes only),
+      while `ignore_changes = all` creates an unbounded blind spot (entire resource). Tags are
+      Important rather than Critical because tag drift is less likely to cause operational failure
+      than configuration drift — though tag drift can cause compliance failure if tags encode IAM
+      conditions or billing allocation.
+    verified: false
+    note: >
+      This is a judgment call, not a derivable fact. The task spec explicitly requires this
+      distinction (DT-3 = Important, DT-4 = Critical). Accepted as correct per spec. If the
+      samsara team later decides tag drift in compliance-sensitive environments should be Critical,
+      the Step 3 section preamble and the `ignore_changes = [tags]` bullet both need updates.
+    deferred_to_feature_iteration: false
+
+  - assumption: >
+      The `code-reviewer` agent's Reference File Protocol (hard stop on unreadable reference file,
+      no fallback to memory) applies correctly to iac-review.md. The agent will read this file
+      before applying any pattern — not skip it and use training data about Terraform.
+    verified: true
+    note: >
+      Verified by reading agents/code-reviewer.md. The Reference File Protocol section states:
+      "Do NOT fallback to your memory of review patterns" and "Do NOT fallback to generic code
+      review heuristics." The agent explicitly hard-stops on reference read failure. The file
+      existence satisfies Outcome C in the router.
+
+debt_registered: true
+debt_location: >
+  references/iac-review.md Step 1 (Zombie security group rules — Critical/Important nuance
+  inconsistency between step body and Pattern Application Notes);
+  references/iac-review.md Step 3 (ignore_changes severity preamble must be read before
+  bullets to apply correct severity — structural reading-order dependency);
+  references/iac-review.md Step 5 (provider-specific patterns explicitly excluded — scope shortcut)
+
+resolved_items:
+  - original_section: known_shortcuts
+    original_description: >
+      Zombie security group rules — Critical/Important nuance inconsistency between step body
+      and Pattern Application Notes.
+    resolution: >
+      Fixed directly in references/iac-review.md. Changed the Step 1 Zombie security group rules
+      severity statement from "Zombie security group rules are Critical." (unconditional) to:
+      "Zombie security group rules are Critical when the full association graph is visible in
+      the diff and no consumer is found. When the full graph is not visible (diff-only review,
+      module boundary), downgrade to Important and note 'Unable to verify security group
+      consumers within this diff.'" The inconsistency with Pattern Application Notes is resolved.
+
+  - original_section: silent_failure_conditions
+    original_description: >
+      The severity distinction for ignore_changes (Critical for all, Important for named lists)
+      is stated in the preamble but a reviewer could miss the preamble and apply only the
+      per-bullet severity.
+    resolution: >
+      Verified that the per-bullet severity labels are already self-contained and explicit:
+      line 178 reads "ignore_changes = all — **Critical**" and line 182 reads
+      "ignore_changes = [tags] — **Important**". The severity appears inline in each bullet,
+      not only in the preamble. The reading-order risk is mitigated — both bullets are
+      independently readable without the preamble. The preamble is now redundant safety.
+      Condition remains in scar as documentation of the design decision.
+
+  - original_section: silent_failure_conditions
+    original_description: >
+      Dead Outputs — child vs. root module ambiguity: reviewer may not know the module type
+      and could incorrectly escalate root module dead outputs to Critical.
+    resolution: >
+      Fixed directly in references/iac-review.md. Added explicit disambiguation guidance to
+      the Dead Outputs section: "How to determine module type: A root module is one called
+      directly by terraform apply — it has a terraform {} block or is the entry point. A child
+      module is called via module '<name>' { source = ... }. If you cannot determine the module
+      type from the diff, treat it as root module (apply the more lenient severity)." Also
+      updated the severity statement to add "When module type is ambiguous, classify as Important
+      and note the ambiguity." The ambiguity path now has explicit guidance.

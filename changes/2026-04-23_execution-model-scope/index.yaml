@@ -1,0 +1,31 @@
+feature: execution-model-scope
+status: pending
+
+tasks:
+  - id: task-1
+    title: "Router + Applicability mechanism for code-quality-reviewer"
+    status: done_with_concerns
+    scar_count: 9
+    unresolved_assumptions: 3
+    depends_on: []
+
+  - id: task-2
+    title: "Write references/iac-quality.md"
+    status: done_with_concerns
+    scar_count: 9
+    unresolved_assumptions: 2
+    depends_on: [task-1]
+
+  - id: task-3
+    title: "Refactor code-reviewer with reference file protocol + router"
+    status: done_with_concerns
+    scar_count: 8
+    unresolved_assumptions: 2
+    depends_on: []
+
+  - id: task-4
+    title: "Write references/iac-review.md"
+    status: done_with_concerns
+    scar_count: 8
+    unresolved_assumptions: 2
+    depends_on: [task-3]

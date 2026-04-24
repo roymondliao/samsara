@@ -48,6 +48,28 @@ scoring it here.
 
 ---
 
+## Applicability
+
+**Domain:** `code`
+
+**Excluded principles:** none — all 9 principles apply to code-domain files.
+
+The structured representation below is equivalent to the prose above and is
+provided for machine-readable extraction. Both say the same thing: no principles
+are excluded.
+
+```yaml
+domain: code
+excluded_principles: []
+```
+
+When the reviewer reaches Step 3 and checks this section, it finds an empty
+`excluded_principles` list. This means every principle in the Step 3 table is
+applicable and must be reviewed. No principle receives an automatic UNKNOWN
+verdict from this file.
+
+---
+
 ## How to use this reference
 
 When reviewing code:

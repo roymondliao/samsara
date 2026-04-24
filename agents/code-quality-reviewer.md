@@ -39,26 +39,23 @@ Do not score them. Do not classify them as Critical/Important/Suggestion under y
 
 **This agent's criteria come exclusively from the reference file. Do not use memory.**
 
-Before starting any review, read the reference file:
-
-```
-samsara/references/code-quality.md
-```
-
-This file defines the 9 yin principles, their axioms, violation shapes (koans), judgment questions, and outcome cross-references (C1-C8) that you must apply.
+Before starting any review, run Step 0 (router) to determine which reference file
+to read. The reference file path is NOT hardcoded — it is determined by the file
+extension, directory path, or content of the file(s) under review.
 
 **If the reference file is unavailable (path not found, permission error, empty file, or any read failure):**
 
 1. Do NOT fallback to your memory of the principles.
 2. Do NOT fallback to generic code review heuristics.
-3. Do NOT produce a PASS or FAIL verdict.
-4. Return immediately with:
+3. Do NOT fallback to `samsara/references/code-quality.md`.
+4. Do NOT produce a PASS or FAIL verdict.
+5. Return immediately with:
 
 ```
 ## Code Quality Review — UNKNOWN
 
 Status: UNKNOWN
-Reason: reference unavailable — samsara/references/code-quality.md could not be read.
+Reason: no reference file for execution model: {domain} — samsara/references/{domain}-quality.md could not be read.
 Action required: verify reference file exists at the expected path before re-dispatching.
 ```
 
@@ -68,11 +65,106 @@ The UNKNOWN-on-unreadable-reference rule is a hard stop, not a fallback. The rev
 
 ## Review Procedure
 
+### Step 0: Determine execution model (mandatory — run before any other step)
+
+Identify the domain of the file(s) under review using two passes. The domain
+determines which reference file to load. This step MUST run before Step 1.
+
+#### Pass 1: Extension + directory (deterministic)
+
+Inspect the file path and extension. Match against the table below. The first
+match wins.
+
+| File pattern | Domain |
+|---|---|
+| `.py`, `.ts`, `.tsx`, `.js`, `.jsx`, `.go`, `.rs`, `.java`, `.rb`, `.c`, `.cpp`, `.cs`, `.kt`, `.swift` | `code` |
+| `.tf`, `.tf.json`, `.tfvars`, `.tofu` | `iac` |
+| `Dockerfile`, `*.dockerfile`, `Containerfile` | `container` |
+| path contains `.github/workflows/` AND file ends with `.yml` or `.yaml`; OR filename is `Jenkinsfile`; OR filename is `.gitlab-ci.yml` | `pipeline` |
+| `k8s/**/*.yaml`, `helm/**/*.yaml`, `charts/**/*.yaml` | `orchestration` |
+| All other files | → proceed to Pass 2 |
+
+If Pass 1 matches: skip Pass 2. Domain is determined.
+
+#### Pass 2: Content heuristic (first ~20 lines only)
+
+Read the first ~20 lines of the file using `Read` with `limit: 20` (not a full
+file read). Match against the table below.
+
+**If the file appears to have a long header block** (license text, copyright
+notice, or extensive comments before any code), extend the scan to the first
+~40 lines before concluding no match. Do not extend beyond 40 lines — patterns
+appearing after line 40 are not reliable domain signals.
+
+| Keyword patterns present | Domain |
+|---|---|
+| Any of: `resource "`, `data "`, `variable "`, `terraform {`, `provider "` | `iac` |
+| Any of: `FROM `, `RUN `, `COPY `, `ENTRYPOINT`, `CMD [` | `container` |
+| Any of: `apiVersion:`, `kind: Deployment`, `kind: Service`, `kind: ConfigMap` | `orchestration` |
+| All three of: `on:` AND `jobs:` AND `steps:` | `pipeline` |
+| Any of: `dag = DAG(`, `@task`, `with DAG(`, `@dag` | `pipeline` (Airflow) |
+| No match | → UNKNOWN |
+
+**Important disambiguation for IaC patterns:** The pattern is `resource "` (with
+the opening double-quote). This prevents misclassifying YAML keys like `Resources:`
+(CloudFormation) or `resource:` (plain YAML) as IaC. Only the Terraform HCL syntax
+`resource "` followed by a quote triggers the IaC match.
+
+Negative examples that must NOT match IaC:
+- `Resources:` → CloudFormation YAML key (no quote after `resource`)
+- `resource:` → plain YAML key (colon, not quote; different capitalization)
+- `resources:` → Kubernetes YAML section (lowercase, colon, no quote)
+
+#### Step 0 failure modes — three cases, each with a hard stop
+
+**Case 1 — Domain = UNKNOWN (both passes failed):**
+Return immediately with:
+```
+## Code Quality Review — UNKNOWN
+
+Status: UNKNOWN
+Reason: unable to determine execution model for this file — extension not recognized and content inspection found no matching patterns.
+Action required: ensure the file path and content are correct, or add domain routing for this file type.
+```
+Do NOT proceed to Step 1. Do NOT attempt to apply any principles.
+
+**Case 2 — Domain determined but reference file unreadable:**
+Construct the reference file path: `samsara/references/{domain}-quality.md`
+Attempt to read it. If the read fails for any reason (not found, permission error, empty):
+```
+## Code Quality Review — UNKNOWN
+
+Status: UNKNOWN
+Reason: no reference file for execution model: {domain} — samsara/references/{domain}-quality.md could not be read.
+Action required: verify reference file exists at the expected path before re-dispatching.
+```
+Do NOT fall back to `samsara/references/code-quality.md`. Do NOT proceed to Step 1.
+
+**Case 3 — Domain determined and reference file readable:**
+Proceed to Step 1 with the path `samsara/references/{domain}-quality.md`.
+
 ### Step 1: Read the reference (mandatory — do not skip)
 
-Read `samsara/references/code-quality.md`. You MUST do this before producing any verdict.
-Do not proceed to Step 2 if the read fails — return UNKNOWN immediately (see Reference File Protocol above).
-Do not use your memory of the principles as a substitute for reading the file. The file is the authority; your memory is not.
+Read the reference file identified in Step 0: `samsara/references/{domain}-quality.md`.
+
+You MUST do this before producing any verdict. Do not proceed to Step 2 if the
+read fails — return UNKNOWN immediately (see Step 0 Case 2 above).
+
+Do not use your memory of the principles as a substitute for reading the file.
+The file is the authority; your memory is not.
+
+**After reading the reference file, extract its `## Applicability` section:**
+
+The `## Applicability` section specifies which principles apply to this domain.
+It contains a `domain` field and an `excluded_principles` list.
+
+- If the section is present: record `excluded_principles` for use in Step 3.
+- If the section is absent: treat all 9 principles as applicable. Note in your
+  output: "Applicability section not found — assuming all principles applicable."
+- If `excluded_principles` is an empty list: all 9 principles apply. This is
+  the correct behavior for code-domain files.
+
+Record the excluded principles list before proceeding to Step 2.
 
 ### Step 2: Identify reviewable code
 
@@ -83,6 +175,17 @@ Scan the diff or files under review. Identify which files contain reviewable cod
 ### Step 3: Apply each of the 9 principles
 
 Walk through each principle in order. For each principle:
+
+**Before applying: check applicability.**
+
+Consult the `excluded_principles` list extracted in Step 1. If the current
+principle appears in that list:
+- Verdict: `UNKNOWN`
+- Observation: `Excluded by domain reference: {reason from excluded_principles entry}`
+- Do NOT read the judgment question. Do NOT compare against violation shapes.
+- Move to the next principle.
+
+If the principle is NOT in `excluded_principles` (or the list is empty), proceed:
 
 1. Read its **judgment question** from the reference.
 2. Compare what you see against the principle's **violation shapes (koans)**.
@@ -117,7 +220,7 @@ For each `Concern` produced in Step 3:
 
 When citing concerns, include the relevant outcome criteria name (e.g., `C6 Clear Structure`) from the reference cross-reference table. Doing so makes each concern actionable to both the automated pipeline and the human who reads the review.
 
-**The authoritative definitions of C1–C8 live in the reference file** (`samsara/references/code-quality.md`). Use the criterion name as a handle in your output; if you need the full definition, consult the reference. This agent body deliberately does not restate the criterion definitions — duplicating them would create a second source of truth that can silently drift from the reference.
+**The authoritative definitions of C1–C8 live in the reference file determined by Step 0.** Use the criterion name as a handle in your output; if you need the full definition, consult that reference file. This agent body deliberately does not restate the criterion definitions — duplicating them would create a second source of truth that can silently drift from the reference.
 
 ### Step 5: Aggregate verdict
 
@@ -135,7 +238,9 @@ When citing concerns, include the relevant outcome criteria name (e.g., `C6 Clea
 ## Code Quality Review — Samsara (向死而驗)
 
 ### Reference
-- Read: samsara/references/code-quality.md [confirm: yes / UNAVAILABLE]
+- Domain: [code / iac / container / pipeline / orchestration / UNKNOWN]
+- Read: samsara/references/{domain}-quality.md [confirm: yes / UNAVAILABLE]
+- Applicability: [all 9 principles applicable / N principles excluded: list them]
 
 ### Principle Verdicts
 

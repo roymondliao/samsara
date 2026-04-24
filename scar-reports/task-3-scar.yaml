@@ -1,0 +1,139 @@
+task_id: task-3
+completion_status: done_with_concerns
+
+known_shortcuts:
+  - description: >
+      Extraction simplified the inline contextual flow from the original agent. The original agent
+      had Mother Rule annotations embedded directly inside each step (e.g., "Mother rule 1: Can this
+      structure articulate its death?"). The refactored agent keeps those annotations in the step
+      descriptions in the agent definition, but the behavioral patterns (what to look for) are now
+      separated into the reference file. An LLM reading the agent will need to context-switch between
+      the agent body (step framing + Mother Rule) and the reference file (concrete patterns). The
+      original inline form kept these co-located. There is a non-zero risk that an LLM executing
+      the agent treats the reference file as a checklist and loses the Mother Rule grounding.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      The output format section was extended with a new "Domain" block but was not validated against
+      the downstream pipeline (if any) that parses the review output. If any automation reads the
+      code-reviewer output and expects the previous format (no Domain block), this is a breaking
+      change. No pipeline validation was performed.
+    deferred_to_feature_iteration: true
+
+silent_failure_conditions:
+  - description: >
+      The router's Pass 2 (content heuristic) is LLM-interpreted — the agent reads ~20 lines and
+      pattern-matches. If the LLM reads fewer than 20 lines, or reads the wrong 20 lines (e.g.,
+      skips blank lines, starts mid-file), domain detection may fail silently. The agent cannot
+      verify that it read the correct 20 lines. Result: a Terraform file without recognizable
+      keywords in the first 20 lines (e.g., a heavily commented file) would be classified UNKNOWN
+      when the correct domain is `iac`.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      The reference file path `samsara/references/{domain}-review.md` uses a relative path.
+      If the agent is invoked from a working directory other than the samsara project root,
+      the read will fail with a path error. The Reference File Protocol treats any read failure
+      as UNKNOWN — so the agent would return UNKNOWN instead of reviewing valid code. This is
+      not silent (UNKNOWN is visible), but the root cause (wrong working directory) is not
+      communicated to the caller.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      The router has no mechanism to handle files that match multiple Pass 1 patterns. For example,
+      a file named `k8s/pipeline.yml` could match both `k8s/**/*.yaml` (orchestration) and
+      `.github/workflows/*.yml` if mislabeled by a caller. The current table uses first-match order
+      implicitly, but the order is not stated. If the LLM resolves ambiguous matches in a
+      non-deterministic way, domain detection is unstable for files that match multiple patterns.
+      In practice this is rare, but the failure is silent (UNKNOWN does not indicate "ambiguous match").
+    deferred_to_feature_iteration: false
+
+assumptions_made:
+  - assumption: >
+      The Three Mother Rules are domain-agnostic and correctly belong in the agent definition,
+      not in any reference file. The rules speak about "structure", "boundary", and "abstraction"
+      which are universal concepts that apply to IaC resources, container layers, and pipeline
+      jobs as readily as to Python classes and functions.
+    verified: true
+    note: >
+      Verified by reading `references/code-review.md` — the reference explicitly states
+      "The Three Mother Rules (also in the agent definition) supply the cross-domain judgment
+      standard. This reference translates those rules into concrete imperative-code patterns."
+      The rules are intentionally kept generic; each reference file is responsible for
+      translating them to domain-specific patterns.
+    deferred_to_feature_iteration: false
+
+  - assumption: >
+      Scar Report Integrity (Step 4) is domain-agnostic and correctly belongs in the agent
+      definition. The scar report schema (`scar-schema.yaml`) is a samsara artifact — it
+      applies the same way regardless of whether the reviewed code is Python, Terraform, or
+      a Dockerfile. IaC scar reports would use the same schema.
+    verified: false
+    note: >
+      This assumption is reasonable — the scar report format is defined at the samsara level,
+      not at the domain level. However, if IaC or container domains develop domain-specific
+      scar report patterns (e.g., "resource drift" as a new scar category), Step 4 would need
+      domain-specific extensions. This would require moving Step 4 guidance into reference
+      files or adding domain-specific Step 4 appendices. Not verified against actual IaC
+      scar reports (none exist yet).
+    deferred_to_feature_iteration: false
+
+  - assumption: >
+      The LLM executing the refactored agent will correctly substitute `{domain}` in the
+      reference file path `samsara/references/{domain}-review.md` after running the router.
+      If the LLM treats `{domain}` as a literal string and attempts to read
+      `samsara/references/{domain}-review.md`, the read will fail and the agent will return
+      UNKNOWN for every file. This is a critical execution assumption.
+    verified: false
+    note: >
+      The agent text uses `{domain}` in a code block and in prose with clear surrounding
+      context ("resolve the reference file path: samsara/references/{domain}-review.md").
+      The router section explains that `{domain}` comes from the table. Modern LLMs reliably
+      perform this substitution in similar patterns (e.g., code-quality-reviewer uses similar
+      path construction). However, this cannot be verified without running the agent.
+    deferred_to_feature_iteration: false
+
+debt_registered: true
+debt_location: >
+  agents/code-reviewer.md (Reference File Resolution section — {domain} substitution relies on LLM inference, unverified without live execution);
+  agents/code-reviewer.md (Pass 2 content heuristic — 20-line window is LLM-interpreted, no enforcement mechanism);
+  agents/code-reviewer.md (Pass 1 table — first-match-wins semantics stated but LLM may not honor order for ambiguous paths)
+
+resolved_items:
+  - original_section: assumptions_made
+    original_description: "The Three Mother Rules are domain-agnostic and correctly belong in the agent definition"
+    resolution: >
+      Verified by reading `references/code-review.md` after authoring it. The reference file
+      explicitly acknowledges the Three Mother Rules live in the agent definition and that the
+      reference translates them into domain-specific patterns. The division is by design, not
+      oversight. Marked verified: true.
+
+  - original_section: silent_failure_conditions
+    original_description: "Router's Pass 2 content heuristic is LLM-interpreted — incorrect 20-line window could misidentify domain"
+    resolution: >
+      Added "first ~20 lines" specification to the Pass 2 instruction (agent line 50) rather
+      than leaving it as "beginning of file". Cannot fully resolve without a test harness for
+      the LLM execution, but the instruction is now as specific as prose allows. Remaining risk
+      documented in scar report.
+
+  - original_section: silent_failure_conditions
+    original_description: "Multi-pattern ambiguous match in Pass 1 — order not stated"
+    resolution: >
+      Added "If Pass 1 matches → record the domain and proceed to Reference File Resolution below"
+      instruction (agent line 46) to make first-match-wins semantics explicit. The table rows
+      are ordered from most specific to least specific (language files first, then IaC, then
+      container, then pipeline, then orchestration). Multi-match ambiguity for realistic file
+      paths is low. Cannot fully resolve without explicit tie-breaking rules — remaining risk
+      documented.
+
+  - original_section: assumptions_made
+    original_description: "LLM executing the refactored agent will correctly substitute {domain} in the reference file path"
+    resolution: >
+      Improved the agent's Reference File Resolution section to make the substitution explicit.
+      Changed from a single template line to three concrete examples:
+      "if domain = `code`, read `samsara/references/code-review.md`",
+      "if domain = `iac`, read `samsara/references/iac-review.md`", etc.
+      Also added explicit instruction: "construct the reference file path by substituting the
+      domain name you found into this template." The assumption remains formally unverified
+      (requires live LLM execution), but the prose is now as unambiguous as possible.
+      Marked verified: false — evidence provided that risk is mitigated as far as prose allows.

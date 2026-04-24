@@ -153,7 +153,7 @@ samsara/
 | iteration transition update | done | skills/iteration/SKILL.md |
 | version bump | done | 0.6.1 → 0.7.0 |
 
-### Phase 6: Execution Model Scope — NOT STARTED
+### Phase 6: Execution Model Scope — DESIGN DECIDED (2026-04-23)
 
 **發現日期**：2026-04-21（在 `2026-04-19_yin-coding-spirit` feature ship 前夕討論中浮現）
 
@@ -171,19 +171,45 @@ samsara/
 
 **為什麼這是框架層級的問題而非內容缺口**：Samsara 的唯一公理「存在即責任」在 declarative 系統中意義不同 — 一個 unused Terraform resource 不是 dead weight，是每月燒 cloud cost 的活損失 + security surface。這改變了 yin principles 的權重，不是補幾個 worked example 就能解決。
 
-**當前立場（2026-04-21）**：
-- 所有現有 skills 和 agents 的隱含 scope = imperative code
-- `samsara:code-quality-reviewer` 的 reference 只以 Python 驗證過 3 個 fixtures（見 `2026-04-19_yin-coding-spirit` ship-manifest 的 known_failure_mode「Koan-to-code translation miss」）
-- 未對 IaC / container / orchestration / pipeline / CI/CD / ML configs 做過 scope 宣告或 Gate
+**選定方向：Option D — Principle-Level Abstraction + Domain Reference Files**
 
-**可能的解法方向（未決）**：
-- **A**：單一 universal reviewer — 把 principles 抽象到 execution-model-agnostic（風險：變虛，rubber stamp 風險放大）
-- **B**：Sibling reviewers by execution model — `samsara:iac-quality-reviewer`、`samsara:pipeline-quality-reviewer` 等（風險：維護成本 × N、registry lag 風險放大）
-- **C**：Wrapper 既有 tool — tflint / hadolint / helm lint / OPA policy，subagent 翻譯 tool output 到 samsara 語彙（成本最低、獨立於 samsara principles）
+經 multi-level analysis（Senior/Staff/Principal）評估後，排除：
+- ~~A（Universal reviewer）~~ — 假裝 universal 會變 rubber stamp，違反框架自身的「禁止隱式假設」
+- ~~B（Sibling reviewers）~~ — N× agents 維護成本過高
+- ~~C（Linter wrapper）~~ — Linter 是業界標準開發習慣，LLM 已知，不是 samsara 的價值所在
 
-**待累積的信號**：真實 IaC / pipeline review 請求達到 10+ 次，再決定 A/B/C。
+**設計決策（2026-04-23 confirmed）：**
 
-**短期行動（P0, 建議 Phase 5 之前或同期完成）**：在既有 reviewer agents 加入 execution-model Gate — 遇到非 imperative code file types（`.tf / Dockerfile / helm charts / *.pkr.hcl / airflow DAG` 等）時主動 decline，回報 out of scope。禁止假裝能審。
+| 問題 | 決策 | 理由 |
+|------|------|------|
+| Agent 架構 | Single agent + reference routing | 維護成本低，review procedure 統一 |
+| Principle 適用性 | Reference file 宣告 excluded_principles | 邊界明確，不依賴 model 詮釋能力 |
+| Linter 整合 | 不做 | 業界慣例，LLM 已知 |
+| Router 偵測 | Two-pass: extension + directory first, content inspection for ambiguous cases | Deterministic 優先，heuristic 只在需要時啟動 |
+
+**架構：**
+```
+code-quality-reviewer (現有 agent)
+    ↓ Pass 1: extension + directory convention (deterministic)
+    ↓ Pass 2: content inspection (only for ambiguous files like .yaml, .py)
+    ↓ still ambiguous → UNKNOWN
+    ↓ loads domain-specific reference file
+references/
+├── code-quality.md          ← 現有（imperative code）
+├── iac-quality.md           ← 新（Terraform, Pulumi, CloudFormation）
+├── container-quality.md     ← 新（Dockerfile, OCI）
+├── orchestration-quality.md ← 新（K8s YAML, Helm, Kustomize）
+├── pipeline-quality.md      ← 新（Airflow, dbt, GitHub Actions, CI/CD）
+└── ...future domains
+```
+
+**Reference file 結構變化：** 每份 reference file 新增 applicability declaration — 宣告 `excluded_principles`（含理由）。Reviewer 讀到 excluded principle 直接輸出 `UNKNOWN — excluded by domain reference: {reason}`，不進入判斷。
+
+**實作範圍：**
+1. Router 機制加入 `code-quality-reviewer` agent
+2. 現有 `code-quality.md` 加入 applicability declaration（全部 applicable，作為 baseline）
+3. 第一份 domain reference: `iac-quality.md`（Terraform 為主驗證對象）
+4. `code-reviewer` agent 同步加入 execution-model awareness
 
 ### Phase 7: Multi-Platform Support — NOT STARTED
 

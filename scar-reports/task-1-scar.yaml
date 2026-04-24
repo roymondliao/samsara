@@ -1,0 +1,173 @@
+task_id: task-1
+completion_status: done_with_concerns
+
+known_shortcuts:
+  - description: >
+      Router patterns (extension table and content heuristics) are hardcoded inline in
+      the agent markdown. Adding a new domain (e.g., "helm" as a separate domain from
+      "orchestration") requires editing agents/code-quality-reviewer.md directly. There
+      is no external routing config file that can be updated independently.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      Pass 2 content heuristic only inspects the first ~20 lines. Files with long
+      license headers, copyright blocks, or extensive module-level docstrings before
+      the first recognizable pattern will be misclassified as UNKNOWN even when their
+      domain is deterministic from content. Example: a Dockerfile with a 25-line
+      copyright block before the first FROM instruction.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      The `## Applicability` section format uses a YAML code block (```yaml ... ```)
+      inside markdown. The LLM is instructed to read this section and extract
+      excluded_principles. If the LLM interprets the YAML code block as display-only
+      text rather than structured data to parse, it will silently fail to extract
+      exclusions and apply all principles regardless. This is a rendering ambiguity
+      in the markdown-as-instructions medium.
+    deferred_to_feature_iteration: false
+
+silent_failure_conditions:
+  - description: >
+      DC-1 mitigation relies on the LLM correctly matching `resource "` (with quote)
+      and NOT matching `Resources:` or `resource:`. If the LLM pattern-matches
+      loosely (ignoring the quote), a CloudFormation YAML will be misclassified as
+      IaC domain. The resulting review applies IaC principles to CloudFormation
+      infrastructure declarations. Output looks structurally plausible. No error
+      is surfaced. The developer receives a wrong-domain review and may not notice.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      If a domain reference file exists but contains no `## Applicability` section
+      (e.g., iac-quality.md is written without one), the agent defaults to all 9
+      principles applicable. This is the documented safe default, but it means
+      domain-specific exclusions are silently absent if the reference author
+      forgets to add the section. The agent will note "Applicability section not
+      found" in output, which surfaces the condition — but only to readers who
+      check the Reference block of the review output.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      The agent has Bash, Glob, and Grep tools in addition to Read. Pass 2 content
+      inspection is instructed as "Read the first ~20 lines." The LLM may invoke
+      Bash (e.g., `head -20`) or Read with offset=0/limit=20. Both work, but if the
+      LLM reads the full file instead of first 20 lines, it may find patterns deep
+      in the file that would not appear in a standard header inspection. This could
+      cause Pass 2 to match a domain that Pass 1 would have routed to UNKNOWN.
+      Outcome: overly aggressive domain detection rather than conservative UNKNOWN.
+    deferred_to_feature_iteration: false
+
+assumptions_made:
+  - assumption: >
+      The LLM executing this agent will treat "Do NOT fall back to
+      samsara/references/code-quality.md" as a hard instruction and will not
+      hallucinate a fallback when the domain-specific reference is missing.
+    verified: false
+    note: >
+      Cannot be verified without running the agent against a live LLM with a missing
+      reference file. The instruction appears three times in the agent (Reference File
+      Protocol, Step 0 Case 2, Step 0 Case 2 body) to reinforce the constraint.
+      If not honored: the agent silently falls back to code domain principles for
+      any unrecognized execution model — a confidently wrong review.
+    deferred_to_feature_iteration: false
+
+  - assumption: >
+      Pass 1 pattern matching for pipeline files (`.github/workflows/*.yml`) requires
+      the LLM to perform glob-style path matching. The LLM receives the file path as
+      a string and must determine whether it matches the glob pattern.
+    verified: false
+    note: >
+      LLMs can reason about glob patterns when they have the full file path, but this
+      is not string equality — it requires understanding `**` and `*` wildcards in
+      paths. If the LLM fails to match `.github/workflows/ci.yml` against
+      `.github/workflows/*.yml`, it falls through to Pass 2 where the pipeline
+      combination heuristic (`on:` + `jobs:` + `steps:`) should catch it. Partial
+      mitigation: Pass 2 provides a second chance for pipeline files.
+    deferred_to_feature_iteration: false
+
+  - assumption: >
+      The `excluded_principles` list in the Applicability section uses the exact
+      principle names as they appear in the agent's Step 3 table (e.g.,
+      "I — Ghost Promises", "DRY — Duplication Is a Lie Splitting"). Matching
+      is done by the LLM reading both the reference file's exclusion list and
+      the agent's principle table and comparing them.
+    verified: true
+    note: >
+      Verified by reading code-quality.md Applicability section and Step 3 table.
+      The principle names in the exclusion list format match the Step 3 table
+      format. For code domain: excluded_principles is empty, so no matching needed.
+      For other domains: reference file authors must use the exact names from Step 3.
+      This is a naming contract that is implicit, not enforced.
+    deferred_to_feature_iteration: false
+
+  - assumption: >
+      `.tf.json` extension detection in Pass 1 requires matching the compound
+      extension. If the LLM extracts only the last extension (`.json`) from the
+      filename, it would not match `.tf.json` and would fall through to Pass 2
+      where `terraform {` content heuristic may not appear in JSON-format Terraform.
+    verified: false
+    note: >
+      The Pass 1 table lists `.tf.json` as a distinct entry. LLMs generally
+      understand multi-part extensions when given the full filename. If this fails,
+      a `.tf.json` file would reach Pass 2 where no Terraform JSON keyword patterns
+      are defined — the file would return UNKNOWN. Impact: missed review, not wrong review.
+    deferred_to_feature_iteration: false
+
+debt_registered: true
+debt_location: >
+  agents/code-quality-reviewer.md Step 0 Pass 2 (content heuristics, ~20 line
+  assumption); references/code-quality.md ## Applicability section (YAML-in-markdown
+  parsing assumption)
+
+narrative: >
+  This task adds a two-pass domain router and applicability enforcement to the
+  code-quality-reviewer agent. The primary risk is not implementation correctness —
+  the markdown instructions are clear and the death tests verify the logic — but
+  rather LLM behavioral compliance. The agent cannot enforce its own instructions;
+  it depends on the executing LLM honoring "do NOT fall back" prohibitions. The
+  instruction is stated three times (redundancy as mitigation) but cannot be tested
+  without live execution against an LLM. The scar report reflects this as an
+  unverifiable assumption rather than a resolved item.
+
+  The 20-line content inspection limit is a deliberate trade-off: deeper inspection
+  risks false positives from content patterns that appear later in unrelated files.
+  The shortcut is documented and acceptable for the current scope.
+
+resolved_items:
+  - original_section: known_shortcuts
+    original_description: >
+      Pass 2 content heuristic only inspects the first ~20 lines. Files with long
+      license headers may be misclassified as UNKNOWN.
+    resolution: >
+      Added explicit instruction in Step 0 Pass 2: if a long header block is detected,
+      extend scan to first ~40 lines. Capped at 40 to prevent false positives.
+      Also specified that Pass 2 MUST use Read with limit:20 (not full file read)
+      to prevent tool misuse.
+
+  - original_section: known_shortcuts
+    original_description: >
+      The Applicability section format uses a YAML code block inside markdown.
+      LLM may interpret it as display-only text rather than structured data.
+    resolution: >
+      Added prose statement ("Domain: code / Excluded principles: none") as the
+      primary authority in code-quality.md Applicability section, with the YAML
+      block labeled as "equivalent structured representation." Prose is unambiguous
+      to LLMs; YAML block is supplementary.
+
+  - original_section: silent_failure_conditions
+    original_description: >
+      DC-1 mitigation relies on the LLM correctly matching `resource "` (with quote)
+      and NOT matching `Resources:` or `resource:`.
+    resolution: >
+      Added explicit negative examples directly in Step 0 Pass 2 disambiguation note:
+      Resources: (CloudFormation), resource: (plain YAML), resources: (Kubernetes)
+      are all listed as non-matching patterns. LLM has concrete negative anchors.
+
+  - original_section: assumptions_made
+    original_description: >
+      Pass 1 pattern matching for pipeline files requires glob-style path matching
+      which may fail for LLMs receiving file paths as strings.
+    resolution: >
+      Replaced glob pattern with explicit substring+suffix check: "path contains
+      .github/workflows/ AND file ends with .yml or .yaml". This is unambiguous
+      string matching, not glob matching. LLM does not need to understand glob
+      wildcards. Pass 2 pipeline heuristic remains as second-chance detection.

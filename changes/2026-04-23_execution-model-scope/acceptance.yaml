@@ -1,0 +1,109 @@
+feature: execution-model-scope
+coverage_type: verified
+
+scenarios:
+  # --- Death paths first ---
+  - name: "Silent failure - router misclassifies ambiguous YAML as IaC"
+    type: death_path
+    given: "A .yaml file containing Kubernetes manifest with a `resource:` key (not Terraform)"
+    when: "Router runs Pass 2 content inspection on the file"
+    then:
+      - "Router must NOT match Terraform pattern — Terraform heuristic is `resource \"` (with quote), not bare `resource:`"
+      - "File must be classified as orchestration or UNKNOWN, never as iac"
+      - "If misclassified, wrong reference file loaded → all verdicts are misleading"
+
+  - name: "Silent failure - excluded principle masks harmful duplication in IaC"
+    type: death_path
+    given: "A Terraform module with same security group rule copy-pasted within the same environment (not cross-environment isolation)"
+    when: "code-quality-reviewer reviews this with iac-quality.md where DRY is excluded"
+    then:
+      - "DRY principle verdict must be UNKNOWN with exclusion reason"
+      - "The exclusion rationale must distinguish intentional cross-environment duplication from harmful within-environment copy-paste"
+      - "If the rationale is too broad, harmful duplication passes undetected"
+
+  - name: "Silent failure - code-review.md extraction loses behavioral patterns"
+    type: death_path
+    given: "code-reviewer.md behavioral patterns extracted to references/code-review.md"
+    when: "code-reviewer reviews imperative code using the new reference file protocol"
+    then:
+      - "Review output must be functionally equivalent to pre-refactoring output"
+      - "All 5 review steps must produce the same types of findings"
+      - "If a pattern was lost in extraction, a silent rot path that was previously caught is now missed"
+
+  # --- Degradation paths ---
+  - name: "Degradation - reference file missing for detected domain"
+    type: degradation
+    given: "Router determines domain = iac, but references/iac-quality.md does not exist"
+    when: "code-quality-reviewer attempts to load the domain reference file"
+    then:
+      - "Reviewer must return UNKNOWN with reason: 'reference file not found for domain: iac'"
+      - "Reviewer must NOT fall back to code-quality.md silently"
+      - "UNKNOWN verdict must include action required: 'verify reference file exists'"
+
+  - name: "Degradation - both passes fail to determine domain"
+    type: degradation
+    given: "A file with ambiguous extension (.yaml) and no recognizable content patterns in first 20 lines"
+    when: "Router runs both Pass 1 and Pass 2"
+    then:
+      - "Router must return domain = UNKNOWN"
+      - "Reviewer must output UNKNOWN with reason: 'unable to determine execution model'"
+      - "Reviewer must NOT default to code domain"
+
+  - name: "Degradation - applicability section missing from reference file"
+    type: degradation
+    given: "A domain reference file exists but has no ## Applicability section"
+    when: "Reviewer loads the reference file"
+    then:
+      - "Reviewer must treat all 9 principles as applicable (safe default)"
+      - "Reviewer should note: 'Applicability section not found — assuming all principles applicable'"
+
+  # --- Happy paths with evidence ---
+  - name: "Success - .tf file routed to iac-quality.md"
+    type: happy_path
+    given: "A .tf file containing Terraform resource definitions"
+    when: "code-quality-reviewer receives the file for review"
+    then:
+      - "Router Pass 1 matches .tf → domain: iac"
+      - "Reviewer loads references/iac-quality.md"
+      - "7 applicable principles produce verdicts with IaC-specific observations"
+      - "2 excluded principles (I, DRY) produce UNKNOWN with exclusion rationale"
+      - "Review output includes evidence of IaC-specific judgment (not imperative code patterns)"
+
+  - name: "Success - .tf file routed to iac-review.md"
+    type: happy_path
+    given: "A .tf file containing Terraform resource definitions"
+    when: "code-reviewer receives the file for review"
+    then:
+      - "Router Pass 1 matches .tf → domain: iac"
+      - "Reviewer loads references/iac-review.md"
+      - "Deletion Analysis checks for orphaned resources, not dead code"
+      - "Silent Rot Paths checks for default values and ignore_changes, not try/catch"
+      - "Review output includes evidence of IaC-specific behavioral patterns"
+
+  - name: "Success - imperative code review unchanged after refactoring"
+    type: happy_path
+    given: "A .py file with known review issues (silent rot, dishonest naming)"
+    when: "code-reviewer reviews using new reference file protocol + code-review.md"
+    then:
+      - "Router Pass 1 matches .py → domain: code"
+      - "Reviewer loads references/code-review.md"
+      - "All 5 review steps identify the same issues as before refactoring"
+      - "Output format unchanged"
+
+  - name: "Success - ambiguous .yaml resolved by content inspection"
+    type: happy_path
+    given: "A .yaml file with `resource \"aws_s3_bucket\"` in the first 10 lines"
+    when: "Router runs Pass 1 (no extension match for .yaml) → Pass 2 (content inspection)"
+    then:
+      - "Pass 2 matches Terraform keyword pattern → domain: iac"
+      - "Correct reference file loaded"
+      - "Review proceeds with IaC-specific principles/patterns"
+
+  - name: "Success - code-quality.md Applicability section backward-compatible"
+    type: happy_path
+    given: "Existing code-quality.md with new ## Applicability section declaring all 9 principles applicable"
+    when: "code-quality-reviewer reviews imperative code"
+    then:
+      - "All 9 principles evaluated as before"
+      - "No UNKNOWN verdicts from excluded_principles (none excluded)"
+      - "Review behavior identical to pre-Phase-6"
