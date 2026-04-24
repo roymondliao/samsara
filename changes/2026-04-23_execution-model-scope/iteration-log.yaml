@@ -43,5 +43,33 @@ rounds:
     fixes_applied: 2
     fixes_scar_count: 0
     signal_lost_after: 12
-    decision: stop
+    decision: continue
     decision_reason: "User confirmed level-analysis recommendation: 2 Fix, 7 Accept, 5 Defer. Remaining items require production data (real IaC reviews) or external triggers (OpenTofu adoption, downstream pipeline creation) to become actionable."
+
+  - round: 2
+    signal_lost_before: 12
+    items_triaged: 1
+    triage_result:
+      fix:
+        - "Review layering inverted — reference file (foundation) acts as primary driver during execution, agent spirit (upper layer) retreats to background. LLM does pattern matching against koans instead of spirit-driven judgment."
+      accept: []
+      defer: []
+    reclassified_from_round_1:
+      - item: "Extraction simplified inline contextual flow — Mother Rules in agent, patterns in reference, context-switching risk"
+        original_classification: accept
+        new_classification: fix
+        reason: "Level-analysis (Senior/Staff/Principal) unanimously identified this as actionable now — code change to agent prompts, not production data dependent. Compounding risk if deferred: every new reference file authored under wrong layering."
+    fixes_applied: 1
+    fixes_detail:
+      - description: "Reorder review layering: spirit drives principles, not inverse"
+        commit: "be2dc6d"
+        files_changed:
+          - agents/code-reviewer.md
+          - agents/code-quality-reviewer.md
+          - references/code-quality.md
+          - references/iac-quality.md
+        verification: "Dispatched code-quality-reviewer subagent (v0.8.0) against tests/iac-samples/. Confirmed: (1) router correctly detected iac domain, (2) reference path references/iac-quality.md correct, (3) spirit-first ordering visible in output — each principle starts with spirit question before koan matching, (4) L principle produced spirit-driven judgment for image repository default conflict not matching any specific koan."
+    fixes_scar_count: 0
+    signal_lost_after: 11
+    decision: stop
+    decision_reason: "Fix verified via subagent dispatch. Remaining 11 items: 7 accepted (require production data or external triggers), 4 deferred (OpenTofu, provider-specific patterns, downstream pipeline, theoretical koans). No further actionable items without production IaC reviews."
