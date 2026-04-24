@@ -1,0 +1,95 @@
+delivered_capability: >
+  Execution model routing for both reviewer agents (code-quality-reviewer, code-reviewer).
+  Each agent now determines file domain (code/iac/container/pipeline/orchestration) at Step 0,
+  loads the corresponding domain-specific reference file, and returns UNKNOWN for unrecognized
+  domains. Spirit-first review layering ensures agent philosophy drives principle application,
+  with reference file koans serving as domain-specific examples rather than exhaustive checklists.
+
+known_failure_modes:
+  - mode: "LLM misclassifies file domain (e.g., K8s YAML as Terraform)"
+    severity: silent_corruption
+    detection: "Review output Domain section shows wrong domain. Human reviewing the review output would notice IaC-specific observations on non-IaC files."
+
+  - mode: "DRY exclusion in iac-quality.md masks intra-environment duplication"
+    severity: silent_corruption
+    detection: "No automated detection. Requires human review of IaC review output for missing DRY findings. Known gap — see iteration-log accepted items #3, #4."
+
+  - mode: "I exclusion in iac-quality.md masks interface contract violations (variable defaults vs actual usage)"
+    severity: silent_corruption
+    detection: "No automated detection. Requires human review of IaC review output for missing I findings. Known gap — see iteration-log accepted item #5."
+
+  - mode: "Reference file becomes unavailable (deleted, renamed, permission error)"
+    severity: degradation
+    detection: "Agent returns UNKNOWN with explicit 'reference file not found' message. Visible in review output."
+
+  - mode: "Spirit-first ordering not followed by LLM (regresses to pattern-matching checklist behavior)"
+    severity: silent_corruption
+    detection: "Review output shows koan citations without spirit-level reasoning. Requires human auditing of review quality."
+
+  - mode: "Plugin cache stale — subagent loads old agent version"
+    severity: degradation
+    detection: "Review output shows old reference paths (samsara/references/) or missing Domain section. Visible in review output format."
+
+accepted_risks:
+  - risk: "LLM honors 'do NOT fall back' instruction — depends on LLM compliance"
+    accepted_by: "human"
+    expires: "2026-07-24"
+
+  - risk: "Step 4 Scar Report Integrity assumed domain-agnostic — may need IaC extensions"
+    accepted_by: "human"
+    expires: "2026-07-24"
+
+  - risk: "DRY exclusion too broad — intra-environment duplication slips through S/Cohesion"
+    accepted_by: "human"
+    expires: "2026-07-24"
+
+  - risk: "DRY coverage transfer (DRY→S/Cohesion) not empirically verified"
+    accepted_by: "human"
+    expires: "2026-07-24"
+
+  - risk: "I coverage transfer (I→L/D) not empirically verified — variable default lies not caught"
+    accepted_by: "human"
+    expires: "2026-10-24"
+
+  - risk: "Missing Applicability section defaults to all 9 principles — safe but silent"
+    accepted_by: "human"
+    expires: "2026-07-24"
+
+  - risk: "ignore_changes severity distinction (all=Critical, named=Important) is judgment call"
+    accepted_by: "human"
+    expires: "2026-10-24"
+
+silent_failure_surface: high
+# 11 known silent failure conditions across 4 task scar reports
+# 9 unverified assumptions
+# DRY and I exclusion gaps empirically confirmed but accepted
+
+monitoring_hooks:
+  - "No automated monitoring. This feature produces LLM review output — quality is assessed by human reading the review. Degradation (wrong domain, missing reference) is visible in the review output's Domain/Reference section."
+  - "Accepted risk expiry dates (2026-07-24, 2026-10-24) serve as manual review triggers."
+
+kill_switch: >
+  Revert agents/code-quality-reviewer.md and agents/code-reviewer.md to pre-Phase-6
+  versions (commit ac9409b). This removes Step 0 routing and reference file protocol,
+  restoring inline-only review behavior. Reference files (references/iac-quality.md,
+  references/iac-review.md, references/code-review.md) become inert — no agent loads
+  them without Step 0.
+
+validation_summary:
+  acceptance_criteria:
+    verified: 5
+    not_tested: 2
+    superseded: 3
+  reconciliation:
+    intentional_drift: 3
+    unintentional_drift: 0
+  iteration:
+    rounds: 2
+    signal_lost_initial: 14
+    signal_lost_final: 11
+    items_fixed: 3
+    items_accepted: 7
+    items_deferred: 5
+  security_review:
+    status: "pass (inline — platform /security-review unavailable)"
+    issues: 0
