@@ -7,16 +7,22 @@
 
 ## Purpose
 
-This reference guides `samsara:code-quality-reviewer` in assessing code-level
-structural truth-telling. It is organized around **9 yin-side principles** — 5 SOLID
-reframings, 2 structural principles (Cohesion, Coupling), 1 reuse principle (DRY),
-and 1 pattern principle — each expressed in spirit form (what the principle
-protects against), not in rule form (what the code must do).
+The 9 principles in the agent definition (`samsara:code-quality-reviewer`) supply the
+review spirit — the structural judgment standards that define WHAT to look for and WHY.
+This reference provides the domain-specific foundation — what those principles look
+like when violated in imperative/OOP code.
+
+This reference is organized around **9 yin-side principles** — 5 SOLID reframings,
+2 structural principles (Cohesion, Coupling), 1 reuse principle (DRY), and 1 pattern
+principle — each expressed in spirit form (what the principle protects against), not
+in rule form (what the code must do).
 
 Each principle appears with:
 - **Axiom** — the one-line spirit statement
 - **Why it matters** — the spirit-level reasoning
 - **Violation shapes (koans)** — imagistic descriptions of how the violation appears
+  in imperative code. These are illustrative, not exhaustive — a violation that matches
+  the principle's spirit but no specific koan is still a violation.
 - **Judgment questions** — generative questions a reviewer asks the code
 - **Outcome cross-reference** — which of the 8 outcome criteria surface when this
   principle is broken

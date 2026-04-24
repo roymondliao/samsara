@@ -37,7 +37,11 @@ Do not score them. Do not classify them as Critical/Important/Suggestion under y
 
 ## Reference File Protocol
 
-**This agent's criteria come exclusively from the reference file. Do not use memory.**
+**This agent's domain-specific criteria come exclusively from the reference file. Do not use memory.**
+
+The 9 principles (defined in Step 3) provide the review spirit — the structural
+judgment standards. The reference file provides the domain-specific foundation — what
+those principles look like when violated in a particular execution model.
 
 Before starting any review, run Step 0 to determine which reference file to read.
 The reference file path is NOT hardcoded — it is determined by the execution model
@@ -137,27 +141,12 @@ Scan the diff or files under review. Identify which files contain reviewable cod
 
 ### Step 3: Apply each of the 9 principles
 
-Walk through each principle in order. For each principle:
+Walk through each principle in order. The **Spirit** column in the table below is your
+judgment standard — it defines WHAT you are looking for. The reference file's koans
+illustrate what violations look like in the specific domain. The spirit defines the scope;
+the koans illustrate it.
 
-**Before applying: check applicability.**
-
-Consult the `excluded_principles` list extracted in Step 1. If the current
-principle appears in that list:
-- Verdict: `UNKNOWN`
-- Observation: `Excluded by domain reference: {reason from excluded_principles entry}`
-- Do NOT read the judgment question. Do NOT compare against violation shapes.
-- Move to the next principle.
-
-If the principle is NOT in `excluded_principles` (or the list is empty), proceed:
-
-1. Read its **judgment question** from the reference.
-2. Compare what you see against the principle's **violation shapes (koans)**.
-3. Produce one of three per-principle verdicts:
-   - **`Pass`** — the principle is affirmatively satisfied. You MUST name at least one specific `file:line` observation as evidence. A Pass without a concrete reference is rubber-stamping and is invalid.
-   - **`Concern`** — the principle is violated. Cite which koan matches, the `file:line` that reveals it, and the outcome criteria affected (C1-C8).
-   - **`UNKNOWN`** — the principle **cannot be applied** to this code. This is a structural judgment: the code is too short to exhibit the pattern, the domain does not fit, or the code is a different artifact (config, data, docs). `UNKNOWN` is NOT the answer for "I looked at the code but could not decide." If you looked and could not decide, produce `Concern` with the note "insufficient context to verify [principle]" — this keeps the ambiguity visible. **"Insufficient context" Concerns default to severity Suggestion** (not Critical or Important), unless you can name a specific missing context that — if provided — would plausibly change the severity. This prevents "I'm unsure" from producing FAIL verdicts.
-
-The 9 principles to apply, in order:
+**The 9 principles, in order:**
 
 | # | Principle | Spirit |
 |---|-----------|--------|
@@ -171,7 +160,41 @@ The 9 principles to apply, in order:
 | DRY | Duplication Is a Lie Splitting (重複是謊言的分裂) | Duplicated code is two places telling the same lie |
 | Pattern | A Named Bundle of Assumptions (被命名的假設集合) | Every pattern assumes your problem is the same as the one it was designed for |
 
-**Translating koans to real code:** The reference expresses violation shapes as imagistic descriptions (koans), not as syntax patterns. When pattern-matching koans to code under review, ask the judgment question directly against the code. Example: for S — "If this structure is deleted tomorrow, which one place feels the loss?" — apply this question to each module/class/function in the diff. If the answer is "multiple unrelated downstream systems," the koan "Three-faced structure" applies. The goal is not to match the koan's exact wording but to recognize the structural pattern it describes.
+**For each principle, follow this order:**
+
+**Step 3a — Check applicability.**
+
+Consult the `excluded_principles` list extracted in Step 1. If the current
+principle appears in that list:
+- Verdict: `UNKNOWN`
+- Observation: `Excluded by domain reference: {reason from excluded_principles entry}`
+- Do NOT read the judgment question. Do NOT compare against violation shapes.
+- Move to the next principle.
+
+If the principle is NOT in `excluded_principles` (or the list is empty), proceed:
+
+**Step 3b — Ask the spirit's question against the code.**
+
+Read the principle's spirit from the table above. Ask that question directly against the
+code under review. Form your initial judgment before consulting the reference.
+
+Example: for S — ask "If this structure is deleted tomorrow, which one place feels
+the loss?" Apply this to each module/class/function in the diff. If the answer is
+"multiple unrelated downstream systems," the structure violates S's spirit.
+
+**Step 3c — Consult the reference file's koans.**
+
+Read the principle's **judgment question** and **violation shapes (koans)** from the
+reference file. The koans are domain-specific examples of what this principle's violation
+looks like in this execution model. They are illustrative, not exhaustive — if you see a
+violation that matches the spirit but no specific koan, it is still a Concern.
+
+**Step 3d — Produce verdict.**
+
+One of three per-principle verdicts:
+   - **`Pass`** — the principle is affirmatively satisfied. You MUST name at least one specific `file:line` observation as evidence. A Pass without a concrete reference is rubber-stamping and is invalid.
+   - **`Concern`** — the principle is violated. Cite which koan matches (or state "no koan match — spirit violation" if the violation is novel), the `file:line` that reveals it, and the outcome criteria affected (C1-C8).
+   - **`UNKNOWN`** — the principle **cannot be applied** to this code. This is a structural judgment: the code is too short to exhibit the pattern, the domain does not fit, or the code is a different artifact (config, data, docs). `UNKNOWN` is NOT the answer for "I looked at the code but could not decide." If you looked and could not decide, produce `Concern` with the note "insufficient context to verify [principle]" — this keeps the ambiguity visible. **"Insufficient context" Concerns default to severity Suggestion** (not Critical or Important), unless you can name a specific missing context that — if provided — would plausibly change the severity. This prevents "I'm unsure" from producing FAIL verdicts.
 
 ### Step 4: Classify concerns by severity
 

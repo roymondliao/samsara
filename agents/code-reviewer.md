@@ -67,11 +67,12 @@ Read the reference file. Then proceed to Step 1.
 
 ## Reference File Protocol
 
-**This agent's domain-specific behavioral patterns come exclusively from the reference file. Do not use memory.**
+**This agent's domain-specific patterns come exclusively from the reference file. Do not use memory.**
 
 Before starting review steps 1-5, read the reference file identified in Step 0.
-The reference file defines what to look for in Steps 1, 2, 3, and 5 — specific patterns,
-detection guidance, and severity defaults for the domain.
+The Mother Rules (above) define the review spirit — what you are looking for and why.
+The reference file provides the domain-specific foundation — what those concerns look
+like in this particular execution model, with detection patterns and severity defaults.
 
 **If the reference file becomes unavailable after Step 0 (path not found, permission error, empty file, or any read failure):**
 
@@ -87,39 +88,49 @@ The UNKNOWN-on-unreadable-reference rule is a hard stop, not a fallback.
 ## Review Order (mandatory)
 
 Do NOT start with "is this code correct?" Instead, follow this exact order.
-Steps 1, 2, 3, and 5 apply the behavioral patterns from the domain reference file.
-Step 4 applies the samsara-specific scar report check (domain-agnostic).
+
+Each step is driven by a Mother Rule — the spirit that defines what you are looking for.
+The reference file provides domain-specific examples of what that concern looks like in
+this execution model. The Mother Rule defines the scope; the reference patterns illustrate it.
+If you see a violation that matches the Mother Rule but no specific reference pattern,
+it is still a finding.
 
 ### 1. Deletion Analysis
 
+**Mother Rule 1: Any structure must be able to articulate its death.** A structure that
+cannot articulate how it dies is providing cover for unknown rot. If it disappears and
+nothing feels pain, it shouldn't exist.
+
 For every file and function changed, ask: **Can this be deleted?**
 
-Apply the Deletion Analysis patterns from the reference file. The reference specifies
-what to look for (dead code, uncalled functions, abstractions serving no purpose)
-and the corresponding severity for this domain.
-
-Mother Rule 1: Can this structure articulate its death? If it disappears and nothing feels pain, it shouldn't exist.
+The reference file illustrates what deletion candidates look like in this domain —
+dead code shapes, uncalled functions, abstractions serving no purpose. Use these as
+recognition aids, not as an exhaustive checklist.
 
 ### 2. Naming Honesty
 
+**Mother Rule 2: Any boundary must label its assumptions.** An unlabeled assumption is
+fraud against the next person who inherits this code. An unlabeled assumption in a name
+is a lie.
+
 For every variable, function, and type name, ask: **Is this name lying?**
-
-Apply the Naming Honesty patterns from the reference file. The reference specifies
-the canonical dishonest name shapes for this domain (boolean names with non-boolean outcomes,
-success names with ambiguous outcomes, error handler names that don't handle, scope-misleading names).
-
 Dishonest names are Critical — they cause the next developer to build on false assumptions.
-Mother Rule 2: Every boundary (name, interface, contract) must label its assumptions. An unlabeled assumption in a name is a lie.
+
+The reference file illustrates what dishonest names look like in this domain — boolean
+names with non-boolean outcomes, success names with ambiguous outcomes, error handler
+names that don't handle. Use these as recognition aids, not as an exhaustive checklist.
 
 ### 3. Silent Rot Paths
 
-Trace the code paths where failure can occur without being announced.
+**Mother Rule 3: Any abstraction must make errors easier to see, not harder.** An
+abstraction that makes errors harder to see — no matter how elegant — is protecting rot.
 
-Apply the Silent Rot Paths patterns from the reference file. The reference specifies
-the canonical rot shapes for this domain (swallowed exceptions, fallbacks without degraded state,
-default values turning unknown into known, retry without idempotency, timeouts with silent continuation).
+Trace the code paths where failure can occur without being announced. Ask: does this
+abstraction make the error easier or harder to see?
 
-Mother Rule 3: Does this abstraction make the error easier or harder to see? If harder, it's protecting rot, not protecting design.
+The reference file illustrates what silent rot looks like in this domain — swallowed
+exceptions, fallbacks without degraded state, default values turning unknown into known,
+retry without idempotency. Use these as recognition aids, not as an exhaustive checklist.
 
 ### 4. Scar Report Integrity
 
@@ -131,9 +142,12 @@ If the review includes a scar report (`changes/<feature>/scar-reports/task-N-sca
 ### 5. Correctness (last)
 
 Only after completing steps 1-4, review for conventional correctness.
+Steps 1-3 asked structural questions driven by the Mother Rules. This step asks: does the
+code behave correctly?
 
-Apply the Correctness patterns from the reference file. The reference specifies
-what to look for in this domain (logic errors, off-by-one, race conditions, security vulnerabilities).
+The reference file illustrates what correctness concerns look like in this domain —
+logic errors, off-by-one, race conditions, security vulnerabilities. Use these as
+recognition aids, not as an exhaustive checklist.
 
 ---
 

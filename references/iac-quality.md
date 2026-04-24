@@ -7,12 +7,15 @@
 
 ## Purpose
 
-This reference guides `samsara:code-quality-reviewer` in assessing Infrastructure as
-Code structural truth-telling, with Terraform as the primary validation target. It is
-organized around **7 applicable yin-side principles** — 5 SOLID reframings, 2
-structural principles (Cohesion, Coupling), and 1 pattern principle — each expressed
-in spirit form (what the principle protects against), not in rule form (what the
-configuration must do).
+The 9 principles in the agent definition (`samsara:code-quality-reviewer`) supply the
+review spirit — the structural judgment standards that define WHAT to look for and WHY.
+This reference provides the domain-specific foundation for IaC — what those principles
+look like when violated in Terraform/OpenTofu configuration.
+
+This reference is organized around **7 applicable yin-side principles** — 5 SOLID
+reframings, 2 structural principles (Cohesion, Coupling), and 1 pattern principle —
+each expressed in spirit form (what the principle protects against), not in rule form
+(what the configuration must do).
 
 2 principles are excluded for this domain (I — Ghost Promises, DRY — Duplication Is
 a Lie Splitting). Their sections appear below with explicit rationale and coverage
@@ -22,7 +25,9 @@ Each applicable principle appears with:
 - **Axiom** — the one-line spirit statement
 - **Why it matters** — the spirit-level reasoning, translated to IaC
 - **Violation shapes (koans)** — imagistic descriptions of how the violation appears
-  in Terraform configurations, modules, and state
+  in Terraform configurations, modules, and state. These are illustrative, not
+  exhaustive — a violation that matches the principle's spirit but no specific koan
+  is still a violation.
 - **Judgment questions** — generative questions a reviewer asks the configuration
 - **Outcome cross-reference** — which of the 8 outcome criteria surface when this
   principle is broken
@@ -90,19 +95,29 @@ pointing to this section. Do not attempt to apply them to Terraform code.
 
 ## How to use this reference
 
+The 9 principles in the agent definition (`samsara:code-quality-reviewer`) supply the
+review spirit — the structural judgment standards. This reference provides the
+domain-specific foundation for IaC: what those principles look like when violated in
+Terraform/OpenTofu configuration.
+
+The koans in each section are illustrative, not exhaustive. If the configuration
+violates a principle's spirit in a way no koan describes, it is still a violation.
+
 When reviewing IaC:
 
-1. For each applicable principle (7 of 9), read the **judgment question**. Apply it to
-   the configuration under review.
-2. Compare what you see to the **violation shapes (koans)**. If the configuration
-   matches a koan, the principle is violated.
-3. For excluded principles (I and DRY), produce `UNKNOWN` immediately with the
-   rationale stated in their sections. Do not attempt to apply them.
-4. Produce one of: `Pass`, `Concern` (with specific reference to which principle and
-   which file/resource block), or `UNKNOWN` (when the principle does not apply to this
+1. For each applicable principle, first recall its **spirit** from the agent's principle
+   table. The spirit defines what you are looking for.
+2. Read the principle's **judgment question** from this reference. Apply it to the
+   configuration under review.
+3. Compare what you see to the **violation shapes (koans)**. These are domain-specific
+   examples of what the violation looks like in IaC.
+4. For excluded principles, produce `UNKNOWN` immediately with the rationale stated in
+   their sections. Do not attempt to apply them.
+5. Produce one of: `Pass`, `Concern` (with specific reference to which principle and
+   which file/resource block), or `UNKNOWN` (when the principle cannot be applied to this
    configuration — too small a diff to exhibit the pattern, context missing, or
    excluded by this section).
-5. `UNKNOWN` is the honest answer **when the principle cannot be applied to this
+6. `UNKNOWN` is the honest answer **when the principle cannot be applied to this
    configuration** — the diff is a single variable declaration, the domain does not
    fit, or the principle is excluded. It is NOT the answer for "I looked at the
    configuration but could not decide"; in that case, produce `Concern` with the note
