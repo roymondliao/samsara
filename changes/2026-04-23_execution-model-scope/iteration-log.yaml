@@ -1,0 +1,47 @@
+feature: "execution-model-scope"
+signal_lost_initial: 14
+
+rounds:
+  - round: 1
+    signal_lost_before: 14
+    items_triaged: 14
+    triage_result:
+      fix:
+        - "Coverage transfer rationale buried in principle section bodies — caller cannot see where excluded concerns are reviewed"
+        - "Reference file paths use samsara/ prefix that does not exist — LLM self-corrects but path is technically wrong"
+      accept:
+        - description: "LLM honors 'do NOT fall back' instruction — reference file protocol depends on LLM compliance"
+          expiry_date: "2026-07-24"
+          rationale: "Cannot verify without live LLM execution or eval harness. Instruction repeated 3x as mitigation. Revisit when eval harness is available."
+        - description: "Step 4 Scar Report Integrity assumed domain-agnostic — may need IaC-specific extensions"
+          expiry_date: "2026-07-24"
+          rationale: "No IaC scar reports exist yet. Schema categories map reasonably to IaC. Revisit after first real IaC review."
+        - description: "DRY exclusion may be too broad — intra-environment duplication might slip through S/Cohesion"
+          expiry_date: "2026-07-24"
+          rationale: "Coverage transfer is asserted but unverified. S and Cohesion sections were written with DRY's coverage in mind. Revisit after first real IaC quality review."
+        - description: "DRY intra-environment coverage transfer from S/Cohesion not empirically verified"
+          expiry_date: "2026-07-24"
+          rationale: "Same root concern as DRY exclusion breadth. Requires real Terraform codebase review to verify. IaC test samples now available at tests/iac-samples/."
+        - description: "I exclusion coverage transfer gap — phantom outputs not caught by L or D"
+          expiry_date: "2026-10-24"
+          rationale: "Accepted as out-of-scope. Phantom outputs are dead configuration, not structural lying. Falls outside principle framework's concern."
+        - description: "Extraction simplified inline contextual flow — Mother Rules in agent, patterns in reference, context-switching risk"
+          expiry_date: "2026-10-24"
+          rationale: "Separation is by design — Mother Rules are domain-agnostic, patterns are domain-specific. Risk that LLM treats reference as checklist is mitigated by agent Step framing."
+        - description: "Missing Applicability section default — if author forgets section, all 9 principles apply silently"
+          expiry_date: "2026-07-24"
+          rationale: "Documented safe default (all principles apply). Agent notes 'Applicability section not found' in output. Revisit when more reference files are authored."
+        - description: "ignore_changes severity distinction (all=Critical, named=Important) is a judgment call"
+          expiry_date: "2026-10-24"
+          rationale: "Per spec. Tag drift in compliance-sensitive environments could warrant Critical, but current scope accepts Important. Revisit with production IaC reviews."
+      defer:
+        - "Koans written from theoretical patterns, not production Terraform review experience"
+        - "Output format Domain block not validated against downstream pipeline"
+        - "Step 5 limited to Terraform-generic patterns — provider-specific semantics excluded"
+        - "OpenTofu divergence — patterns assume Terraform semantics"
+        - "Scar report output path was at project root instead of feature directory (fixed as prerequisite before iteration)"
+    fixes_applied: 2
+    fixes_scar_count: 0
+    signal_lost_after: 12
+    decision: stop
+    decision_reason: "User confirmed level-analysis recommendation: 2 Fix, 7 Accept, 5 Defer. Remaining items require production data (real IaC reviews) or external triggers (OpenTofu adoption, downstream pipeline creation) to become actionable."
