@@ -8,7 +8,7 @@ Every completed task leaves a scar report. This is the yin-side output of implem
 
 The canonical scar report schema is defined in `templates/scar-schema.yaml`. Read that file for the full schema, rules, and a verbatim example.
 
-Scar reports are written as YAML at `scar-reports/task-N-scar.yaml`.
+Scar reports are written as YAML at `changes/<feature>/scar-reports/task-N-scar.yaml` — inside the feature's `changes/` directory, not at the project root.
 
 **For inline/cowork execution:** read `templates/scar-schema.yaml` before writing any scar report.
 

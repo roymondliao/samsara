@@ -33,7 +33,7 @@ digraph implement {
         death_test [label="Death Test 先行"];
         unit_test [label="Unit Test"];
         integration [label="Integration Test\n（如適用）"];
-        scar [label="寫 scar-report\n→ scar-reports/task-N-scar.yaml"];
+        scar [label="寫 scar-report\n→ changes/<feature>/scar-reports/task-N-scar.yaml"];
         report [label="回報 status + scar report\n（不 commit）"];
     }
 
@@ -140,7 +140,7 @@ This order is mandatory. Death test before unit test. Scar report before self-it
 5. Run unit tests — verify they fail (red)
 6. Implement minimal code to pass all tests
 7. Run all tests — verify they pass (green)
-8. Write scar report → `scar-reports/task-N-scar.yaml` (read `templates/scar-schema.yaml` for the exact format)
+8. Write scar report → `changes/<feature>/scar-reports/task-N-scar.yaml` (read `templates/scar-schema.yaml` for the exact format; `<feature>` = the feature directory name from `changes/`)
 9. Self-iteration (Level 1) — review scar items, fix task-scope actionable items
 10. Update scar report — add `resolved_items` for fixed items, mark remaining items with `deferred_to_feature_iteration` flags where applicable
 11. Run all tests — verify no regression from self-iteration fixes
@@ -190,7 +190,7 @@ These are non-negotiable:
 ## Transition
 
 All tasks complete. Calculate remaining scar items:
-- Count items across all `scar-reports/` where `deferred_to_feature_iteration: true` or items without `resolved_items` coverage
+- Count items across all `changes/<feature>/scar-reports/` where `deferred_to_feature_iteration: true` or items without `resolved_items` coverage
 - These are the **feature-level items** that Level 1 self-iteration could not resolve
 
 Then ask:

@@ -3,7 +3,7 @@
 # This file defines the canonical scar report format for all samsara tasks.
 # Used by: implementer agent (via dispatch prompt injection), inline/cowork mode (via scar-report.md)
 #
-# Location: scar-reports/task-N-scar.yaml
+# Location: changes/<feature>/scar-reports/task-N-scar.yaml (inside the feature directory)
 
 # --- Schema ---
 

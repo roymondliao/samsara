@@ -123,7 +123,7 @@ Mother Rule 3: Does this abstraction make the error easier or harder to see? If 
 
 ### 4. Scar Report Integrity
 
-If the review includes a scar report (`scar-reports/task-N-scar.yaml`), check:
+If the review includes a scar report (`changes/<feature>/scar-reports/task-N-scar.yaml`), check:
 - **Schema compliance:** Does the scar report follow `scar-schema.yaml`? Are items using the structured format (`{description, deferred_to_feature_iteration}`) rather than plain strings?
 - **Self-iteration honesty:** If `resolved_items` is empty and all items have `deferred_to_feature_iteration: true`, flag as Important — why were zero task-scope items fixable? Each deferred item should have a rationale.
 - **Resolved items validity:** Do `resolved_items` accurately describe what was fixed? Does the resolution match the diff?

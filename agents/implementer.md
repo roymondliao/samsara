@@ -62,7 +62,7 @@ This order cannot be swapped. Death test before unit test. Scar report before se
 
 ## Scar Report
 
-After implementation, produce a scar report as YAML at `scar-reports/task-N-scar.yaml`.
+After implementation, produce a scar report as YAML at `changes/<feature>/scar-reports/task-N-scar.yaml` — inside the feature's `changes/` directory, not at the project root. The `<feature>` directory name is provided in your dispatch prompt's Working Directory or Architecture Context.
 
 **Use the exact schema provided in your dispatch prompt** (injected from `scar-schema.yaml`). Do not invent your own format. The schema defines: `task_id`, `completion_status`, `known_shortcuts`, `silent_failure_conditions`, `assumptions_made` (with `verified` flag), `debt_registered`, `debt_location`, optional `narrative`, optional `resolved_items`, and optional `deferred_to_feature_iteration` flags.
 
