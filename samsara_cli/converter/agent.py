@@ -19,8 +19,7 @@ Design decisions:
 Assumptions:
 - Body text is valid UTF-8. (Consequence if false: read_text() would have already raised.)
 - NamingConfig.separator + skill_prefix + stem produces a unique, valid agent name.
-  (If two agents have the same stem after normalization, one will silently overwrite
-  the other at the filesystem level. This is detected only at deployment.)
+  (Duplicate names are caught by ConversionEngine via casefold() comparison.)
 - The agent.toml.j2 template uses StrictUndefined -- missing required variables
   raise UndefinedError immediately, not silently. (Verified: template_env.py enforces this.)
 - TOML basic multiline strings accept backslash-escaped double quotes.

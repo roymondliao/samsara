@@ -255,3 +255,86 @@ class TestDC75UnknownFilesPreserved:
             "SILENT FAILURE [DC-7-5]: Extra file 'custom-extra-file.txt' was not "
             "found in output after conversion. Unknown files must be preserved."
         )
+
+
+# ---------------------------------------------------------------------------
+# DC-7-6: Duplicate agent names must fail, not silently overwrite
+#
+# Silent failure: Two agent .md files produce the same output name (e.g.,
+# both named 'reviewer.md' in different contexts). The second file silently
+# overwrites the first. The output has one agent instead of two — no error.
+# First discoverer: user who notices a missing agent in Codex.
+# ---------------------------------------------------------------------------
+
+
+class TestDC76DuplicateAgentNameFails:
+    def test_duplicate_agent_names_raise_engine_error(self, tmp_path: Path):
+        """Two agent files producing the same output name must raise EngineError."""
+        from samsara_cli.converter.engine import ConversionEngine, EngineError
+
+        source = make_source_structure(tmp_path)
+        output = tmp_path / "output"
+
+        agents_dir = source / "agents"
+        duplicate = agents_dir / "implementer-copy.md"
+        duplicate.write_text("# Implementer Copy\n\nDuplicate agent.\n")
+
+        with patch("samsara_cli.converter.engine.AgentConverter") as MockAgentConverter:
+            mock_converter = MagicMock()
+            MockAgentConverter.return_value = mock_converter
+
+            mock_result = MagicMock()
+            mock_result.agent_name = "samsara-implementer"
+            mock_result.toml_content = '[agent]\nname = "samsara-implementer"\n'
+            mock_converter.convert_from_text.return_value = mock_result
+
+            with pytest.raises(EngineError, match="[Dd]uplicate") as exc_info:
+                engine = ConversionEngine(platform="codex")
+                engine.run(source_dir=source, output_dir=output)
+
+            error_msg = str(exc_info.value)
+            assert "Collides with" in error_msg, (
+                "Error must name the prior file that produced the collision"
+            )
+
+    def test_case_insensitive_collision_detected(self, tmp_path: Path):
+        """Names differing only in case must collide (macOS filesystem safety).
+
+        'samsara-Implementer' vs 'samsara-implementer' would overwrite on
+        case-insensitive filesystems. The engine must catch this via casefold().
+        """
+        from samsara_cli.converter.engine import ConversionEngine, EngineError
+
+        source = make_source_structure(tmp_path)
+        output = tmp_path / "output"
+
+        agents_dir = source / "agents"
+        agents_dir.mkdir(exist_ok=True)
+        (agents_dir / "other-agent.md").write_text("# Other\n\nAnother agent.\n")
+
+        with patch("samsara_cli.converter.engine.AgentConverter") as MockAgentConverter:
+            mock_converter = MagicMock()
+            MockAgentConverter.return_value = mock_converter
+
+            result_lower = MagicMock()
+            result_lower.agent_name = "samsara-implementer"
+            result_lower.toml_content = '[agent]\nname = "samsara-implementer"\n'
+
+            result_upper = MagicMock()
+            result_upper.agent_name = "samsara-Implementer"
+            result_upper.toml_content = '[agent]\nname = "samsara-Implementer"\n'
+
+            # sorted() glob: implementer.md < other-agent.md — result_lower maps to first
+            mock_converter.convert_from_text.side_effect = [
+                result_lower,
+                result_upper,
+            ]
+
+            with pytest.raises(EngineError, match="[Dd]uplicate") as exc_info:
+                engine = ConversionEngine(platform="codex")
+                engine.run(source_dir=source, output_dir=output)
+
+            error_msg = str(exc_info.value)
+            assert "Collides with" in error_msg, (
+                "Case-insensitive collision error must name the prior file"
+            )

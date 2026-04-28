@@ -30,10 +30,9 @@ Design decisions:
   and then immediately deleting a temp dir on source validation failure.
 - TargetValidator is run BEFORE the temp dir is moved. This catches conversion
   problems before they land in the final output location.
-- Agent name uniqueness: if two agent .md files produce the same stem after
-  naming normalization, the second overwrites the first. This was documented in
-  task-4 scar as a known gap. The engine does NOT deduplicate — the TargetValidator
-  does not currently detect it. If this matters, a caller-level check is needed.
+- Agent name uniqueness: duplicate agent names raise EngineError. Names are
+  compared case-folded to catch case-insensitive filesystem collisions (macOS
+  default). The error message names both the current and prior source files.
 
 Known shortcuts:
 - shutil.move atomicity: on cross-filesystem moves, the move is NOT atomic —
@@ -396,7 +395,7 @@ class ConversionEngine:
         template = self._template_env.get_template(template_name)
         converter = AgentConverter()
 
-        seen_agent_names: set[str] = set()
+        seen_agent_names: dict[str, str] = {}
 
         for agent_file in sorted(source_agents_dir.glob("*.md")):
             logger.info("Converting agent: %s", agent_file.name)
@@ -409,18 +408,16 @@ class ConversionEngine:
                 template=template,
             )
 
-            # Warn on duplicate agent names (not an error — later file wins)
-            if converted.agent_name in seen_agent_names:
-                warnings.warn(
+            name_key = converted.agent_name.casefold()
+            if name_key in seen_agent_names:
+                prior_file = seen_agent_names[name_key]
+                raise EngineError(
                     f"Duplicate agent name '{converted.agent_name}' produced from "
-                    f"'{agent_file.name}'. A previous agent with this name was already "
-                    "written. The previous agent file will be overwritten. "
-                    "This is a known limitation (task-4 scar) — agent name uniqueness "
-                    "is not enforced at conversion time.",
-                    UserWarning,
-                    stacklevel=2,
+                    f"'{agent_file.name}'. Collides with '{prior_file}' which produced "
+                    f"the same name. On case-insensitive filesystems (macOS default), "
+                    "this would silently overwrite the first agent."
                 )
-            seen_agent_names.add(converted.agent_name)
+            seen_agent_names[name_key] = agent_file.name
 
             out_file = output_agents_dir / f"{converted.agent_name}.toml"
             out_file.write_text(converted.toml_content, encoding="utf-8")
