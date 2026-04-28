@@ -483,7 +483,7 @@ class ConversionEngine:
 
         hooks_output_path = output_plugin_dir / hooks_file_name
         hooks_output_path.write_text(
-            json.dumps(hooks_dict, indent=2, ensure_ascii=False),
+            json.dumps(hooks_dict, indent=2, ensure_ascii=False) + "\n",
             encoding="utf-8",
         )
 
@@ -521,7 +521,7 @@ class ConversionEngine:
 
         out_manifest = output_plugin_dir / manifest_file_name
         out_manifest.write_text(
-            json.dumps(manifest_dict, indent=2, ensure_ascii=False),
+            json.dumps(manifest_dict, indent=2, ensure_ascii=False) + "\n",
             encoding="utf-8",
         )
 
