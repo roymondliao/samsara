@@ -1,0 +1,222 @@
+task_id: task-9
+completion_status: done_with_concerns
+
+narrative: >
+  Integration tests implemented across three layers: pipeline (structure verification),
+  format validation (TOML parse, JSON schema, frontmatter, unconverted patterns), and
+  snapshot (byte-for-byte comparison with UPDATE_SNAPSHOTS mechanism). Test fixtures
+  are minimal (3 skills, 1 agent, 1 reference) — chosen to exercise all transformation
+  rules while keeping fixtures readable. Snapshot normalization handles the agent TOML
+  '# Source: <path>' comment that varies by machine. Self-iteration added normalization
+  integrity tests, CI env guard, and skill-name (not just count) pipeline assertion.
+
+known_shortcuts:
+  - description: >
+      Test fixtures are minimal (3 skills, 1 agent, 1 reference). They do not cover
+      edge cases from the full samsara source: skills with Graphviz diagrams (research,
+      implement in real source have large dot diagrams), skills with multiple companion
+      files, agents with mcp_servers or skills.config sections in frontmatter, or
+      references longer than ~20 lines. The minimal fixtures exercise the transformation
+      rules but not boundary conditions like very large bodies, deeply nested YAML
+      frontmatter, or unusual Unicode content.
+    deferred_to_feature_iteration: true
+
+  - description: >
+      Snapshot comparison normalizes the '# Source: <absolute_path>' comment in agent
+      TOML files but does NOT normalize any other absolute paths that may appear in
+      hook scripts (PLUGIN_DIR, SKILLS_DIR in samsara-session-start.sh are relative,
+      so currently stable). If a future converter module emits absolute paths in output
+      content, those would cause snapshot failures on other machines without a new
+      normalization rule.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      The format validation test for unconverted tool references (Read tool, Edit tool,
+      Write tool, Bash tool) scans all output .md files. However, the dispatch-template.md
+      companion file in the implement skill fixture contains a code block with:
+        Agent tool:
+          subagent_type: "samsara:implementer"
+      The 'Agent tool:' pattern is covered by the agent_tool_reference transformation rule.
+      But the code block is inside backtick fences — the RulesEngine applies rules to body
+      text including inside code blocks (known gap from Task 2/3). This means 'Agent tool:'
+      DOES get converted inside the code block, which is correct for these tests but may
+      produce confusing output for Codex users reading the template.
+    deferred_to_feature_iteration: false
+
+silent_failure_conditions:
+  - description: >
+      Snapshot test passes trivially if UPDATE_SNAPSHOTS=1 is accidentally set in the CI
+      environment. In that case, every CI run silently updates the snapshots instead of
+      comparing against them — conversion regressions would never be caught. The test
+      prints a confirmation message when updating but there is no CI-side guard that
+      fails if UPDATE_SNAPSHOTS is set unexpectedly.
+      First discoverer: developer who notices the committed snapshot files are being
+      modified by CI on every run. Damage: all snapshot regressions since the env
+      var was accidentally set go undetected.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      The snapshot comparison normalizes '# Source: <path>' using regex
+      re.compile(r"^# Source: .+$", re.MULTILINE). If the agent TOML template is
+      changed to use a different comment format (e.g., '## Source:' or '# Generated from:'),
+      normalization silently stops working. Subsequent snapshot comparisons would fail
+      for ALL agent TOML files due to absolute path mismatches — not with a clear error
+      message about the template change. First discoverer: CI failure after template change.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      Format validation test_tool_references_converted_in_skill_mds() scans ALL output
+      .md files for 'Read tool', 'Edit tool', 'Write tool', 'Bash tool'. However, if any
+      of these literal strings appear in a code block or quotation context (not as tool
+      references), the test would produce a false positive — failing when the string is
+      present but is not an unconverted tool reference. The current fixtures do not trigger
+      this, but future fixtures might (e.g., a skill that quotes Claude Code tool syntax
+      as an example).
+    deferred_to_feature_iteration: false
+
+  - description: >
+      Pipeline test test_skill_count_matches_source() compares counts but not names.
+      If the converter drops one skill and adds a differently-named one (e.g., due to
+      a naming normalization collision), the counts would match but the set of skills
+      differs. First discoverer: Codex user who notices a skill is missing and a
+      duplicate of another skill exists with a wrong name.
+    deferred_to_feature_iteration: false
+
+assumptions_made:
+  - assumption: >
+      Snapshot comparison is platform-independent: conversion output on macOS, Linux,
+      and Windows produces the same file content (UTF-8 encoding, LF line endings,
+      no platform-specific path separators in content).
+    verified: false
+    note: >
+      Tested on macOS only. The _normalize_content() function handles the known absolute
+      path issue in agent TOML Source comments. However, if the ConversionEngine or any
+      converter produces CRLF line endings on Windows (e.g., via str + '\n' vs os.linesep),
+      snapshot comparison would fail on Windows CI. No Windows CI exists to verify.
+      The scar report notes this as unverified.
+    deferred_to_feature_iteration: true
+
+  - assumption: >
+      ConversionEngine("codex") can be constructed and run without a running Codex CLI
+      installation. The engine only loads platform config and runs file conversion —
+      it does not invoke the platform binary during conversion.
+    verified: true
+    note: >
+      Verified: all 57 integration tests pass without Codex installed. The CLI presence
+      check (PlatformDetector.detect()) is only called during install, not during convert.
+
+  - assumption: >
+      The fixture source directory at tests/fixtures/source/ is a stable, committed
+      test fixture. Its content is not modified between test runs. If someone modifies
+      the fixture source without regenerating snapshots (UPDATE_SNAPSHOTS=1), snapshot
+      tests will fail permanently until snapshots are regenerated.
+    verified: true
+    note: >
+      Fixture is under version control. Modification requires an explicit commit.
+      The test_snapshot.py file documents the UPDATE_SNAPSHOTS=1 command in the
+      failure message. Acceptable risk.
+
+  - assumption: >
+      The SourceValidator is correct and its passing state (verified by
+      test_fixture_passes_source_validator) means the fixture is a valid samsara source.
+      If SourceValidator has gaps (e.g., does not check for required frontmatter fields
+      in SKILL.md), the fixture could be "valid" by the validator but invalid in practice.
+    verified: false
+    note: >
+      SourceValidator checks: dirs exist, plugin.json fields, SKILL.md presence, agents
+      .md count, hooks.json. It does NOT check SKILL.md frontmatter content. A SKILL.md
+      with no 'name:' field would pass SourceValidator but fail at SkillConverter.convert().
+      This gap is pre-existing (task-3 scar) and not introduced by this task.
+    deferred_to_feature_iteration: false
+
+  - assumption: >
+      The scope='class' fixture in TestPipelineOutputStructure and scope='module' fixture
+      in TestTomlFormatValidity run conversion once and share the output across test methods.
+      If pytest's tmpdir cleanup interacts poorly with class-scoped fixtures (e.g., temp
+      dir deleted before all class tests run), tests would fail with FileNotFoundError.
+    verified: true
+    note: >
+      Verified: all 57 tests pass with class-scoped and module-scoped fixtures.
+      pytest_tmp_path_factory.mktemp() uses a unique directory per scope, not per test.
+
+debt_registered: true
+debt_location: >
+  tests/integration/test_snapshot.py:_normalize_content — normalization only covers
+  '# Source:' comments; future absolute paths in other output files need additional rules;
+  tests/integration/test_format_validation.py:test_tool_references_converted_in_skill_mds
+  — false positive risk if tool reference strings appear in code block documentation context;
+  tests/fixtures/source/ — minimal fixtures missing edge cases (large files, Graphviz diagrams,
+  multiple companion files, mcp_servers agent config)
+
+resolved_items:
+  - original_section: silent_failure_conditions
+    original_description: >
+      Snapshot test passes trivially if UPDATE_SNAPSHOTS=1 is accidentally set in CI.
+      Regressions would be silently hidden behind snapshot updates.
+    resolution: >
+      Added CI environment detection in _should_update_snapshots(). When CI=true or
+      GITHUB_ACTIONS=true AND UPDATE_SNAPSHOTS=1, a loud WARNING is printed to stdout
+      during the test run. The test still proceeds (the CI update may be intentional),
+      but the warning appears in CI logs and alerts operators to the unusual condition.
+
+  - original_section: silent_failure_conditions
+    original_description: >
+      If agent TOML template changes comment format, normalization silently stops working.
+      All TOML snapshot comparisons would fail with absolute path mismatches.
+    resolution: >
+      Added TestNormalizationActuallyTransforms class with 3 tests:
+      (1) test_normalize_replaces_source_comment: verifies the regex actually transforms
+      '# Source: /abs/path' to '# Source: <normalized>';
+      (2) test_normalize_is_idempotent: verifies applying normalization twice = once;
+      (3) test_normalize_does_not_change_normal_content: verifies non-matching content
+      is unchanged (no over-aggressive normalization).
+      If the template changes the comment format, test (1) will fail with a descriptive
+      error — not with a cryptic snapshot mismatch.
+
+  - original_section: silent_failure_conditions
+    original_description: >
+      Pipeline test test_skill_count_matches_source() compares counts but not names.
+      A converter that drops one skill and renames another would produce matching counts
+      but wrong output.
+    resolution: >
+      Added test_skill_names_are_derived_from_frontmatter_names() in TestPipelineOutputStructure.
+      Reads each source SKILL.md frontmatter to extract the 'name:' field (the actual
+      name used by SkillConverter._derive_output_dir_name()), then verifies that
+      'samsara-<frontmatter_name>' exists in the output skills/ directory. Uses set
+      arithmetic to report missing and extra names separately with descriptive messages.
+      Note: uses frontmatter name, not source directory name — these can differ
+      (e.g., 'samsara-bootstrap' dir has frontmatter name 'samsara-bootstrap' → output
+      'samsara-samsara-bootstrap'). Count-only test is preserved as a separate test.
+
+  - original_section: silent_failure_conditions
+    original_description: >
+      _collect_output_files() silently drops files on OSError/UnicodeDecodeError,
+      causing snapshot comparison to pass on unreadable files.
+    resolution: >
+      Fixed in review cycle: removed try/except from _collect_output_files(). All
+      files must be readable as UTF-8. Read failure now raises immediately — a file
+      that cannot be read causes a test error, not a silent omission.
+
+  - original_section: silent_failure_conditions
+    original_description: >
+      _write_snapshots() catches OSError alongside UnicodeDecodeError, obscuring
+      filesystem errors behind the binary fallback path.
+    resolution: >
+      Fixed in review cycle: _write_snapshots() now only catches UnicodeDecodeError
+      for binary fallback. OSError propagates immediately.
+
+  - original_section: silent_failure_conditions
+    original_description: >
+      Frontmatter name parser in test_skill_names_are_derived_from_frontmatter_names
+      does not handle YAML quoting — name: "implement" extracts with surrounding quotes.
+    resolution: >
+      Fixed in review cycle: added .strip("\"'") after .strip() on extracted name
+      value. Handles both single and double quoted YAML values.
+
+  - original_section: silent_failure_conditions
+    original_description: >
+      Missing snapshot directory causes pytest.skip instead of pytest.fail,
+      contradicting DC-9-9 (must fail, not silently pass).
+    resolution: >
+      Fixed in review cycle: changed pytest.skip to pytest.fail for missing
+      FIXTURE_EXPECTED directory. Missing snapshots now cause a test failure.

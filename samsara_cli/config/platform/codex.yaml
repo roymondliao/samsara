@@ -1,0 +1,166 @@
+# @package _global_
+# Target platform config — Codex.
+# Fields at root level here are merged under 'platform:' key by Hydra config group.
+# Note: the Pydantic model key for this group is PlatformConfig.platform (PlatformIdentity).
+
+platform:
+  name: "codex"
+  version_cmd: "codex --version"
+
+paths:
+  plugin_dir: ".codex-plugin"
+  plugin_manifest: "plugin.json"
+  skills_dir: "skills"
+  agents_dir: "agents"
+  hooks_file: "hooks.json"
+
+install:
+  project:
+    target: "$CWD/.codex-plugin"
+  global:
+    marketplace_name: "samsara-local"
+    marketplace_source: "~/.codex/plugins/samsara"
+    plugin_name: "samsara"
+    config_path: "~/.codex/config.toml"
+
+formats:
+  agent:
+    type: toml
+    template: "agent.toml.j2"
+    fields_mapping:
+      body: developer_instructions
+    optional_fields:
+      - model
+      - sandbox_mode
+      - mcp_servers
+      - "skills.config"
+  hook_output:
+    context_injection_field: "systemMessage"
+    session_start_matchers:
+      - "startup"
+      - "resume"
+    template: "hooks.json.j2"
+    script_template: "hook.sh.j2"
+  manifest:
+    template: "manifest.json.j2"
+    extra_fields:
+      skills: "./skills/"
+
+naming:
+  skill_prefix: "samsara"
+  separator: "-"
+
+permissions:
+  sandbox_mode: "workspace-write"
+  feature_flags:
+    codex_hooks: true
+
+transformations:
+  # IMPORTANT: Regex patterns use single-quoted YAML strings.
+  # YAML does NOT interpret backslashes in single-quoted strings.
+  # \w, \b, \1 arrive in Python as the two-char sequences \w, \b, \1 — correct.
+  # DO NOT "fix" single backslashes to double backslashes (\\w, \\b, \\1).
+  # Double-backslash in a YAML single-quoted string produces the literal chars \\w
+  # which Python re.compile() treats as escaped-backslash + w — WRONG.
+  # The Pydantic regex validator checks pattern compilability but cannot detect
+  # this specific double-backslash mistake (\\w is valid regex, just wrong semantics).
+
+  # --- High priority: platform-specific syntax ---
+  - id: skill_invocation
+    scope: body
+    type: regex
+    match: 'invoke `samsara:([\w-]+)`'
+    replace: 'use the `$samsara-\1` skill'
+    priority: high
+
+  - id: skill_invocation_variant
+    scope: body
+    type: regex
+    match: 'invoke `samsara:([\w-]+)` skill'
+    replace: 'use the `$samsara-\1` skill'
+    priority: high
+
+  - id: skill_tool_reference
+    scope: body
+    type: regex
+    match: 'using the Skill tool'
+    replace: 'using the `$skill-name` invocation syntax'
+    priority: high
+
+  - id: agent_dispatch_subagent_type
+    scope: body
+    type: regex
+    match: 'subagent_type: "samsara:([\w-]+)"'
+    replace: 'agent named "samsara-\1"'
+    priority: high
+
+  - id: agent_tool_reference
+    scope: body
+    type: regex
+    match: 'Agent tool:'
+    replace: 'Subagent dispatch:'
+    priority: high
+
+  - id: task_create
+    scope: body
+    type: regex
+    match: 'TaskCreate\b'
+    replace: 'update_plan'
+    priority: medium
+
+  - id: task_update
+    scope: body
+    type: regex
+    match: 'TaskUpdate\b'
+    replace: 'update_plan'
+    priority: medium
+
+  # --- Medium priority: tool name mapping ---
+  - id: tool_read
+    scope: body
+    type: literal
+    match: 'Read tool'
+    replace: 'file reading (via exec_command with cat/nl)'
+    priority: medium
+
+  - id: tool_edit
+    scope: body
+    type: literal
+    match: 'Edit tool'
+    replace: 'apply_patch'
+    priority: medium
+
+  - id: tool_write
+    scope: body
+    type: literal
+    match: 'Write tool'
+    replace: 'apply_patch'
+    priority: medium
+
+  - id: tool_bash
+    scope: body
+    type: literal
+    match: 'Bash tool'
+    replace: 'exec_command'
+    priority: medium
+
+  - id: tool_ls
+    scope: body
+    type: literal
+    match: 'LS tool'
+    replace: 'exec_command with ls/find'
+    priority: medium
+
+  - id: tool_grep
+    scope: body
+    type: literal
+    match: 'Grep tool'
+    replace: 'exec_command with rg'
+    priority: medium
+
+  - id: tool_glob
+    scope: body
+    type: literal
+    match: 'Glob tool'
+    replace: 'exec_command with find/rg --files'
+    priority: medium

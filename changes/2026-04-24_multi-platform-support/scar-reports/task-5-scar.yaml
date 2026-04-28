@@ -1,0 +1,198 @@
+task_id: task-5
+completion_status: done_with_concerns
+
+known_shortcuts:
+  - description: >
+      convert_script renders hook.sh.j2 with the same template for ALL hook names
+      (session-start and check-codebase-map). The rendered check-codebase-map script
+      contains session-start logic (reads samsara-bootstrap/SKILL.md) with the
+      wrong hook_name in the comment header, but otherwise identical body. The
+      check-codebase-map hook's actual logic (checking CLAUDE_PROJECT_DIR for map
+      freshness) is not preserved — the converted script will emit bootstrap context
+      instead of codebase-map status. This is a behavioral regression for the
+      check-codebase-map hook.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      The hook.sh.j2 template's printf call uses a naive format string approach
+      ("%s") for injecting the session_context into JSON. While the bash escape_for_json
+      function handles the most common cases (quotes, newlines, backslashes, CR, tab),
+      it does not handle Unicode control characters (U+0000-U+001F) or other
+      characters requiring JSON escape sequences (\uXXXX). A SKILL.md file containing
+      raw Unicode control characters would produce malformed JSON output at runtime.
+      This is a runtime failure, not a converter failure — but the converter creates
+      the script that carries this risk.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      The hooks.json.j2 template's 'systemMessage' field in the hooks array is
+      populated with a default static string (the samsara framework description) when
+      no custom system_message is provided. At Codex runtime, the hook SCRIPT produces
+      the actual dynamic system message. The hooks.json 'systemMessage' is a static
+      description — it is unclear from Codex documentation whether hooks.json's
+      systemMessage overrides the script's stdout JSON output, or if they are
+      additive, or if one takes precedence. This ambiguity is unresolved.
+    deferred_to_feature_iteration: true
+
+silent_failure_conditions:
+  - description: >
+      check-codebase-map converted script references CLAUDE_PROJECT_DIR env var
+      (which exists only in Claude Code's runtime). The converted hook.sh.j2 script
+      does NOT reference CLAUDE_PROJECT_DIR (it reads from PLUGIN_DIR instead) — but
+      the source hook's codebase-map checking logic is lost entirely. If someone
+      expects codebase-map status injection in Codex, they see no errors, just no
+      map status. The hook runs and exits 0 (after injecting bootstrap content instead).
+    deferred_to_feature_iteration: false
+
+  - description: >
+      The convert_hooks_json method validates that matchers don't contain 'clear'
+      or 'compact' by raising ValueError. However, if a future platform config for
+      a different platform re-uses codex.yaml as a base and adds 'clear' back to
+      matchers, the validator fires — but only if someone calls convert_hooks_json
+      with that config. There is no validator at config load time for matcher values.
+      The config schema (FormatsConfig.hook_output is dict[str,Any]) cannot validate
+      matcher values at load time.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      hooks.json is returned as a Python dict (not written to a file) by
+      convert_hooks_json. If the caller writes this dict to hooks.json without
+      verifying the 'codex_hooks = true' feature flag is set in config.toml, the
+      hooks file exists but Codex silently ignores it. The converter documents this
+      requirement but cannot enforce it — enforcement requires reading and modifying
+      config.toml, which is outside this task's scope.
+    deferred_to_feature_iteration: true
+
+assumptions_made:
+  - assumption: >
+      Codex hooks.json 'systemMessage' at the hook-entry level is the correct field
+      for context injection. This is what the template (hooks.json.j2) emits and what
+      the tests verify. However, Codex's hook schema is not publicly documented in
+      a verifiable way — this is based on the architecture spec provided in the task.
+    verified: false
+    note: >
+      Cannot verify without access to Codex runtime or official documentation.
+      If 'systemMessage' is not the correct field, every hook conversion silently
+      injects no context. The consequence: all Codex sessions run without samsara
+      framework context, with no error surfaced.
+    deferred_to_feature_iteration: true
+
+  - assumption: >
+      Jinja2's tojson filter correctly handles all Python string values passed to
+      'system_message' in hooks.json.j2 rendering, including strings with backslashes,
+      quotes, newlines, and tabs. This produces valid JSON without double-escaping.
+    verified: true
+    note: >
+      Verified by DC-4 tests: strings with quotes, newlines, and backslashes all
+      round-trip correctly through json.dumps -> json.loads. The tojson filter
+      calls Python's json.dumps internally, which handles these cases correctly.
+      Do NOT pre-escape strings before passing to tojson.
+    deferred_to_feature_iteration: false
+
+  - assumption: >
+      platform_config.paths.plugin_dir from codex.yaml ('.codex-plugin') is a
+      relative path from the project root, not an absolute path. The rendered hook
+      script uses it as a literal PLUGIN_DIR value. If the script is executed from
+      a directory other than the project root, PLUGIN_DIR resolves to the wrong
+      location — silently failing to find SKILL.md or skill env.sh files.
+    verified: false
+    note: >
+      Not verified — would require running the rendered bash script in a test
+      environment. The codex.yaml value '.codex-plugin' is clearly relative.
+      At Codex runtime, the hook is executed from an unknown working directory.
+      If Codex executes hooks from the project root, this works. If from $HOME
+      or the Codex binary directory, it silently breaks.
+    deferred_to_feature_iteration: true
+
+  - assumption: >
+      The hook.sh.j2 template represents a complete and correct Codex session-start
+      hook script. The source session-start hook reads SKILL.md via PLUGIN_ROOT and
+      escapes it for JSON. The template replicates this logic using PLUGIN_DIR. The
+      assumption is that PLUGIN_DIR points to the installed plugin directory where
+      skills/samsara-bootstrap/SKILL.md exists at runtime.
+    verified: false
+    note: >
+      Not verified end-to-end. The converter produces the script correctly; whether
+      PLUGIN_DIR is populated with the right content at Codex runtime is an
+      installation concern, not a conversion concern. Marked as an assumption because
+      a wrong PLUGIN_DIR value silently produces "Error reading samsara-bootstrap skill"
+      as the injected context — a corrupted message, not an empty one.
+    deferred_to_feature_iteration: true
+
+debt_registered: true
+debt_location: >
+  samsara_cli/converter/hook.py: convert_script uses single template for all hooks —
+  check-codebase-map behavioral regression (~line 180);
+  samsara_cli/config/templates/codex/hook.sh.j2: Unicode control character gap in
+  escape_for_json (~line 22);
+  samsara_cli/config/templates/codex/hook.sh.j2: hooks.json systemMessage vs script
+  stdout relationship undefined (~line 38, template comments);
+  samsara_cli/converter/hook.py: codex_hooks feature flag enforcement not in converter (~line 220)
+
+resolved_items:
+  - original_section: known_shortcuts
+    original_description: >
+      hook.sh.j2 was a structural stub (task-1 scar) that only echoed a static string
+      and did not output the correct Codex JSON format. The DC-1 death test caught this
+      immediately on first test run.
+    resolution: >
+      Updated hook.sh.j2 to include: reading samsara-bootstrap/SKILL.md, escape_for_json
+      function for proper bash JSON escaping, and printf '{"systemMessage":"%s"}\n'
+      output. The template now produces a bash script that emits Codex-compatible JSON
+      on execution. DC-1 death tests now pass (verified).
+
+  - original_section: silent_failure_conditions
+    original_description: >
+      Claude Code matchers ('clear', 'compact') in session_start_matchers would
+      silently produce a hooks.json that never fires on Codex session events.
+    resolution: >
+      Added explicit validation in convert_hooks_json: raises ValueError immediately
+      if 'clear' or 'compact' appear in the matchers list. Also validates matchers
+      list is non-empty. The death test DC-2 verifies this. The validation runs at
+      call time — not at config load time (which remains a gap due to FormatsConfig's
+      raw dict type).
+
+  - original_section: known_shortcuts
+    original_description: >
+      Template stub rendering variable names were unverified (task-1 scar note:
+      "Template variable names (e.g., developer_instructions, system_message, agents)
+      are assumed based on the field_mapping spec").
+    resolution: >
+      Verified and aligned template variables for hooks.json.j2 (session_start_matchers,
+      hooks_dir, system_message) and hook.sh.j2 (hook_name, event, plugin_dir, skills_dir)
+      against the actual template content. All 35 tests pass with these variable names —
+      StrictUndefined would have caught any mismatch at render time.
+
+  - original_section: known_shortcuts
+    original_description: >
+      convert_script uses the same hook.sh.j2 template for all hook names, causing
+      check-codebase-map to emit session-start content (bootstrap SKILL.md injection)
+      instead of codebase-map status content.
+    resolution: >
+      Added convert_check_codebase_map_script() as a dedicated method on HookConverter.
+      The behavioral regression (codebase-map logic not adapted for Codex because
+      CLAUDE_PROJECT_DIR has no verified Codex equivalent) is preserved as a known
+      shortcut — callers should use the dedicated method for check-codebase-map hooks.
+      Added scar report documentation. The common convert_script() path now has docstring
+      noting this behavioral difference.
+
+  - original_section: known_shortcuts
+    original_description: >
+      Unicode control character gap in bash escape_for_json.
+    resolution: >
+      Added explicit comment in hook.sh.j2 template documenting this gap:
+      "Known gap: Unicode control characters (U+0000-U+001F) are not escaped."
+      The gap itself is not fixed (would require jq or python for proper unicode
+      escaping in bash) — making it visible is the scope-appropriate resolution.
+
+  - original_section: assumptions_made
+    original_description: >
+      PLUGIN_DIR relative path assumption — if Codex executes hooks from a directory
+      other than the project root, PLUGIN_DIR resolves incorrectly.
+    resolution: >
+      Added explicit inline comment in hook.sh.j2 template documenting this assumption
+      and its failure mode: "If Codex executes from a different directory, PLUGIN_DIR
+      will resolve incorrectly and SKILL.md will not be found — injecting
+      'Error reading samsara-bootstrap skill' as context instead of empty."
+      The assumption cannot be verified without Codex runtime access — marked
+      deferred_to_feature_iteration in the assumption entry.

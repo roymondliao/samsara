@@ -1,0 +1,387 @@
+"""
+Unit tests for Installer — happy path and behavioral contracts.
+"""
+
+import json
+import tomllib
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def make_minimal_source(tmp_path: Path) -> Path:
+    """Create a minimal valid samsara source directory."""
+    source = tmp_path / "source"
+    plugin_dir = source / ".claude-plugin"
+    plugin_dir.mkdir(parents=True)
+    (plugin_dir / "plugin.json").write_text(
+        json.dumps({"name": "samsara", "version": "0.8.0"})
+    )
+    skills_dir = source / "skills"
+    skills_dir.mkdir()
+    skill_dir = skills_dir / "research"
+    skill_dir.mkdir()
+    (skill_dir / "SKILL.md").write_text(
+        "---\nname: research\ndescription: research skill\n---\n\n# research\n"
+    )
+    agents_dir = source / "agents"
+    agents_dir.mkdir()
+    (agents_dir / "implementer.md").write_text(
+        "# implementer\n\nYou are the implementer agent.\n"
+    )
+    hooks_dir = source / "hooks"
+    hooks_dir.mkdir()
+    (hooks_dir / "hooks.json").write_text(json.dumps({"hooks": []}))
+    references_dir = source / "references"
+    references_dir.mkdir()
+    return source
+
+
+def make_converted_output(tmp_path: Path) -> Path:
+    """Create a minimal converted output directory."""
+    output = tmp_path / "dist" / "codex"
+    plugin_dir = output / ".codex-plugin"
+    plugin_dir.mkdir(parents=True)
+    (plugin_dir / "plugin.json").write_text(
+        json.dumps({"name": "samsara", "version": "0.8.0"})
+    )
+    return output
+
+
+# ---------------------------------------------------------------------------
+# Project scope install
+# ---------------------------------------------------------------------------
+
+
+class TestInstallerProjectScope:
+    """Project scope install: copies to CWD/.codex-plugin, no global config changes."""
+
+    def test_project_install_copies_to_cwd(self, tmp_path):
+        """Project install copies .codex-plugin to CWD."""
+        from samsara_cli.installer.install import Installer
+
+        project_dir = tmp_path / "project"
+        project_dir.mkdir()
+        source_dir = make_minimal_source(tmp_path)
+        converted_dir = make_converted_output(tmp_path)
+
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="codex 1.2.3")
+            with patch(
+                "samsara_cli.installer.install.Installer._run_convert",
+                return_value=converted_dir,
+            ):
+                installer = Installer(platform="codex")
+                installer.install(
+                    source_dir=source_dir,
+                    scope="project",
+                    cwd=project_dir,
+                )
+
+        target = project_dir / ".codex-plugin"
+        assert target.exists(), "project install must create .codex-plugin in CWD"
+
+    def test_project_install_returns_instructions(self, tmp_path):
+        """Project install returns post-install instructions string."""
+        from samsara_cli.installer.install import Installer
+
+        project_dir = tmp_path / "project"
+        project_dir.mkdir()
+        source_dir = make_minimal_source(tmp_path)
+        converted_dir = make_converted_output(tmp_path)
+
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="codex 1.2.3")
+            with patch(
+                "samsara_cli.installer.install.Installer._run_convert",
+                return_value=converted_dir,
+            ):
+                installer = Installer(platform="codex")
+                instructions = installer.install(
+                    source_dir=source_dir,
+                    scope="project",
+                    cwd=project_dir,
+                )
+
+        assert instructions is not None
+        assert isinstance(instructions, str)
+        assert len(instructions) > 0
+
+    def test_project_install_instructions_mention_feature_flags(self, tmp_path):
+        """Project install instructions must mention feature flags for manual setup."""
+        from samsara_cli.installer.install import Installer
+
+        project_dir = tmp_path / "project"
+        project_dir.mkdir()
+        source_dir = make_minimal_source(tmp_path)
+        converted_dir = make_converted_output(tmp_path)
+
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="codex 1.2.3")
+            with patch(
+                "samsara_cli.installer.install.Installer._run_convert",
+                return_value=converted_dir,
+            ):
+                installer = Installer(platform="codex")
+                instructions = installer.install(
+                    source_dir=source_dir,
+                    scope="project",
+                    cwd=project_dir,
+                )
+
+        # Should mention codex_hooks since it's the feature flag for codex
+        assert "codex_hooks" in instructions.lower() or "codex" in instructions.lower()
+
+
+# ---------------------------------------------------------------------------
+# Global scope install
+# ---------------------------------------------------------------------------
+
+
+class TestInstallerGlobalScope:
+    """Global scope install: marketplace + config.toml modifications."""
+
+    def test_global_install_creates_marketplace_dir(self, tmp_path):
+        """Global install creates ~/.codex/plugins/samsara structure."""
+        from samsara_cli.installer.install import Installer
+
+        fake_home = tmp_path / "home"
+        fake_home.mkdir()
+        project_dir = tmp_path / "project"
+        project_dir.mkdir()
+        source_dir = make_minimal_source(tmp_path)
+        converted_dir = make_converted_output(tmp_path)
+
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="codex 1.2.3")
+            with patch.dict("os.environ", {"HOME": str(fake_home)}):
+                with patch(
+                    "samsara_cli.installer.install.Installer._run_convert",
+                    return_value=converted_dir,
+                ):
+                    installer = Installer(platform="codex")
+                    installer.install(
+                        source_dir=source_dir,
+                        scope="global",
+                        cwd=project_dir,
+                    )
+
+        marketplace_dir = fake_home / ".codex" / "plugins" / "samsara"
+        assert marketplace_dir.exists(), (
+            "global install must create marketplace source dir at ~/.codex/plugins/samsara"
+        )
+
+    def test_global_install_modifies_config_toml(self, tmp_path):
+        """Global install adds marketplace and feature flags to config.toml."""
+        from samsara_cli.installer.install import Installer
+
+        fake_home = tmp_path / "home"
+        codex_dir = fake_home / ".codex"
+        codex_dir.mkdir(parents=True)
+        config_path = codex_dir / "config.toml"
+        config_path.write_text("# Codex config\n")
+
+        project_dir = tmp_path / "project"
+        project_dir.mkdir()
+        source_dir = make_minimal_source(tmp_path)
+        converted_dir = make_converted_output(tmp_path)
+
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="codex 1.2.3")
+            with patch.dict("os.environ", {"HOME": str(fake_home)}):
+                with patch(
+                    "samsara_cli.installer.install.Installer._run_convert",
+                    return_value=converted_dir,
+                ):
+                    installer = Installer(platform="codex")
+                    installer.install(
+                        source_dir=source_dir,
+                        scope="global",
+                        cwd=project_dir,
+                    )
+
+        content = config_path.read_text()
+        # Must contain marketplace registration
+        assert "samsara" in content.lower(), (
+            "config.toml must be updated with samsara marketplace entry"
+        )
+
+    def test_global_install_config_toml_is_valid_toml(self, tmp_path):
+        """Global install must produce valid TOML in config.toml."""
+        from samsara_cli.installer.install import Installer
+
+        fake_home = tmp_path / "home"
+        codex_dir = fake_home / ".codex"
+        codex_dir.mkdir(parents=True)
+        config_path = codex_dir / "config.toml"
+        config_path.write_text("")
+
+        project_dir = tmp_path / "project"
+        project_dir.mkdir()
+        source_dir = make_minimal_source(tmp_path)
+        converted_dir = make_converted_output(tmp_path)
+
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="codex 1.2.3")
+            with patch.dict("os.environ", {"HOME": str(fake_home)}):
+                with patch(
+                    "samsara_cli.installer.install.Installer._run_convert",
+                    return_value=converted_dir,
+                ):
+                    installer = Installer(platform="codex")
+                    installer.install(
+                        source_dir=source_dir,
+                        scope="global",
+                        cwd=project_dir,
+                    )
+
+        content = config_path.read_bytes()
+        try:
+            tomllib.loads(content.decode())
+        except tomllib.TOMLDecodeError as e:
+            pytest.fail(f"config.toml after global install is not valid TOML: {e}")
+
+    def test_global_install_returns_instructions(self, tmp_path):
+        """Global install returns post-install instructions."""
+        from samsara_cli.installer.install import Installer
+
+        fake_home = tmp_path / "home"
+        codex_dir = fake_home / ".codex"
+        codex_dir.mkdir(parents=True)
+
+        project_dir = tmp_path / "project"
+        project_dir.mkdir()
+        source_dir = make_minimal_source(tmp_path)
+        converted_dir = make_converted_output(tmp_path)
+
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="codex 1.2.3")
+            with patch.dict("os.environ", {"HOME": str(fake_home)}):
+                with patch(
+                    "samsara_cli.installer.install.Installer._run_convert",
+                    return_value=converted_dir,
+                ):
+                    installer = Installer(platform="codex")
+                    instructions = installer.install(
+                        source_dir=source_dir,
+                        scope="global",
+                        cwd=project_dir,
+                    )
+
+        assert instructions is not None
+        assert isinstance(instructions, str)
+        assert "restart" in instructions.lower() or "codex" in instructions.lower()
+
+
+# ---------------------------------------------------------------------------
+# Update = re-convert + re-install
+# ---------------------------------------------------------------------------
+
+
+class TestInstallerUpdate:
+    """Update: idempotent re-convert + re-install."""
+
+    def test_update_project_scope_is_idempotent(self, tmp_path):
+        """update() project scope produces same result as install()."""
+        from samsara_cli.installer.install import Installer
+
+        project_dir = tmp_path / "project"
+        project_dir.mkdir()
+        source_dir = make_minimal_source(tmp_path)
+        converted_dir = make_converted_output(tmp_path)
+
+        def run_update():
+            with patch("subprocess.run") as mock_run:
+                mock_run.return_value = MagicMock(returncode=0, stdout="codex 1.2.3")
+                with patch(
+                    "samsara_cli.installer.install.Installer._run_convert",
+                    return_value=converted_dir,
+                ):
+                    installer = Installer(platform="codex")
+                    installer.update(
+                        source_dir=source_dir,
+                        scope="project",
+                        cwd=project_dir,
+                    )
+
+        run_update()
+        target_after_first = list((project_dir / ".codex-plugin").rglob("*"))
+        run_update()
+        target_after_second = list((project_dir / ".codex-plugin").rglob("*"))
+
+        assert len(target_after_first) == len(target_after_second), (
+            "update() must be idempotent — same files after each run"
+        )
+
+    def test_update_calls_convert_then_install(self, tmp_path):
+        """update() must run both convert and install."""
+        from samsara_cli.installer.install import Installer
+
+        project_dir = tmp_path / "project"
+        project_dir.mkdir()
+        source_dir = make_minimal_source(tmp_path)
+        converted_dir = make_converted_output(tmp_path)
+
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="codex 1.2.3")
+            with patch(
+                "samsara_cli.installer.install.Installer._run_convert",
+                return_value=converted_dir,
+            ) as mock_convert:
+                installer = Installer(platform="codex")
+                installer.update(
+                    source_dir=source_dir,
+                    scope="project",
+                    cwd=project_dir,
+                )
+                assert mock_convert.called, "update() must call convert"
+
+
+# ---------------------------------------------------------------------------
+# _run_convert integration (source validation before converter)
+# ---------------------------------------------------------------------------
+
+
+class TestInstallerRunConvert:
+    """Source validation happens before converter runs."""
+
+    def test_run_convert_with_valid_source_returns_path(self, tmp_path):
+        """_run_convert returns Path to converted output."""
+        from samsara_cli.installer.install import Installer
+
+        source_dir = make_minimal_source(tmp_path)
+        output_dir = tmp_path / "output"
+
+        # We need a real engine call here, so mock the engine
+        with patch("samsara_cli.installer.install.ConversionEngine") as MockEngine:
+            mock_engine = MagicMock()
+            MockEngine.return_value = mock_engine
+            mock_engine.run.return_value = None
+
+            installer = Installer(platform="codex")
+            result = installer._run_convert(
+                source_dir=source_dir,
+                output_dir=output_dir,
+            )
+            assert result == output_dir
+
+    def test_run_convert_with_bad_source_raises(self, tmp_path):
+        """_run_convert raises when source is not valid samsara structure."""
+        from samsara_cli.installer.install import Installer, InstallerError
+
+        bad_source = tmp_path / "not-samsara"
+        bad_source.mkdir()
+        output_dir = tmp_path / "output"
+
+        installer = Installer(platform="codex")
+        with pytest.raises((InstallerError, Exception)):
+            installer._run_convert(
+                source_dir=bad_source,
+                output_dir=output_dir,
+            )

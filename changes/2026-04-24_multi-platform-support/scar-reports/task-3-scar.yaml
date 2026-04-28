@@ -1,0 +1,189 @@
+task_id: task-3
+completion_status: done_with_concerns
+
+known_shortcuts:
+  - description: >
+      The target validator (source pattern scanner) only scans for the
+      'invoke `samsara:X`' transition pattern. It does NOT scan for unconverted
+      tool name references (Read tool, Edit tool, Bash tool, etc.). A rule that
+      silently fails to convert 'Read tool' would produce output where a Codex user
+      sees Claude Code tool syntax — visually wrong but not a chain break.
+      The architecture notes that transition misses are harder failures (chain break
+      at runtime) versus tool name misses (wrong instructions but still runnable).
+      The current validator catches only the higher-severity case.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      Frontmatter parsing in _parse_frontmatter() uses simple line-by-line
+      'key: value' matching (startswith('name:'), startswith('description:')).
+      It does not handle YAML multi-line values, quoted strings with colons,
+      or YAML anchors. If a skill frontmatter has:
+        description: "Use: when needed"
+      the description would be correctly parsed. But:
+        description: |
+          multi-line
+          value
+      would parse only 'description:' as the value (empty string), losing the
+      multi-line content. Verified: all 11 current skills use single-line
+      name and description values.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      Companion file discovery uses Path.rglob('*') which includes ALL files
+      recursively. There is no .gitignore-aware filtering or exclusion list.
+      If a skill directory contains generated files, cache files, or binary
+      files that are not intended to be processed or shipped, they would be
+      included in companion_files and passed to the caller. The caller
+      (Task 5 — disk writer) must handle these appropriately.
+    deferred_to_feature_iteration: true
+
+silent_failure_conditions:
+  - description: >
+      The skill_md_content target validator scans only the body section by
+      splitting on '---'. If the converted SKILL.md has a malformed split
+      (e.g., body contains a line that is exactly '---'), the split would
+      produce more than 3 parts and the third part would NOT be the full body.
+      The validator would check a truncated body, potentially missing an
+      unconverted pattern in the tail. This mirrors the RulesEngine's
+      frontmatter detection contract: '---' in body is an assumed-nonexistent
+      edge case.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      YAML files are excluded from rule application by checking file extension
+      (.yaml, .yml). A YAML file with a .md extension (naming mistake at the
+      source) would receive rule application, potentially corrupting YAML
+      structure. Conversely, an .md template file with .yaml extension would
+      be copied without rule application, leaving unconverted patterns. Neither
+      case is caught — the converter trusts extension as file type signal.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      The source pattern scanner only checks companion .md files. A companion
+      file with an unexpected extension (e.g., .txt or .rst) that contains
+      'invoke `samsara:X`' would not be scanned — the unconverted pattern
+      would ship silently. All current samsara companion files are .md or .yaml,
+      so this is currently unexploited. But new companion file types would
+      silently bypass validation.
+    deferred_to_feature_iteration: false
+    # Note: resolved in self-iteration — see resolved_items below
+
+  - description: >
+      Code-block unawareness inherited from Task 2 (rules engine): body rules
+      apply inside fenced code blocks (```dot, ```python, etc.). The Graphviz
+      digraph death tests (DC-SK-5) verify that the CURRENT rules do not corrupt
+      dot syntax for the '->' arrow and 'digraph' keyword. However, the transition
+      rule 'invoke `samsara:X`' INSIDE a digraph label string (e.g.,
+      'label="invoke samsara:planning"') WOULD be converted, because the pattern
+      matches regardless of code-block context. The tests confirm the structural
+      elements survive, but label strings with source patterns will be converted
+      even inside code blocks. The real skills contain exactly this pattern in
+      their digraph node labels (e.g., planning/SKILL.md has a label containing
+      'invoke samsara:implement'). These will be converted inside the dot block,
+      changing the diagram's displayed text but not breaking the diagram structure.
+    deferred_to_feature_iteration: true
+
+assumptions_made:
+  - assumption: >
+      All 11 samsara skills have SKILL.md frontmatter with exactly 'name' and
+      'description' fields (and no other fields). The _parse_frontmatter function
+      only extracts these two fields; other fields are preserved in the raw text
+      passed through skill_md_content but are not surfaced on ConvertedSkill.
+    verified: true
+    note: >
+      Verified by reading all 11 SKILL.md files in the skills/ directory.
+      All files have exactly two frontmatter fields: name and description.
+      No extra fields (model, tools, etc.) were found in skill frontmatter.
+      Agent frontmatter (separate from skills) is handled by a different converter.
+
+  - assumption: >
+      The source directory name of a skill (e.g., 'samsara-bootstrap', 'research')
+      need not match the 'name' field in SKILL.md frontmatter. output_dir_name is
+      always derived from the frontmatter name, not the directory name.
+    verified: true
+    note: >
+      Verified: skills/samsara-bootstrap/SKILL.md has name: samsara-bootstrap
+      (directory name matches). skills/research/SKILL.md has name: research
+      (also matches). All 11 skills verified — directory name equals frontmatter name.
+      The unit test test_naming_uses_skill_md_name_field_not_dir_name explicitly
+      tests the divergent case to guard against future drift.
+
+  - assumption: >
+      The target validator's source pattern list ('invoke `samsara:X`') is
+      complete — there are no other source-format patterns that constitute
+      chain-break failures if left unconverted. Tool name patterns (Read tool,
+      etc.) are not chain-breaking, so they are intentionally excluded from
+      validation.
+    verified: false
+    note: >
+      This assumption was NOT verified against a comprehensive audit of all
+      source patterns in codex.yaml. If a future rule is added that targets
+      a chain-breaking pattern not in the current validator list, the validator
+      would miss unconverted occurrences of that pattern. The validator would
+      need to be updated whenever new chain-breaking patterns are added to
+      codex.yaml transformations.
+    deferred_to_feature_iteration: true
+
+  - assumption: >
+      SKILL.md frontmatter description does not start with a YAML block scalar
+      indicator (|, >, |-, etc.). The simple startswith('description:') parser
+      would extract an empty description for block scalar syntax.
+    verified: true
+    note: >
+      Verified: all 11 skill descriptions are single-line strings without
+      block scalar syntax.
+
+debt_registered: true
+debt_location: >
+  samsara_cli/converter/skill.py — _scan_for_source_patterns (partial validator),
+  _parse_frontmatter (simple line parser, not full YAML), _process_companion_file
+  (extension-only type detection)
+
+resolved_items:
+  - original_section: silent_failure_conditions
+    original_description: >
+      The body split for target validation used split("---", 2) on the converted
+      SKILL.md, which would produce a truncated body if the body contained a line
+      that was exactly '---'. The validator would miss unconverted patterns in the
+      tail of the body.
+    resolution: >
+      Changed the validator in convert() to call _parse_frontmatter() on the
+      converted SKILL.md text to extract the body. _parse_frontmatter() uses the
+      same line-by-line '---' detection as RulesEngine, treating only the FIRST
+      '---' line as opening delimiter and the SECOND as closing. The body returned
+      is the authoritative post-frontmatter content, not a re-split artifact.
+
+  - original_section: silent_failure_conditions
+    original_description: >
+      The source pattern scanner only checks companion .md files. A companion
+      file with an unexpected extension (e.g., .txt or .rst) would not be scanned.
+    resolution: >
+      Changed the companion file scanner to scan ALL non-YAML files (instead of
+      only .md files). YAML files are explicitly excluded because they are copied
+      verbatim and may contain source patterns in documentation strings. All other
+      extensions (including .txt, .rst, etc.) now receive pattern scanning.
+
+  - original_section: assumptions_made
+    original_description: >
+      All 11 samsara skills have SKILL.md frontmatter with exactly 'name' and
+      'description' fields.
+    resolution: >
+      Verified by reading all 11 SKILL.md files in skills/ directory during
+      self-iteration. Confirmed all have exactly name + description in frontmatter.
+      Updated assumption verified: true.
+
+  - original_section: assumptions_made
+    original_description: >
+      Source directory name need not match SKILL.md name field —
+      output_dir_name derived from frontmatter.
+    resolution: >
+      Verified: all 11 skill directories have names matching their frontmatter
+      name field. Added unit test test_naming_uses_skill_md_name_field_not_dir_name
+      to guard against future divergence.
+
+  - original_section: assumptions_made
+    original_description: >
+      SKILL.md frontmatter description does not use YAML block scalar syntax.
+    resolution: >
+      Verified by reading all 11 SKILL.md frontmatter sections. All descriptions
+      are single-line values. Updated assumption verified: true.

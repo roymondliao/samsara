@@ -11,16 +11,30 @@ dependencies = [
   "pendulum>=3.2.0",
   "pydantic>=2.12.5",
   "loguru>=0.7.3",
-  "pyyaml>=6.0.3"
+  "pyyaml>=6.0.3",
+  "typer>=0.9",
+  "rich>=13.0",
+  "hydra-core>=1.3",
+  "tomli-w>=1.0"
 ]
+
+[project.scripts]
+samsara-cli = "samsara_cli.main:app"
 
 [tool.pytest.ini_options]
 testpaths = [
   "tests"
 ]
+pythonpath = ["."]
 addopts = "-ra -q -s"
 filterwarnings = ["ignore::DeprecationWarning", "ignore::UserWarning"]
 minversion = "9.0"
 markers = [
   "integration: marks tests as integration tests (require API key and --model)"
 ]
+
+[tool.setuptools.package-data]
+"samsara_cli" = ["config/**/*.yaml", "config/**/*.j2"]
+
+[tool.setuptools.packages.find]
+include = ["samsara_cli*"]

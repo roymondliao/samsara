@@ -1,0 +1,230 @@
+task_id: task-7
+completion_status: done_with_concerns
+
+known_shortcuts:
+  - description: >
+      Unconverted pattern detection uses simple single-line regex for "invoke `samsara:X`".
+      Variant patterns where "invoke" and "`samsara:" are separated by a newline
+      (e.g., "invoke\n`samsara:planning`") are NOT detected. The regex `invoke \`samsara:[\w-]+\``
+      requires both tokens on the same line. If the source format ever uses multi-line
+      invocations, this validator would miss them silently.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      shutil.move atomicity: on cross-filesystem moves (e.g., temp dir on /tmp,
+      output dir on a network-mounted path), shutil.move does NOT perform an atomic rename.
+      Instead it does a copy followed by a delete. Between copy and delete, a partial output
+      exists at the destination. If the process is killed at that moment, the output dir
+      contains a partial conversion. On same-filesystem moves (most common case for a CLI tool),
+      shutil.move uses os.rename which IS atomic on POSIX systems.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      Agent cross-validation in TargetValidator searches for "agent named \"X\"" pattern
+      in companion files. It searches ALL .md files in the skills/ output dir, not just
+      dispatch-template.md. This is broader than the spec requirement (dispatch-template.md)
+      but still may miss agent references written in other syntactic forms
+      (e.g., "invoke samsara-implementer" without the 'agent named' phrase).
+    deferred_to_feature_iteration: false
+
+  - description: >
+      References are output to {output_plugin_dir}/references/ (inside the .codex-plugin dir).
+      The codex.yaml spec does not define a paths.references_dir output path. This is an
+      inferred convention. If Codex has a specific expected location for references,
+      the engine would need updating. The task spec did not specify a reference output path.
+    deferred_to_feature_iteration: true
+
+  - description: >
+      YAML files in output are NOT scanned for source patterns (invoke `samsara:X`,
+      subagent_type:). The exclusion is intentional (YAML files may legitimately contain
+      these strings in documentation/schema text), but it means a YAML file with an
+      accidentally unconverted samsara namespace reference will not be detected.
+    deferred_to_feature_iteration: false
+
+silent_failure_conditions:
+  - description: >
+      SourceValidator uses expected_skills derived from the ACTUAL source skill directories
+      (not from a canonical list). If the engine is called on a source that is missing
+      skills, the expected_skills list will also be missing them — source validation passes,
+      then the output silently has fewer skills. First discoverer: user notices a skill
+      is absent from the converted output. There is no "expected count" check.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      ConversionEngine._convert_skills() writes all companion files regardless of type.
+      If a companion file is binary (e.g., an image), write_text() would fail with
+      UnicodeDecodeError when the SkillConverter tries to read it. The engine wraps
+      converter failures with EngineError and deletes the temp dir — so the binary file
+      causes a full conversion failure, not a silent drop. This is acceptable behavior
+      (loud failure), but the error message would say "Skills conversion failed:
+      UnicodeDecodeError" which is confusing. All current samsara skills have only text
+      companion files — verified by inspection.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      TargetValidator agent cross-validation only matches the pattern 'agent named "X"'
+      (the output format from the agent_dispatch_subagent_type transformation rule).
+      If an agent is referenced in SKILL.md body directly (not in a dispatch-template.md)
+      using a different syntax, the validator misses the mismatch. Currently, skill body
+      references to agents are via the transition pattern (invoke `samsara:X`) which
+      becomes "use the `$samsara-X` skill" — not an agent name reference. But if the
+      source format evolves to include direct agent references in SKILL.md, the validator
+      needs updating.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      Engine._convert_hooks() writes hooks.json under the plugin output dir
+      (.codex-plugin/hooks.json) rather than at the root of the temp dir.
+      TargetValidator does not scan inside .codex-plugin/ for source patterns.
+      If a hook script inadvertently contains an unconverted samsara pattern,
+      the validator would miss it (hook scripts are .sh files, not .md/.txt).
+    deferred_to_feature_iteration: false
+
+assumptions_made:
+  - assumption: >
+      tempfile.mkdtemp + shutil.move is atomic enough for all-or-nothing semantics
+      on the primary use case (same-filesystem, POSIX OS). On macOS and Linux with
+      both temp dir and output dir on the same filesystem (ext4, APFS), shutil.move
+      becomes os.rename which is an atomic syscall.
+    verified: false
+    note: >
+      Verified by checking shutil.move source: it calls os.rename() first, falls back
+      to copy+delete only if rename raises OSError (cross-device). On same-filesystem
+      invocations (the common case for this CLI), the operation IS atomic. Cross-filesystem
+      is documented as a known shortcut.
+    deferred_to_feature_iteration: false
+
+  - assumption: >
+      All converter modules (SkillConverter, AgentConverter, HookConverter,
+      ManifestConverter, ReferenceConverter) raise exceptions on failure and do NOT
+      write partial output to disk. The engine relies on this contract — it catches
+      exceptions and deletes the temp dir. If a converter silently writes partial output
+      before raising, the temp dir cleanup still removes it (which is correct behavior).
+    verified: true
+    note: >
+      Verified by reading all converter module docstrings and implementations.
+      All converters are in-memory (return objects, not write to disk). The engine
+      is the only module that writes to disk. This design was intentional per the
+      architecture spec and is consistent across tasks 3-6.
+    deferred_to_feature_iteration: false
+
+  - assumption: >
+      The expected_skills for SourceValidator are derived from the actual source skill
+      directories (all subdirectories of skills/). This means SourceValidator validates
+      that skills directories have SKILL.md, but does NOT validate against a canonical
+      list of expected skills. A source missing the "implement" skill would not be
+      caught as "implement is required" — it would just produce output without implement.
+    verified: true
+    note: >
+      Confirmed by examining engine._run_source_validation(): it lists dirs in
+      source skills/ and passes them as expected_skills. The validator checks each
+      dir has SKILL.md, but cannot check for "missing expected skills" because the
+      canonical skill list is not defined in platform config.
+    deferred_to_feature_iteration: true
+
+  - assumption: >
+      TOML agent files have the structure [agent]\nname = "..." for name extraction
+      in TargetValidator._extract_agent_name_from_toml(). If the template changes
+      the TOML structure (e.g., [codex_agent] section instead of [agent]), name
+      extraction returns None and cross-validation cannot verify agent names.
+    verified: true
+    note: >
+      Verified by reading samsara_cli/config/templates/codex/agent.toml.j2 which
+      renders: [agent]\nname = "{{ name }}"\ndeveloper_instructions = """...""".
+      The [agent] section with name field is the current structure.
+    deferred_to_feature_iteration: false
+
+  - assumption: >
+      shutil.move is available and works correctly for directory moves on the target OS.
+      The engine does not test for the existence of shutil.move or check its return value.
+    verified: true
+    note: >
+      shutil is Python stdlib — available on all supported platforms (macOS, Linux, Windows).
+      shutil.move is documented to handle directory-to-directory moves.
+    deferred_to_feature_iteration: false
+
+debt_registered: true
+debt_location: >
+  samsara_cli/converter/engine.py: expected_skills derived from source dir listing (not canonical list).
+  samsara_cli/validators/target.py: agent cross-validation only matches "agent named \"X\"" pattern.
+  samsara_cli/validators/target.py: YAML files excluded from source pattern scan.
+  samsara_cli/converter/engine.py: references output path inferred, not from platform config.
+
+resolved_items:
+  - original_section: assumptions_made
+    original_description: tempfile.mkdtemp + shutil.move atomicity
+    resolution: >
+      Verified shutil.move source code: uses os.rename() first (atomic on POSIX same-filesystem),
+      falls back to copy+delete only on OSError (cross-device). Same-filesystem case IS atomic.
+      Cross-filesystem case documented as known shortcut. Assumption marked verified: false
+      because the cross-filesystem case remains unhandled and untested.
+
+  - original_section: assumptions_made
+    original_description: All converters are in-memory and do not write partial output to disk
+    resolution: >
+      Verified by reading all converter implementations (tasks 3-6). SkillConverter.convert()
+      returns ConvertedSkill (in-memory). AgentConverter.convert() returns ConvertedAgent (in-memory).
+      HookConverter methods return strings/dicts (in-memory). ManifestConverter.convert()
+      returns dict (in-memory). ReferenceConverter.convert() returns string (in-memory).
+      Engine is the sole writer to disk. Contract confirmed.
+
+  - original_section: assumptions_made
+    original_description: TOML agent [agent].name field structure assumption
+    resolution: >
+      Verified by reading samsara_cli/config/templates/codex/agent.toml.j2 — confirms
+      [agent] section with name = "{{ name }}" field. TargetValidator._extract_agent_name_from_toml()
+      correctly reads parsed["agent"]["name"]. Marked verified: true.
+
+  - original_section: known_shortcuts
+    original_description: Variant pattern detection (multiline invoke `samsara:X`)
+    resolution: >
+      No fix attempted — the primary use case (single-line pattern) is covered.
+      The multiline variant does not appear in any current samsara source files
+      (verified by inspection of all 11 skills). Documented as known shortcut with
+      deferred_to_feature_iteration: false (acceptable risk for current sources).
+
+  - original_section: silent_failure_conditions
+    original_description: >
+      Engine does not detect cross-filesystem move before calling shutil.move.
+    resolution: >
+      Added filesystem detection in engine.run() before shutil.move. Uses os.stat().st_dev
+      to compare temp dir and output dir parent. If they differ (cross-filesystem),
+      emits UserWarning with explicit explanation of atomicity risk. The move proceeds
+      (not blocked) — this is a non-fatal risk disclosure, not a hard error.
+      The warning text names the specific risk (copy+delete vs rename) and suggests
+      keeping both paths on the same filesystem.
+
+  - original_section: assumptions_made
+    original_description: tempfile.mkdtemp + shutil.move atomicity
+    resolution: >
+      Added explicit filesystem detection (st_dev comparison) before shutil.move.
+      Same-filesystem case: uses os.rename (atomic on POSIX). Cross-filesystem case:
+      emits UserWarning and uses copy+delete (non-atomic). The assumption is now
+      partially verified: same-filesystem IS atomic; cross-filesystem is disclosed.
+      Status changed from verified: false to: partially mitigated via runtime detection.
+
+narrative: >
+  Task 7 implements the conversion orchestration layer: ConversionEngine (engine.py),
+  SourceValidator (source.py), and TargetValidator (target.py). Together they implement
+  the all-or-nothing contract that the architecture specifies.
+
+  The primary design challenge was the all-or-nothing guarantee. The engine uses
+  tempfile.mkdtemp() + shutil.move() rather than writing directly to the final output
+  path. All converters (tasks 3-6) are in-memory — they return objects, not write files.
+  The engine is the sole writer. On any failure, the except block in run() deletes the
+  temp dir before re-raising. The DC-7-1 death test confirms this: after a patched agent
+  converter failure, the output dir does not exist.
+
+  The TargetValidator implements cross-validation between agent TOML files and skill
+  companion files. The key insight: the TargetValidator must parse the TOML to extract
+  the [agent].name field (not just check the filename) because the death case is a
+  TOML with name="implementer" (no prefix) vs a dispatch-template.md referencing
+  "samsara-implementer". The name is inside the TOML, not in the filename.
+
+  The SourceValidator uses the source directory contents to derive expected_skills
+  (not a hardcoded canonical list). This means it validates SKILL.md presence but
+  cannot catch "a whole skill is missing from the source". This was documented as
+  a known shortcut in the scar — fixing it would require adding a canonical skill
+  list to the platform config, which is an architectural change beyond task scope.
+
+  All 349 tests pass. No regressions from existing task tests.

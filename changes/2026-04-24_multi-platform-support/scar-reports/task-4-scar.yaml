@@ -1,0 +1,156 @@
+task_id: task-4
+completion_status: done_with_concerns
+
+known_shortcuts:
+  - description: >
+      Description extraction is a heuristic: strips '#' from the first non-empty line
+      if it starts with '#', otherwise uses the first non-empty line as-is. Agents
+      starting with blank lines, YAML-like blocks, or deeply nested sections may produce
+      descriptions that are not meaningful (e.g., a Markdown rule separator or a
+      subsection heading rather than the agent's actual purpose). This only affects the
+      'description' field of ConvertedAgent; the agent still converts correctly.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      The convert() method accepts pre-parsed body text (caller is responsible for
+      frontmatter extraction). The convert_from_text() wrapper handles this, but if a
+      caller uses convert() directly with a body that still contains frontmatter, the
+      frontmatter YAML will appear verbatim inside developer_instructions. The output
+      TOML will be parseable but semantically wrong. No validation guards against this.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      Transformation rules are applied with scope='body' only. If a rule with
+      scope='frontmatter' is passed in the rules list, it is silently skipped by
+      RulesEngine. The caller receives no warning. For the current use case (converting
+      agent bodies), this is correct behavior; but if a caller expects frontmatter
+      rules to have side effects here, they are silently ignored.
+    deferred_to_feature_iteration: false
+
+silent_failure_conditions:
+  - description: >
+      Backslash escaping in _escape_for_toml_multiline doubles all backslashes before
+      escaping triple-double-quotes. If a rule's replacement string introduces new
+      backslashes AFTER escaping runs (impossible with the current pipeline, since
+      escaping runs after rules), the escaping would be correct. But the ordering
+      assumption is fragile: if the pipeline order changes (rules run after escaping),
+      backslashes from rule substitutions would not be doubled, producing invalid TOML
+      for Windows-path-containing bodies. The pipeline order is documented in convert()
+      but not structurally enforced.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      Agent name uniqueness is not enforced at conversion time. If two agent files
+      produce the same stem (e.g., two files named 'reviewer.md' in different
+      subdirectories), both produce 'samsara-reviewer' and the second output file
+      silently overwrites the first at the filesystem level. AgentConverter has no
+      awareness of the full batch -- this is a caller-level responsibility.
+    deferred_to_feature_iteration: true
+
+  - description: >
+      The TOML output is verified to parse with tomllib at test time (via death tests)
+      but convert() itself does NOT call tomllib.loads() on its own output. If the
+      Jinja2 template changes in a way that produces invalid TOML (e.g., renamed
+      delimiter variable), the death tests would catch it only if re-run. At runtime
+      in production, invalid TOML would be written to disk without detection.
+    deferred_to_feature_iteration: false
+
+assumptions_made:
+  - assumption: >
+      TOML basic multiline strings support backslash-escaped double quotes (\") and
+      doubled backslashes (\\) for literal content. Content containing Windows-style
+      paths (C:\Users\agent) is made safe by doubling backslashes.
+    verified: true
+    note: >
+      Verified by running tomllib.loads() with escaped content in tests and directly
+      in Python REPL. The test_multiline_body_with_special_chars_parses_as_toml death
+      test exercises this path with backslash paths, brackets, equals signs, and hashes.
+    deferred_to_feature_iteration: false
+
+  - assumption: >
+      None of the 6 samsara agent .md files contain triple-single-quote sequences
+      that would interfere with TOML literal multiline string syntax. (This is only
+      relevant if the template were changed to use literal strings.)
+    verified: true
+    note: >
+      Verified by grep: no triple-single-quote sequences found in any agent file.
+      The current template uses basic multiline strings (triple-double-quotes), so
+      this assumption only becomes relevant if the template is changed.
+    deferred_to_feature_iteration: false
+
+  - assumption: >
+      The Jinja2 template variable names (name, developer_instructions, source_path)
+      are stable and match what convert() passes to template.render(). StrictUndefined
+      in get_template_env() ensures missing variables raise immediately at render time.
+    verified: true
+    note: >
+      Verified by reading agent.toml.j2 template and confirming the three required
+      variable names. All 6 real agent death+unit tests pass, confirming the contract.
+    deferred_to_feature_iteration: false
+
+  - assumption: >
+      The RulesEngine.apply() method with scope='body' correctly treats a body-only
+      document (no frontmatter) as the entire body. This is the behavior described in
+      rules.py: 'If the document has no frontmatter, the entire text is treated as body.'
+    verified: true
+    note: >
+      Verified by reading rules.py _parse_document() logic and by tests that confirm
+      rule transformations apply correctly to bodies without frontmatter.
+    deferred_to_feature_iteration: false
+
+  - assumption: >
+      The source_path.stem produces the correct agent identifier for name generation.
+      For a file named 'code-reviewer.md', stem is 'code-reviewer'. The agent name
+      becomes 'samsara-code-reviewer', which must match the dispatch references in skills.
+    verified: true
+    note: >
+      Verified against all 6 actual agent filenames. Death test
+      test_all_six_samsara_agents_produce_expected_names confirms all 6 dispatch names.
+    deferred_to_feature_iteration: false
+
+debt_registered: true
+debt_location: >
+  samsara_cli/converter/agent.py:_escape_for_toml_multiline -- pipeline order
+  dependency (backslash escaping before triple-quote escaping) is undocumented
+  in the function signature; samsara_cli/converter/agent.py:convert() -- no
+  self-validation TOML parse after render; samsara_cli/converter/agent.py
+  convert() -- no guard against caller passing body-with-frontmatter to convert().
+
+resolved_items:
+  - original_section: silent_failure_conditions
+    original_description: >
+      Initial implementation only escaped triple-double-quotes but not backslashes.
+      TOML basic multiline strings interpret backslash sequences; a body containing
+      Windows-style paths (C:\Users\agent) would raise TOMLDecodeError at parse time.
+    resolution: >
+      Updated _escape_for_toml_multiline to escape backslashes first (doubling them),
+      then escape triple-double-quotes. Added death test
+      test_multiline_body_with_special_chars_parses_as_toml which exercises this path
+      and was red (failing) before the fix. Now passes. The ordering is documented in
+      the function docstring with explicit rationale.
+
+  - original_section: assumptions_made
+    original_description: >
+      TOML triple-quote escaping assumption: assumed backslash escaping was not needed.
+    resolution: >
+      Assumption was wrong. Verified via failing test and REPL investigation. Implementation
+      updated to handle both backslashes and triple-quotes. verified flag set to true.
+
+  - original_section: silent_failure_conditions
+    original_description: >
+      No self-validation TOML parse after render -- if template changes produce invalid
+      TOML, the broken file is written to disk without detection.
+    resolution: >
+      Added tomllib.loads() call on toml_content immediately after template.render() in
+      convert(). If the output is invalid TOML, raises ValueError with a descriptive message
+      before returning the ConvertedAgent. Now catches template/escaping bugs at conversion
+      time rather than at deployment time.
+
+  - original_section: known_shortcuts
+    original_description: >
+      convert() no guard against caller passing body with frontmatter still embedded.
+    resolution: >
+      Added first-line check in convert(): if body starts with '---', raises ValueError
+      immediately with a message directing the caller to convert_from_text(). Prevents
+      frontmatter YAML from silently leaking into developer_instructions. The check is
+      O(1) (only inspects the first line).

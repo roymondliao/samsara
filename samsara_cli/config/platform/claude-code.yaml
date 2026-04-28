@@ -1,0 +1,16 @@
+# @package _global_
+# Source platform config — claude-code (Claude Code plugin format).
+# This defines the SOURCE format that samsara reads from.
+# It has no transformation rules (it IS the source).
+# It has no target paths (it has no output format).
+
+platform:
+  name: "claude-code"
+  version_cmd: null
+
+paths:
+  plugin_dir: ".claude-plugin"
+  plugin_manifest: "plugin.json"
+  skills_dir: "skills"
+  agents_dir: "agents"
+  hooks_file: "hooks.json"

@@ -1,0 +1,167 @@
+task_id: task-1
+completion_status: done_with_concerns
+
+known_shortcuts:
+  - description: >
+      Jinja2 templates (agent.toml.j2, hooks.json.j2, hook.sh.j2, manifest.json.j2)
+      are structural stubs only. They define the correct template variables and
+      output shape but have not been integration-tested against actual agent
+      conversion (Task 2 doesn't exist yet). Template variable names (e.g.,
+      developer_instructions, system_message, agents) are assumed based on the
+      field_mapping spec — they could mismatch the actual variable names Task 2
+      will pass.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      FormatsConfig stores agent/hook/manifest format config as raw dict[str, Any]
+      rather than typed nested models. This defers format validation to Task 2
+      (which uses the formats dict to drive rendering). If Task 2 references a
+      key that doesn't exist in the dict, it gets a KeyError at render time.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      samsara_cli/main.py is a minimal stub with a version command only.
+      The actual convert command (Task 2) is not yet wired. The CLI entry point
+      is registered but not functional beyond 'version'.
+    deferred_to_feature_iteration: true
+
+silent_failure_conditions:
+  - description: >
+      Hydra config file discovery uses initialize_config_dir() with an absolute
+      path derived from __file__ at module load time. If the samsara_cli/config/
+      directory is not included in the installed package (e.g., MANIFEST.in or
+      setuptools package_data misconfiguration), the config directory will be absent
+      at runtime in non-editable installs. Hydra will raise HydraException on init,
+      which is loud — but only if someone tries a non-editable install.
+      Current setup (pythonpath=["."] in pytest + worktree dev mode) never hits this.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      YAML regex patterns in codex.yaml use single backslash (\b, \w, \1).
+      YAML does not interpret backslashes, so \b arrives in Python as the two-char
+      string \b (which re.compile correctly recognizes as a word boundary).
+      However, if a future editor opens codex.yaml and "fixes" the escaping
+      to double-backslash (\\b), the regex pattern becomes the literal string '\\b'
+      — which does NOT match a word boundary. This would silently stop the
+      task_create and task_update rules from matching. The validator would still pass
+      because \\b is valid regex (matches a literal backslash + b).
+    deferred_to_feature_iteration: false
+
+  - description: >
+      FormatsConfig.agent_format uses alias 'agent' (from YAML key 'agent:' under
+      formats:). If Hydra changes how it handles Python reserved-word-adjacent aliases
+      or if the YAML key name changes, the alias mapping breaks silently — agent_format
+      would be None and no error is raised because it's Optional.
+    deferred_to_feature_iteration: false
+
+assumptions_made:
+  - assumption: >
+      Hydra initialize_config_dir() context manager properly cleans up GlobalHydra
+      state on __exit__, including after exceptions inside the context.
+    verified: true
+    note: >
+      Manually verified before implementation: GlobalHydra.instance().clear() is
+      called by the context manager's __exit__ regardless of exception.
+      Also verified: two sequential calls with GlobalHydra.instance().clear() before
+      each call work correctly. load_platform_config() also calls clear() defensively
+      before entering the context.
+    deferred_to_feature_iteration: false
+
+  - assumption: >
+      Pydantic v2 with OmegaConf.to_container(resolve=True) output: OmegaConf returns
+      plain Python dicts/lists, which Pydantic v2 accepts for nested model construction.
+    verified: true
+    note: >
+      Verified by running full load_platform_config('codex') end-to-end before writing
+      tests. Nested models (PlatformIdentity, PathsConfig, InstallConfig, etc.) all
+      construct correctly from plain dict input.
+    deferred_to_feature_iteration: false
+
+  - assumption: >
+      @package _global_ in platform YAML files causes Hydra to merge all fields
+      at the root level of the final config (not nested under 'platform' key).
+      This is the correct behavior for PlatformConfig's flat top-level structure.
+    verified: true
+    note: >
+      Probed experimentally: without @package directive, Hydra nests under config
+      group name ('platform' or '_group_'). With @package _global_, all fields
+      merge at root. This is the correct structure for PlatformConfig(**data).
+    deferred_to_feature_iteration: false
+
+  - assumption: >
+      Pydantic field_validator for 'match' can access 'type' from info.data because
+      'type' is defined before 'match' in the model field order.
+    verified: true
+    note: >
+      Verified: DC-2 death tests pass — invalid regex in a regex-type rule raises
+      ValidationError at construction time. Valid regex in regex-type passes.
+      Literal-type rules with regex metacharacters pass (not compiled as regex).
+    deferred_to_feature_iteration: false
+
+  - assumption: >
+      The project root (working directory) is the correct pythonpath entry for pytest
+      to discover samsara_cli as a package without a formal editable install.
+    verified: true
+    note: >
+      Verified: adding pythonpath=["."] to pytest.ini_options in pyproject.toml
+      allows pytest to import samsara_cli directly. uv sync marks the project as
+      'virtual' which doesn't self-install, so explicit pythonpath is required.
+    deferred_to_feature_iteration: false
+
+  - assumption: >
+      Regex patterns with \w, \b, \1 in YAML single-quoted strings are passed through
+      to Python as-is (no YAML escape interpretation for backslashes in single quotes).
+    verified: true
+    note: >
+      Verified by loading codex.yaml and checking that rule patterns arrive in Python
+      with correct backslash-prefixed sequences. re.compile() accepts them without error.
+      The 14 transformation rules load and validate without issues.
+    deferred_to_feature_iteration: false
+
+  - assumption: >
+      setuptools package discovery with include=["samsara_cli*"] correctly includes
+      the YAML config files and Jinja2 template files under samsara_cli/config/.
+    verified: true
+    note: >
+      Resolved during self-iteration: added [tool.setuptools.package-data] with
+      "samsara_cli" = ["config/**/*.yaml", "config/**/*.j2"] to pyproject.toml.
+      This ensures YAML and j2 files are included in pip install scenarios.
+      Not tested via actual pip install (would require build artifacts).
+    deferred_to_feature_iteration: false
+
+debt_registered: true
+debt_location: >
+  samsara_cli/config/schema.py:FormatsConfig (raw dict shortcut, ~line 90);
+  samsara_cli/config/templates/codex/ (stub templates, untested against real conversion data);
+  samsara_cli/main.py (CLI stub, no convert command)
+
+resolved_items:
+  - original_section: assumptions_made
+    original_description: >
+      setuptools package discovery with include=["samsara_cli*"] correctly includes
+      YAML config files and Jinja2 template files.
+    resolution: >
+      Added [tool.setuptools.package-data] to pyproject.toml with glob patterns
+      "config/**/*.yaml" and "config/**/*.j2". This ensures non-Python assets are
+      included in pip install. Previously verified=false, now addressed (though
+      not tested via actual pip install invocation).
+
+  - original_section: silent_failure_conditions
+    original_description: >
+      Template rendering silently produces empty output when a template variable
+      is absent (Jinja2 default Undefined behavior).
+    resolution: >
+      Created samsara_cli/config/template_env.py with get_template_env() factory
+      that enforces StrictUndefined on all environments. All template rendering
+      through this factory raises UndefinedError on missing variables instead of
+      silently rendering empty. Added tests/test_config/test_template_env.py with
+      7 tests including DC coverage for the missing-variable case.
+
+  - original_section: silent_failure_conditions
+    original_description: >
+      YAML regex patterns could be silently broken by double-backslash "fix" by
+      future editor.
+    resolution: >
+      Added prominent warning comment block in codex.yaml's transformations section
+      explaining: single backslash is correct in single-quoted YAML, double-backslash
+      produces wrong semantics that still passes regex validation.

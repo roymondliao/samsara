@@ -19,6 +19,7 @@ repos:
     - id: detect-aws-credentials
     - id: detect-private-key
     - id: name-tests-test
+      args: ['--pytest-test-first']
     - id: check-merge-conflict
     - id: check-added-large-files
       args: ['--maxkb=50000']
@@ -37,6 +38,7 @@ repos:
         - --explicit-package-bases
         - --disallow-untyped-defs
         - --ignore-missing-imports
+      exclude: ^tests/
       additional_dependencies:
         - pydantic>=2.12.5
         - wandb

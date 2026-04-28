@@ -1,0 +1,11 @@
+{
+  "hooks": [
+    {
+      "name": "samsara-session-start",
+      "event": "session_start",
+      "matchers": {{ session_start_matchers | tojson }},
+      "command": "{{ hooks_dir }}/samsara-session-start.sh",
+      "systemMessage": {{ system_message | tojson }}
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+# Hydra base config for samsara_cli.
+# Defaults: platform selection + source path definitions.
+#
+# The 'platform' config group selects which platform/X.yaml to merge.
+# Platform YAML fields are merged under the 'platform:' key in the final config.
+# Source paths describe the claude-code plugin structure (platform-agnostic).
+#
+# _self_ LAST: base config fields (source:) take lower priority than platform overrides.
+# This is the standard Hydra 1.1+ composition order.
+
+defaults:
+  - platform: codex
+  - _self_
+
+source:
+  plugin_dir: ".claude-plugin"
+  skills_dir: "skills"
+  agents_dir: "agents"
+  hooks_dir: "hooks"
+  references_dir: "references"

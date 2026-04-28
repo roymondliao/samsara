@@ -1,0 +1,106 @@
+task_id: task-2
+completion_status: done_with_concerns
+
+known_shortcuts:
+  - description: >
+      Literal rules use str.replace() — substring matching, not word-boundary matching.
+      'Read tool' matches inside 'Read tools' (replaces to 'file readings are available').
+      'Edit tool' matches inside 'Multi-Edit tool'. This is documented and tested
+      (DC-4 tests explicitly document and assert this substring behavior) but it means
+      overmatch is possible in realistic SKILL.md files where tool names appear in
+      compound phrases.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      Frontmatter parsing uses simple line-by-line '---' detection rather than a
+      proper YAML frontmatter parser. Edge case: a document starting with '---' but
+      having no closing '---' is treated as having no frontmatter (entire text becomes
+      body). This is safe for scope isolation but may silently discard intended
+      frontmatter content if the closing delimiter is missing.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      apply() called with an unknown scope (not 'body' or 'frontmatter') silently
+      returns text unchanged — no rules match, no error raised. A typo in scope
+      argument by a caller would be invisible.
+    deferred_to_feature_iteration: true
+
+silent_failure_conditions:
+  - description: >
+      Regex rule with a replace string using $1 (dollar-sign backref) instead of \1
+      (backslash backref) would silently produce wrong output. Python re.sub() uses
+      \1 not $1. The Pydantic regex validator only checks pattern compilability, not
+      replace-string backref syntax. The codex.yaml config correctly uses \1, but
+      if a future platform config uses $1, the output would contain literal '$1'
+      instead of the captured group.
+    deferred_to_feature_iteration: true
+
+  - description: >
+      The '---' horizontal rule (Markdown thematic break) used in the BODY of a
+      SKILL.md would not be detected as a frontmatter delimiter (the engine only
+      treats the FIRST '---' as opening delimiter, and the SECOND as closing).
+      However: if the body contains '---' on a line followed by more content that
+      looks like YAML, a human might misread the parsed sections. No engine failure —
+      but the parsing contract is implicit, not enforced by schema.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      Literal rules replace all occurrences of the match string. If a SKILL.md body
+      contains the match string in a code block or inline code (e.g., backtick-wrapped
+      tool names), the rule will still replace them. The engine has no awareness of
+      Markdown code spans or fenced code blocks.
+    deferred_to_feature_iteration: true
+
+assumptions_made:
+  - assumption: >
+      Rule list order in the config is preserved through Hydra/OmegaConf/Pydantic
+      loading — the order in which rules appear in codex.yaml is the order the engine
+      receives them in list[TransformationRule].
+    verified: true
+    note: >
+      Verified in Task 1 loader tests. OmegaConf preserves YAML list order.
+      Pydantic list[TransformationRule] preserves insertion order.
+
+  - assumption: >
+      apply() is always called with scope='body' or scope='frontmatter' — no other
+      values. The function signature accepts str, not Literal["body","frontmatter"],
+      so a caller passing an arbitrary string silently returns input unchanged.
+    verified: false
+    note: >
+      Not enforced at the type level in apply(). The TransformationRule.scope IS a
+      Literal — but the scope argument to apply() is plain str. If a caller typos
+      'body' as 'bode', no rules run and no error is raised.
+    deferred_to_feature_iteration: false
+
+  - assumption: >
+      SKILL.md files that have frontmatter always use '---' on the very first line
+      with no leading whitespace or BOM. Files with leading whitespace before '---'
+      or with a UTF-8 BOM would be treated as having no frontmatter.
+    verified: false
+    note: >
+      Claude Code plugin SKILL.md files follow this convention. If a file from an
+      external tool has a BOM or leading whitespace, the frontmatter is silently
+      ignored and body rules operate on the whole text including the '---' lines.
+    deferred_to_feature_iteration: false
+
+debt_registered: true
+debt_location: "samsara_cli/converter/rules.py — see module docstring for documented assumptions and shortcuts"
+
+resolved_items:
+  - original_section: assumptions_made
+    original_description: >
+      apply() scope arg not type-safe — caller passing unknown scope silently
+      returns text unchanged, masking typos.
+    resolution: >
+      Added explicit ValueError guard in apply() for scope not in ('body', 'frontmatter').
+      Added test_invalid_scope_raises_value_error in test_rules.py to verify.
+
+  - original_section: assumptions_made
+    original_description: >
+      SKILL.md files with BOM or leading whitespace before '---' would be treated
+      as having no frontmatter, silently — behavior was undocumented and untested.
+    resolution: >
+      Added test_bom_before_frontmatter_delimiter_treated_as_no_frontmatter and
+      test_leading_whitespace_before_frontmatter_delimiter_treated_as_no_frontmatter
+      in test_rules.py. These tests document and verify the known behavior rather
+      than changing it, making the contract explicit.

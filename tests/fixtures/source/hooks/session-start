@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# SessionStart hook for samsara plugin
+# Injects samsara-bootstrap skill content into agent session context
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+bootstrap_content=$(cat "${PLUGIN_ROOT}/skills/samsara-bootstrap/SKILL.md" 2>&1 || echo "Error reading samsara-bootstrap skill")
+
+escape_for_json() {
+    local s="$1"
+    s="${s//\\/\\\\}"
+    s="${s//\"/\\\"}"
+    s="${s//$'\n'/\\n}"
+    printf '%s' "$s"
+}
+
+bootstrap_escaped=$(escape_for_json "$bootstrap_content")
+session_context="<IMPORTANT>\nSamsara framework active.\n\n${bootstrap_escaped}\n</IMPORTANT>"
+
+# Claude Code output format
+printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$session_context"

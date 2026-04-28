@@ -1,0 +1,14 @@
+{
+  "name": "{{ plugin_name }}",
+  "version": "{{ version }}",
+  "description": "{{ description }}",
+  "platform": "codex",
+  "skills": "{{ skills_dir }}",
+  "agents": [
+{% for agent in agents %}
+    "{{ agent }}"{% if not loop.last %},{% endif %}
+
+{% endfor %}
+  ],
+  "hooks": "{{ hooks_file }}"
+}
