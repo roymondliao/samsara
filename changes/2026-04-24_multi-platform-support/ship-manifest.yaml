@@ -1,0 +1,54 @@
+delivered_capability: >
+  CLI tool that converts Claude Code plugins (.claude-plugin/) to Codex format
+  (.codex-plugin/), including skills, agents, hooks, manifest, and references,
+  with platform-specific transformation rules, source/target validation, and
+  project/global installation support.
+
+known_failure_modes:
+  - mode: "Literal rules apply inside fenced code blocks — code examples may be incorrectly transformed"
+    severity: silent_corruption
+    detection: "Manual review of converted skill files containing code examples with samsara syntax"
+  - mode: "Codex runtime behavior assumptions unverified — hooks.json format, systemMessage field, feature flags section name"
+    severity: degradation
+    detection: "First Codex user to install the plugin and run a skill/hook will discover format mismatches"
+  - mode: "config.toml comment stripping on global install — tomllib/tomli-w roundtrip loses comments"
+    severity: degradation
+    detection: "User notices comments missing after global install modifies their config.toml"
+  - mode: "shutil.copytree follows symlinks — malicious source plugin with symlinks could copy external files"
+    severity: silent_corruption
+    detection: "Manual audit of converted output directory for unexpected files"
+  - mode: "Unicode control characters in SKILL.md may produce malformed JSON in hook output"
+    severity: degradation
+    detection: "Codex fails to parse hooks.json at runtime"
+
+accepted_risks:
+  - risk: "Codex runtime behavior cannot be integration-tested without live Codex CLI"
+    accepted_by: human
+    expires: "2026-07-28"
+  - risk: "Code block unawareness — transformation rules apply inside fenced code blocks"
+    accepted_by: human
+    expires: "2026-07-28"
+  - risk: "shutil.copytree symlink-following in installer and converter"
+    accepted_by: human
+    expires: "2026-07-28"
+  - risk: "14 unverified assumptions across 10 tasks (primarily Codex format assumptions)"
+    accepted_by: human
+    expires: "2026-07-28"
+
+silent_failure_surface: high
+# 35 known silent failure conditions across 10 tasks.
+# 14 unverified assumptions. Classified as 'high' per schema (>7 paths).
+# Mitigated by: 512 tests (169 death tests), source/target validators,
+# all-or-nothing engine, Level 2 iteration (4 fixes applied).
+
+monitoring_hooks:
+  - "No runtime monitoring — offline CLI tool. Failures surface at Codex plugin load time."
+  - "Snapshot tests catch conversion output regressions on code changes."
+  - "Death tests guard 35+ silent failure paths — regressions are caught pre-commit."
+  - "Pre-commit hooks enforce: ruff check, ruff format, mypy, end-of-file, trailing whitespace."
+
+kill_switch: >
+  Remove or rename the .codex-plugin/ directory from the target project.
+  For global install: delete the plugin entry from ~/.codex/config.toml
+  [[marketplace]] section and remove ~/.codex/plugins/samsara/ directory.
+  The samsara-cli tool itself can be uninstalled via 'uv pip uninstall samsara-cli'.

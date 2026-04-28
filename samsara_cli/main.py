@@ -77,8 +77,13 @@ def _validate_platform(platform: str) -> None:
 @app.command()
 def version() -> None:
     """Show samsara-cli version."""
-    # Placeholder: version is sourced from pyproject.toml in production.
-    typer.echo("samsara-cli 0.1.0")
+    from importlib.metadata import version as pkg_version
+
+    try:
+        ver = pkg_version("samsara")
+    except Exception:
+        ver = "unknown"
+    typer.echo(f"samsara-cli {ver}")
 
 
 # ---------------------------------------------------------------------------

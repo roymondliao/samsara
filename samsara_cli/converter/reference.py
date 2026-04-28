@@ -45,20 +45,10 @@ must NOT be rule-transformed), the first to rot is: frontmatter content being
 incorrectly processed by body-scope rules.
 """
 
-import re
 from pathlib import Path
 
 from samsara_cli.config.schema import TransformationRule
 from samsara_cli.converter.rules import RulesEngine
-
-# Pattern matching the opening line of a fenced code block.
-# Matches lines starting with ``` (possibly with language tag after).
-# The fence can start at column 0 only — we don't handle indented fences.
-_FENCE_OPEN_RE = re.compile(r"^```", re.MULTILINE)
-
-# Pattern matching a closing fence line — ``` at start of line, nothing else
-# (other than optional whitespace) on that line.
-_FENCE_CLOSE_RE = re.compile(r"^```\s*$", re.MULTILINE)
 
 
 def _split_into_segments(text: str) -> list[tuple[str, bool]]:
