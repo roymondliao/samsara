@@ -29,6 +29,7 @@ Assumptions:
 """
 
 import logging
+import shlex
 import subprocess
 from pathlib import Path
 
@@ -121,8 +122,19 @@ class PlatformDetector:
 
         # Run the version command to detect CLI presence
         try:
+            cmd_parts = shlex.split(version_cmd)
+        except ValueError as e:
+            logger.warning(
+                "Platform '%s' version_cmd is malformed (shlex parse error): %s. "
+                "Reporting as not installed. Fix version_cmd in platform config.",
+                platform,
+                e,
+            )
+            return False
+
+        try:
             result = subprocess.run(
-                version_cmd.split(),
+                cmd_parts,
                 capture_output=True,
                 text=True,
                 timeout=10,

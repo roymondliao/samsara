@@ -152,3 +152,63 @@ class TestPlatformDetectorInvalidPlatform:
         detector = PlatformDetector()
         with pytest.raises(ValueError):
             detector.detect("")
+
+
+# ---------------------------------------------------------------------------
+# DC-8-6: version_cmd with quoted paths must split correctly
+# ---------------------------------------------------------------------------
+
+
+class TestVersionCmdQuotedPathSplit:
+    """DC-8-6: version_cmd containing a quoted path with spaces must be split
+    by shlex.split(), not str.split().
+
+    Silent failure path: str.split() breaks quoted paths into wrong tokens.
+    subprocess.run receives a malformed command array, raises FileNotFoundError,
+    and detect() returns False — platform appears "not installed" even when it is.
+    """
+
+    def test_quoted_path_with_spaces_preserved_as_single_arg(self):
+        """version_cmd '"/path/with spaces/codex" --version' must produce
+        ['/path/with spaces/codex', '--version'], not ['"/path/with', 'spaces/codex"', '--version']."""
+        from samsara_cli.installer.detect import PlatformDetector
+
+        detector = PlatformDetector()
+        mock_config = MagicMock()
+        mock_config.platform.version_cmd = '"/path/with spaces/codex" --version'
+
+        with patch(
+            "samsara_cli.installer.detect.load_platform_config",
+            return_value=mock_config,
+        ):
+            with patch("subprocess.run") as mock_run:
+                mock_run.return_value = MagicMock(
+                    returncode=0, stdout="codex 1.0", stderr=""
+                )
+                detector.detect("codex")
+
+                args = mock_run.call_args[0][0]
+                assert args[0] == "/path/with spaces/codex", (
+                    f"SILENT FAILURE [DC-8-6]: Quoted path was broken by str.split(). "
+                    f"Expected single arg '/path/with spaces/codex', got: {args}"
+                )
+                assert args[1] == "--version"
+
+    def test_malformed_version_cmd_returns_false_not_raises(self):
+        """version_cmd with unbalanced quotes must return False, not propagate ValueError.
+        shlex.split raises ValueError on malformed input — detect() must catch it."""
+        from samsara_cli.installer.detect import PlatformDetector
+
+        detector = PlatformDetector()
+        mock_config = MagicMock()
+        mock_config.platform.version_cmd = "codex '--version"  # unbalanced quote
+
+        with patch(
+            "samsara_cli.installer.detect.load_platform_config",
+            return_value=mock_config,
+        ):
+            result = detector.detect("codex")
+            assert result is False, (
+                "SILENT FAILURE [DC-8-6]: malformed version_cmd raised ValueError "
+                "instead of returning False. detect() must never raise on CLI issues."
+            )
