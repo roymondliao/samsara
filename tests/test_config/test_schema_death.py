@@ -230,3 +230,76 @@ class TestEnumValidation:
                 replace="file reading",
                 priority="urgent",  # not a valid priority
             )
+
+
+# --- DC-14: Regex replace with $N backrefs must be rejected ---
+# Silent failure guarded: Python re.sub() uses \1 for backrefs, not $1.
+# A replace string with $1 produces literal "$1" in output — the captured
+# group is silently lost. The output looks like it converted but contains
+# garbage. First discoverer: user who sees literal "$1" in their skill text.
+
+
+class TestRegexReplaceBackrefValidation:
+    def test_dollar_backref_in_regex_replace_raises(self):
+        """$1 in a regex rule's replace string must raise ValidationError.
+        Python re.sub uses \\1, not $1. $1 silently produces literal '$1'."""
+        with pytest.raises(ValidationError) as exc_info:
+            TransformationRule(
+                id="bad_backref",
+                scope="body",
+                type="regex",
+                match=r"invoke `samsara:([\w-]+)`",
+                replace=r"use the `$samsara-$1` skill",
+                priority="high",
+            )
+        errors = exc_info.value.errors()
+        replace_errors = [e for e in errors if "replace" in str(e["loc"])]
+        assert replace_errors, f"Expected error on 'replace' field, got: {errors}"
+
+    def test_dollar_two_backref_also_rejected(self):
+        """$2 and higher backrefs must also be caught."""
+        with pytest.raises(ValidationError):
+            TransformationRule(
+                id="bad_backref_2",
+                scope="body",
+                type="regex",
+                match=r"(foo)(bar)",
+                replace=r"$2-$1",
+                priority="medium",
+            )
+
+    def test_backslash_backref_in_regex_replace_passes(self):
+        """\\1 is the correct Python re.sub backref syntax — must pass."""
+        rule = TransformationRule(
+            id="good_backref",
+            scope="body",
+            type="regex",
+            match=r"invoke `samsara:([\w-]+)`",
+            replace=r"use the `$samsara-\1` skill",
+            priority="high",
+        )
+        assert r"\1" in rule.replace
+
+    def test_literal_rule_with_dollar_sign_passes(self):
+        """Literal rules don't use re.sub — $1 is just a literal string, not a backref."""
+        rule = TransformationRule(
+            id="literal_dollar",
+            scope="body",
+            type="literal",
+            match="price",
+            replace="$100",
+            priority="low",
+        )
+        assert rule.replace == "$100"
+
+    def test_dollar_sign_not_followed_by_digit_passes(self):
+        """$samsara (not a backref) must pass — only $N is dangerous."""
+        rule = TransformationRule(
+            id="dollar_non_backref",
+            scope="body",
+            type="regex",
+            match=r"samsara:([\w-]+)",
+            replace=r"$samsara-\1",
+            priority="high",
+        )
+        assert "$samsara" in rule.replace

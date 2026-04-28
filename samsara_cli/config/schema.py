@@ -134,6 +134,26 @@ class TransformationRule(StrictModel):
     replace: str
     priority: Literal["high", "medium", "low"]
 
+    @field_validator("replace")
+    @classmethod
+    def validate_replace_backrefs(cls, v: str, info: Any) -> str:
+        """Reject $N backrefs in regex replace strings. Python re.sub uses \\1, not $1.
+        $1 silently produces literal '$1' in output — the captured group is lost.
+
+        Fires for ALL rules but only checks when type='regex'. For type='literal',
+        $1 is valid literal text. Depends on 'type' being in info.data (validated
+        before 'replace' in field declaration order). If Pydantic changes field
+        validation order, this silently skips the check — same fragility as
+        validate_regex_pattern below."""
+        rule_type = info.data.get("type")
+        if rule_type == "regex" and re.search(r"\$\d", v):
+            raise ValueError(
+                f"Replace string contains '$N' backref syntax: {v!r}. "
+                "Python re.sub() uses '\\1', '\\2' etc. — not '$1', '$2'. "
+                "Using '$1' silently produces literal '$1' in output."
+            )
+        return v
+
     @field_validator("match")
     @classmethod
     def validate_regex_pattern(cls, v: str, info: Any) -> str:
