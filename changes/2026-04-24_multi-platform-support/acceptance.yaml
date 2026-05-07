@@ -1,0 +1,138 @@
+feature: multi-platform-support
+coverage_type: verified
+
+scenarios:
+  # --- Death paths first ---
+  - name: "Silent wrong mapping - transformation rule matches unintended text"
+    type: death_path
+    given: "SKILL.md body contains text like 'Read the overview' (not a tool reference)"
+    when: "converter applies tool_read rule ('Read tool' → 'exec_command with cat/nl')"
+    then:
+      - "rule must NOT match partial word boundaries — 'Read the' must be untouched"
+      - "only exact pattern 'Read tool' triggers replacement"
+      - "unit test covers both positive match and negative non-match cases"
+
+  - name: "Silent wrong mapping - frontmatter corrupted by body transformation"
+    type: death_path
+    given: "SKILL.md frontmatter contains description referencing 'invoke samsara:research'"
+    when: "converter applies skill_invocation rule"
+    then:
+      - "frontmatter must be untouched — rules scoped to 'body' must not affect frontmatter"
+      - "validator rejects output if frontmatter differs from source (except naming changes)"
+
+  - name: "Partial chain break - transition statement not converted"
+    type: death_path
+    given: "SKILL.md contains transition 'invoke `samsara:planning` skill' with variant formatting"
+    when: "converter applies skill_invocation rules"
+    then:
+      - "all transition statements across all 11 skills must be converted"
+      - "target validator must check every skill for remaining 'invoke `samsara:' patterns"
+      - "any unconverted pattern is a hard error, not a warning"
+
+  - name: "Agent dispatch mismatch - name not found"
+    type: death_path
+    given: "dispatch-template.md references 'subagent_type: samsara:implementer'"
+    when: "converter changes dispatch syntax but agent file is named differently"
+    then:
+      - "converter must cross-validate: every agent name referenced in skills exists as a converted agent file"
+      - "mismatch is a hard error"
+
+  - name: "Hook injection silent failure - feature flag not documented"
+    type: death_path
+    given: "Codex hooks require codex_hooks = true in config.toml"
+    when: "user installs samsara to Codex without enabling feature flag"
+    then:
+      - "project install: output explicit instruction 'Add codex_hooks = true to ~/.codex/config.toml'"
+      - "global install: set codex_hooks = true in config.toml as part of registration"
+      - "both scopes: post-install output must document this prerequisite"
+
+  - name: "Template rendering with missing field"
+    type: death_path
+    given: "agent.md file lacks a field that agent.toml.j2 template expects"
+    when: "Jinja2 renders the template"
+    then:
+      - "template must use strict undefined (jinja2.StrictUndefined)"
+      - "missing field raises explicit error with field name and source file"
+      - "converter must NOT produce output with empty/default values silently"
+
+  - name: "All-or-nothing violation - partial output on failure"
+    type: death_path
+    given: "5 of 11 skills converted successfully, 6th fails"
+    when: "converter encounters error mid-conversion"
+    then:
+      - "output directory must be empty or not exist — no partial results"
+      - "converter writes to temp dir first, moves to output only on full success"
+      - "error message includes which component failed and why"
+
+  # --- Degradation paths ---
+  - name: "Degradation - source has new skill not in platform config"
+    type: degradation
+    given: "samsara source adds skill-12 but codex.yaml transformation rules haven't been updated"
+    when: "converter processes skill-12"
+    then:
+      - "converter must apply generic rules (tool mapping, naming) to unknown skills"
+      - "output must include warning: 'skill-12 converted with generic rules only — verify manually'"
+      - "this is NOT a hard error but must be visible"
+
+  - name: "Degradation - Codex CLI not installed"
+    type: degradation
+    given: "user runs 'samsara-cli install codex' but codex is not installed"
+    when: "installer runs detect.py"
+    then:
+      - "installer must report: 'Codex CLI not found. Install from https://...'"
+      - "convert command must still work (produces output without installing)"
+      - "install command must abort with clear error"
+
+  # --- Happy paths with evidence ---
+  - name: "Success - full convert pipeline"
+    type: happy_path
+    given: "valid samsara source with 11 skills, 6 agents, 2 hooks, 4 references, 1 manifest"
+    when: "user runs 'samsara-cli convert --platform codex'"
+    then:
+      - "output dir contains: .codex-plugin/plugin.json, skills/ (11), agents/ (6 .toml), hooks/, references/ (4)"
+      - "all SKILL.md files have valid frontmatter (name + description only)"
+      - "all agent .toml files parse correctly with required fields"
+      - "all skill names use '-' separator, no ':'"
+      - "no remaining 'invoke `samsara:' patterns in any output file"
+      - "exit code 0 with summary: 'Converted N skills, N agents, N hooks, N references'"
+
+  - name: "Success - project install to Codex"
+    type: happy_path
+    given: "valid converted output in ./dist/codex/"
+    when: "user runs 'samsara-cli install codex' (default --scope project)"
+    then:
+      - "files copied to $CWD/.codex-plugin/"
+      - "installer outputs: 'Installed samsara v0.8.0 to ./.codex-plugin/'"
+      - "installer outputs: 'Required: Add codex_hooks = true to ~/.codex/config.toml'"
+      - "installer outputs: 'Restart Codex to pick up new skills'"
+
+  - name: "Success - global install to Codex"
+    type: happy_path
+    given: "valid converted output in ./dist/codex/"
+    when: "user runs 'samsara-cli install codex --scope global'"
+    then:
+      - "files copied to ~/.codex/plugins/samsara/samsara/.codex-plugin/"
+      - "config.toml backed up to config.toml.bak"
+      - "config.toml updated with [marketplaces.samsara-local] and [plugins.\"samsara@samsara-local\"]"
+      - "codex_hooks = true set in config.toml [features] section"
+      - "installer outputs: 'Installed samsara v0.8.0 globally'"
+      - "installer outputs: 'Restart Codex to pick up new skills'"
+
+  - name: "Success - validate converted output"
+    type: happy_path
+    given: "converted output in ./dist/codex/"
+    when: "user runs 'samsara-cli validate --platform codex'"
+    then:
+      - "validator checks: file count, frontmatter validity, TOML parse, manifest schema, no unconverted patterns"
+      - "exit code 0 with: 'Validation passed: N checks, 0 errors'"
+      - "any failure: exit code 1 with specific error details"
+
+  - name: "Success - idempotent update"
+    type: happy_path
+    given: "samsara already installed to Codex (project or global)"
+    when: "user runs 'samsara-cli update codex [--scope project|global]'"
+    then:
+      - "re-converts from source + re-installs (overwrite) to matching scope"
+      - "output identical to fresh install"
+      - "no orphaned files from previous installation"
+      - "global update: config.toml registration preserved, not duplicated"

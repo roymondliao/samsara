@@ -27,18 +27,22 @@ Agent tool:
   prompt: |
     You are implementing Task N: [task title]
 
+    ## Project Conventions
+
+    [MUST paste the content of AGENTS.md from the worktree root]
+
     ## Architecture Context
 
-    [Paste RELEVANT SECTIONS of overview.md — curate for this task, don't dump the entire file.
+    [MUST paste RELEVANT SECTIONS of overview.md — curate for this task, don't dump the entire file.
      Include: Goal, Tech Stack, Key Decisions that affect this task, and relevant Death Cases.]
 
     ## Task
 
-    [Paste FULL TEXT of task-N.md — do not summarize, do not truncate]
+    [MUST paste FULL TEXT of task-N.md — do not summarize, do not truncate]
 
     ## Scar Report Format
 
-    [Paste FULL CONTENT of scar-schema.yaml — the subagent cannot read this file]
+    [MUST paste FULL CONTENT of scar-schema.yaml — the subagent cannot read this file]
 
     ## Working Directory
 
@@ -82,13 +86,13 @@ Agent tool:
     Review the following changes for Task N: [task title]
 
     ## Task Requirements
-    [Paste acceptance criteria from task-N.md]
+    [MUST paste acceptance criteria from task-N.md]
 
     ## Changed Files
     [List the files the implementer modified]
 
     ## Diff
-    [Paste the unstaged diff of the implementer's changes]
+    [MUST paste the unstaged diff of the implementer's changes]
 ```
 
 ### Code Quality reviewer
@@ -100,13 +104,13 @@ Agent tool:
     Review the following changes for Task N: [task title]
 
     ## Task Requirements
-    [Paste acceptance criteria from task-N.md]
+    [MUST paste acceptance criteria from task-N.md]
 
     ## Changed Files
     [List the files the implementer modified]
 
     ## Diff
-    [Paste the unstaged diff of the implementer's changes]
+    [MUST paste the unstaged diff of the implementer's changes]
 ```
 
 Both reviewers must report back. If either reports FAIL or PASS_WITH_CONCERNS with Critical issues, the implementer must fix before proceeding.

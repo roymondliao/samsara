@@ -1,0 +1,73 @@
+feature: multi-platform-support
+status: pending
+
+tasks:
+  - id: task-1
+    title: "Config system — Pydantic schema + Hydra loader + platform configs"
+    status: done_with_concerns
+    scar_count: 7
+    unresolved_assumptions: 1  # FormatsConfig raw dict deferred to Task 2
+    depends_on: []
+
+  - id: task-2
+    title: "Transformation rules engine — scoped regex/literal pattern replacement"
+    status: done_with_concerns
+    scar_count: 5
+    unresolved_assumptions: 2  # scope arg type safety (mitigated by ValueError guard), BOM handling documented
+    depends_on: [task-1]
+
+  - id: task-3
+    title: "Skill converter — SKILL.md content transformation + naming"
+    status: done_with_concerns
+    scar_count: 7  # 3 shortcuts + 4 silent failures
+    unresolved_assumptions: 1  # source pattern list completeness unverified
+    depends_on: [task-1, task-2]
+
+  - id: task-4
+    title: "Agent converter — markdown to TOML format conversion"
+    status: done_with_concerns
+    scar_count: 6  # 3 shortcuts + 3 silent failures
+    unresolved_assumptions: 0  # all 5 assumptions verified
+    depends_on: [task-1, task-2]
+
+  - id: task-5
+    title: "Hook converter — script output + hooks.json adaptation"
+    status: done_with_concerns
+    scar_count: 6  # 3 shortcuts + 3 silent failures
+    unresolved_assumptions: 3  # systemMessage field, PLUGIN_DIR path, hook template completeness
+    depends_on: [task-1, task-2]
+
+  - id: task-6
+    title: "Manifest + reference converter"
+    status: done_with_concerns
+    scar_count: 8  # 4 shortcuts + 4 silent failures
+    unresolved_assumptions: 0  # all 4 assumptions resolved via test evidence
+    depends_on: [task-1, task-2]
+
+  - id: task-7
+    title: "Conversion engine — orchestrator + source/target validators"
+    status: done_with_concerns
+    scar_count: 8  # 5 shortcuts + 4 silent failures (1 removed after review fix)
+    unresolved_assumptions: 1  # expected_skills from source listing, not canonical list
+    depends_on: [task-3, task-4, task-5, task-6]
+
+  - id: task-8
+    title: "CLI + installer — Typer app, convert/install/update/validate commands"
+    status: done_with_concerns
+    scar_count: 10  # 4 shortcuts + 4 silent failures + 6 resolved items
+    unresolved_assumptions: 3  # config.toml path, marketplace format, features section name
+    depends_on: [task-7]
+
+  - id: task-9
+    title: "Integration tests — pipeline, format validation, snapshot"
+    status: done_with_concerns
+    scar_count: 10  # 3 shortcuts + 4 silent failures + 7 resolved items
+    unresolved_assumptions: 2  # platform-independent snapshots, SourceValidator completeness
+    depends_on: [task-8]
+
+  - id: task-10
+    title: "Codex smoke test — local end-to-end verification"
+    status: done_with_concerns
+    scar_count: 7  # 3 shortcuts + 3 silent failures + 2 resolved items
+    unresolved_assumptions: 2  # Codex skill discovery, CODEX_HOME env var
+    depends_on: [task-9]

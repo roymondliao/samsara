@@ -153,86 +153,75 @@ samsara/
 | iteration transition update | done | skills/iteration/SKILL.md |
 | version bump | done | 0.6.1 → 0.7.0 |
 
-### Phase 6: Execution Model Scope — DESIGN DECIDED (2026-04-23)
+### Phase 6: Execution Model Scope — DONE (2026-04-24)
 
-**發現日期**：2026-04-21（在 `2026-04-19_yin-coding-spirit` feature ship 前夕討論中浮現）
+Both reviewer agents now route by file domain (code/iac/container/pipeline/orchestration), load domain-specific reference files, and return UNKNOWN for unrecognized domains. Spirit-first review layering ensures agent philosophy drives principle application.
 
-**觀察**：整套 samsara skills 和 agents（含 `samsara:code-reviewer`、`samsara:code-quality-reviewer`、9 yin principles、8 outcome criteria C1-C8）都是以 imperative code（Python / TS / Go / Rust 等）為預設 execution model 設計的。現代軟體工程包含多種 execution model，每種的「悄悄失敗」死法不同：
+**Architecture**: Single agent + reference routing (Option D). Reference files declare `excluded_principles`. Router: extension+directory first, content inspection for ambiguous files, UNKNOWN if still ambiguous.
 
-| Execution Model | 例子 | 與 code 不同的死法 |
-|----------------|-----|------------------|
-| Imperative code | Python, Go, TS | Stack trace 可追、exception model 明確 |
-| Declarative IaC | Terraform, Pulumi, CloudFormation | State drift、provider lock、apply blast radius |
-| Container specs | Dockerfile, OCI | Base image tag drift、layer cache poisoning、secrets in layers |
-| Orchestration | Kubernetes YAML, Helm, Kustomize | Template render 出空值被 K8s 接受、values cascade 悄悄覆蓋 |
-| Data pipelines | Airflow DAG, dbt, Dagster | 上游 schema 變動但 task 不失敗、partial batch |
-| CI/CD | GitHub Actions, Jenkinsfile | Secret exposure、runner drift、step 順序依賴 |
-| ML configs | Hydra, W&B sweeps | Hyperparameter interaction、reproducibility |
+**Key design insight**: Agent spirit (philosophy) is the upper layer; reference file principles are the foundation/base layer. Spirit drives, koans illustrate — not the inverse. This was a Round 2 iteration fix (commit be2dc6d).
 
-**為什麼這是框架層級的問題而非內容缺口**：Samsara 的唯一公理「存在即責任」在 declarative 系統中意義不同 — 一個 unused Terraform resource 不是 dead weight，是每月燒 cloud cost 的活損失 + security surface。這改變了 yin principles 的權重，不是補幾個 worked example 就能解決。
+| Component | Status | Files |
+|-----------|--------|-------|
+| code-quality-reviewer routing | done | agents/code-quality-reviewer.md |
+| code-reviewer routing | done | agents/code-reviewer.md |
+| code-quality reference | done | references/code-quality.md |
+| code-review reference | done | references/code-review.md |
+| iac-quality reference | done | references/iac-quality.md |
+| iac-review reference | done | references/iac-review.md |
+| spirit-first layering | done | all agents + references |
+| version bump | done | 0.7.0 → 0.8.0 |
 
-**選定方向：Option D — Principle-Level Abstraction + Domain Reference Files**
+**Ship manifest**: `changes/2026-04-23_execution-model-scope/ship-manifest.yaml`
+**Kill switch**: Revert to commit ac9409b (removes Step 0 routing + reference protocol)
+**Silent failure surface**: high (11 known conditions across 4 scar reports)
 
-經 multi-level analysis（Senior/Staff/Principal）評估後，排除：
-- ~~A（Universal reviewer）~~ — 假裝 universal 會變 rubber stamp，違反框架自身的「禁止隱式假設」
-- ~~B（Sibling reviewers）~~ — N× agents 維護成本過高
-- ~~C（Linter wrapper）~~ — Linter 是業界標準開發習慣，LLM 已知，不是 samsara 的價值所在
+### Phase 6: Deferred Items & Accepted Risk Expiry
 
-**設計決策（2026-04-23 confirmed）：**
+以下項目在 Phase 6 iteration 中被 defer 或 accept，需要後續處理：
 
-| 問題 | 決策 | 理由 |
-|------|------|------|
-| Agent 架構 | Single agent + reference routing | 維護成本低，review procedure 統一 |
-| Principle 適用性 | Reference file 宣告 excluded_principles | 邊界明確，不依賴 model 詮釋能力 |
-| Linter 整合 | 不做 | 業界慣例，LLM 已知 |
-| Router 偵測 | Two-pass: extension + directory first, content inspection for ambiguous cases | Deterministic 優先，heuristic 只在需要時啟動 |
+**Deferred (需要外部 trigger)：**
+- I/DRY excluded_principles 移除 — 需 real IaC review 驗證 coverage transfer（iteration-log #3, #4, #5）
+- Theoretical koans → production patterns — 需 real Terraform review data
+- OpenTofu divergence — 需 OpenTofu adoption trigger
+- Provider-specific patterns — 超出 Phase 6 scope
+- Output format pipeline validation — 需下游 pipeline
 
-**架構：**
-```
-code-quality-reviewer (現有 agent)
-    ↓ Pass 1: extension + directory convention (deterministic)
-    ↓ Pass 2: content inspection (only for ambiguous files like .yaml, .py)
-    ↓ still ambiguous → UNKNOWN
-    ↓ loads domain-specific reference file
-references/
-├── code-quality.md          ← 現有（imperative code）
-├── iac-quality.md           ← 新（Terraform, Pulumi, CloudFormation）
-├── container-quality.md     ← 新（Dockerfile, OCI）
-├── orchestration-quality.md ← 新（K8s YAML, Helm, Kustomize）
-├── pipeline-quality.md      ← 新（Airflow, dbt, GitHub Actions, CI/CD）
-└── ...future domains
-```
+**Accepted risk expiry dates：**
+- **2026-07-24**：LLM compliance, scar report domain-agnostic, DRY exclusion breadth, DRY coverage transfer, applicability section default
+- **2026-10-24**：I coverage transfer, ignore_changes severity distinction
 
-**Reference file 結構變化：** 每份 reference file 新增 applicability declaration — 宣告 `excluded_principles`（含理由）。Reviewer 讀到 excluded principle 直接輸出 `UNKNOWN — excluded by domain reference: {reason}`，不進入判斷。
+### Phase 7: Multi-Platform Support — DONE (2026-04-28, Codex-first)
 
-**實作範圍：**
-1. Router 機制加入 `code-quality-reviewer` agent
-2. 現有 `code-quality.md` 加入 applicability declaration（全部 applicable，作為 baseline）
-3. 第一份 domain reference: `iac-quality.md`（Terraform 為主驗證對象）
-4. `code-reviewer` agent 同步加入 execution-model awareness
+Codex 平台的完整 conversion + installation pipeline，以 Python CLI 實作（非原計劃的 bash scripts）。
 
-### Phase 7: Multi-Platform Support — NOT STARTED
+**實作架構（`samsara_cli/`）：**
+- Pydantic schema + Hydra config loader（`config/`）
+- Transformation rules engine，支援 scope/type/priority filtering（`converter/`）
+- Skill、agent、reference、hook 個別 converter
+- `ConversionEngine` orchestrator：all-or-nothing output，SourceValidator + TargetValidator
+- Installer：dual-scope（user/project），Codex native layout（`.codex/`）
+- Typer CLI：`convert`, `install`, `update`, `validate`, `version` 命令
 
-支援 Codex、Gemini CLI、Windsurf 三個平台的安裝。
+**測試規模**：512 tests，169 death tests，10 scar reports，35 known silent failure conditions。
 
-**策略**：採用 agency-agents 的 source → convert → install 模式（非 OpenSpec 的 TypeScript adapter 模式），並補上 agency-agents 缺少的 update 機制。
-- 現有 SKILL.md（markdown + YAML frontmatter）作為 single source of truth
-- `scripts/convert.sh`：轉換成各平台格式
-- `scripts/install.sh`：自動偵測已安裝的工具 + 首次安裝
-- `scripts/update.sh`：偵測已安裝的平台 + 比對版本/內容差異 + 同步更新（agency-agents 缺少此功能）
+**Ship manifest**：`changes/2026-04-24_multi-platform-support/ship-manifest.yaml`
 
-**目標平台格式：**
+**Known failure modes（未解決）：**
+- Literal transformation rules apply inside fenced code blocks（silent corruption）
+- Codex runtime behavior assumptions unverified（hooks.json format 等）
+- config.toml comment stripping on global install（tomllib roundtrip loses comments）
 
-| 平台 | 路徑 | Scope | 格式差異 |
-|------|------|-------|---------|
-| Claude Code | `.claude-plugin/` | project | 現有格式，無需轉換 |
-| Codex | `~/.codex/skills/` | home | SKILL.md 格式類似 |
-| Gemini CLI | `~/.gemini/extensions/` | home | Extension model，最小 frontmatter |
-| Windsurf | `.windsurf/` 或 `.windsurfrules` | project | 可能需合併成單一 rules 文件 |
+**Accepted risks expiry：2026-07-28**（Codex runtime behavior, code block unawareness, symlink-following, 14 unverified assumptions）
 
-**Reference：**
-- `reference_opensource/OpenSpec` — 24 平台 adapter pattern，程式化生成
-- `reference_opensource/agency-agents` — 11 平台 convert + install scripts，Bash
+**Post-ship fixes（Level 2 iteration + follow-up）：**
+- `31ac517` — Codex native layout fix（`.codex/` 而非 `.codex-plugin/`）
+- `9b2a845` — JSON output trailing newline（POSIX convention）
+- `cb45da6` — duplicate agent names → EngineError with casefold（DC-7-6）
+- `fde0020` — reject `$N` backrefs in regex replace strings（DC-14）
+- `211148d` — shlex.split for version_cmd（DC-8-6）
+
+**Gemini CLI / Windsurf**：尚未實作（Phase 7 = Codex-first）。
 
 ## Design Documents
 
@@ -244,7 +233,7 @@ references/
 ## Key Design Decisions
 
 1. 完全取代 superpowers，不共存
-2. Phase 1-4 僅支援 Claude Code；Phase 7 擴展至 Codex、Gemini CLI、Windsurf
+2. Phase 1-6 僅支援 Claude Code；Phase 7 擴展至 Codex（done），Gemini CLI / Windsurf（未實作）
 3. Monorepo 子模組（可獨立安裝）
 4. 陰面約束內建在各 skill，通用約束透過 bootstrap 注入
 5. 狀態追蹤全部用 YAML（不用 markdown table）

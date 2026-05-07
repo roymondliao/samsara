@@ -1,3 +1,35 @@
+notebooks/
+.DS_Store
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.backup
+*.tfvars
+*.binary
+gpustack-data/
+models/
+results/
+node_modules/
+tests/iac-samples/
+tests/container-samples/
+
+# Codex
+.agents/
+.codex/
+
+# For Packer
+mcp_label_structure.pkrvars.hcl
+
+# For Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+tfplan
+*.tfplan
+*.tfvars
+*.tfvars.*
+*.lock.hcl
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
