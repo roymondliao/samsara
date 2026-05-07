@@ -102,7 +102,7 @@ class TestTripleQuoteEscaping:
             )
 
         # The instructions must be present (not empty due to truncation)
-        agent_section = parsed.get("agent", {})
+        agent_section = parsed
         assert "developer_instructions" in agent_section, (
             "developer_instructions missing from parsed TOML -- body was truncated at triple-quote"
         )
@@ -134,7 +134,7 @@ class TestTripleQuoteEscaping:
         except Exception as e:
             pytest.fail(f"TOML parse failed with multiple triple-quotes: {e}")
 
-        instructions = parsed["agent"]["developer_instructions"]
+        instructions = parsed["developer_instructions"]
         # Content must survive (not be silently dropped)
         assert "First" in instructions, "Content before first triple-quote was lost"
         assert "second" in instructions, "Content around second triple-quote was lost"
@@ -263,8 +263,10 @@ class TestTOMLParseability:
         except Exception as e:
             pytest.fail(f"Basic agent output is not valid TOML: {e}")
 
-        assert "agent" in parsed
-        assert "developer_instructions" in parsed["agent"]
+        assert "agent" not in parsed
+        assert "name" in parsed
+        assert "description" in parsed
+        assert "developer_instructions" in parsed
 
     def test_multiline_body_with_special_chars_parses_as_toml(self):
         # Body with special chars (backslashes, single quotes, mixed) must parse.
@@ -312,7 +314,7 @@ class TestTOMLParseability:
         )
 
         parsed = tomllib.loads(result.toml_content)
-        assert parsed["agent"]["name"] == "samsara-my-agent", (
+        assert parsed["name"] == "samsara-my-agent", (
             f"Agent name in TOML does not match expected 'samsara-my-agent'. "
             f"Got: {parsed['agent'].get('name')!r}"
         )
@@ -381,9 +383,7 @@ class TestAgentNameDispatchConsistency:
             )
             # Confirm the name is in the TOML too
             parsed = tomllib.loads(result.toml_content)
-            assert parsed["agent"]["name"] == expected, (
-                f"Name in TOML does not match for {stem}"
-            )
+            assert parsed["name"] == expected, f"Name in TOML does not match for {stem}"
 
     def test_custom_separator_is_applied(self):
         # Naming config separator must be used -- changing separator changes all dispatch names.
@@ -454,7 +454,7 @@ class TestLargeBodyHandling:
         except Exception as e:
             pytest.fail(f"Large body produced invalid TOML: {e}")
 
-        instructions = parsed["agent"]["developer_instructions"]
+        instructions = parsed["developer_instructions"]
 
         # Both start and end markers must survive
         assert "START_MARKER" in instructions, (
@@ -504,7 +504,7 @@ class TestLargeBodyHandling:
         except Exception as e:
             pytest.fail(f"Real large agent produced invalid TOML: {e}")
 
-        instructions = parsed["agent"]["developer_instructions"]
+        instructions = parsed["developer_instructions"]
         # The file must not be empty
         assert len(instructions) > 1000, (
             f"instructions suspiciously short ({len(instructions)} chars) -- possible truncation"

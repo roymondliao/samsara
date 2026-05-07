@@ -187,15 +187,14 @@ class HookConverter:
         """Render a Codex-compatible hook shell script via hook.sh.j2.
 
         The rendered script is a structural Codex hook that:
-        - Sets PLUGIN_DIR to the Codex plugin directory
-        - Sources skill env.sh files from SKILLS_DIR
+        - Reads bootstrap context from the native Codex skills directory
+        - Sources skill env.sh files from SKILLS_DIR when present
         - Outputs 'systemMessage' JSON (not Claude Code's hookSpecificOutput format)
 
         Note on ${CLAUDE_PLUGIN_ROOT}: The source hook scripts use this env var,
         which is set by Claude Code's plugin runtime. Codex does NOT set this var.
         This method does NOT read the source script — it renders the hook.sh.j2
-        template with Codex config values. The rendered script uses PLUGIN_DIR
-        (a literal path from platform config) instead of ${CLAUDE_PLUGIN_ROOT}.
+        template with Codex config values instead of Claude-only environment vars.
 
         Note on check-codebase-map: The source check-codebase-map hook checks
         ${CLAUDE_PROJECT_DIR} for map freshness. Codex does not set CLAUDE_PROJECT_DIR.

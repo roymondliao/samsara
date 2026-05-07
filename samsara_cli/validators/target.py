@@ -11,7 +11,7 @@ Validation checks:
 3. TOML validation: all .toml files in agents/ parse correctly
 4. Skill directory name validation: no colon in skill dir names
 5. Agent cross-validation: every agent name referenced in dispatch-template.md
-   exists as a converted agent (matched by TOML [agent] name field)
+   exists as a converted agent (matched by top-level TOML name field)
 
 Design decisions:
 - All errors are accumulated — validation never short-circuits on first error.
@@ -19,7 +19,7 @@ Design decisions:
 - validate() returns list[str]. Empty = valid. Non-empty = errors.
   Callers decide whether to raise. The engine raises on non-empty errors.
 - TOML parsing uses tomllib (stdlib since Python 3.11). No third-party dep.
-- Agent cross-validation: parses agent TOML to extract the [agent].name field,
+- Agent cross-validation: parses agent TOML to extract the top-level name field,
   then searches all .md companion files for references to that name. A reference
   is any occurrence of the agent name string. This is intentionally broad —
   false positives (unrelated text matching agent name) are acceptable because
@@ -44,7 +44,7 @@ Assumptions:
    Currently hardcoded to PlatformConfig.paths.agents_dir if available, else "agents".
 2. Skill directories are in output/skills/*.
    If the platform uses a different skill dir structure, the scan is wrong.
-3. Agent name extraction from TOML: the [agent].name field holds the agent's
+3. Agent name extraction from TOML: the top-level name field holds the agent's
    canonical name. If the TOML structure differs (e.g., [codex.agent].name),
    extraction will return None and cross-validation may miss mismatches.
 4. Dispatch-template.md is the primary file that references agent names.
@@ -159,14 +159,21 @@ class TargetValidator:
 
     def _get_skills_dir(self, output_dir: Path) -> Path:
         """Return the skills directory path within the output dir."""
-        # Standard path: output/skills/
-        # Assumption: skills are always at output_dir/skills/
+        # Codex native layout uses .agents/skills. Legacy/plugin-style converted
+        # output used skills/. Prefer the native path when present, but keep the
+        # fallback so older fixture-level tests can still validate legacy output.
+        native = output_dir / ".agents" / "skills"
+        if native.exists():
+            return native
         return output_dir / "skills"
 
     def _get_agents_dir(self, output_dir: Path) -> Path:
         """Return the agents directory path within the output dir."""
-        # Standard path: output/agents/
-        # Assumption: agents are always at output_dir/agents/
+        # Codex native layout uses .codex/agents. Legacy/plugin-style converted
+        # output used agents/.
+        native = output_dir / ".codex" / "agents"
+        if native.exists():
+            return native
         return output_dir / "agents"
 
     def _scan_source_patterns(self, output_dir: Path) -> list[str]:
@@ -247,13 +254,14 @@ class TargetValidator:
         return errors
 
     def _extract_agent_name_from_toml(self, toml_content: str) -> str | None:
-        """Extract the [agent].name field from TOML content.
+        """Extract the top-level name field from TOML content.
 
         Returns the agent name string, or None if extraction fails.
         """
         try:
             parsed = tomllib.loads(toml_content)
-            return parsed.get("agent", {}).get("name")
+            name = parsed.get("name")
+            return name if isinstance(name, str) else None
         except tomllib.TOMLDecodeError:
             return None
 
@@ -265,7 +273,7 @@ class TargetValidator:
         """Cross-validate agent name references in skills against actual agent files.
 
         Finds all agent names referenced in dispatch-template.md files and checks
-        that a corresponding agent exists (by [agent].name in TOML, not by filename).
+        that a corresponding agent exists (by top-level name in TOML, not by filename).
 
         Returns list of error strings (may be empty).
 

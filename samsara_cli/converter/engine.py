@@ -318,7 +318,7 @@ class ConversionEngine:
         return temp_dir / agents_dir_name
 
     def _get_output_plugin_dir(self, temp_dir: Path) -> Path:
-        """Get output plugin directory path."""
+        """Get platform config directory path."""
         plugin_dir_name = ".codex-plugin"
         if self._config.paths and self._config.paths.plugin_dir:
             plugin_dir_name = self._config.paths.plugin_dir
@@ -487,8 +487,36 @@ class ConversionEngine:
             encoding="utf-8",
         )
 
+        if self._config.permissions and self._config.permissions.feature_flags:
+            config_lines = ["[features]"]
+            for key, value in self._config.permissions.feature_flags.items():
+                toml_value = (
+                    "true"
+                    if value is True
+                    else "false"
+                    if value is False
+                    else json.dumps(value)
+                )
+                config_lines.append(f"{key} = {toml_value}")
+            (output_plugin_dir / "config.toml").write_text(
+                "\n".join(config_lines) + "\n",
+                encoding="utf-8",
+            )
+
     def _convert_manifest(self, source_dir: Path, temp_dir: Path) -> None:
         """Convert the source plugin.json to target platform manifest."""
+        if (
+            self._config.formats
+            and self._config.formats.manifest
+            and self._config.formats.manifest.get("enabled") is False
+        ):
+            logger.info(
+                "Skipping manifest conversion for platform '%s' because "
+                "formats.manifest.enabled is false.",
+                self._platform,
+            )
+            return
+
         source_manifest = source_dir / self._config.source.plugin_dir / "plugin.json"
         if not source_manifest.exists():
             raise FileNotFoundError(
@@ -511,7 +539,7 @@ class ConversionEngine:
             extra_fields=extra_fields,
         )
 
-        # Write output manifest to plugin dir
+        # Write output manifest to platform config dir when that platform uses one.
         output_plugin_dir = self._get_output_plugin_dir(temp_dir)
         output_plugin_dir.mkdir(parents=True, exist_ok=True)
 
@@ -545,9 +573,14 @@ class ConversionEngine:
             )
             return
 
-        # Output location: same structure as source, inside plugin dir
-        output_plugin_dir = self._get_output_plugin_dir(temp_dir)
-        output_refs_dir = output_plugin_dir / "references"
+        # Output location is platform-specific. Codex native installs use
+        # .agents/references; plugin-style platforms may keep references under
+        # the platform plugin directory.
+        if self._config.paths and self._config.paths.references_dir:
+            output_refs_dir = temp_dir / self._config.paths.references_dir
+        else:
+            output_plugin_dir = self._get_output_plugin_dir(temp_dir)
+            output_refs_dir = output_plugin_dir / "references"
         output_refs_dir.mkdir(parents=True, exist_ok=True)
 
         rules = self._config.transformations

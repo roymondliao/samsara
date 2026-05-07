@@ -1,9 +1,0 @@
-{
-  "name": "samsara-fixture",
-  "description": "Minimal samsara fixture for integration testing.",
-  "version": "0.1.0",
-  "author": {
-    "name": "Test Fixture"
-  },
-  "skills": "./skills/"
-}

@@ -46,11 +46,23 @@ def make_minimal_source(tmp_path: Path) -> Path:
 def make_converted_output(tmp_path: Path) -> Path:
     """Create a minimal converted output directory."""
     output = tmp_path / "dist" / "codex"
-    plugin_dir = output / ".codex-plugin"
-    plugin_dir.mkdir(parents=True)
-    (plugin_dir / "plugin.json").write_text(
-        json.dumps({"name": "samsara", "version": "0.8.0"})
+    skill_dir = output / ".agents" / "skills" / "samsara-research"
+    skill_dir.mkdir(parents=True)
+    (skill_dir / "SKILL.md").write_text("# research\n")
+    agents_dir = output / ".codex" / "agents"
+    agents_dir.mkdir(parents=True)
+    (agents_dir / "samsara-implementer.toml").write_text(
+        'name = "samsara-implementer"\n'
+        'description = "samsara-implementer"\n'
+        'developer_instructions = "Body"\n'
     )
+    hooks_dir = output / ".codex" / "hooks"
+    hooks_dir.mkdir(parents=True)
+    (hooks_dir / "samsara-session-start.sh").write_text("#!/usr/bin/env bash\n")
+    (output / ".codex" / "hooks.json").write_text(
+        json.dumps({"hooks": {"SessionStart": []}})
+    )
+    (output / ".codex" / "config.toml").write_text("[features]\ncodex_hooks = true\n")
     return output
 
 
@@ -60,10 +72,10 @@ def make_converted_output(tmp_path: Path) -> Path:
 
 
 class TestInstallerProjectScope:
-    """Project scope install: copies to CWD/.codex-plugin, no global config changes."""
+    """Project scope install: copies native Codex files, no global config changes."""
 
     def test_project_install_copies_to_cwd(self, tmp_path):
-        """Project install copies .codex-plugin to CWD."""
+        """Project install copies native Codex skills and config to CWD."""
         from samsara_cli.installer.install import Installer
 
         project_dir = tmp_path / "project"
@@ -84,8 +96,9 @@ class TestInstallerProjectScope:
                     cwd=project_dir,
                 )
 
-        target = project_dir / ".codex-plugin"
-        assert target.exists(), "project install must create .codex-plugin in CWD"
+        assert (project_dir / ".agents" / "skills" / "samsara-research").is_dir()
+        assert (project_dir / ".codex" / "agents").is_dir()
+        assert (project_dir / ".codex" / "hooks.json").exists()
 
     def test_project_install_returns_instructions(self, tmp_path):
         """Project install returns post-install instructions string."""
@@ -145,10 +158,10 @@ class TestInstallerProjectScope:
 
 
 class TestInstallerGlobalScope:
-    """Global scope install: marketplace + config.toml modifications."""
+    """Global scope install: native file copy + config.toml modifications."""
 
-    def test_global_install_creates_marketplace_dir(self, tmp_path):
-        """Global install creates ~/.codex/plugins/samsara structure."""
+    def test_global_install_creates_native_dirs(self, tmp_path):
+        """Global install creates native ~/.agents and ~/.codex structures."""
         from samsara_cli.installer.install import Installer
 
         fake_home = tmp_path / "home"
@@ -172,13 +185,11 @@ class TestInstallerGlobalScope:
                         cwd=project_dir,
                     )
 
-        marketplace_dir = fake_home / ".codex" / "plugins" / "samsara"
-        assert marketplace_dir.exists(), (
-            "global install must create marketplace source dir at ~/.codex/plugins/samsara"
-        )
+        assert (fake_home / ".agents" / "skills" / "samsara-research").is_dir()
+        assert (fake_home / ".codex" / "agents").is_dir()
 
     def test_global_install_modifies_config_toml(self, tmp_path):
-        """Global install adds marketplace and feature flags to config.toml."""
+        """Global install adds feature flags to config.toml."""
         from samsara_cli.installer.install import Installer
 
         fake_home = tmp_path / "home"
@@ -207,10 +218,7 @@ class TestInstallerGlobalScope:
                     )
 
         content = config_path.read_text()
-        # Must contain marketplace registration
-        assert "samsara" in content.lower(), (
-            "config.toml must be updated with samsara marketplace entry"
-        )
+        assert "codex_hooks = true" in content
 
     def test_global_install_config_toml_is_valid_toml(self, tmp_path):
         """Global install must produce valid TOML in config.toml."""
@@ -311,9 +319,13 @@ class TestInstallerUpdate:
                     )
 
         run_update()
-        target_after_first = list((project_dir / ".codex-plugin").rglob("*"))
+        target_after_first = list((project_dir / ".agents").rglob("*")) + list(
+            (project_dir / ".codex").rglob("*")
+        )
         run_update()
-        target_after_second = list((project_dir / ".codex-plugin").rglob("*"))
+        target_after_second = list((project_dir / ".agents").rglob("*")) + list(
+            (project_dir / ".codex").rglob("*")
+        )
 
         assert len(target_after_first) == len(target_after_second), (
             "update() must be idempotent — same files after each run"

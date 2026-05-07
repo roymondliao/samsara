@@ -1,3 +1,7 @@
+[build-system]
+requires = ["uv_build>=0.11.9,<0.12"]
+build-backend = "uv_build"
+
 [project]
 name = "samsara"
 version = "0.1.0"
@@ -33,8 +37,6 @@ markers = [
   "integration: marks tests as integration tests (require API key and --model)"
 ]
 
-[tool.setuptools.package-data]
-"samsara_cli" = ["config/**/*.yaml", "config/**/*.j2"]
-
-[tool.setuptools.packages.find]
-include = ["samsara_cli*"]
+[tool.uv.build-backend]
+module-name = "samsara_cli"
+module-root = ""

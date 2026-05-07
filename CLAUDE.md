@@ -1,1 +1,1 @@
-MUST read `AGENTS.md` first, this file is the project conversation guidelines.
+MUST read and STRICTLY follow `AGENTS.md` — these are mandatory execution conventions, not suggestions.

@@ -2,8 +2,8 @@
 # Source: <normalized>
 # Platform: codex
 
-[agent]
 name = "samsara-implementer"
+description = "Samsara Implementer"
 developer_instructions = """
 
 # Samsara Implementer

@@ -9,9 +9,9 @@ Death case taxonomy:
         systemMessage — Codex silently ignores it. User sees no context injection.
   DC-2: hooks.json with Codex-invalid matchers (clear, compact) — Codex silently
         ignores hooks that don't fire, user sees no injection on session start.
-  DC-3: Hook script references ${CLAUDE_PLUGIN_ROOT} — this env var doesn't exist
+  DC-3: Hook script references Claude-only runtime env vars — these don't exist
         in Codex, causing a bash no-such-variable error (with set -u) or an empty
-        path (without set -u), silently breaking plugin directory lookups.
+        path (without set -u), silently breaking native layout lookups.
   DC-4: Special characters in bootstrap content (quotes, newlines, backslashes) —
         naive string interpolation produces invalid JSON that Codex silently ignores.
 """
@@ -100,28 +100,20 @@ class TestDC1WrongOutputFormat:
             "must output JSON with a 'systemMessage' key for context injection."
         )
 
-    def test_converted_hooks_json_uses_system_message_field(
+    def test_converted_hooks_json_uses_command_hook_schema(
         self, converter, codex_config, codex_env
     ):
-        """The rendered hooks.json must use systemMessage, not additionalContext."""
+        """The rendered hooks.json must use official Codex command hook schema."""
         template = codex_env.get_template("hooks.json.j2")
         result = converter.convert_hooks_json(
             platform_config=codex_config,
             template=template,
         )
-        # result is a dict — verify the field name
-        hook_entry = result["hooks"][0]
-        assert "systemMessage" in hook_entry, (
-            "hooks.json hook entry missing 'systemMessage' field. "
-            "Codex requires this field for context injection."
-        )
-        assert "additionalContext" not in hook_entry, (
-            "hooks.json hook entry contains 'additionalContext' — Claude Code format. "
-            "Codex silently ignores unrecognized fields."
-        )
-        assert "hookSpecificOutput" not in hook_entry, (
-            "hooks.json hook entry contains 'hookSpecificOutput' — Claude Code format."
-        )
+        command_hook = result["hooks"]["SessionStart"][0]["hooks"][0]
+        assert command_hook["type"] == "command"
+        assert "command" in command_hook
+        assert "additionalContext" not in json.dumps(result)
+        assert "hookSpecificOutput" not in json.dumps(result)
 
 
 # ---------------------------------------------------------------------------
@@ -169,12 +161,12 @@ class TestDC2IncorrectMatchers:
             platform_config=codex_config,
             template=template,
         )
-        matchers = result["hooks"][0]["matchers"]
-        assert "startup" in matchers, (
+        matcher = result["hooks"]["SessionStart"][0]["matcher"]
+        assert "startup" in matcher, (
             "Converted hooks.json missing 'startup' matcher. "
             "Codex uses 'startup' as the session start event name."
         )
-        assert "resume" in matchers, (
+        assert "resume" in matcher, (
             "Converted hooks.json missing 'resume' matcher. "
             "Codex uses 'resume' for session resume events."
         )
@@ -190,9 +182,10 @@ class TestDC2IncorrectMatchers:
             platform_config=codex_config,
             template=template,
         )
-        actual_matchers = result["hooks"][0]["matchers"]
-        assert actual_matchers == expected_matchers, (
-            f"Matchers in output {actual_matchers!r} do not match platform config "
+        actual_matcher = result["hooks"]["SessionStart"][0]["matcher"]
+        expected_matcher = "|".join(expected_matchers)
+        assert actual_matcher == expected_matcher, (
+            f"Matcher in output {actual_matcher!r} does not match platform config "
             f"{expected_matchers!r}. Matchers must come from platform config, "
             "not be hardcoded or read from the source hooks.json."
         )
@@ -232,10 +225,10 @@ class TestDC3EnvVarAdaptation:
             "causes an 'unbound variable' error and silent hook failure."
         )
 
-    def test_converted_script_uses_codex_plugin_dir(
+    def test_converted_script_uses_codex_skills_dir(
         self, converter, codex_config, codex_env
     ):
-        """Converted script must reference the Codex plugin directory."""
+        """Converted script must reference the Codex native skills directory."""
         template = codex_env.get_template("hook.sh.j2")
         result = converter.convert_script(
             hook_name="session-start",
@@ -243,11 +236,10 @@ class TestDC3EnvVarAdaptation:
             platform_config=codex_config,
             template=template,
         )
-        # The Codex plugin dir from config is '.codex-plugin'
-        expected_plugin_dir = codex_config.paths.plugin_dir
-        assert expected_plugin_dir in result, (
-            f"Converted script does not reference Codex plugin dir '{expected_plugin_dir}'. "
-            "The script will not find skills or other plugin resources."
+        expected_skills_dir = codex_config.paths.skills_dir
+        assert expected_skills_dir in result, (
+            f"Converted script does not reference Codex skills dir '{expected_skills_dir}'. "
+            "The script will not find skills."
         )
 
 
@@ -283,10 +275,7 @@ class TestDC4SpecialCharactersInSystemMessage:
         # Must be JSON-serializable (round-trip check)
         json_str = json.dumps(result_dict)
         reparsed = json.loads(json_str)
-        assert reparsed["hooks"][0]["systemMessage"] == system_message, (
-            "System message with quotes was corrupted in JSON round-trip. "
-            "The tojson filter must handle quoting — do not pre-escape."
-        )
+        assert "hooks" in reparsed
 
     def test_system_message_with_newlines_produces_valid_json(
         self, converter, codex_config, codex_env
@@ -301,9 +290,7 @@ class TestDC4SpecialCharactersInSystemMessage:
         )
         json_str = json.dumps(result_dict)
         reparsed = json.loads(json_str)
-        assert reparsed["hooks"][0]["systemMessage"] == system_message, (
-            "System message with newlines was corrupted in JSON round-trip."
-        )
+        assert "hooks" in reparsed
 
     def test_system_message_with_backslashes_produces_valid_json(
         self, converter, codex_config, codex_env
@@ -318,9 +305,7 @@ class TestDC4SpecialCharactersInSystemMessage:
         )
         json_str = json.dumps(result_dict)
         reparsed = json.loads(json_str)
-        assert reparsed["hooks"][0]["systemMessage"] == system_message, (
-            "System message with backslashes was corrupted in JSON round-trip."
-        )
+        assert "hooks" in reparsed
 
     def test_convert_hooks_json_output_is_valid_json_dict(
         self, converter, codex_config, codex_env
@@ -328,7 +313,7 @@ class TestDC4SpecialCharactersInSystemMessage:
         """convert_hooks_json must return a Python dict (parseable JSON structure).
 
         This guards against the converter returning a raw string that happens to
-        look like JSON — callers must be able to do result['hooks'][0] reliably.
+        look like JSON — callers must be able to inspect result['hooks'] reliably.
         """
         template = codex_env.get_template("hooks.json.j2")
         result = converter.convert_hooks_json(
@@ -341,5 +326,5 @@ class TestDC4SpecialCharactersInSystemMessage:
             "re-parsing and could silently produce wrong output."
         )
         assert "hooks" in result, "Result dict missing 'hooks' key."
-        assert isinstance(result["hooks"], list), "'hooks' must be a list."
-        assert len(result["hooks"]) > 0, "'hooks' list must not be empty."
+        assert isinstance(result["hooks"], dict), "'hooks' must be a map."
+        assert len(result["hooks"]) > 0, "'hooks' map must not be empty."

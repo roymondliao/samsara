@@ -101,8 +101,7 @@ class TestConvertScript:
             platform_config=codex_config,
             template=template,
         )
-        # codex.yaml has paths.plugin_dir = ".codex-plugin"
-        assert ".codex-plugin" in result
+        assert ".agents/skills" in result
 
     def test_skills_dir_from_config(self, converter, codex_config, codex_env):
         """skills_dir path in rendered script matches codex platform config."""
@@ -159,7 +158,7 @@ class TestConvertHooksJson:
         assert isinstance(result, dict)
 
     def test_hooks_key_present(self, converter, codex_config, codex_env):
-        """Result dict has 'hooks' key with non-empty list."""
+        """Result dict has 'hooks' key with non-empty event map."""
         template = codex_env.get_template("hooks.json.j2")
         result = converter.convert_hooks_json(
             platform_config=codex_config,
@@ -169,36 +168,38 @@ class TestConvertHooksJson:
         assert len(result["hooks"]) >= 1
 
     def test_hook_entry_has_required_fields(self, converter, codex_config, codex_env):
-        """Each hook entry has name, event, matchers, command, systemMessage."""
+        """SessionStart entry uses official Codex hooks schema."""
         template = codex_env.get_template("hooks.json.j2")
         result = converter.convert_hooks_json(
             platform_config=codex_config,
             template=template,
         )
-        entry = result["hooks"][0]
-        required = {"name", "event", "matchers", "command", "systemMessage"}
-        missing = required - set(entry.keys())
-        assert not missing, f"Hook entry missing required fields: {missing}"
-
-    def test_hook_name_is_samsara_session_start(
-        self, converter, codex_config, codex_env
-    ):
-        """First hook entry name is 'samsara-session-start'."""
-        template = codex_env.get_template("hooks.json.j2")
-        result = converter.convert_hooks_json(
-            platform_config=codex_config,
-            template=template,
-        )
-        assert result["hooks"][0]["name"] == "samsara-session-start"
+        entry = result["hooks"]["SessionStart"][0]
+        assert "matcher" in entry
+        assert "hooks" in entry
+        command_hook = entry["hooks"][0]
+        assert command_hook["type"] == "command"
+        assert "command" in command_hook
 
     def test_hook_event_is_session_start(self, converter, codex_config, codex_env):
-        """First hook entry event is 'session_start'."""
+        """Hooks are grouped under SessionStart."""
         template = codex_env.get_template("hooks.json.j2")
         result = converter.convert_hooks_json(
             platform_config=codex_config,
             template=template,
         )
-        assert result["hooks"][0]["event"] == "session_start"
+        assert "SessionStart" in result["hooks"]
+
+    def test_matcher_uses_session_start_matchers(
+        self, converter, codex_config, codex_env
+    ):
+        """SessionStart matcher joins configured Codex matchers."""
+        template = codex_env.get_template("hooks.json.j2")
+        result = converter.convert_hooks_json(
+            platform_config=codex_config,
+            template=template,
+        )
+        assert result["hooks"]["SessionStart"][0]["matcher"] == "startup|resume"
 
     def test_command_path_contains_hook_script_name(
         self, converter, codex_config, codex_env
@@ -209,32 +210,21 @@ class TestConvertHooksJson:
             platform_config=codex_config,
             template=template,
         )
-        command = result["hooks"][0]["command"]
+        command = result["hooks"]["SessionStart"][0]["hooks"][0]["command"]
         assert "samsara-session-start.sh" in command, (
             f"Command '{command}' does not reference samsara-session-start.sh"
         )
 
     def test_default_system_message_is_string(self, converter, codex_config, codex_env):
-        """systemMessage field is a non-empty string when no custom message given."""
+        """Command hook has a statusMessage."""
         template = codex_env.get_template("hooks.json.j2")
         result = converter.convert_hooks_json(
             platform_config=codex_config,
             template=template,
         )
-        sm = result["hooks"][0]["systemMessage"]
-        assert isinstance(sm, str), f"systemMessage must be str, got {type(sm)}"
-        assert len(sm) > 0, "systemMessage must not be empty"
-
-    def test_custom_system_message_used(self, converter, codex_config, codex_env):
-        """If system_message is provided, it appears in the output."""
-        template = codex_env.get_template("hooks.json.j2")
-        custom = "Custom samsara bootstrap context."
-        result = converter.convert_hooks_json(
-            platform_config=codex_config,
-            template=template,
-            system_message=custom,
-        )
-        assert result["hooks"][0]["systemMessage"] == custom
+        status = result["hooks"]["SessionStart"][0]["hooks"][0]["statusMessage"]
+        assert isinstance(status, str)
+        assert len(status) > 0
 
     def test_output_is_json_serializable(self, converter, codex_config, codex_env):
         """Result dict can be serialized to JSON without error."""
@@ -246,7 +236,7 @@ class TestConvertHooksJson:
         # Should not raise
         json_str = json.dumps(result, indent=2)
         reparsed = json.loads(json_str)
-        assert reparsed["hooks"][0]["name"] == result["hooks"][0]["name"]
+        assert reparsed["hooks"]["SessionStart"] == result["hooks"]["SessionStart"]
 
     def test_hooks_dir_in_command_uses_codex_plugin_dir(
         self, converter, codex_config, codex_env
@@ -257,10 +247,9 @@ class TestConvertHooksJson:
             platform_config=codex_config,
             template=template,
         )
-        command = result["hooks"][0]["command"]
-        # The codex plugin_dir is '.codex-plugin'
-        assert ".codex-plugin" in command, (
-            f"Command '{command}' does not use Codex plugin_dir '.codex-plugin'. "
+        command = result["hooks"]["SessionStart"][0]["hooks"][0]["command"]
+        assert ".codex/hooks" in command, (
+            f"Command '{command}' does not use Codex native hooks dir '.codex/hooks'. "
             "hooks_dir must be derived from the target platform config, not source config."
         )
 

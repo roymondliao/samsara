@@ -196,7 +196,9 @@ class TestDC73AgentNameMismatchDetected:
         agents_dir = output / "agents"
         agents_dir.mkdir()
         (agents_dir / "implementer.toml").write_text(
-            '[agent]\nname = "implementer"\ndeveloper_instructions = "You are an agent."\n'
+            'name = "implementer"\n'
+            'description = "Implementer"\n'
+            'developer_instructions = "You are an agent."\n'
         )
 
         validator = TargetValidator()
@@ -285,7 +287,11 @@ class TestDC76DuplicateAgentNameFails:
 
             mock_result = MagicMock()
             mock_result.agent_name = "samsara-implementer"
-            mock_result.toml_content = '[agent]\nname = "samsara-implementer"\n'
+            mock_result.toml_content = (
+                'name = "samsara-implementer"\n'
+                'description = "Implementer"\n'
+                'developer_instructions = "Body"\n'
+            )
             mock_converter.convert_from_text.return_value = mock_result
 
             with pytest.raises(EngineError, match="[Dd]uplicate") as exc_info:
@@ -318,11 +324,19 @@ class TestDC76DuplicateAgentNameFails:
 
             result_lower = MagicMock()
             result_lower.agent_name = "samsara-implementer"
-            result_lower.toml_content = '[agent]\nname = "samsara-implementer"\n'
+            result_lower.toml_content = (
+                'name = "samsara-implementer"\n'
+                'description = "Implementer"\n'
+                'developer_instructions = "Body"\n'
+            )
 
             result_upper = MagicMock()
             result_upper.agent_name = "samsara-Implementer"
-            result_upper.toml_content = '[agent]\nname = "samsara-Implementer"\n'
+            result_upper.toml_content = (
+                'name = "samsara-Implementer"\n'
+                'description = "Implementer"\n'
+                'developer_instructions = "Body"\n'
+            )
 
             # sorted() glob: implementer.md < other-agent.md — result_lower maps to first
             mock_converter.convert_from_text.side_effect = [

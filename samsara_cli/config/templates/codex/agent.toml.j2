@@ -2,8 +2,8 @@
 # Source: {{ source_path }}
 # Platform: codex
 
-[agent]
-name = "{{ name }}"
+name = {{ name | tojson }}
+description = {{ description | tojson }}
 developer_instructions = """
 {{ developer_instructions }}
 """
@@ -14,18 +14,16 @@ model = "{{ model }}"
 sandbox_mode = "{{ sandbox_mode }}"
 {% endif %}
 {% if mcp_servers is defined and mcp_servers %}
-[agent.mcp_servers]
 {% for server_name, server_cfg in mcp_servers.items() %}
-[agent.mcp_servers.{{ server_name }}]
+[mcp_servers.{{ server_name }}]
 {% for key, value in server_cfg.items() %}
 {{ key }} = {{ value | tojson }}
 {% endfor %}
 {% endfor %}
 {% endif %}
 {% if skills_config is defined and skills_config %}
-[agent.skills]
-{% for skill_name, skill_cfg in skills_config.items() %}
-[agent.skills.{{ skill_name }}]
+{% for skill_cfg in skills_config %}
+[[skills.config]]
 {% for key, value in skill_cfg.items() %}
 {{ key }} = {{ value | tojson }}
 {% endfor %}

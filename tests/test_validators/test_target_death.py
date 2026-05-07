@@ -41,7 +41,9 @@ def make_output_structure(tmp_path: Path) -> Path:
     agents_dir.mkdir()
     # Agent file with TOML content — name matches "samsara-implementer"
     (agents_dir / "samsara-implementer.toml").write_text(
-        '[agent]\nname = "samsara-implementer"\ndeveloper_instructions = "You are the implementer."\n'
+        'name = "samsara-implementer"\n'
+        'description = "samsara-implementer"\n'
+        'developer_instructions = "You are the implementer."\n'
     )
 
     return output
@@ -169,7 +171,9 @@ class TestDC73AgentNameMismatchIsolated:
         agents_dir.mkdir()
         # Agent TOML has name = "implementer" (MISSING prefix — the death case)
         (agents_dir / "implementer.toml").write_text(
-            '[agent]\nname = "implementer"\ndeveloper_instructions = "Instructions."\n'
+            'name = "implementer"\n'
+            'description = "implementer"\n'
+            'developer_instructions = "Instructions."\n'
         )
 
         validator = TargetValidator()

@@ -7,13 +7,12 @@ set -euo pipefail
 # Session start hook for samsara on Codex
 # Injects context into the session system message.
 
-# PLUGIN_DIR is a relative path from the project root.
+# SKILLS_DIR is a relative path from the project root.
 # Assumption: Codex executes hooks from the project working directory.
-# If Codex executes from a different directory, PLUGIN_DIR will resolve incorrectly
+# If Codex executes from a different directory, SKILLS_DIR will resolve incorrectly
 # and SKILL.md will not be found — injecting "Error reading samsara-bootstrap skill"
 # as context instead of empty.
-PLUGIN_DIR="{{ plugin_dir }}"
-SKILLS_DIR="${PLUGIN_DIR}/{{ skills_dir }}"
+SKILLS_DIR="{{ skills_dir }}"
 
 # Source any skill-specific environment setup
 if [ -d "${SKILLS_DIR}" ]; then
@@ -23,7 +22,7 @@ if [ -d "${SKILLS_DIR}" ]; then
 fi
 
 # Read samsara-bootstrap content for context injection
-bootstrap_content=$(cat "${PLUGIN_DIR}/skills/samsara-bootstrap/SKILL.md" 2>&1 || echo "Error reading samsara-bootstrap skill")
+bootstrap_content=$(cat "${SKILLS_DIR}/samsara-samsara-bootstrap/SKILL.md" 2>&1 || echo "Error reading samsara-bootstrap skill")
 
 # Escape string for JSON embedding.
 # Handles: backslash, double-quote, newline, carriage-return, tab.

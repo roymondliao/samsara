@@ -4,8 +4,8 @@ Installer — Install converted samsara output to project or global scope.
 Design decisions:
 - CLI presence check (via PlatformDetector.detect()) is the FIRST operation.
   No files are written before this check passes. This is DC-8-1 enforcement.
-- Project scope NEVER modifies ~/.codex/config.toml. It only copies to CWD/.codex-plugin
-  and returns instructions for the user to configure manually. This is DC-8-2 enforcement.
+- Project scope NEVER modifies ~/.codex/config.toml. It merges native platform files
+  into the target project root. This is DC-8-2 enforcement.
 - Global scope ALWAYS creates config.toml.bak before modifying config.toml.
   If backup creation fails, install aborts. This is DC-8-3 enforcement.
 - Global scope install is idempotent: before appending any TOML section, we check
@@ -19,22 +19,16 @@ config.toml modification strategy:
   is acceptable. If comment preservation becomes a requirement, tomlkit is the solution.
 
   Idempotency is achieved by checking the TOML structure before writing:
-  - marketplace entry: check if [[marketplace]] with matching 'name' already exists
   - [features] flags: check if key already set to the same value
 
 Assumptions:
 1. config.toml is at ~/.codex/config.toml (from GlobalInstallConfig.config_path).
    If Codex uses a different config path, installs would modify the wrong file.
-2. Marketplace registration format: [[marketplace]] with 'name' and 'path' keys.
-   If Codex changes its config format, this installer would write invalid entries.
-3. Feature flags are under [features] table in config.toml.
+2. Feature flags are under [features] table in config.toml.
    If Codex moves feature flags to a different section, flags would be missed.
-4. The marketplace_source path is the PARENT of where the plugin is placed.
-   Plugin is placed at: {marketplace_source}/samsara/.codex-plugin/
-   (i.e., {marketplace_source} is registered in config, and {marketplace_source}/samsara/
-   is the plugin directory within the marketplace.)
 """
 
+import json
 import logging
 import os
 import shutil
@@ -102,13 +96,13 @@ class Installer:
         cwd: Path | None = None,
         converted_source_dir: Path | None = None,
     ) -> str:
-        """Install the samsara plugin for the given platform and scope.
+        """Install converted samsara files for the given platform and scope.
 
         Args:
             source_dir: Root of the samsara source directory.
                         Used for conversion if converted_source_dir is not provided.
-            scope: "project" (copy to CWD) or "global" (register in marketplace).
-            cwd: Working directory for project scope (target: cwd/.codex-plugin).
+            scope: "project" (copy to CWD) or "global" (copy under HOME).
+            cwd: Working directory for project scope.
                  Defaults to current working directory.
             converted_source_dir: Pre-converted output directory. If provided,
                                    conversion is skipped and this is used directly.
@@ -217,51 +211,31 @@ class Installer:
     def _install_project(self, converted_dir: Path, cwd: Path) -> str:
         """DC-8-2: Project scope install — copy to CWD, NEVER touch global config.
 
-        Copies the .codex-plugin directory (or equivalent) from converted_dir to CWD.
-        Returns instructions for manual feature flag configuration.
-
         Args:
             converted_dir: Path to converted output directory.
-            cwd: Target working directory (plugin is installed to cwd/.codex-plugin).
+            cwd: Target working directory.
 
         Returns:
             Post-install instructions string.
         """
-        # Determine source plugin dir from converted output
-        plugin_dir_name = ".codex-plugin"
-        if self._config.paths and self._config.paths.plugin_dir:
-            plugin_dir_name = self._config.paths.plugin_dir
+        self._install_native_tree(converted_dir=converted_dir, target_root=cwd)
 
-        source_plugin_dir = converted_dir / plugin_dir_name
-        if not source_plugin_dir.exists():
-            raise InstallerError(
-                f"Expected plugin directory '{plugin_dir_name}' not found in "
-                f"converted output: {converted_dir}. "
-                "Run 'samsara-cli convert' first to produce a valid output."
-            )
-
-        target_plugin_dir = cwd / plugin_dir_name
-
-        # Copy to CWD (overwrite if exists)
-        if target_plugin_dir.exists():
-            shutil.rmtree(target_plugin_dir)
-        shutil.copytree(source_plugin_dir, target_plugin_dir)
-
-        logger.info("Installed %s plugin to: %s", self._platform, target_plugin_dir)
+        logger.info("Installed %s native files to: %s", self._platform, cwd)
 
         # Build post-install instructions
-        return self._project_install_instructions(target_plugin_dir)
+        return self._project_install_instructions(cwd)
 
     def _project_install_instructions(self, plugin_dir: Path) -> str:
         """Build post-install instructions for project scope install."""
         feature_flags_section = self._format_feature_flags_instructions()
 
         instructions = (
-            f"samsara plugin installed to: {plugin_dir}\n\n"
+            f"samsara native {self._platform} files installed to: {plugin_dir}\n\n"
             "Next steps:\n"
-            f"  1. Add the following to your {self._platform} project config:\n"
+            f"  1. Ensure your {self._platform} project is trusted.\n"
+            f"  2. Restart {self._platform} to load the skills, agents, and hooks.\n"
+            f"  3. Required feature flags are present in the project config:\n"
             f"{feature_flags_section}\n"
-            f"  2. Restart {self._platform} to load the plugin.\n"
         )
         return instructions
 
@@ -284,15 +258,7 @@ class Installer:
         return "\n".join(lines)
 
     def _install_global(self, converted_dir: Path) -> str:
-        """Global scope install — marketplace registration + config.toml modification.
-
-        Steps:
-        1. Determine marketplace source dir and config.toml path from platform config
-        2. Create marketplace source dir structure
-        3. Copy converted files to marketplace source dir
-        4. Backup config.toml (DC-8-3)
-        5. Modify config.toml (idempotent — DC-8-4)
-        6. Return post-install instructions
+        """Global scope install — copy native platform files under the user's home.
 
         Args:
             converted_dir: Path to converted output directory.
@@ -317,14 +283,6 @@ class Installer:
         # but explicit home resolution makes test patching clearer.
         home = Path(os.environ.get("HOME", str(Path.home())))
 
-        marketplace_source_raw = global_cfg.marketplace_source
-        if not marketplace_source_raw:
-            raise InstallerError(
-                f"Platform '{self._platform}' global install config is missing "
-                "'marketplace_source' path. Cannot determine where to install."
-            )
-        marketplace_source = Path(marketplace_source_raw.replace("~", str(home)))
-
         config_path_raw = global_cfg.config_path
         if not config_path_raw:
             raise InstallerError(
@@ -333,58 +291,13 @@ class Installer:
             )
         config_path = Path(config_path_raw.replace("~", str(home)))
 
-        plugin_name = global_cfg.plugin_name or "samsara"
-        marketplace_name = global_cfg.marketplace_name or "samsara-local"
-
-        # --- Step 1: Create marketplace source dir ---
-        # Marketplace source dir: ~/.codex/plugins/samsara
-        # Plugin lives at: {marketplace_source}/{plugin_name}/.codex-plugin/
-        marketplace_source.mkdir(parents=True, exist_ok=True)
-        logger.info("Marketplace source dir: %s", marketplace_source)
-
-        # --- Step 2: Copy converted files to marketplace dir ---
-        plugin_dir_name = ".codex-plugin"
-        if self._config.paths and self._config.paths.plugin_dir:
-            plugin_dir_name = self._config.paths.plugin_dir
-
-        source_plugin_dir = converted_dir / plugin_dir_name
-        if not source_plugin_dir.exists():
-            raise InstallerError(
-                f"Expected plugin directory '{plugin_dir_name}' not found in "
-                f"converted output: {converted_dir}. "
-                "Run 'samsara-cli convert' first to produce a valid output."
-            )
-
-        # Plugin destination: {marketplace_source}/{plugin_name}/.codex-plugin/
-        dest_plugin_parent = marketplace_source / plugin_name
-        dest_plugin_dir = dest_plugin_parent / plugin_dir_name
-
-        dest_plugin_parent.mkdir(parents=True, exist_ok=True)
-        if dest_plugin_dir.exists():
-            shutil.rmtree(dest_plugin_dir)
-        shutil.copytree(source_plugin_dir, dest_plugin_dir)
-        logger.info("Copied plugin to: %s", dest_plugin_dir)
-
-        # Also copy skills, agents, etc. from converted_dir to plugin parent
-        # (so the full converted output is available in the marketplace dir)
-        for item in converted_dir.iterdir():
-            if item.name == plugin_dir_name:
-                continue  # Already handled above
-            dest = dest_plugin_parent / item.name
-            if item.is_dir():
-                if dest.exists():
-                    shutil.rmtree(dest)
-                shutil.copytree(item, dest)
-            else:
-                shutil.copy2(item, dest)
-
-        # --- Step 3: Ensure config.toml exists ---
+        # --- Step 1: Ensure config.toml exists ---
         config_path.parent.mkdir(parents=True, exist_ok=True)
         if not config_path.exists():
             config_path.write_text("")
             logger.info("Created new config.toml at: %s", config_path)
 
-        # --- Step 4: DC-8-3 Backup config.toml BEFORE any modification ---
+        # --- Step 2: DC-8-3 Backup config.toml BEFORE any modification ---
         backup_path = config_path.parent / (config_path.name + ".bak")
         try:
             shutil.copy2(config_path, backup_path)
@@ -395,7 +308,10 @@ class Installer:
                 "Aborting to prevent config loss. Fix the backup location and retry."
             ) from e
 
-        # --- Step 5: DC-8-4 Modify config.toml (idempotent) ---
+        # --- Step 3: Copy native output into the user's home directories ---
+        self._install_native_tree(converted_dir=converted_dir, target_root=home)
+
+        # --- Step 4: DC-8-4 Modify config.toml (idempotent) ---
         try:
             current_content = config_path.read_bytes()
             try:
@@ -409,9 +325,6 @@ class Installer:
 
             modified = self._update_config_toml(
                 config=current_toml,
-                marketplace_name=marketplace_name,
-                marketplace_source=str(marketplace_source),
-                plugin_name=plugin_name,
             )
 
             config_path.write_bytes(tomli_w.dumps(modified).encode())
@@ -424,28 +337,102 @@ class Installer:
             ) from e
 
         return self._global_install_instructions(
-            marketplace_source=marketplace_source,
+            install_root=home,
             config_path=config_path,
         )
+
+    def _install_native_tree(self, converted_dir: Path, target_root: Path) -> None:
+        """Merge converted native platform files into target_root.
+
+        Directory contents are copied recursively. JSON/TOML config files that may
+        already exist are merged instead of blindly overwritten.
+        """
+        if not converted_dir.exists():
+            raise InstallerError(f"Converted output does not exist: {converted_dir}")
+
+        for item in converted_dir.iterdir():
+            dest = target_root / item.name
+            if item.is_dir():
+                self._copy_dir_merge(item, dest)
+            else:
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(item, dest)
+
+    def _copy_dir_merge(self, source_dir: Path, target_dir: Path) -> None:
+        """Recursively merge source_dir into target_dir."""
+        for source_item in source_dir.iterdir():
+            target_item = target_dir / source_item.name
+            if source_item.is_dir():
+                self._copy_dir_merge(source_item, target_item)
+                continue
+
+            target_item.parent.mkdir(parents=True, exist_ok=True)
+            if source_item.name == "hooks.json" and target_item.exists():
+                self._merge_hooks_json(source_item, target_item)
+            elif source_item.name == "config.toml" and target_item.exists():
+                self._merge_config_toml(source_item, target_item)
+            else:
+                shutil.copy2(source_item, target_item)
+
+    def _merge_hooks_json(self, source_path: Path, target_path: Path) -> None:
+        """Merge Codex hooks maps without duplicating existing entries."""
+        source = json.loads(source_path.read_text(encoding="utf-8"))
+        target = json.loads(target_path.read_text(encoding="utf-8"))
+
+        source_hooks = source.get("hooks", {})
+        target_hooks = target.setdefault("hooks", {})
+        if not isinstance(source_hooks, dict) or not isinstance(target_hooks, dict):
+            raise InstallerError(
+                f"Cannot merge hooks config because 'hooks' is not an object: {target_path}"
+            )
+
+        for event_name, entries in source_hooks.items():
+            if not isinstance(entries, list):
+                raise InstallerError(
+                    f"Cannot merge hooks event {event_name!r}: expected list."
+                )
+            existing = target_hooks.setdefault(event_name, [])
+            if not isinstance(existing, list):
+                raise InstallerError(
+                    f"Cannot merge hooks event {event_name!r}: target is not a list."
+                )
+            for entry in entries:
+                if entry not in existing:
+                    existing.append(entry)
+
+        target_path.write_text(
+            json.dumps(target, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+
+    def _merge_config_toml(self, source_path: Path, target_path: Path) -> None:
+        """Merge required Codex config flags into an existing config.toml."""
+        source = tomllib.loads(source_path.read_text(encoding="utf-8"))
+        target = tomllib.loads(target_path.read_text(encoding="utf-8"))
+
+        source_features = source.get("features", {})
+        if isinstance(source_features, dict):
+            target_features = target.setdefault("features", {})
+            if not isinstance(target_features, dict):
+                raise InstallerError(
+                    f"Cannot merge features into non-table config section: {target_path}"
+                )
+            for key, value in source_features.items():
+                target_features[key] = value
+
+        target_path.write_text(tomli_w.dumps(target), encoding="utf-8")
 
     def _update_config_toml(
         self,
         config: dict,
-        marketplace_name: str,
-        marketplace_source: str,
-        plugin_name: str,
     ) -> dict:
-        """DC-8-4: Update config dict with marketplace + feature flags (idempotent).
+        """DC-8-4: Update config dict with required feature flags (idempotent).
 
         Does NOT duplicate entries if already present:
-        - marketplace: checks for existing entry with matching 'name'
         - features: only sets keys if not already equal to desired value
 
         Args:
             config: Current TOML config as dict (may be empty).
-            marketplace_name: Name for the marketplace registration.
-            marketplace_source: Path to the marketplace source directory.
-            plugin_name: Plugin name within the marketplace.
 
         Returns:
             Updated config dict (suitable for tomli_w.dumps()).
@@ -453,55 +440,6 @@ class Installer:
         import copy
 
         result = copy.deepcopy(config)
-
-        # --- Marketplace registration (idempotent) ---
-        # TOML: [[marketplace]]
-        # name = "samsara-local"
-        # path = "~/.codex/plugins/samsara"
-        marketplace_list = result.get("marketplace", [])
-        if not isinstance(marketplace_list, list):
-            marketplace_list = []
-
-        # Check if already registered (by marketplace name)
-        already_registered = any(
-            isinstance(entry, dict) and entry.get("name") == marketplace_name
-            for entry in marketplace_list
-        )
-
-        if not already_registered:
-            marketplace_list.append(
-                {
-                    "name": marketplace_name,
-                    "path": marketplace_source,
-                }
-            )
-            logger.info(
-                "Adding marketplace entry: name=%s, path=%s",
-                marketplace_name,
-                marketplace_source,
-            )
-        else:
-            logger.info(
-                "Marketplace entry already registered: %s (idempotent — skipping)",
-                marketplace_name,
-            )
-
-        result["marketplace"] = marketplace_list
-
-        # --- Plugin enable (idempotent) ---
-        # TOML: [plugins]
-        # enabled = ["samsara"]
-        plugins_section = result.get("plugins", {})
-        if not isinstance(plugins_section, dict):
-            plugins_section = {}
-        enabled_plugins = plugins_section.get("enabled", [])
-        if not isinstance(enabled_plugins, list):
-            enabled_plugins = []
-        if plugin_name not in enabled_plugins:
-            enabled_plugins.append(plugin_name)
-            logger.info("Enabling plugin: %s", plugin_name)
-        plugins_section["enabled"] = enabled_plugins
-        result["plugins"] = plugins_section
 
         # --- Feature flags (idempotent) ---
         # TOML: [features]
@@ -529,15 +467,14 @@ class Installer:
 
     def _global_install_instructions(
         self,
-        marketplace_source: Path,
+        install_root: Path,
         config_path: Path,
     ) -> str:
         """Build post-install instructions for global scope install."""
         return (
-            f"samsara plugin installed to: {marketplace_source}\n"
+            f"samsara native {self._platform} files installed under: {install_root}\n"
             f"Config updated: {config_path}\n\n"
             "Next steps:\n"
-            f"  1. Restart {self._platform} to load the plugin.\n"
-            "  2. The samsara marketplace and plugin are now registered.\n"
-            f"  3. A backup of your previous config is at: {config_path}.bak\n"
+            f"  1. Restart {self._platform} to load the skills, agents, and hooks.\n"
+            f"  2. A backup of your previous config is at: {config_path}.bak\n"
         )

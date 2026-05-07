@@ -111,29 +111,28 @@ class TestPlatformIdentity:
 class TestPathsConfig:
     def test_valid_paths_config(self):
         paths = PathsConfig(
-            plugin_dir=".codex-plugin",
-            plugin_manifest="plugin.json",
-            skills_dir="skills",
-            agents_dir="agents",
+            plugin_dir=".codex",
+            plugin_manifest=None,
+            skills_dir=".agents/skills",
+            agents_dir=".codex/agents",
             hooks_file="hooks.json",
+            references_dir=".agents/references",
         )
-        assert paths.plugin_dir == ".codex-plugin"
-        assert paths.plugin_manifest == "plugin.json"
+        assert paths.plugin_dir == ".codex"
+        assert paths.plugin_manifest is None
+        assert paths.references_dir == ".agents/references"
 
 
 class TestInstallConfig:
     def test_valid_install_config(self):
         install = InstallConfig(
-            project=ProjectInstallConfig(target="$CWD/.codex-plugin"),
+            project=ProjectInstallConfig(target="$CWD"),
             global_=GlobalInstallConfig(
-                marketplace_name="samsara-local",
-                marketplace_source="~/.codex/plugins/samsara",
-                plugin_name="samsara",
                 config_path="~/.codex/config.toml",
             ),
         )
-        assert install.project.target == "$CWD/.codex-plugin"
-        assert install.global_.marketplace_name == "samsara-local"
+        assert install.project.target == "$CWD"
+        assert install.global_.config_path == "~/.codex/config.toml"
 
 
 class TestPlatformConfig:

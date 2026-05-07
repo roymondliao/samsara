@@ -24,20 +24,20 @@ class TestLoadPlatformConfig:
     def test_codex_paths_plugin_dir(self):
         config = load_platform_config("codex")
         assert config.paths is not None
-        assert config.paths.plugin_dir == ".codex-plugin"
+        assert config.paths.plugin_dir == ".codex"
 
     def test_codex_paths_agents_dir(self):
         config = load_platform_config("codex")
-        assert config.paths.agents_dir == "agents"
+        assert config.paths.agents_dir == ".codex/agents"
 
     def test_codex_install_project_target(self):
         config = load_platform_config("codex")
         assert config.install is not None
-        assert config.install.project.target == "$CWD/.codex-plugin"
+        assert config.install.project.target == "$CWD"
 
-    def test_codex_install_global_marketplace_name(self):
+    def test_codex_install_global_config_path(self):
         config = load_platform_config("codex")
-        assert config.install.global_.marketplace_name == "samsara-local"
+        assert config.install.global_.config_path == "~/.codex/config.toml"
 
     def test_codex_naming_skill_prefix(self):
         config = load_platform_config("codex")

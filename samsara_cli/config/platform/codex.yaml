@@ -8,19 +8,17 @@ platform:
   version_cmd: "codex --version"
 
 paths:
-  plugin_dir: ".codex-plugin"
-  plugin_manifest: "plugin.json"
-  skills_dir: "skills"
-  agents_dir: "agents"
+  plugin_dir: ".codex"
+  plugin_manifest: null
+  skills_dir: ".agents/skills"
+  agents_dir: ".codex/agents"
   hooks_file: "hooks.json"
+  references_dir: ".agents/references"
 
 install:
   project:
-    target: "$CWD/.codex-plugin"
+    target: "$CWD"
   global:
-    marketplace_name: "samsara-local"
-    marketplace_source: "~/.codex/plugins/samsara"
-    plugin_name: "samsara"
     config_path: "~/.codex/config.toml"
 
 formats:
@@ -42,6 +40,7 @@ formats:
     template: "hooks.json.j2"
     script_template: "hook.sh.j2"
   manifest:
+    enabled: false
     template: "manifest.json.j2"
     extra_fields:
       skills: "./skills/"

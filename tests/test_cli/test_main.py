@@ -44,11 +44,17 @@ def make_minimal_source(tmp_path: Path) -> Path:
 def make_converted_output(tmp_path: Path) -> Path:
     """Create a minimal converted output directory."""
     output = tmp_path / "dist" / "codex"
-    plugin_dir = output / ".codex-plugin"
-    plugin_dir.mkdir(parents=True)
-    (plugin_dir / "plugin.json").write_text(
-        json.dumps({"name": "samsara", "version": "0.8.0"})
+    skill_dir = output / ".agents" / "skills" / "samsara-research"
+    skill_dir.mkdir(parents=True)
+    (skill_dir / "SKILL.md").write_text(
+        "---\nname: samsara:research\ndescription: research skill\n---\n\n# research\n"
     )
+    agents_dir = output / ".codex" / "agents"
+    agents_dir.mkdir(parents=True)
+    (agents_dir / "samsara-implementer.toml").write_text(
+        'name = "samsara-implementer"\n'
+    )
+    (output / ".codex" / "hooks.json").write_text(json.dumps({"hooks": {}}))
     return output
 
 

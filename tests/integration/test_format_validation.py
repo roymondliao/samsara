@@ -86,7 +86,7 @@ class TestDC94TomlValidationMustFailOnSyntaxError:
         engine = ConversionEngine("codex")
         engine.run(source_dir=FIXTURE_SOURCE, output_dir=output_dir)
 
-        agents_dir = output_dir / "agents"
+        agents_dir = output_dir / ".codex" / "agents"
         toml_files = list(agents_dir.glob("*.toml"))
         assert len(toml_files) >= 1, "No agent TOML files to validate"
 
@@ -203,8 +203,8 @@ class TestDC96HooksJsonMustHaveRequiredStructure:
         engine = ConversionEngine("codex")
         engine.run(source_dir=FIXTURE_SOURCE, output_dir=output_dir)
 
-        hooks_json = output_dir / ".codex-plugin" / "hooks.json"
-        assert hooks_json.exists(), "hooks.json missing from .codex-plugin/"
+        hooks_json = output_dir / ".codex" / "hooks.json"
+        assert hooks_json.exists(), "hooks.json missing from .codex/"
 
         data = json.loads(hooks_json.read_text(encoding="utf-8"))
         assert "hooks" in data, (
@@ -229,55 +229,62 @@ def converted_output(tmp_path_factory) -> Path:
 
 
 class TestTomlFormatValidity:
-    """All agent .toml files must be valid TOML with required sections."""
+    """All agent .toml files must be valid Codex subagent TOML."""
 
     def test_all_toml_files_parse(self, converted_output: Path) -> None:
         """All .toml files must parse without error."""
-        agents_dir = converted_output / "agents"
+        agents_dir = converted_output / ".codex" / "agents"
         for toml_file in agents_dir.glob("*.toml"):
             content = toml_file.read_text(encoding="utf-8")
             assert content.strip(), f"{toml_file.name} is empty"
             tomllib.loads(content)  # Raises TOMLDecodeError on failure
 
-    def test_agent_toml_has_agent_section(self, converted_output: Path) -> None:
-        """Each agent .toml must have an [agent] section."""
-        agents_dir = converted_output / "agents"
+    def test_agent_toml_has_no_agent_section(self, converted_output: Path) -> None:
+        """Each agent .toml must use top-level fields, not an [agent] wrapper."""
+        agents_dir = converted_output / ".codex" / "agents"
         for toml_file in agents_dir.glob("*.toml"):
             content = toml_file.read_text(encoding="utf-8")
             parsed = tomllib.loads(content)
-            assert "agent" in parsed, (
-                f"{toml_file.name} missing [agent] section. "
-                "Codex cannot load agents without this section."
+            assert "agent" not in parsed, (
+                f"{toml_file.name} contains unsupported [agent] section. "
+                "Codex subagent files require top-level fields."
             )
 
     def test_agent_toml_has_name_field(self, converted_output: Path) -> None:
-        """Each agent .toml must have [agent].name field."""
-        agents_dir = converted_output / "agents"
+        """Each agent .toml must have top-level name field."""
+        agents_dir = converted_output / ".codex" / "agents"
         for toml_file in agents_dir.glob("*.toml"):
             content = toml_file.read_text(encoding="utf-8")
             parsed = tomllib.loads(content)
-            agent_section = parsed.get("agent", {})
-            assert "name" in agent_section, (
-                f"{toml_file.name} missing [agent].name field."
+            assert "name" in parsed, f"{toml_file.name} missing top-level name field."
+            assert parsed["name"], f"{toml_file.name} has empty top-level name field."
+
+    def test_agent_toml_has_description_field(self, converted_output: Path) -> None:
+        """Each agent .toml must have top-level description field."""
+        agents_dir = converted_output / ".codex" / "agents"
+        for toml_file in agents_dir.glob("*.toml"):
+            content = toml_file.read_text(encoding="utf-8")
+            parsed = tomllib.loads(content)
+            assert "description" in parsed, (
+                f"{toml_file.name} missing top-level description field."
             )
-            assert agent_section["name"], (
-                f"{toml_file.name} has empty [agent].name field."
+            assert parsed["description"], (
+                f"{toml_file.name} has empty top-level description field."
             )
 
     def test_agent_toml_has_developer_instructions(
         self, converted_output: Path
     ) -> None:
-        """Each agent .toml must have [agent].developer_instructions field."""
-        agents_dir = converted_output / "agents"
+        """Each agent .toml must have top-level developer_instructions field."""
+        agents_dir = converted_output / ".codex" / "agents"
         for toml_file in agents_dir.glob("*.toml"):
             content = toml_file.read_text(encoding="utf-8")
             parsed = tomllib.loads(content)
-            agent_section = parsed.get("agent", {})
-            assert "developer_instructions" in agent_section, (
+            assert "developer_instructions" in parsed, (
                 f"{toml_file.name} missing developer_instructions field. "
                 "Agent would have empty instructions on the target platform."
             )
-            assert agent_section["developer_instructions"].strip(), (
+            assert parsed["developer_instructions"].strip(), (
                 f"{toml_file.name} has empty developer_instructions. "
                 "Agent body was not transferred."
             )
@@ -286,37 +293,22 @@ class TestTomlFormatValidity:
 class TestJsonFormatValidity:
     """Output JSON files must be valid JSON with expected structure."""
 
-    def test_plugin_json_is_valid_json(self, converted_output: Path) -> None:
-        """plugin.json must parse as valid JSON."""
-        plugin_json = converted_output / ".codex-plugin" / "plugin.json"
-        content = plugin_json.read_text(encoding="utf-8")
-        data = json.loads(content)
-        assert isinstance(data, dict), "plugin.json root must be a JSON object"
-
-    def test_plugin_json_has_name_and_version(self, converted_output: Path) -> None:
-        """plugin.json must have name and version fields."""
-        plugin_json = converted_output / ".codex-plugin" / "plugin.json"
-        data = json.loads(plugin_json.read_text(encoding="utf-8"))
-        assert "name" in data, "plugin.json missing 'name' field"
-        assert "version" in data, "plugin.json missing 'version' field"
-        assert data["name"], "plugin.json 'name' is empty"
-
     def test_hooks_json_is_valid_json(self, converted_output: Path) -> None:
         """hooks.json must parse as valid JSON."""
-        hooks_json = converted_output / ".codex-plugin" / "hooks.json"
+        hooks_json = converted_output / ".codex" / "hooks.json"
         content = hooks_json.read_text(encoding="utf-8")
         data = json.loads(content)
         assert isinstance(data, dict), "hooks.json root must be a JSON object"
 
-    def test_hooks_json_has_hooks_list(self, converted_output: Path) -> None:
-        """hooks.json must have a 'hooks' key with a list value."""
-        hooks_json = converted_output / ".codex-plugin" / "hooks.json"
+    def test_hooks_json_has_hooks_map(self, converted_output: Path) -> None:
+        """hooks.json must have a 'hooks' key with an event map value."""
+        hooks_json = converted_output / ".codex" / "hooks.json"
         data = json.loads(hooks_json.read_text(encoding="utf-8"))
         assert "hooks" in data, "hooks.json missing 'hooks' key"
-        assert isinstance(data["hooks"], list), (
-            f"hooks.json 'hooks' must be a list, got {type(data['hooks']).__name__}"
+        assert isinstance(data["hooks"], dict), (
+            f"hooks.json 'hooks' must be a map, got {type(data['hooks']).__name__}"
         )
-        assert len(data["hooks"]) >= 1, "hooks.json 'hooks' list is empty"
+        assert len(data["hooks"]) >= 1, "hooks.json 'hooks' map is empty"
 
 
 class TestFrontmatterValidity:
@@ -324,7 +316,7 @@ class TestFrontmatterValidity:
 
     def test_all_skill_mds_have_frontmatter(self, converted_output: Path) -> None:
         """Every SKILL.md must begin with '---' frontmatter delimiters."""
-        skills_dir = converted_output / "skills"
+        skills_dir = converted_output / ".agents" / "skills"
         for skill_dir in skills_dir.iterdir():
             if not skill_dir.is_dir():
                 continue
@@ -352,7 +344,7 @@ class TestFrontmatterValidity:
         self, converted_output: Path
     ) -> None:
         """Every SKILL.md frontmatter must have a name field."""
-        skills_dir = converted_output / "skills"
+        skills_dir = converted_output / ".agents" / "skills"
         for skill_dir in skills_dir.iterdir():
             if not skill_dir.is_dir():
                 continue

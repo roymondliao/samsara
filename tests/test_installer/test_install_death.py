@@ -56,11 +56,23 @@ def make_minimal_source(tmp_path: Path) -> Path:
 def make_converted_output(tmp_path: Path) -> Path:
     """Create a minimal converted output directory (simulates post-convert state)."""
     output = tmp_path / "dist" / "codex"
-    plugin_dir = output / ".codex-plugin"
-    plugin_dir.mkdir(parents=True)
-    (plugin_dir / "plugin.json").write_text(
-        json.dumps({"name": "samsara", "version": "0.8.0"})
+    skill_dir = output / ".agents" / "skills" / "samsara-research"
+    skill_dir.mkdir(parents=True)
+    (skill_dir / "SKILL.md").write_text("# research\n")
+    agents_dir = output / ".codex" / "agents"
+    agents_dir.mkdir(parents=True)
+    (agents_dir / "samsara-implementer.toml").write_text(
+        'name = "samsara-implementer"\n'
+        'description = "samsara-implementer"\n'
+        'developer_instructions = "Body"\n'
     )
+    hooks_dir = output / ".codex" / "hooks"
+    hooks_dir.mkdir(parents=True)
+    (hooks_dir / "samsara-session-start.sh").write_text("#!/usr/bin/env bash\n")
+    (output / ".codex" / "hooks.json").write_text(
+        json.dumps({"hooks": {"SessionStart": []}})
+    )
+    (output / ".codex" / "config.toml").write_text("[features]\ncodex_hooks = true\n")
     return output
 
 
@@ -82,7 +94,7 @@ class TestInstallerCLINotInstalled:
         from samsara_cli.installer.install import Installer, InstallerError
 
         source_dir = make_minimal_source(tmp_path)
-        install_target = tmp_path / "project" / ".codex-plugin"
+        install_target = tmp_path / "project"
 
         with patch("subprocess.run") as mock_run:
             mock_run.side_effect = FileNotFoundError("codex: command not found")
@@ -97,9 +109,11 @@ class TestInstallerCLINotInstalled:
         error_msg = str(exc_info.value)
         assert "codex" in error_msg.lower(), "Error must mention platform name"
         # MUST NOT have written any files
-        assert not install_target.exists(), (
-            "DC-8-1 violated: install target was created even though CLI is not installed. "
-            "Files were written before CLI presence check."
+        assert not (install_target / ".agents").exists(), (
+            "DC-8-1 violated: .agents was created even though CLI is not installed."
+        )
+        assert not (install_target / ".codex").exists(), (
+            "DC-8-1 violated: .codex was created even though CLI is not installed."
         )
 
     def test_global_install_aborts_when_cli_not_installed(self, tmp_path):
@@ -160,8 +174,8 @@ class TestInstallerProjectScopeNoGlobalModification:
     """DC-8-2: project scope install must ONLY copy to CWD — never touch ~/.codex/config.toml.
 
     Silent failure: if project scope modifies ~/.codex/config.toml, the user's global
-    Codex config is polluted without consent. The damage is: unexpected marketplace
-    entries appear, which could cause conflicts or override user's existing config.
+    Codex config is polluted without consent. The damage is unexpected global hooks
+    or feature flags, which could affect unrelated projects.
     """
 
     def test_project_install_does_not_modify_config_toml(self, tmp_path):
@@ -172,7 +186,7 @@ class TestInstallerProjectScopeNoGlobalModification:
         codex_config_dir = fake_home / ".codex"
         codex_config_dir.mkdir(parents=True)
         config_path = codex_config_dir / "config.toml"
-        original_content = "[marketplace]\n# empty\n"
+        original_content = "[features]\ncodex_hooks = false\n"
         config_path.write_text(original_content)
 
         project_dir = tmp_path / "project"
@@ -255,7 +269,7 @@ class TestInstallerGlobalBackupBeforeModify:
         codex_config_dir = fake_home / ".codex"
         codex_config_dir.mkdir(parents=True)
         config_path = codex_config_dir / "config.toml"
-        original_content = "# Codex config\n[marketplace]\n"
+        original_content = "# Codex config\n[features]\ncodex_hooks = false\n"
         config_path.write_text(original_content)
 
         project_dir = tmp_path / "project"
@@ -336,15 +350,12 @@ class TestInstallerGlobalIdempotent:
     """DC-8-4: repeated global install must NOT duplicate entries in config.toml.
 
     Silent failure: if install() appends to config.toml each time, after N installs
-    there are N marketplace entries for the same plugin. Codex may load the plugin N
-    times (undefined behavior), or fail to parse a malformed TOML, or apply conflicting
-    feature flags.
+    there may be conflicting feature flags, malformed TOML, or hooks applied multiple
+    times.
     """
 
-    def test_repeated_global_install_does_not_duplicate_marketplace_entry(
-        self, tmp_path
-    ):
-        """DC-8-4: running global install twice must not produce duplicate marketplace entries."""
+    def test_repeated_global_install_does_not_duplicate_feature_flag(self, tmp_path):
+        """DC-8-4: running global install twice must not duplicate feature flags."""
         from samsara_cli.installer.install import Installer
 
         fake_home = tmp_path / "home"
@@ -378,14 +389,12 @@ class TestInstallerGlobalIdempotent:
         run_install()
         content_after_second = config_path.read_text()
 
-        # Count occurrences of the marketplace name
-        marketplace_name = "samsara-local"
-        first_count = content_after_first.count(marketplace_name)
-        second_count = content_after_second.count(marketplace_name)
+        first_count = content_after_first.count("codex_hooks")
+        second_count = content_after_second.count("codex_hooks")
 
-        assert first_count > 0, "marketplace entry must appear after first install"
+        assert first_count > 0, "codex_hooks flag must appear after first install"
         assert second_count == first_count, (
-            f"DC-8-4 violated: marketplace entry '{marketplace_name}' appeared {first_count} "
+            f"DC-8-4 violated: codex_hooks appeared {first_count} "
             f"time(s) after first install but {second_count} time(s) after second install. "
             "Repeated installs must not duplicate entries."
         )

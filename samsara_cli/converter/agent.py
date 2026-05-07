@@ -271,6 +271,7 @@ class AgentConverter:
         # StrictUndefined means any missing variable raises UndefinedError immediately.
         toml_content = template.render(
             name=agent_name,
+            description=description or agent_name,
             developer_instructions=escaped_body,
             source_path=str(source_path),
         )

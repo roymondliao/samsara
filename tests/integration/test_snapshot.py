@@ -147,7 +147,7 @@ class TestNormalizationActuallyTransforms:
 
     def test_normalize_replaces_source_comment(self) -> None:
         """_normalize_content must change '# Source: /abs/path' to placeholder."""
-        raw = '# Source: /Users/someone/project/agents/implementer.md\n[agent]\nname = "x"\n'
+        raw = '# Source: /Users/someone/project/agents/implementer.md\nname = "x"\n'
         normalized = _normalize_content(raw)
         assert "# Source: <normalized>" in normalized, (
             "_normalize_content did not replace '# Source: <path>' comment. "
@@ -171,7 +171,9 @@ class TestNormalizationActuallyTransforms:
 
     def test_normalize_does_not_change_normal_content(self) -> None:
         """_normalize_content must not alter content that has no source paths."""
-        content = '[agent]\nname = "samsara-implementer"\ndeveloper_instructions = """\nhello\n"""\n'
+        content = (
+            'name = "samsara-implementer"\ndeveloper_instructions = """\nhello\n"""\n'
+        )
         normalized = _normalize_content(content)
         assert normalized == content, (
             "Normalization altered content that has no '# Source:' comment. "
@@ -214,7 +216,7 @@ class TestDC97SnapshotComparisionMustFailOnDiff:
     def test_comparison_fails_on_missing_file(self) -> None:
         """Verify comparison fails when a file is in expected but not in actual."""
         actual = {}
-        expected = {"agents/implementer.toml": '[agent]\nname = "implementer"\n'}
+        expected = {"agents/implementer.toml": 'name = "implementer"\n'}
 
         diffs: list[str] = []
         for rel_path in expected:
@@ -229,10 +231,10 @@ class TestDC97SnapshotComparisionMustFailOnDiff:
     def test_comparison_fails_on_extra_file(self) -> None:
         """Verify comparison fails when actual has a file not in expected."""
         actual = {
-            "agents/implementer.toml": '[agent]\nname = "implementer"\n',
-            "agents/unexpected.toml": '[agent]\nname = "ghost"\n',
+            "agents/implementer.toml": 'name = "implementer"\n',
+            "agents/unexpected.toml": 'name = "ghost"\n',
         }
-        expected = {"agents/implementer.toml": '[agent]\nname = "implementer"\n'}
+        expected = {"agents/implementer.toml": 'name = "implementer"\n'}
 
         diffs: list[str] = []
         for rel_path in actual:
@@ -285,7 +287,7 @@ class TestDC98SnapshotUpdateMustWrite:
         snap_dir = tmp_path / "snapshots"
         snap_dir.mkdir()
         stale_file = snap_dir / "stale.toml"
-        stale_file.write_text('[agent]\nname = "stale"\n')
+        stale_file.write_text('name = "stale"\n')
 
         # New output without the stale file
         fake_output = tmp_path / "fake_output"

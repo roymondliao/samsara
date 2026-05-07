@@ -2,11 +2,11 @@
   "hooks": {
     "SessionStart": [
       {
-        "matcher": "{{ session_start_matchers | join('|') }}",
+        "matcher": "startup|resume",
         "hooks": [
           {
             "type": "command",
-            "command": "{{ hooks_dir }}/samsara-session-start.sh",
+            "command": ".codex/hooks/samsara-session-start.sh",
             "statusMessage": "Injecting Samsara bootstrap context"
           }
         ]

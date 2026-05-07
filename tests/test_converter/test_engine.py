@@ -111,8 +111,7 @@ class TestSuccessfulConversion:
         engine = ConversionEngine(platform="codex")
         engine.run(source_dir=source, output_dir=output)
 
-        # Skills should be under output/skills/
-        skills_output = output / "skills"
+        skills_output = output / ".agents" / "skills"
         assert skills_output.exists(), "skills/ directory not created in output"
         skill_dirs = list(skills_output.iterdir())
         assert len(skill_dirs) > 0, "No skill directories in output"
@@ -127,7 +126,7 @@ class TestSuccessfulConversion:
         engine = ConversionEngine(platform="codex")
         engine.run(source_dir=source, output_dir=output)
 
-        agents_output = output / "agents"
+        agents_output = output / ".codex" / "agents"
         assert agents_output.exists(), "agents/ directory not created in output"
         agent_files = list(agents_output.glob("*.toml"))
         assert len(agent_files) > 0, "No .toml agent files in output"
@@ -142,7 +141,7 @@ class TestSuccessfulConversion:
         engine = ConversionEngine(platform="codex")
         engine.run(source_dir=source, output_dir=output)
 
-        skills_output = output / "skills"
+        skills_output = output / ".agents" / "skills"
         skill_dirs = [d for d in skills_output.iterdir() if d.is_dir()]
         for skill_dir in skill_dirs:
             assert (skill_dir / "SKILL.md").exists(), (
@@ -160,13 +159,22 @@ class TestSuccessfulConversion:
         engine = ConversionEngine(platform="codex")
         engine.run(source_dir=source, output_dir=output)
 
-        for toml_file in (output / "agents").glob("*.toml"):
+        for toml_file in (output / ".codex" / "agents").glob("*.toml"):
             content = toml_file.read_text(encoding="utf-8")
             try:
                 parsed = tomllib.loads(content)
             except Exception as e:
                 pytest.fail(f"Agent TOML {toml_file.name} is not parseable: {e}")
-            assert "agent" in parsed, f"Missing [agent] section in {toml_file.name}"
+            assert "agent" not in parsed, (
+                f"Unsupported [agent] section in {toml_file.name}"
+            )
+            assert parsed["name"], f"Missing top-level name in {toml_file.name}"
+            assert parsed["description"], (
+                f"Missing top-level description in {toml_file.name}"
+            )
+            assert parsed["developer_instructions"], (
+                f"Missing top-level developer_instructions in {toml_file.name}"
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -217,9 +225,9 @@ class TestSourceDirectoryMissing:
 # ---------------------------------------------------------------------------
 
 
-class TestManifestOutput:
-    def test_engine_produces_plugin_json_in_output(self, tmp_path: Path):
-        """Engine produces a plugin.json (or platform equivalent) in the output."""
+class TestCodexNativeOutput:
+    def test_engine_produces_codex_hooks_json_in_output(self, tmp_path: Path):
+        """Engine produces native Codex hooks.json in the output."""
         from samsara_cli.converter.engine import ConversionEngine
 
         source = make_source_structure(tmp_path)
@@ -228,14 +236,11 @@ class TestManifestOutput:
         engine = ConversionEngine(platform="codex")
         engine.run(source_dir=source, output_dir=output)
 
-        # Look for plugin.json or .codex-plugin/plugin.json
-        plugin_json_candidates = list(output.rglob("plugin.json"))
-        assert len(plugin_json_candidates) > 0, (
-            "No plugin.json found in output after conversion"
-        )
+        hooks_json = output / ".codex" / "hooks.json"
+        assert hooks_json.exists(), "Native .codex/hooks.json missing"
 
-    def test_output_manifest_preserves_name_and_version(self, tmp_path: Path):
-        """The output manifest preserves name and version from source."""
+    def test_engine_does_not_emit_codex_plugin_manifest(self, tmp_path: Path):
+        """Codex native output does not use .codex-plugin/plugin.json."""
         from samsara_cli.converter.engine import ConversionEngine
 
         source = make_source_structure(tmp_path)
@@ -244,12 +249,4 @@ class TestManifestOutput:
         engine = ConversionEngine(platform="codex")
         engine.run(source_dir=source, output_dir=output)
 
-        plugin_json_candidates = list(output.rglob("plugin.json"))
-        assert len(plugin_json_candidates) > 0
-        manifest = json.loads(plugin_json_candidates[0].read_text())
-        assert manifest.get("name") == "samsara", (
-            f"name mismatch: {manifest.get('name')}"
-        )
-        assert manifest.get("version") == "0.8.0", (
-            f"version mismatch: {manifest.get('version')}"
-        )
+        assert not (output / ".codex-plugin").exists()

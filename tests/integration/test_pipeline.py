@@ -90,7 +90,7 @@ class TestDC91PipelineMustFailOnPartialOutput:
         engine = ConversionEngine("codex")
         engine.run(source_dir=FIXTURE_SOURCE, output_dir=output_dir)
 
-        agents_dir = output_dir / "agents"
+        agents_dir = output_dir / ".codex" / "agents"
         assert agents_dir.exists(), "agents/ directory must exist after pipeline run"
 
         toml_files = list(agents_dir.glob("*.toml"))
@@ -111,7 +111,7 @@ class TestDC91PipelineMustFailOnPartialOutput:
         source_skill_dirs = [
             d for d in (FIXTURE_SOURCE / "skills").iterdir() if d.is_dir()
         ]
-        output_skills_dir = output_dir / "skills"
+        output_skills_dir = output_dir / ".agents" / "skills"
         assert output_skills_dir.exists(), "skills/ directory must exist in output"
 
         output_skill_dirs = [d for d in output_skills_dir.iterdir() if d.is_dir()]
@@ -307,45 +307,41 @@ class TestPipelineOutputStructure:
         return output_dir
 
     def test_skills_directory_exists(self, pipeline_output: Path) -> None:
-        assert (pipeline_output / "skills").is_dir(), (
+        assert (pipeline_output / ".agents" / "skills").is_dir(), (
             "skills/ directory missing from output"
         )
 
     def test_agents_directory_exists(self, pipeline_output: Path) -> None:
-        assert (pipeline_output / "agents").is_dir(), (
+        assert (pipeline_output / ".codex" / "agents").is_dir(), (
             "agents/ directory missing from output"
         )
 
-    def test_codex_plugin_directory_exists(self, pipeline_output: Path) -> None:
-        assert (pipeline_output / ".codex-plugin").is_dir(), (
-            ".codex-plugin/ directory missing"
-        )
+    def test_codex_native_directory_exists(self, pipeline_output: Path) -> None:
+        assert (pipeline_output / ".codex").is_dir(), ".codex/ directory missing"
 
-    def test_codex_plugin_has_plugin_json(self, pipeline_output: Path) -> None:
-        plugin_json = pipeline_output / ".codex-plugin" / "plugin.json"
-        assert plugin_json.exists(), ".codex-plugin/plugin.json missing"
+    def test_codex_native_has_config_toml(self, pipeline_output: Path) -> None:
+        config_toml = pipeline_output / ".codex" / "config.toml"
+        assert config_toml.exists(), ".codex/config.toml missing"
 
-    def test_codex_plugin_has_hooks_json(self, pipeline_output: Path) -> None:
-        hooks_json = pipeline_output / ".codex-plugin" / "hooks.json"
-        assert hooks_json.exists(), ".codex-plugin/hooks.json missing"
+    def test_codex_native_has_hooks_json(self, pipeline_output: Path) -> None:
+        hooks_json = pipeline_output / ".codex" / "hooks.json"
+        assert hooks_json.exists(), ".codex/hooks.json missing"
 
     def test_codex_plugin_has_hooks_dir(self, pipeline_output: Path) -> None:
-        hooks_dir = pipeline_output / ".codex-plugin" / "hooks"
-        assert hooks_dir.is_dir(), ".codex-plugin/hooks/ directory missing"
+        hooks_dir = pipeline_output / ".codex" / "hooks"
+        assert hooks_dir.is_dir(), ".codex/hooks/ directory missing"
 
     def test_codex_plugin_has_session_start_script(self, pipeline_output: Path) -> None:
-        script = (
-            pipeline_output / ".codex-plugin" / "hooks" / "samsara-session-start.sh"
-        )
-        assert script.exists(), ".codex-plugin/hooks/samsara-session-start.sh missing"
+        script = pipeline_output / ".codex" / "hooks" / "samsara-session-start.sh"
+        assert script.exists(), ".codex/hooks/samsara-session-start.sh missing"
 
     def test_codex_plugin_has_references_dir(self, pipeline_output: Path) -> None:
-        refs_dir = pipeline_output / ".codex-plugin" / "references"
-        assert refs_dir.is_dir(), ".codex-plugin/references/ directory missing"
+        refs_dir = pipeline_output / ".agents" / "references"
+        assert refs_dir.is_dir(), ".agents/references/ directory missing"
 
     def test_skill_names_use_samsara_prefix(self, pipeline_output: Path) -> None:
         """All output skill dirs must start with 'samsara-' prefix."""
-        skills_dir = pipeline_output / "skills"
+        skills_dir = pipeline_output / ".agents" / "skills"
         for skill_dir in skills_dir.iterdir():
             if skill_dir.is_dir():
                 assert skill_dir.name.startswith("samsara-"), (
@@ -355,7 +351,7 @@ class TestPipelineOutputStructure:
 
     def test_skill_dirs_have_no_colon_in_name(self, pipeline_output: Path) -> None:
         """No output skill dir name may contain a colon."""
-        skills_dir = pipeline_output / "skills"
+        skills_dir = pipeline_output / ".agents" / "skills"
         for skill_dir in skills_dir.iterdir():
             if skill_dir.is_dir():
                 assert ":" not in skill_dir.name, (
@@ -364,7 +360,7 @@ class TestPipelineOutputStructure:
 
     def test_each_output_skill_has_skill_md(self, pipeline_output: Path) -> None:
         """Every output skill directory must have SKILL.md."""
-        skills_dir = pipeline_output / "skills"
+        skills_dir = pipeline_output / ".agents" / "skills"
         for skill_dir in skills_dir.iterdir():
             if skill_dir.is_dir():
                 assert (skill_dir / "SKILL.md").exists(), (
@@ -373,7 +369,7 @@ class TestPipelineOutputStructure:
 
     def test_agent_output_is_toml_format(self, pipeline_output: Path) -> None:
         """Agent output files must be .toml, not .md."""
-        agents_dir = pipeline_output / "agents"
+        agents_dir = pipeline_output / ".codex" / "agents"
         toml_files = list(agents_dir.glob("*.toml"))
         md_files = list(agents_dir.glob("*.md"))
         assert len(toml_files) >= 1, "No .toml agent files found"
@@ -384,7 +380,7 @@ class TestPipelineOutputStructure:
     def test_implement_companion_file_preserved(self, pipeline_output: Path) -> None:
         """dispatch-template.md companion file must be preserved in output skill dir."""
         # samsara-implement should have dispatch-template.md (companion file)
-        implement_dir = pipeline_output / "skills" / "samsara-implement"
+        implement_dir = pipeline_output / ".agents" / "skills" / "samsara-implement"
         assert implement_dir.exists(), "samsara-implement skill dir missing"
         companion = implement_dir / "dispatch-template.md"
         assert companion.exists(), (
@@ -396,7 +392,7 @@ class TestPipelineOutputStructure:
         """Output skill count must match source skill count exactly."""
         source_skills = [d for d in (FIXTURE_SOURCE / "skills").iterdir() if d.is_dir()]
         output_skills = [
-            d for d in (pipeline_output / "skills").iterdir() if d.is_dir()
+            d for d in (pipeline_output / ".agents" / "skills").iterdir() if d.is_dir()
         ]
         assert len(output_skills) == len(source_skills), (
             f"Source has {len(source_skills)} skills, "
@@ -441,7 +437,9 @@ class TestPipelineOutputStructure:
                         break
 
         output_skill_names = {
-            d.name for d in (pipeline_output / "skills").iterdir() if d.is_dir()
+            d.name
+            for d in (pipeline_output / ".agents" / "skills").iterdir()
+            if d.is_dir()
         }
 
         # Each source frontmatter name 'X' should produce output dir 'samsara-X'

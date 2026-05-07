@@ -40,7 +40,9 @@ def make_clean_output(
     agents_dir.mkdir()
     toml_name = agent_toml_name or agent_name
     (agents_dir / f"{toml_name}.toml").write_text(
-        f'[agent]\nname = "{agent_name}"\ndeveloper_instructions = "You are an agent."\n'
+        f'name = "{agent_name}"\n'
+        f'description = "{agent_name}"\n'
+        'developer_instructions = "You are an agent."\n'
     )
 
     return output
@@ -136,7 +138,7 @@ class TestTomlValidation:
         (output / "agents" / "samsara-implementer.toml").write_text("")
         validator = TargetValidator()
         _errors = validator.validate(output_dir=output)  # noqa: F841
-        # An empty TOML is technically valid (empty table), but the agent section is missing.
+        # An empty TOML is technically valid (empty table), but required fields are missing.
         # Either error or no error is acceptable — the point is not to silently crash.
 
 
@@ -208,7 +210,9 @@ class TestAgentCrossValidation:
         ]
         for name in agent_names:
             (agents_dir / f"{name}.toml").write_text(
-                f'[agent]\nname = "{name}"\ndeveloper_instructions = "Instructions."\n'
+                f'name = "{name}"\n'
+                f'description = "{name}"\n'
+                'developer_instructions = "Instructions."\n'
             )
 
         validator = TargetValidator()

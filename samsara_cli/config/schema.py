@@ -54,6 +54,7 @@ class PathsConfig(StrictModel):
     skills_dir: str | None = None
     agents_dir: str | None = None
     hooks_file: str | None = None
+    references_dir: str | None = None
 
 
 class ProjectInstallConfig(StrictModel):
@@ -63,7 +64,7 @@ class ProjectInstallConfig(StrictModel):
 
 
 class GlobalInstallConfig(StrictModel):
-    """install.global: section — global/marketplace installation config."""
+    """install.global: section — global installation config."""
 
     marketplace_name: str | None = None
     marketplace_source: str | None = None
@@ -72,7 +73,7 @@ class GlobalInstallConfig(StrictModel):
 
 
 class InstallConfig(StrictModel):
-    """install: section — installation targets for the converted plugin."""
+    """install: section — installation targets for converted platform files."""
 
     project: ProjectInstallConfig
     global_: GlobalInstallConfig | None = Field(None, alias="global")

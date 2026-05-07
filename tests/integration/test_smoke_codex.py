@@ -371,56 +371,21 @@ def smoke_install_dir():
 
 
 @pytest.mark.integration
-class TestCodexPluginStructure:
-    """Verify .codex-plugin/ has correct structure for Codex discovery."""
+class TestCodexNativeStructure:
+    """Verify .codex/ has correct native structure for Codex discovery."""
 
-    def test_codex_plugin_directory_exists(self, smoke_install_dir: Path) -> None:
-        """Converted output must have .codex-plugin/ directory.
-
-        This is the directory Codex uses to locate plugin metadata.
-        Missing this directory means Codex cannot discover the plugin.
-        """
-        plugin_dir = smoke_install_dir / ".codex-plugin"
-        assert plugin_dir.is_dir(), (
-            f"Expected .codex-plugin/ directory at {plugin_dir}. "
-            "Codex discovery requires this directory to find plugin.json."
-        )
-
-    def test_plugin_json_exists_and_is_valid_json(
-        self, smoke_install_dir: Path
-    ) -> None:
-        """plugin.json must exist under .codex-plugin/ and be valid JSON.
-
-        Silent failure: if plugin.json contains malformed JSON, Codex may silently
-        skip the plugin without any error message.
-        """
-        plugin_json = smoke_install_dir / ".codex-plugin" / "plugin.json"
-        assert plugin_json.exists(), (
-            f"Expected plugin.json at {plugin_json}. "
-            "Codex requires plugin.json for plugin registration."
-        )
-        try:
-            data = json.loads(plugin_json.read_text(encoding="utf-8"))
-        except json.JSONDecodeError as e:
-            pytest.fail(
-                f"plugin.json is not valid JSON: {e}. "
-                "Codex would silently skip a plugin with malformed JSON."
-            )
-        # Verify required top-level fields
-        assert "name" in data, (
-            "plugin.json missing 'name' field. Codex uses 'name' to identify the plugin."
-        )
-        assert "version" in data, "plugin.json missing 'version' field."
-        assert data["name"], "plugin.json 'name' field is empty or falsy"
-        assert data["version"], "plugin.json 'version' field is empty or falsy"
+    def test_codex_directory_exists(self, smoke_install_dir: Path) -> None:
+        """Converted output must have .codex/ directory."""
+        codex_dir = smoke_install_dir / ".codex"
+        assert codex_dir.is_dir(), f"Expected .codex/ directory at {codex_dir}."
 
     def test_hooks_json_exists_and_is_valid_json(self, smoke_install_dir: Path) -> None:
-        """hooks.json must exist under .codex-plugin/ and be valid JSON.
+        """hooks.json must exist under .codex/ and be valid JSON.
 
         hooks.json is what Codex reads to register event hooks. Invalid JSON
         means the session-start hook never fires — silently losing context injection.
         """
-        hooks_json = smoke_install_dir / ".codex-plugin" / "hooks.json"
+        hooks_json = smoke_install_dir / ".codex" / "hooks.json"
         assert hooks_json.exists(), (
             f"Expected hooks.json at {hooks_json}. "
             "Codex reads hooks.json to register hook commands."
@@ -437,9 +402,9 @@ class TestCodexPluginStructure:
             "hooks.json missing top-level 'hooks' key. "
             "Codex expects hooks.json to have a 'hooks' array."
         )
-        assert isinstance(data["hooks"], list), (
-            f"hooks.json 'hooks' must be a list, got {type(data['hooks']).__name__}. "
-            "Codex iterates 'hooks' as an array."
+        assert isinstance(data["hooks"], dict), (
+            f"hooks.json 'hooks' must be a map, got {type(data['hooks']).__name__}. "
+            "Codex groups native hooks by event name."
         )
 
     def test_hooks_json_has_session_start_entry(self, smoke_install_dir: Path) -> None:
@@ -449,17 +414,13 @@ class TestCodexPluginStructure:
         If it's missing from hooks.json, Codex never calls the hook script —
         silently losing all samsara context.
         """
-        hooks_json = smoke_install_dir / ".codex-plugin" / "hooks.json"
+        hooks_json = smoke_install_dir / ".codex" / "hooks.json"
         data = json.loads(hooks_json.read_text(encoding="utf-8"))
-        hooks = data.get("hooks", [])
+        hooks = data.get("hooks", {})
 
-        session_start_hooks = [
-            h
-            for h in hooks
-            if isinstance(h, dict) and h.get("event") == "session_start"
-        ]
+        session_start_hooks = hooks.get("SessionStart", [])
         assert len(session_start_hooks) >= 1, (
-            f"hooks.json has {len(session_start_hooks)} session_start entries. "
+            f"hooks.json has {len(session_start_hooks)} SessionStart entries. "
             "Expected at least 1. "
             "Without a session_start hook, samsara context is never injected into Codex."
         )
@@ -472,20 +433,14 @@ class TestCodexPluginStructure:
         If 'command' is missing from the hook entry, Codex cannot call the script —
         the hook silently does nothing.
         """
-        hooks_json = smoke_install_dir / ".codex-plugin" / "hooks.json"
+        hooks_json = smoke_install_dir / ".codex" / "hooks.json"
         data = json.loads(hooks_json.read_text(encoding="utf-8"))
-        hooks = data.get("hooks", [])
+        session_start_hooks = data.get("hooks", {}).get("SessionStart", [])
 
-        for hook in hooks:
-            if isinstance(hook, dict) and hook.get("event") == "session_start":
-                assert "command" in hook, (
-                    f"session_start hook is missing 'command' field: {hook}. "
-                    "Codex cannot call a hook without a command."
-                )
-                assert hook["command"], (
-                    "session_start hook 'command' field is empty. "
-                    "Codex would find the hook but have no command to run."
-                )
+        for entry in session_start_hooks:
+            for hook in entry.get("hooks", []):
+                assert "command" in hook
+                assert hook["command"]
 
     def test_session_start_hook_script_exists(self, smoke_install_dir: Path) -> None:
         """The hook script referenced in hooks.json must exist and be executable.
@@ -496,12 +451,12 @@ class TestCodexPluginStructure:
         """
         import os
 
-        hooks_json = smoke_install_dir / ".codex-plugin" / "hooks.json"
+        hooks_json = smoke_install_dir / ".codex" / "hooks.json"
         data = json.loads(hooks_json.read_text(encoding="utf-8"))
-        hooks = data.get("hooks", [])
+        session_start_hooks = data.get("hooks", {}).get("SessionStart", [])
 
-        for hook in hooks:
-            if isinstance(hook, dict) and hook.get("event") == "session_start":
+        for entry in session_start_hooks:
+            for hook in entry.get("hooks", []):
                 command = hook.get("command", "")
                 if command:
                     # Guard: command must be a relative path, not absolute.
@@ -514,7 +469,7 @@ class TestCodexPluginStructure:
                         "across different install locations."
                     )
                     # Command is a relative path from project root
-                    # In our output, the hooks dir is .codex-plugin/hooks/
+                    # In our output, the hooks dir is .codex/hooks/
                     script_path = smoke_install_dir / command
                     assert script_path.exists(), (
                         f"Hook script referenced in hooks.json does not exist: {script_path}. "
@@ -529,24 +484,24 @@ class TestCodexPluginStructure:
                     )
 
     def test_hooks_directory_exists(self, smoke_install_dir: Path) -> None:
-        """hooks/ directory must exist under .codex-plugin/.
+        """hooks/ directory must exist under .codex/.
 
         This directory contains the actual hook scripts.
         """
-        hooks_dir = smoke_install_dir / ".codex-plugin" / "hooks"
+        hooks_dir = smoke_install_dir / ".codex" / "hooks"
         assert hooks_dir.is_dir(), (
-            f"Expected .codex-plugin/hooks/ directory at {hooks_dir}. "
+            f"Expected .codex/hooks/ directory at {hooks_dir}. "
             "Hook scripts are placed here."
         )
 
     def test_references_directory_exists(self, smoke_install_dir: Path) -> None:
-        """references/ directory must exist under .codex-plugin/.
+        """references/ directory must exist under .agents/.
 
         Reference documents are placed here for Codex to access.
         """
-        refs_dir = smoke_install_dir / ".codex-plugin" / "references"
+        refs_dir = smoke_install_dir / ".agents" / "references"
         assert refs_dir.is_dir(), (
-            f"Expected .codex-plugin/references/ directory at {refs_dir}. "
+            f"Expected .agents/references/ directory at {refs_dir}. "
             "Reference documents are placed here."
         )
 
@@ -557,7 +512,7 @@ class TestCodexSkillStructure:
 
     def test_skills_directory_exists(self, smoke_install_dir: Path) -> None:
         """Converted output must have skills/ directory."""
-        skills_dir = smoke_install_dir / "skills"
+        skills_dir = smoke_install_dir / ".agents" / "skills"
         assert skills_dir.is_dir(), (
             f"Expected skills/ directory at {skills_dir}. "
             "Codex skill discovery requires a skills/ directory."
@@ -570,7 +525,7 @@ class TestCodexSkillStructure:
 
         If the conversion produced zero skills, the entire skills layer is broken.
         """
-        skills_dir = smoke_install_dir / "skills"
+        skills_dir = smoke_install_dir / ".agents" / "skills"
         skill_dirs = [d for d in skills_dir.iterdir() if d.is_dir()]
         assert len(skill_dirs) >= 1, (
             "skills/ directory is empty. Expected at least 1 skill directory. "
@@ -583,7 +538,7 @@ class TestCodexSkillStructure:
         The naming convention prevents collision with non-samsara skills.
         Without the prefix, skill names could collide with Codex built-in skills.
         """
-        skills_dir = smoke_install_dir / "skills"
+        skills_dir = smoke_install_dir / ".agents" / "skills"
         for skill_dir in skills_dir.iterdir():
             if skill_dir.is_dir():
                 assert skill_dir.name.startswith("samsara-"), (
@@ -597,7 +552,7 @@ class TestCodexSkillStructure:
         SKILL.md is the file Codex reads to load skill instructions.
         A skill directory without SKILL.md is unreadable by Codex.
         """
-        skills_dir = smoke_install_dir / "skills"
+        skills_dir = smoke_install_dir / ".agents" / "skills"
         for skill_dir in skills_dir.iterdir():
             if skill_dir.is_dir():
                 skill_md = skill_dir / "SKILL.md"
@@ -612,7 +567,7 @@ class TestCodexSkillStructure:
         An empty SKILL.md would pass structural checks but provide zero context
         to Codex. The skill would appear registered but be functionally useless.
         """
-        skills_dir = smoke_install_dir / "skills"
+        skills_dir = smoke_install_dir / ".agents" / "skills"
         for skill_dir in skills_dir.iterdir():
             if skill_dir.is_dir():
                 skill_md = skill_dir / "SKILL.md"
@@ -632,7 +587,7 @@ class TestCodexSkillStructure:
         must use Codex-compatible references. If the conversion is incomplete,
         SKILL.md would contain raw 'samsara:' references that Codex cannot resolve.
         """
-        skills_dir = smoke_install_dir / "skills"
+        skills_dir = smoke_install_dir / ".agents" / "skills"
         violations: list[str] = []
         for skill_dir in skills_dir.iterdir():
             if skill_dir.is_dir():
@@ -663,7 +618,9 @@ class TestCodexSkillStructure:
             d for d in (FIXTURE_SOURCE / "skills").iterdir() if d.is_dir()
         ]
         output_skill_dirs = [
-            d for d in (smoke_install_dir / "skills").iterdir() if d.is_dir()
+            d
+            for d in (smoke_install_dir / ".agents" / "skills").iterdir()
+            if d.is_dir()
         ]
         assert len(output_skill_dirs) == len(source_skill_dirs), (
             f"Source has {len(source_skill_dirs)} skills, "
@@ -678,7 +635,7 @@ class TestCodexAgentStructure:
 
     def test_agents_directory_exists(self, smoke_install_dir: Path) -> None:
         """Converted output must have agents/ directory."""
-        agents_dir = smoke_install_dir / "agents"
+        agents_dir = smoke_install_dir / ".codex" / "agents"
         assert agents_dir.is_dir(), (
             f"Expected agents/ directory at {smoke_install_dir}. "
             "Codex agents are placed in agents/."
@@ -690,7 +647,7 @@ class TestCodexAgentStructure:
         Agent files are .toml format for Codex. If the directory is empty,
         agent conversion silently failed.
         """
-        agents_dir = smoke_install_dir / "agents"
+        agents_dir = smoke_install_dir / ".codex" / "agents"
         toml_files = list(agents_dir.glob("*.toml"))
         assert len(toml_files) >= 1, (
             "agents/ directory has no .toml files. "
@@ -705,7 +662,7 @@ class TestCodexAgentStructure:
         remain in the output, those agents were not converted — they'd be ignored
         by Codex silently.
         """
-        agents_dir = smoke_install_dir / "agents"
+        agents_dir = smoke_install_dir / ".codex" / "agents"
         md_files = list(agents_dir.glob("*.md"))
         assert len(md_files) == 0, (
             f"Found {len(md_files)} unconverted .md files in agents/: {md_files}. "
@@ -721,7 +678,7 @@ class TestCodexAgentStructure:
         """
         import tomllib
 
-        agents_dir = smoke_install_dir / "agents"
+        agents_dir = smoke_install_dir / ".codex" / "agents"
         for toml_file in agents_dir.glob("*.toml"):
             try:
                 data = tomllib.loads(toml_file.read_text(encoding="utf-8"))
@@ -730,36 +687,48 @@ class TestCodexAgentStructure:
                     f"Agent TOML file {toml_file.name} is not valid TOML: {e}. "
                     "Codex would silently ignore an agent with malformed TOML."
                 )
-            # Verify [agent] table exists
-            assert "agent" in data, (
-                f"Agent TOML {toml_file.name} missing [agent] table. "
-                "Codex reads agent configuration from the [agent] table."
+            assert "agent" not in data, (
+                f"Agent TOML {toml_file.name} contains unsupported [agent] table. "
+                "Codex subagent files require top-level fields."
             )
 
     def test_agent_toml_has_name_field(self, smoke_install_dir: Path) -> None:
-        """Each agent TOML must have agent.name field.
+        """Each agent TOML must have top-level name field.
 
-        If 'name' is missing from the [agent] table, Codex cannot identify the agent.
+        If 'name' is missing, Codex cannot identify the agent.
         It may silently register under an empty name or fail to register at all.
         """
         import tomllib
 
-        agents_dir = smoke_install_dir / "agents"
+        agents_dir = smoke_install_dir / ".codex" / "agents"
         for toml_file in agents_dir.glob("*.toml"):
             data = tomllib.loads(toml_file.read_text(encoding="utf-8"))
-            agent_section = data.get("agent", {})
-            assert "name" in agent_section, (
-                f"Agent TOML {toml_file.name} missing 'name' in [agent] table. "
-                "Codex uses agent.name to identify and invoke the agent."
+            assert "name" in data, (
+                f"Agent TOML {toml_file.name} missing top-level 'name'. "
+                "Codex uses name to identify and invoke the agent."
             )
-            assert agent_section["name"], (
-                f"Agent TOML {toml_file.name} has empty 'name' in [agent] table."
+            assert data["name"], (
+                f"Agent TOML {toml_file.name} has empty top-level 'name'."
+            )
+
+    def test_agent_toml_has_description_field(self, smoke_install_dir: Path) -> None:
+        """Each agent TOML must have top-level description field."""
+        import tomllib
+
+        agents_dir = smoke_install_dir / ".codex" / "agents"
+        for toml_file in agents_dir.glob("*.toml"):
+            data = tomllib.loads(toml_file.read_text(encoding="utf-8"))
+            assert "description" in data, (
+                f"Agent TOML {toml_file.name} missing top-level 'description'."
+            )
+            assert data["description"], (
+                f"Agent TOML {toml_file.name} has empty top-level 'description'."
             )
 
     def test_agent_toml_has_developer_instructions(
         self, smoke_install_dir: Path
     ) -> None:
-        """Each agent TOML must have agent.developer_instructions field.
+        """Each agent TOML must have top-level developer_instructions field.
 
         developer_instructions is the primary instruction content for Codex agents.
         If missing or empty, the agent has no behavior — it silently acts as a
@@ -767,15 +736,14 @@ class TestCodexAgentStructure:
         """
         import tomllib
 
-        agents_dir = smoke_install_dir / "agents"
+        agents_dir = smoke_install_dir / ".codex" / "agents"
         for toml_file in agents_dir.glob("*.toml"):
             data = tomllib.loads(toml_file.read_text(encoding="utf-8"))
-            agent_section = data.get("agent", {})
-            assert "developer_instructions" in agent_section, (
+            assert "developer_instructions" in data, (
                 f"Agent TOML {toml_file.name} missing 'developer_instructions'. "
                 "Without instructions, the agent has no behavior in Codex."
             )
-            instructions = agent_section["developer_instructions"]
+            instructions = data["developer_instructions"]
             assert isinstance(instructions, str) and instructions.strip(), (
                 f"Agent TOML {toml_file.name} has empty developer_instructions. "
                 "An agent with no instructions is a silent no-op in Codex."

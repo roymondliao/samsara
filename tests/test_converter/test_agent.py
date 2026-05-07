@@ -155,7 +155,26 @@ class TestAgentNameGeneration:
         )
 
         parsed = tomllib.loads(result.toml_content)
-        assert parsed["agent"]["name"] == "samsara-yin-explorer"
+        assert parsed["name"] == "samsara-yin-explorer"
+
+    def test_agent_toml_uses_codex_top_level_schema(self):
+        converter = AgentConverter()
+        template = get_codex_template()
+        naming = make_naming()
+
+        result = converter.convert(
+            body="# Yin Explorer\n\nBody.",
+            source_path=Path("/fake/agent/yin-explorer.md"),
+            rules=[],
+            naming=naming,
+            template=template,
+        )
+
+        parsed = tomllib.loads(result.toml_content)
+        assert "agent" not in parsed, "Codex subagent TOML must not use [agent]."
+        assert parsed["name"] == "samsara-yin-explorer"
+        assert parsed["description"] == "Yin Explorer"
+        assert "Body." in parsed["developer_instructions"]
 
 
 # ---------------------------------------------------------------------------
@@ -253,7 +272,7 @@ class TestFrontmatterHandling:
 
         # Frontmatter fields must not appear verbatim in developer_instructions
         parsed = tomllib.loads(result.toml_content)
-        instructions = parsed["agent"]["developer_instructions"]
+        instructions = parsed["developer_instructions"]
         assert "name: test-agent" not in instructions, (
             "Frontmatter leaked into developer_instructions"
         )
@@ -276,7 +295,7 @@ class TestFrontmatterHandling:
         )
 
         parsed = tomllib.loads(result.toml_content)
-        instructions = parsed["agent"]["developer_instructions"]
+        instructions = parsed["developer_instructions"]
         assert "no-frontmatter agent" in instructions
 
 
@@ -314,10 +333,10 @@ class TestRealAgentConversion:
             pytest.fail(f"Agent '{agent_name}' produced invalid TOML: {e}")
 
         # Must have expected name
-        assert parsed["agent"]["name"] == f"samsara-{agent_name}"
+        assert parsed["name"] == f"samsara-{agent_name}"
 
         # developer_instructions must be present and non-empty
-        instructions = parsed["agent"]["developer_instructions"]
+        instructions = parsed["developer_instructions"]
         assert len(instructions.strip()) > 0, (
             f"Agent '{agent_name}' produced empty developer_instructions"
         )
@@ -402,7 +421,7 @@ class TestRuleApplication:
         )
 
         parsed = tomllib.loads(result.toml_content)
-        instructions = parsed["agent"]["developer_instructions"]
+        instructions = parsed["developer_instructions"]
         assert "AFTER" in instructions, "Transformed body not used in TOML"
         assert "BEFORE" not in instructions, "Pre-transformation body leaked into TOML"
 

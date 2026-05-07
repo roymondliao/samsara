@@ -194,10 +194,10 @@ def install(
         ),
     ] = None,
 ) -> None:
-    """Install samsara plugin for a target platform.
+    """Install samsara files for a target platform.
 
-    Project scope (default): copies plugin to CWD and shows manual config steps.
-    Global scope: registers in marketplace and updates config.toml automatically.
+    Project scope (default): copies native platform files to CWD.
+    Global scope: copies native platform files under HOME and updates config.toml.
 
     Aborts if the platform CLI is not installed (DC-8-1).
     Project scope never modifies global config (DC-8-2).
@@ -215,7 +215,7 @@ def install(
     source_dir = source or Path.cwd()
 
     console.print(
-        f"Installing [bold]{platform}[/bold] plugin (scope: [bold]{scope}[/bold])"
+        f"Installing [bold]{platform}[/bold] files (scope: [bold]{scope}[/bold])"
     )
 
     try:
