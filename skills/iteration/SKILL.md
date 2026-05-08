@@ -24,7 +24,7 @@ digraph iteration {
     entry [label="Entry\n讀取 scar-reports/ + index.yaml\nAggregate remaining items\n計算 signal_lost" shape=doublecircle];
     empty [label="有 actionable items？" shape=diamond];
     triage [label="Triage（human gate）\n每個 remaining item:\nfix / accept / defer\nFocus: cross-task patterns"];
-    fix [label="Fix\n復用 implementer agent\nper-fix commit\nscar report per fix"];
+    fix [label="Fix\nbudget-aware dispatch\nper-fix commit\nscar report per fix"];
     round_check [label="Round check\nsignal_lost 下降？\n還有 fix items？" shape=diamond];
     safety [label="Safety valve check\n(advisory)" shape=diamond];
     gate [label="Human gate\n繼續？停止？\n(safety warnings shown)" shape=diamond];
@@ -95,12 +95,50 @@ User triages each item. AI can suggest classifications but user decides.
 
 For each item triaged as `fix`, ordered by signal_lost contribution (highest first):
 
-1. Dispatch `samsara:implementer` with fix context (see Fix Dispatch Guidance below)
-2. Implementer writes death test for the specific scar item → implements fix → scar report
-3. Main agent: parallel dispatch `samsara:code-reviewer` AND `samsara:code-quality-reviewer` (single message, two Agent calls, no shared state)
-4. Await both review outputs — **aggregation rule applies** (see below)
-5. If both reviewers PASS → **per-fix commit** (commit message references original scar item)
-6. Recalculate signal_lost after each fix
+1. Build `iteration_budget_context` for this fix (see Iteration Budget Context below)
+2. Dispatch `samsara:implementer` with fix context + `iteration_budget_context` (see Fix Dispatch Guidance below)
+3. Implementer writes death test for the specific scar item → implements fix → scar report
+4. Main agent: parallel dispatch `samsara:code-reviewer` AND `samsara:code-quality-reviewer` with the same `iteration_budget_context` (single message, two Agent calls, no shared state)
+5. Await both review outputs — **aggregation rule applies** (see below)
+6. If both reviewers PASS → **per-fix commit** (commit message references original scar item)
+7. Recalculate signal_lost after each fix
+
+### Iteration Budget Context
+
+Every implementer and reviewer dispatch MUST include an `iteration_budget_context` built from current runtime state. Do not copy placeholder values; compute every field before dispatch.
+
+| Field | Purpose |
+|---|---|
+| `round` | Current iteration round number |
+| `max_rounds` | Safety valve round limit |
+| `remaining_rounds` | Rounds left before the max-round safety valve |
+| `signal_lost_before` | Current signal_lost before this fix |
+| `stagnation_count` | Consecutive rounds where signal_lost did not decrease |
+| `net_rot_previous_round` | New scar items minus resolved scar items in the previous round |
+| `reviewer_retry_budget_remaining` | Remaining re-dispatch attempts for missing reviewer output |
+| `expected_signal_reduction` | Scar categories this fix is expected to reduce |
+| `strategy_hint` | One of `explore`, `converge`, `minimal_fix` |
+
+Dispatch envelope shape:
+```yaml
+iteration_budget_context:
+  round: "<current round number>"
+  max_rounds: "<configured max rounds>"
+  remaining_rounds: "<max_rounds - round>"
+  signal_lost_before: "<current signal_lost>"
+  stagnation_count: "<current stagnation count>"
+  net_rot_previous_round: "<previous round net rot, or 0 for round 1>"
+  reviewer_retry_budget_remaining: "<remaining reviewer re-dispatch attempts>"
+  expected_signal_reduction: ["<known_shortcuts | silent_failure_conditions | unverified_assumptions>"]
+  strategy_hint: "<explore | converge | minimal_fix>"
+```
+
+**Strategy hints:**
+- `explore` — early round, budget available: identify the smallest fix that proves the scar is real
+- `converge` — signal_lost is flat or remaining_rounds is 1: prioritize death test + focused fix, avoid broad cleanup
+- `minimal_fix` — safety valve is near/active or retry budget is low: only address the named scar item; report residual risk instead of expanding scope
+
+Sub-agents must treat remaining budget as a strategy signal. Before spending another review retry or validation run, state what uncertainty it resolves.
 
 ### Review Aggregation Rule (Per-Fix)
 
@@ -115,6 +153,8 @@ Both reviewers must PASS before the per-fix commit is allowed. Either reviewer r
 **Missing reviewer handling:** If the main agent receives only one review output (the other dispatcher returned nothing or timed out), this is a **FAIL with "missing reviewer" error** — do NOT assume absent reviewer = PASS. Log the missing reviewer by name and re-dispatch. Bounded retry: max 2 re-dispatch attempts. If both retries still produce no output, escalate to the user and do not proceed with the per-fix commit. This is a structural block, not an advisory warning.
 
 **Re-review rule:** After implementer fixes issues from FAIL, dispatch both reviewers in parallel again. Do not dispatch only the reviewer that failed — both must re-review after any code change.
+
+**Budget-aware review:** Reviewer dispatch MUST include current round and retry budget. When retry budget is low, reviewers still block correctness/security/privacy regressions, but should separate blocking issues from non-blocking cleanup so the main agent can make a bounded decision.
 
 **Blocked fix handling:** If implementer reports BLOCKED or NEEDS_CONTEXT for a fix item:
 - Do NOT retry the same item automatically in the next round
@@ -133,8 +173,20 @@ Fix dispatch differs from initial implementation dispatch. The dispatch-template
 | **Goal framing** | "Implement Task N: [title]" | "Fix scar item: [description]. The current code [does X], but it should [do Y] to address [silent failure / unverified assumption / shortcut]" |
 | **Scope** | Defined by task file | Defined by the scar item — keep the fix minimal and focused |
 | **Scar schema** | Paste `scar-schema.yaml` | Same — paste `scar-schema.yaml` (the fix also produces a scar report) |
+| **Budget context** | Task-level plan constraints | Paste computed `iteration_budget_context` and require `budget_spent`, `evidence_gained`, `residual_risk` in the result |
 
 **Key difference:** Fix dispatch must include enough surrounding code context for the implementer to understand the scar item. Read the relevant file(s) and paste the affected sections into the prompt.
+
+**Fix result budget report:** Implementer output must include:
+```yaml
+budget_spent:
+  validation_runs: "<count>"
+  reviewer_retries_consumed: "<count>"
+evidence_gained:
+  - "<death test, review finding, or concrete observation>"
+residual_risk:
+  - "<known remaining risk, or []>"
+```
 
 ## Step 4: Round Check + Safety Valve
 
