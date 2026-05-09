@@ -138,6 +138,30 @@ def _write_snapshots(output_dir: Path, snapshot_dir: Path) -> None:
             dest.write_bytes(file_path.read_bytes())
 
 
+def _snapshot_content_diff_message(
+    rel_path: str, actual_content: str, expected_content: str
+) -> str:
+    """Return a compact, actionable content diff message for snapshots."""
+    actual_lines = actual_content.splitlines()
+    expected_lines = expected_content.splitlines()
+    first_diff = next(
+        (i for i, (a, e) in enumerate(zip(actual_lines, expected_lines)) if a != e),
+        len(min(actual_lines, expected_lines, key=len)),
+    )
+
+    if first_diff < len(expected_lines) and first_diff < len(actual_lines):
+        return (
+            f"CONTENT DIFFERS: {rel_path} "
+            f"(first diff at line {first_diff + 1}: "
+            f"expected={expected_lines[first_diff]!r} "
+            f"actual={actual_lines[first_diff]!r})"
+        )
+    return (
+        f"CONTENT DIFFERS: {rel_path} "
+        f"(expected {len(expected_lines)} lines, got {len(actual_lines)} lines)"
+    )
+
+
 # ---------------------------------------------------------------------------
 # Self-iteration fix: normalization must actually transform source path comments.
 # Guards against the silent failure where the regex pattern no longer matches
@@ -248,6 +272,18 @@ class TestDC97SnapshotComparisionMustFailOnDiff:
             "Expected comparison to fail on extra file. "
             "Our comparison logic would not catch extra output files."
         )
+
+    def test_content_diff_message_reports_first_differing_line(self) -> None:
+        """Content diff diagnostics must identify the first changed line."""
+        message = _snapshot_content_diff_message(
+            ".gemini/skills/samsara-research/SKILL.md",
+            "# Research\nnew body\n",
+            "# Research\nold body\n",
+        )
+
+        assert "first diff at line 2" in message
+        assert "expected='old body'" in message
+        assert "actual='new body'" in message
 
 
 # ---------------------------------------------------------------------------
@@ -419,29 +455,10 @@ class TestSnapshotComparison:
                 actual_content = actual_files[rel_path]
                 expected_content = expected_files[rel_path]
                 if actual_content != expected_content:
-                    # Provide a helpful diff excerpt
-                    actual_lines = actual_content.splitlines()
-                    expected_lines = expected_content.splitlines()
-                    first_diff = next(
-                        (
-                            i
-                            for i, (a, e) in enumerate(
-                                zip(actual_lines, expected_lines)
-                            )
-                            if a != e
-                        ),
-                        len(min(actual_lines, expected_lines, key=len)),
-                    )
                     diffs.append(
-                        f"CONTENT DIFFERS: {rel_path} "
-                        f"(first diff at line {first_diff + 1}: "
-                        f"expected={expected_lines[first_diff]!r} "
-                        f"actual={actual_lines[first_diff]!r})"
-                        if first_diff < len(expected_lines)
-                        and first_diff < len(actual_lines)
-                        else f"CONTENT DIFFERS: {rel_path} "
-                        f"(expected {len(expected_lines)} lines, "
-                        f"got {len(actual_lines)} lines)"
+                        _snapshot_content_diff_message(
+                            rel_path, actual_content, expected_content
+                        )
                     )
 
         assert diffs == [], (
@@ -518,7 +535,11 @@ class TestGeminiSnapshotComparison:
                 rel_path in actual_files
                 and actual_files[rel_path] != expected_files[rel_path]
             ):
-                diffs.append(f"CONTENT DIFFERS: {rel_path}")
+                diffs.append(
+                    _snapshot_content_diff_message(
+                        rel_path, actual_files[rel_path], expected_files[rel_path]
+                    )
+                )
 
         assert diffs == [], (
             f"Gemini snapshot comparison failed with {len(diffs)} difference(s):\n"
