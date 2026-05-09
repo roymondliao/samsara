@@ -59,6 +59,8 @@ import re
 import tomllib
 from pathlib import Path
 
+import yaml
+
 logger = logging.getLogger(__name__)
 
 # Pattern that must NOT appear in any output .md file (architecture death case DC-2).
@@ -311,10 +313,11 @@ class TargetValidator:
                 errors.append(f"Cannot read Gemini agent {md_file.name}: {e}")
                 continue
 
-            frontmatter = self._extract_markdown_frontmatter(content)
+            frontmatter, parse_error = self._extract_markdown_frontmatter(content)
             if frontmatter is None:
+                detail = f": {parse_error}" if parse_error else ""
                 errors.append(
-                    f"Gemini agent {md_file.name} is missing YAML frontmatter."
+                    f"Gemini agent {md_file.name} is missing YAML frontmatter{detail}."
                 )
                 continue
 
@@ -327,11 +330,13 @@ class TargetValidator:
 
         return errors
 
-    def _extract_markdown_frontmatter(self, content: str) -> dict[str, str] | None:
-        """Extract simple key/value YAML frontmatter from a markdown file."""
+    def _extract_markdown_frontmatter(
+        self, content: str
+    ) -> tuple[dict[str, str] | None, str | None]:
+        """Extract YAML frontmatter from a markdown file."""
         lines = content.splitlines()
         if not lines or lines[0].strip() != "---":
-            return None
+            return None, None
 
         closing_idx = None
         for i in range(1, len(lines)):
@@ -339,15 +344,22 @@ class TargetValidator:
                 closing_idx = i
                 break
         if closing_idx is None:
-            return None
+            return None, "frontmatter is not closed"
+
+        raw_frontmatter = "\n".join(lines[1:closing_idx])
+        try:
+            parsed = yaml.safe_load(raw_frontmatter) if raw_frontmatter.strip() else {}
+        except yaml.YAMLError as e:
+            return None, f"invalid YAML frontmatter: {e}"
+
+        if not isinstance(parsed, dict):
+            return None, "YAML frontmatter root is not an object"
 
         frontmatter: dict[str, str] = {}
-        for line in lines[1:closing_idx]:
-            if ":" not in line:
-                continue
-            key, value = line.split(":", 1)
-            frontmatter[key.strip()] = value.strip().strip('"').strip("'")
-        return frontmatter
+        for key, value in parsed.items():
+            if isinstance(key, str) and value is not None:
+                frontmatter[key] = str(value)
+        return frontmatter, None
 
     def _scan_source_patterns(self, output_dir: Path) -> list[str]:
         """Scan all scannable files in output_dir for remaining source patterns.
@@ -466,7 +478,9 @@ class TargetValidator:
             for md_file in agents_dir.glob("*.md"):
                 try:
                     content = md_file.read_text(encoding="utf-8")
-                    frontmatter = self._extract_markdown_frontmatter(content)
+                    frontmatter, _parse_error = self._extract_markdown_frontmatter(
+                        content
+                    )
                     if frontmatter and frontmatter.get("name"):
                         known_agent_names.add(frontmatter["name"])
                 except OSError, UnicodeDecodeError:

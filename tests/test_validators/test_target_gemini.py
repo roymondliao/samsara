@@ -95,6 +95,18 @@ class TestGeminiTargetValidation:
         assert errors
         assert "frontmatter" in " ".join(errors).lower()
 
+    def test_gemini_rejects_malformed_yaml_frontmatter(self, tmp_path: Path):
+        output = make_gemini_output(tmp_path)
+        agent_file = output / ".gemini" / "agents" / "samsara-implementer.md"
+        agent_file.write_text(
+            "---\nname: [unterminated\ndescription: Implementer\n---\nBody\n"
+        )
+
+        errors = TargetValidator().validate(output_dir=output, platform="gemini-cli")
+
+        assert errors
+        assert "yaml" in " ".join(errors).lower()
+
     def test_gemini_rejects_invalid_settings_json(self, tmp_path: Path):
         output = make_gemini_output(tmp_path)
         (output / ".gemini" / "settings.json").write_text("{not json")
