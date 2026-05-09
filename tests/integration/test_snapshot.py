@@ -42,6 +42,9 @@ from samsara_cli.converter.engine import ConversionEngine
 # --- Fixture paths ---
 FIXTURE_SOURCE = Path(__file__).parent.parent / "fixtures" / "source"
 FIXTURE_EXPECTED = Path(__file__).parent.parent / "fixtures" / "expected" / "codex"
+FIXTURE_EXPECTED_GEMINI = (
+    Path(__file__).parent.parent / "fixtures" / "expected" / "gemini-cli"
+)
 
 # Pattern matching the '# Source: <path>' comment in generated agent TOML files.
 # The source path is an absolute path that differs between machines.
@@ -465,4 +468,67 @@ class TestSnapshotComparison:
         assert len(actual_files) >= 7, (
             f"Conversion output has only {len(actual_files)} files — expected >= 7. "
             "Output is suspiciously small. Snapshot comparison is not meaningful."
+        )
+
+
+class TestGeminiSnapshotComparison:
+    """Compare Gemini conversion output against committed snapshots."""
+
+    @pytest.fixture(scope="class")
+    def actual_output(self, tmp_path_factory) -> Path:
+        output_dir = tmp_path_factory.mktemp("snapshot-gemini") / "gemini_output"
+        engine = ConversionEngine("gemini-cli")
+        engine.run(source_dir=FIXTURE_SOURCE, output_dir=output_dir)
+        return output_dir
+
+    def test_gemini_snapshot_comparison_or_update(self, actual_output: Path) -> None:
+        if _should_update_snapshots():
+            _write_snapshots(actual_output, FIXTURE_EXPECTED_GEMINI)
+            file_count = sum(
+                1 for f in FIXTURE_EXPECTED_GEMINI.rglob("*") if f.is_file()
+            )
+            assert file_count >= 1, (
+                "UPDATE_SNAPSHOTS=1 ran for Gemini but wrote 0 files."
+            )
+            return
+
+        if not FIXTURE_EXPECTED_GEMINI.exists():
+            pytest.fail(
+                f"Gemini snapshot directory not found: {FIXTURE_EXPECTED_GEMINI}. "
+                "Run with UPDATE_SNAPSHOTS=1 to generate initial snapshots."
+            )
+
+        expected_files = _collect_output_files(FIXTURE_EXPECTED_GEMINI)
+        if not expected_files:
+            pytest.fail(
+                f"Gemini snapshot directory is empty: {FIXTURE_EXPECTED_GEMINI}."
+            )
+
+        actual_files = _collect_output_files(actual_output)
+        diffs: list[str] = []
+
+        for rel_path in expected_files:
+            if rel_path not in actual_files:
+                diffs.append(f"MISSING from actual: {rel_path}")
+        for rel_path in actual_files:
+            if rel_path not in expected_files:
+                diffs.append(f"EXTRA in actual (not in snapshot): {rel_path}")
+        for rel_path in expected_files:
+            if (
+                rel_path in actual_files
+                and actual_files[rel_path] != expected_files[rel_path]
+            ):
+                diffs.append(f"CONTENT DIFFERS: {rel_path}")
+
+        assert diffs == [], (
+            f"Gemini snapshot comparison failed with {len(diffs)} difference(s):\n"
+            + "\n".join(f"  - {d}" for d in diffs)
+        )
+
+    def test_gemini_snapshot_file_count_is_reasonable(
+        self, actual_output: Path
+    ) -> None:
+        actual_files = _collect_output_files(actual_output)
+        assert len(actual_files) >= 7, (
+            f"Gemini conversion output has only {len(actual_files)} files."
         )

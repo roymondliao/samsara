@@ -1,0 +1,24 @@
+task_id: task-6
+completion_status: done
+
+known_shortcuts:
+  - description: "CLI tests verify wiring with mocks rather than full subprocess invocation of installed console script."
+    deferred_to_feature_iteration: false
+
+silent_failure_conditions:
+  - description: "Gemini installer construction can still fail later if local Gemini CLI is absent; CLI wiring only ensures the correct platform reaches Installer."
+    deferred_to_feature_iteration: false
+
+assumptions_made:
+  - assumption: "Typer command layer does not need Gemini-specific command options beyond existing platform argument."
+    verified: true
+    note: "convert/install/update/validate tests exercise gemini-cli platform routing through existing commands."
+    deferred_to_feature_iteration: false
+
+debt_registered: true
+debt_location: "tests/test_cli/test_main.py"
+
+resolved_items:
+  - original_section: "silent_failure_conditions"
+    original_description: "validate command could run Gemini output through default Codex validation."
+    resolution: "Added CLI test asserting validate passes platform='gemini-cli' to TargetValidator."

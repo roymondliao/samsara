@@ -1,0 +1,24 @@
+task_id: task-7
+completion_status: done
+
+known_shortcuts:
+  - description: "Gemini snapshot comparison reuses compact diff reporting and does not show first differing line like the Codex snapshot test."
+    deferred_to_feature_iteration: false
+
+silent_failure_conditions:
+  - description: "Snapshots prove structural output, not live Gemini CLI discovery."
+    deferred_to_feature_iteration: true
+
+assumptions_made:
+  - assumption: "The shared fixture source is sufficient to exercise Gemini skills, agents, hooks, references, and transformation rules."
+    verified: true
+    note: "Gemini fixture snapshot contains skills, markdown agent, settings JSON, hook script, and references."
+    deferred_to_feature_iteration: false
+
+debt_registered: true
+debt_location: "tests/integration/test_snapshot.py; tests/fixtures/expected/gemini-cli"
+
+resolved_items:
+  - original_section: "silent_failure_conditions"
+    original_description: "Gemini converter changes could silently alter output files without committed evidence."
+    resolution: "Added Gemini pipeline assertions and committed expected/gemini-cli snapshot fixture."

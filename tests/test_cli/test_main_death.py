@@ -84,6 +84,10 @@ class TestCLIConvertInvalidPlatform:
             f"DC-8-5: error output must list available platforms (should include 'codex'). "
             f"Got: {result.output!r}"
         )
+        assert "gemini-cli" in output, (
+            "DC-8-5: error output must list available platforms and include 'gemini-cli'. "
+            f"Got: {result.output!r}"
+        )
 
 
 # ---------------------------------------------------------------------------

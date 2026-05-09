@@ -1,0 +1,59 @@
+feature: gemini-cli-integration
+status: done
+
+tasks:
+  - id: task-1
+    title: "Register Gemini platform config and templates"
+    status: done
+    scar_count: 3
+    unresolved_assumptions: "Real gemini --version verification deferred to smoke tests"
+    depends_on: []
+
+  - id: task-2
+    title: "Add Gemini markdown subagent conversion"
+    status: done
+    scar_count: 3
+    unresolved_assumptions: "Gemini runtime name constraints deferred to smoke tests"
+    depends_on: ["task-1"]
+
+  - id: task-3
+    title: "Add Gemini hook settings conversion"
+    status: done
+    scar_count: 3
+    unresolved_assumptions: "Real Gemini hook loading deferred to smoke tests"
+    depends_on: ["task-1"]
+
+  - id: task-4
+    title: "Make engine and target validator platform-aware"
+    status: done
+    scar_count: 3
+    unresolved_assumptions: "Hook command executability remains covered by smoke tests"
+    depends_on: ["task-2", "task-3"]
+
+  - id: task-5
+    title: "Implement Gemini project and global installer merge behavior"
+    status: done
+    scar_count: 3
+    unresolved_assumptions: "Semantic duplicate hook normalization deferred"
+    depends_on: ["task-4"]
+
+  - id: task-6
+    title: "Wire CLI commands and detector coverage for gemini-cli"
+    status: done
+    scar_count: 3
+    unresolved_assumptions: null
+    depends_on: ["task-5"]
+
+  - id: task-7
+    title: "Add Gemini fixture snapshots and pipeline tests"
+    status: done
+    scar_count: 3
+    unresolved_assumptions: "Live discovery remains covered by smoke tests"
+    depends_on: ["task-4"]
+
+  - id: task-8
+    title: "Add skip-safe Gemini CLI smoke tests"
+    status: done
+    scar_count: 3
+    unresolved_assumptions: "Live skill/subagent discovery command not verified"
+    depends_on: ["task-6", "task-7"]

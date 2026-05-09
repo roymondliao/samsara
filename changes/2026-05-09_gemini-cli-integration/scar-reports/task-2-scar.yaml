@@ -1,0 +1,24 @@
+task_id: task-2
+completion_status: done
+
+known_shortcuts:
+  - description: "Gemini agent frontmatter validation is delimiter-based, not a full YAML parse."
+    deferred_to_feature_iteration: false
+
+silent_failure_conditions:
+  - description: "Agent descriptions are still extracted heuristically from the first heading or first non-empty line."
+    deferred_to_feature_iteration: false
+
+assumptions_made:
+  - assumption: "Gemini agent names accept the same alphanumeric, underscore, and hyphen slug constraints used here."
+    verified: false
+    note: "Rejected whitespace/punctuation locally; runtime validation remains covered by Gemini smoke tests."
+    deferred_to_feature_iteration: true
+
+debt_registered: true
+debt_location: "samsara_cli/converter/agent.py"
+
+resolved_items:
+  - original_section: "silent_failure_conditions"
+    original_description: "Gemini conversion could silently reuse Codex TOML rendering."
+    resolution: "Added explicit markdown conversion path, .md extension, and tests asserting no TOML agents are emitted for Gemini."

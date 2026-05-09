@@ -55,6 +55,16 @@ class TestPlatformDetectorBasic:
             else:
                 assert any("codex" in str(arg) for arg in cmd)
 
+    def test_detect_gemini_cli_uses_gemini_version_cmd(self):
+        """detect('gemini-cli') uses the Gemini CLI version command."""
+        from samsara_cli.installer.detect import PlatformDetector
+
+        detector = PlatformDetector()
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="gemini 1.2.3")
+            assert detector.detect("gemini-cli") is True
+            assert mock_run.call_args[0][0] == ["gemini", "--version"]
+
     def test_detect_handles_os_error_gracefully(self):
         """detect() returns False for any OS-level error — not just FileNotFoundError."""
         from samsara_cli.installer.detect import PlatformDetector
@@ -85,6 +95,14 @@ class TestPlatformDetectorAvailablePlatforms:
         platforms = detector.available_platforms()
         assert "codex" in platforms
 
+    def test_available_platforms_includes_gemini_cli(self):
+        """available_platforms() must include 'gemini-cli'."""
+        from samsara_cli.installer.detect import PlatformDetector
+
+        detector = PlatformDetector()
+        platforms = detector.available_platforms()
+        assert "gemini-cli" in platforms
+
     def test_available_platforms_returns_list_of_strings(self):
         """available_platforms() must return list[str]."""
         from samsara_cli.installer.detect import PlatformDetector
@@ -100,6 +118,15 @@ class TestPlatformDetectorAvailablePlatforms:
 
         detector = PlatformDetector()
         url = detector.get_install_url("codex")
+        assert isinstance(url, str)
+        assert len(url) > 0
+
+    def test_get_install_url_returns_string_for_gemini_cli(self):
+        """get_install_url('gemini-cli') must return non-empty string."""
+        from samsara_cli.installer.detect import PlatformDetector
+
+        detector = PlatformDetector()
+        url = detector.get_install_url("gemini-cli")
         assert isinstance(url, str)
         assert len(url) > 0
 

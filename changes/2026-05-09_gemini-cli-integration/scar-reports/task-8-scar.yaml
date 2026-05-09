@@ -1,0 +1,24 @@
+task_id: task-8
+completion_status: done_with_concerns
+
+known_shortcuts:
+  - description: "Live Gemini smoke only checks gemini --version; no reliable non-interactive skill/subagent discovery command was verified."
+    deferred_to_feature_iteration: true
+
+silent_failure_conditions:
+  - description: "Structural smoke can pass while Gemini runtime activation still differs from documented discovery behavior."
+    deferred_to_feature_iteration: true
+
+assumptions_made:
+  - assumption: "Skipping live Gemini checks when gemini --version is unavailable is acceptable degradation."
+    verified: true
+    note: "Smoke test reports an explicit skip and still runs structural conversion/hook JSON checks."
+    deferred_to_feature_iteration: false
+
+debt_registered: true
+debt_location: "tests/integration/test_smoke_gemini_cli.py"
+
+resolved_items:
+  - original_section: "silent_failure_conditions"
+    original_description: "Smoke tests might touch real ~/.gemini settings."
+    resolution: "Smoke conversion writes only to tempfile output and does not invoke installer against real HOME."

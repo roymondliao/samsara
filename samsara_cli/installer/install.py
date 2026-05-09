@@ -291,25 +291,33 @@ class Installer:
             )
         config_path = Path(config_path_raw.replace("~", str(home)))
 
-        # --- Step 1: Ensure config.toml exists ---
+        config_is_json = config_path.suffix == ".json"
+
+        # --- Step 1: Ensure config file exists ---
         config_path.parent.mkdir(parents=True, exist_ok=True)
         if not config_path.exists():
             config_path.write_text("")
-            logger.info("Created new config.toml at: %s", config_path)
+            logger.info("Created new config file at: %s", config_path)
 
-        # --- Step 2: DC-8-3 Backup config.toml BEFORE any modification ---
+        # --- Step 2: DC-8-3 Backup config BEFORE any modification ---
         backup_path = config_path.parent / (config_path.name + ".bak")
         try:
             shutil.copy2(config_path, backup_path)
-            logger.info("Backed up config.toml to: %s", backup_path)
+            logger.info("Backed up config to: %s", backup_path)
         except OSError as e:
             raise InstallerError(
-                f"DC-8-3: Cannot backup config.toml before modification: {e}. "
+                f"DC-8-3: Cannot backup config before modification: {e}. "
                 "Aborting to prevent config loss. Fix the backup location and retry."
             ) from e
 
         # --- Step 3: Copy native output into the user's home directories ---
         self._install_native_tree(converted_dir=converted_dir, target_root=home)
+
+        if config_is_json:
+            return self._global_install_instructions(
+                install_root=home,
+                config_path=config_path,
+            )
 
         # --- Step 4: DC-8-4 Modify config.toml (idempotent) ---
         try:
@@ -369,6 +377,8 @@ class Installer:
             target_item.parent.mkdir(parents=True, exist_ok=True)
             if source_item.name == "hooks.json" and target_item.exists():
                 self._merge_hooks_json(source_item, target_item)
+            elif source_item.name == "settings.json" and target_item.exists():
+                self._merge_settings_json(source_item, target_item)
             elif source_item.name == "config.toml" and target_item.exists():
                 self._merge_config_toml(source_item, target_item)
             else:
@@ -395,6 +405,62 @@ class Installer:
             if not isinstance(existing, list):
                 raise InstallerError(
                     f"Cannot merge hooks event {event_name!r}: target is not a list."
+                )
+            for entry in entries:
+                if entry not in existing:
+                    existing.append(entry)
+
+        target_path.write_text(
+            json.dumps(target, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+
+    def _read_json_object(self, path: Path, *, empty_ok: bool = False) -> dict:
+        """Read a JSON object config file.
+
+        Empty files are allowed only for newly-created global settings files. Invalid
+        non-empty JSON must fail loudly so installs do not overwrite user settings.
+        """
+        text = path.read_text(encoding="utf-8")
+        if not text.strip() and empty_ok:
+            return {}
+        try:
+            data = json.loads(text)
+        except json.JSONDecodeError as e:
+            raise InstallerError(
+                f"Cannot merge JSON settings because {path} is not valid JSON: {e}"
+            ) from e
+        if not isinstance(data, dict):
+            raise InstallerError(
+                f"Cannot merge JSON settings because root is not an object: {path}"
+            )
+        return data
+
+    def _merge_settings_json(self, source_path: Path, target_path: Path) -> None:
+        """Merge Gemini settings.json without duplicating hook entries."""
+        source = self._read_json_object(source_path)
+        target = self._read_json_object(target_path, empty_ok=True)
+
+        for key, value in source.items():
+            if key != "hooks":
+                target.setdefault(key, value)
+
+        source_hooks = source.get("hooks", {})
+        target_hooks = target.setdefault("hooks", {})
+        if not isinstance(source_hooks, dict) or not isinstance(target_hooks, dict):
+            raise InstallerError(
+                f"Cannot merge Gemini settings because 'hooks' is not an object: {target_path}"
+            )
+
+        for event_name, entries in source_hooks.items():
+            if not isinstance(entries, list):
+                raise InstallerError(
+                    f"Cannot merge Gemini hooks event {event_name!r}: expected list."
+                )
+            existing = target_hooks.setdefault(event_name, [])
+            if not isinstance(existing, list):
+                raise InstallerError(
+                    f"Cannot merge Gemini hooks event {event_name!r}: target is not a list."
                 )
             for entry in entries:
                 if entry not in existing:

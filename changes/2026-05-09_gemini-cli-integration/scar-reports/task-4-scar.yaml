@@ -1,0 +1,24 @@
+task_id: task-4
+completion_status: done
+
+known_shortcuts:
+  - description: "Gemini markdown frontmatter parsing is simple key/value parsing, not a complete YAML parser."
+    deferred_to_feature_iteration: false
+
+silent_failure_conditions:
+  - description: "Gemini settings validation checks SessionStart presence but not full hook command executability."
+    deferred_to_feature_iteration: true
+
+assumptions_made:
+  - assumption: "Platform-aware validator defaulting to codex preserves backward compatibility for existing callers."
+    verified: true
+    note: "Existing Codex target validator and engine tests pass without call-site changes outside engine/CLI platform forwarding."
+    deferred_to_feature_iteration: false
+
+debt_registered: true
+debt_location: "samsara_cli/validators/target.py"
+
+resolved_items:
+  - original_section: "silent_failure_conditions"
+    original_description: "Gemini output could be accepted through Codex fallback paths."
+    resolution: "Added platform-specific validation for .gemini/skills, .gemini/agents markdown frontmatter, and .gemini/settings.json."

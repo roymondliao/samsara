@@ -1,0 +1,24 @@
+task_id: task-3
+completion_status: done
+
+known_shortcuts:
+  - description: "Gemini hook script ignores stdin payload content beyond consuming it; event-specific validation is left to settings-level wiring."
+    deferred_to_feature_iteration: false
+
+silent_failure_conditions:
+  - description: "Shell JSON escaping handles common characters but not every possible Unicode control character."
+    deferred_to_feature_iteration: true
+
+assumptions_made:
+  - assumption: "Gemini accepts hooks.SessionStart entries shaped like the rendered settings JSON."
+    verified: false
+    note: "Structural JSON is unit-tested; real Gemini CLI loading is deferred to smoke tests."
+    deferred_to_feature_iteration: true
+
+debt_registered: true
+debt_location: "samsara_cli/config/templates/gemini-cli/hook.sh.j2; samsara_cli/config/templates/gemini-cli/settings.json.j2"
+
+resolved_items:
+  - original_section: "silent_failure_conditions"
+    original_description: "Hook script could print non-JSON stdout and silently break Gemini hook execution."
+    resolution: "Added tests that execute the rendered script and parse stdout as JSON for both normal and degraded bootstrap paths."

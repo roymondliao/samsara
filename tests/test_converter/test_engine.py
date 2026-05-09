@@ -176,6 +176,23 @@ class TestSuccessfulConversion:
                 f"Missing top-level developer_instructions in {toml_file.name}"
             )
 
+    def test_gemini_engine_produces_markdown_agents(self, tmp_path: Path):
+        """Gemini engine produces markdown subagent files, never TOML agents."""
+        from samsara_cli.converter.engine import ConversionEngine
+
+        source = make_source_structure(tmp_path, agent_names=["implementer"])
+        output = tmp_path / "output"
+
+        engine = ConversionEngine(platform="gemini-cli")
+        engine.run(source_dir=source, output_dir=output)
+
+        agents_output = output / ".gemini" / "agents"
+        assert agents_output.exists(), "Gemini agents directory not created"
+        assert list(agents_output.glob("*.md")), "No Gemini .md agent files in output"
+        assert not list(agents_output.glob("*.toml")), (
+            "Gemini must not emit TOML agents"
+        )
+
 
 # ---------------------------------------------------------------------------
 # Output directory already exists

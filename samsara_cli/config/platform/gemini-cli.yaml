@@ -1,0 +1,148 @@
+# @package _global_
+# Target platform config — Gemini CLI.
+
+platform:
+  name: "gemini-cli"
+  version_cmd: "gemini --version"
+
+paths:
+  plugin_dir: ".gemini"
+  plugin_manifest: null
+  skills_dir: ".gemini/skills"
+  agents_dir: ".gemini/agents"
+  hooks_file: "settings.json"
+  references_dir: ".agents/references"
+
+install:
+  project:
+    target: "$CWD"
+  global:
+    config_path: "~/.gemini/settings.json"
+
+formats:
+  agent:
+    type: markdown
+    template: "agent.md.j2"
+    fields_mapping:
+      body: body
+    optional_fields:
+      - tools
+      - model
+      - max_turns
+  hook_output:
+    context_injection_field: "hookSpecificOutput.additionalContext"
+    session_start_matchers:
+      - "startup"
+    template: "settings.json.j2"
+    script_template: "hook.sh.j2"
+  manifest:
+    enabled: false
+    template: null
+    extra_fields: {}
+
+naming:
+  skill_prefix: "samsara"
+  separator: "-"
+
+permissions:
+  sandbox_mode: null
+  feature_flags: {}
+
+transformations:
+  - id: skill_invocation
+    scope: body
+    type: regex
+    match: 'invoke `samsara:([\w-]+)`'
+    replace: 'activate the `samsara-\1` skill'
+    priority: high
+
+  - id: skill_invocation_variant
+    scope: body
+    type: regex
+    match: 'invoke `samsara:([\w-]+)` skill'
+    replace: 'activate the `samsara-\1` skill'
+    priority: high
+
+  - id: skill_tool_reference
+    scope: body
+    type: regex
+    match: 'using the Skill tool'
+    replace: 'using Gemini CLI skill activation'
+    priority: high
+
+  - id: agent_dispatch_subagent_type
+    scope: body
+    type: regex
+    match: 'subagent_type: "samsara:([\w-]+)"'
+    replace: 'subagent named "samsara-\1"'
+    priority: high
+
+  - id: agent_tool_reference
+    scope: body
+    type: regex
+    match: 'Agent tool:'
+    replace: 'Gemini subagent dispatch:'
+    priority: high
+
+  - id: task_create
+    scope: body
+    type: regex
+    match: 'TaskCreate\b'
+    replace: 'task planning'
+    priority: medium
+
+  - id: task_update
+    scope: body
+    type: regex
+    match: 'TaskUpdate\b'
+    replace: 'task planning'
+    priority: medium
+
+  - id: tool_read
+    scope: body
+    type: literal
+    match: 'Read tool'
+    replace: 'read_file tool'
+    priority: medium
+
+  - id: tool_edit
+    scope: body
+    type: literal
+    match: 'Edit tool'
+    replace: 'file editing'
+    priority: medium
+
+  - id: tool_write
+    scope: body
+    type: literal
+    match: 'Write tool'
+    replace: 'file writing'
+    priority: medium
+
+  - id: tool_bash
+    scope: body
+    type: literal
+    match: 'Bash tool'
+    replace: 'run_shell_command tool'
+    priority: medium
+
+  - id: tool_ls
+    scope: body
+    type: literal
+    match: 'LS tool'
+    replace: 'list_directory tool'
+    priority: medium
+
+  - id: tool_grep
+    scope: body
+    type: literal
+    match: 'Grep tool'
+    replace: 'grep_search tool'
+    priority: medium
+
+  - id: tool_glob
+    scope: body
+    type: literal
+    match: 'Glob tool'
+    replace: 'glob tool'
+    priority: medium

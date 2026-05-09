@@ -52,6 +52,7 @@ Assumptions:
    not currently validated. First-priority coverage is dispatch-template.md.
 """
 
+import json
 import logging
 import re
 import tomllib
@@ -110,6 +111,7 @@ class TargetValidator:
     def validate(
         self,
         output_dir: Path,
+        platform: str = "codex",
     ) -> list[str]:
         """Validate the converted output directory.
 
@@ -118,6 +120,8 @@ class TargetValidator:
 
         Args:
             output_dir: Path to the converted output directory (temp dir or final).
+            platform: Target platform name. Defaults to "codex" for backward
+                      compatibility with older tests/callers.
 
         Returns:
             List of error strings. Empty list means the output is valid.
@@ -135,30 +139,40 @@ class TargetValidator:
             return errors
 
         # --- Check 1: Skill directory names (no colon allowed) ---
-        skills_dir = self._get_skills_dir(output_dir)
+        skills_dir = self._get_skills_dir(output_dir, platform)
         if skills_dir.exists():
             for skill_dir in skills_dir.iterdir():
                 if skill_dir.is_dir() and ":" in skill_dir.name:
                     errors.append(_COLON_IN_NAME_MSG.format(skill_dir.name))
+
+        if platform == "gemini-cli":
+            errors.extend(self._validate_gemini_layout(output_dir))
 
         # --- Check 2: Source pattern scan across all scannable files ---
         pattern_errors = self._scan_source_patterns(output_dir)
         errors.extend(pattern_errors)
 
         # --- Check 3: TOML file validation ---
-        agents_dir = self._get_agents_dir(output_dir)
+        agents_dir = self._get_agents_dir(output_dir, platform)
         if agents_dir.exists():
-            toml_errors = self._validate_toml_files(agents_dir)
-            errors.extend(toml_errors)
+            if platform == "gemini-cli":
+                errors.extend(self._validate_gemini_agents(agents_dir))
+            else:
+                toml_errors = self._validate_toml_files(agents_dir)
+                errors.extend(toml_errors)
 
         # --- Check 4: Agent cross-validation ---
-        cross_errors = self._cross_validate_agent_names(output_dir, agents_dir)
+        cross_errors = self._cross_validate_agent_names(
+            output_dir, agents_dir, platform
+        )
         errors.extend(cross_errors)
 
         return errors
 
-    def _get_skills_dir(self, output_dir: Path) -> Path:
+    def _get_skills_dir(self, output_dir: Path, platform: str = "codex") -> Path:
         """Return the skills directory path within the output dir."""
+        if platform == "gemini-cli":
+            return output_dir / ".gemini" / "skills"
         # Codex native layout uses .agents/skills. Legacy/plugin-style converted
         # output used skills/. Prefer the native path when present, but keep the
         # fallback so older fixture-level tests can still validate legacy output.
@@ -167,14 +181,112 @@ class TargetValidator:
             return native
         return output_dir / "skills"
 
-    def _get_agents_dir(self, output_dir: Path) -> Path:
+    def _get_agents_dir(self, output_dir: Path, platform: str = "codex") -> Path:
         """Return the agents directory path within the output dir."""
+        if platform == "gemini-cli":
+            return output_dir / ".gemini" / "agents"
         # Codex native layout uses .codex/agents. Legacy/plugin-style converted
         # output used agents/.
         native = output_dir / ".codex" / "agents"
         if native.exists():
             return native
         return output_dir / "agents"
+
+    def _validate_gemini_layout(self, output_dir: Path) -> list[str]:
+        """Validate Gemini-specific output layout and settings JSON."""
+        errors: list[str] = []
+
+        alias_skills = output_dir / ".agents" / "skills"
+        if alias_skills.exists():
+            errors.append(
+                "Gemini output must not create .agents/skills. "
+                "Use .gemini/skills for Gemini skill discovery."
+            )
+
+        gemini_dir = output_dir / ".gemini"
+        skills_dir = gemini_dir / "skills"
+        agents_dir = gemini_dir / "agents"
+        settings_path = gemini_dir / "settings.json"
+
+        if not skills_dir.is_dir():
+            errors.append("Gemini output is missing .gemini/skills directory.")
+        if not agents_dir.is_dir():
+            errors.append("Gemini output is missing .gemini/agents directory.")
+        if not settings_path.exists():
+            errors.append("Gemini output is missing .gemini/settings.json.")
+            return errors
+
+        try:
+            settings = json.loads(settings_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as e:
+            errors.append(f"Gemini settings.json is invalid JSON: {e}")
+            return errors
+        except OSError as e:
+            errors.append(f"Cannot read Gemini settings.json: {e}")
+            return errors
+
+        hooks = settings.get("hooks")
+        if not isinstance(hooks, dict):
+            errors.append("Gemini settings.json missing object field hooks.")
+            return errors
+
+        session_start = hooks.get("SessionStart")
+        if not isinstance(session_start, list) or not session_start:
+            errors.append("Gemini settings.json missing hooks.SessionStart entries.")
+
+        return errors
+
+    def _validate_gemini_agents(self, agents_dir: Path) -> list[str]:
+        """Validate Gemini markdown agent files."""
+        errors: list[str] = []
+
+        for toml_file in agents_dir.glob("*.toml"):
+            errors.append(f"Gemini agent must be markdown, not TOML: {toml_file.name}.")
+
+        for md_file in agents_dir.glob("*.md"):
+            try:
+                content = md_file.read_text(encoding="utf-8")
+            except (OSError, UnicodeDecodeError) as e:
+                errors.append(f"Cannot read Gemini agent {md_file.name}: {e}")
+                continue
+
+            frontmatter = self._extract_markdown_frontmatter(content)
+            if frontmatter is None:
+                errors.append(
+                    f"Gemini agent {md_file.name} is missing YAML frontmatter."
+                )
+                continue
+
+            if not frontmatter.get("name"):
+                errors.append(f"Gemini agent {md_file.name} missing frontmatter name.")
+            if not frontmatter.get("description"):
+                errors.append(
+                    f"Gemini agent {md_file.name} missing frontmatter description."
+                )
+
+        return errors
+
+    def _extract_markdown_frontmatter(self, content: str) -> dict[str, str] | None:
+        """Extract simple key/value YAML frontmatter from a markdown file."""
+        lines = content.splitlines()
+        if not lines or lines[0].strip() != "---":
+            return None
+
+        closing_idx = None
+        for i in range(1, len(lines)):
+            if lines[i].strip() == "---":
+                closing_idx = i
+                break
+        if closing_idx is None:
+            return None
+
+        frontmatter: dict[str, str] = {}
+        for line in lines[1:closing_idx]:
+            if ":" not in line:
+                continue
+            key, value = line.split(":", 1)
+            frontmatter[key.strip()] = value.strip().strip('"').strip("'")
+        return frontmatter
 
     def _scan_source_patterns(self, output_dir: Path) -> list[str]:
         """Scan all scannable files in output_dir for remaining source patterns.
@@ -269,6 +381,7 @@ class TargetValidator:
         self,
         output_dir: Path,
         agents_dir: Path,
+        platform: str = "codex",
     ) -> list[str]:
         """Cross-validate agent name references in skills against actual agent files.
 
@@ -286,24 +399,34 @@ class TargetValidator:
         if not agents_dir.exists():
             return errors
 
-        # Build a set of known agent names from TOML files
+        # Build a set of known agent names from target agent files.
         known_agent_names: set[str] = set()
-        for toml_file in agents_dir.glob("*.toml"):
-            try:
-                content = toml_file.read_text(encoding="utf-8")
-                name = self._extract_agent_name_from_toml(content)
-                if name:
-                    known_agent_names.add(name)
-            except OSError, UnicodeDecodeError:
-                # Malformed TOML is caught by _validate_toml_files — skip here
-                pass
+        if platform == "gemini-cli":
+            for md_file in agents_dir.glob("*.md"):
+                try:
+                    content = md_file.read_text(encoding="utf-8")
+                    frontmatter = self._extract_markdown_frontmatter(content)
+                    if frontmatter and frontmatter.get("name"):
+                        known_agent_names.add(frontmatter["name"])
+                except OSError, UnicodeDecodeError:
+                    pass
+        else:
+            for toml_file in agents_dir.glob("*.toml"):
+                try:
+                    content = toml_file.read_text(encoding="utf-8")
+                    name = self._extract_agent_name_from_toml(content)
+                    if name:
+                        known_agent_names.add(name)
+                except OSError, UnicodeDecodeError:
+                    # Malformed TOML is caught by _validate_toml_files — skip here
+                    pass
 
         if not known_agent_names:
             # No agents converted — cannot cross-validate
             # This is not itself an error (platform may have no agents)
             return errors
 
-        skills_dir = self._get_skills_dir(output_dir)
+        skills_dir = self._get_skills_dir(output_dir, platform)
         if not skills_dir.exists():
             return errors
 

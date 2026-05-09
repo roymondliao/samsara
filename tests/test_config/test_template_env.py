@@ -73,3 +73,24 @@ class TestStrictUndefined:
         for template_name in expected_templates:
             template = env.get_template(template_name)
             assert template is not None, f"Template {template_name} failed to load"
+
+    def test_gemini_cli_env_created_successfully(self):
+        env = get_template_env("gemini-cli")
+        assert env is not None
+
+    def test_all_gemini_cli_template_files_loadable(self):
+        env = get_template_env("gemini-cli")
+        expected_templates = [
+            "agent.md.j2",
+            "hook.sh.j2",
+            "settings.json.j2",
+        ]
+        for template_name in expected_templates:
+            template = env.get_template(template_name)
+            assert template is not None, f"Template {template_name} failed to load"
+
+    def test_missing_variable_in_gemini_template_raises(self):
+        env = get_template_env("gemini-cli")
+        template = env.from_string("{{ missing_variable }}")
+        with pytest.raises(UndefinedError):
+            template.render()

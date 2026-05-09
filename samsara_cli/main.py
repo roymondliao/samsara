@@ -328,7 +328,7 @@ def validate(
     console.print(f"Validating [bold]{platform}[/bold] output in: {source_dir}")
 
     validator = TargetValidator()
-    errors = validator.validate(output_dir=source_dir)
+    errors = validator.validate(output_dir=source_dir, platform=platform)
 
     if errors:
         error_console.print(

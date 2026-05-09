@@ -1,0 +1,24 @@
+task_id: task-1
+completion_status: done
+
+known_shortcuts:
+  - description: "Gemini hook matcher is set to startup only until runtime smoke tests verify additional SessionStart matcher values."
+    deferred_to_feature_iteration: true
+
+silent_failure_conditions:
+  - description: "Gemini CLI executable name is assumed to be gemini; if installations expose a different binary, detection reports not installed."
+    deferred_to_feature_iteration: false
+
+assumptions_made:
+  - assumption: "Gemini CLI binary supports gemini --version."
+    verified: false
+    note: "Configured and unit-tested through subprocess mocking; real CLI verification is deferred to skip-safe smoke tests."
+    deferred_to_feature_iteration: true
+
+debt_registered: true
+debt_location: "samsara_cli/config/platform/gemini-cli.yaml; samsara_cli/installer/detect.py"
+
+resolved_items:
+  - original_section: "silent_failure_conditions"
+    original_description: "Gemini platform config or templates could render with missing variables and silently produce empty files."
+    resolution: "Added StrictUndefined template environment tests for gemini-cli and committed required template files."

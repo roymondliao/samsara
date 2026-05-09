@@ -240,7 +240,7 @@ class ConversionEngine:
     def _run_target_validation(self, output_dir: Path) -> list[str]:
         """Run target validation. Returns list of errors (empty = valid)."""
         validator = TargetValidator()
-        return validator.validate(output_dir=output_dir)
+        return validator.validate(output_dir=output_dir, platform=self._platform)
 
     def _run_all_converters(self, source_dir: Path, temp_dir: Path) -> None:
         """Run all converter modules in order.
@@ -394,19 +394,29 @@ class ConversionEngine:
 
         template = self._template_env.get_template(template_name)
         converter = AgentConverter()
+        agent_format_type = (agent_format or {}).get("type", "toml")
 
         seen_agent_names: dict[str, str] = {}
 
         for agent_file in sorted(source_agents_dir.glob("*.md")):
             logger.info("Converting agent: %s", agent_file.name)
             source_text = agent_file.read_text(encoding="utf-8")
-            converted = converter.convert_from_text(
-                source_text=source_text,
-                source_path=agent_file,
-                rules=rules,
-                naming=naming,
-                template=template,
-            )
+            if agent_format_type == "markdown":
+                converted = converter.convert_markdown_from_text(
+                    source_text=source_text,
+                    source_path=agent_file,
+                    rules=rules,
+                    naming=naming,
+                    template=template,
+                )
+            else:
+                converted = converter.convert_from_text(
+                    source_text=source_text,
+                    source_path=agent_file,
+                    rules=rules,
+                    naming=naming,
+                    template=template,
+                )
 
             name_key = converted.agent_name.casefold()
             if name_key in seen_agent_names:
@@ -419,8 +429,15 @@ class ConversionEngine:
                 )
             seen_agent_names[name_key] = agent_file.name
 
-            out_file = output_agents_dir / f"{converted.agent_name}.toml"
-            out_file.write_text(converted.toml_content, encoding="utf-8")
+            output_extension = getattr(converted, "output_extension", ".toml")
+            if not isinstance(output_extension, str):
+                output_extension = ".toml"
+            rendered_content = getattr(converted, "rendered_content", None)
+            if not isinstance(rendered_content, str):
+                rendered_content = converted.toml_content
+
+            out_file = output_agents_dir / f"{converted.agent_name}{output_extension}"
+            out_file.write_text(rendered_content, encoding="utf-8")
 
     def _convert_hooks(self, source_dir: Path, temp_dir: Path) -> None:
         """Convert hook artifacts (session-start script and hooks.json)."""

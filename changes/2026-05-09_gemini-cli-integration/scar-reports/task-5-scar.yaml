@@ -1,0 +1,27 @@
+task_id: task-5
+completion_status: done
+
+known_shortcuts:
+  - description: "JSON settings merge preserves existing non-hook keys with target precedence but does not deep-merge arbitrary nested non-hook objects."
+    deferred_to_feature_iteration: false
+
+silent_failure_conditions:
+  - description: "Hook duplicate detection uses exact JSON object equality; semantically identical commands with different formatting could duplicate."
+    deferred_to_feature_iteration: true
+
+assumptions_made:
+  - assumption: "Gemini settings hooks can be merged by appending unique entries under hooks.<event>."
+    verified: true
+    note: "Project/global installer tests verify preservation, idempotency, invalid JSON failure, and backup behavior."
+    deferred_to_feature_iteration: false
+
+debt_registered: true
+debt_location: "samsara_cli/installer/install.py"
+
+resolved_items:
+  - original_section: "silent_failure_conditions"
+    original_description: "Project install overwrote existing .gemini/settings.json."
+    resolution: "Added settings.json merge helper and tests preserving unrelated settings and hooks."
+  - original_section: "silent_failure_conditions"
+    original_description: "Global install parsed Gemini JSON settings as TOML."
+    resolution: "Global install now branches on .json config files after backup and relies on native tree settings merge."

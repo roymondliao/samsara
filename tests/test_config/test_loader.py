@@ -102,6 +102,50 @@ class TestLoadPlatformConfig:
                 pytest.fail(f"Rule '{rule.id}' has invalid regex '{rule.match}': {e}")
 
 
+class TestLoadGeminiCli:
+    def test_load_gemini_cli_returns_platform_config(self):
+        config = load_platform_config("gemini-cli")
+        assert isinstance(config, PlatformConfig)
+
+    def test_gemini_cli_platform_identity(self):
+        config = load_platform_config("gemini-cli")
+        assert config.platform.name == "gemini-cli"
+        assert config.platform.version_cmd == "gemini --version"
+
+    def test_gemini_cli_paths_are_native_gemini_paths(self):
+        config = load_platform_config("gemini-cli")
+        assert config.paths is not None
+        assert config.paths.plugin_dir == ".gemini"
+        assert config.paths.skills_dir == ".gemini/skills"
+        assert config.paths.agents_dir == ".gemini/agents"
+        assert config.paths.hooks_file == "settings.json"
+
+    def test_gemini_cli_global_config_path(self):
+        config = load_platform_config("gemini-cli")
+        assert config.install is not None
+        assert config.install.global_ is not None
+        assert config.install.global_.config_path == "~/.gemini/settings.json"
+
+    def test_gemini_cli_formats(self):
+        config = load_platform_config("gemini-cli")
+        assert config.formats is not None
+        assert config.formats.agent_format is not None
+        assert config.formats.agent_format["type"] == "markdown"
+        assert config.formats.agent_format["template"] == "agent.md.j2"
+        assert config.formats.hook_output is not None
+        assert (
+            config.formats.hook_output["context_injection_field"]
+            == "hookSpecificOutput.additionalContext"
+        )
+        assert config.formats.hook_output["template"] == "settings.json.j2"
+
+    def test_gemini_cli_uses_gemini_skills_not_agents_alias(self):
+        config = load_platform_config("gemini-cli")
+        assert config.paths is not None
+        assert config.paths.skills_dir == ".gemini/skills"
+        assert config.paths.skills_dir != ".agents/skills"
+
+
 class TestLoadClaudeCode:
     def test_load_claude_code_returns_platform_config(self):
         """claude-code platform must be loadable."""

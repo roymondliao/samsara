@@ -44,6 +44,7 @@ logger = logging.getLogger(__name__)
 # Known gap: if a platform's install URL changes, this must be updated manually.
 _INSTALL_URLS: dict[str, str] = {
     "codex": "https://github.com/openai/codex — install Codex CLI first",
+    "gemini-cli": "https://github.com/google-gemini/gemini-cli — install Gemini CLI first",
 }
 
 # Platform YAML directory — used by available_platforms() for discovery.

@@ -456,3 +456,39 @@ class TestPipelineOutputStructure:
             f"Unexpected output skill dirs found: {sorted(extra)}. "
             "These were not derived from any source skill frontmatter name."
         )
+
+
+class TestGeminiPipelineOutputStructure:
+    """Verify Gemini output structure after a successful pipeline run."""
+
+    @pytest.fixture(scope="class")
+    def pipeline_output(self, tmp_path_factory) -> Path:
+        output_dir = tmp_path_factory.mktemp("pipeline-gemini") / "gemini_output"
+        engine = ConversionEngine("gemini-cli")
+        engine.run(source_dir=FIXTURE_SOURCE, output_dir=output_dir)
+        return output_dir
+
+    def test_gemini_skills_directory_exists(self, pipeline_output: Path) -> None:
+        assert (pipeline_output / ".gemini" / "skills").is_dir()
+        assert not (pipeline_output / ".agents" / "skills").exists()
+
+    def test_gemini_agents_are_markdown(self, pipeline_output: Path) -> None:
+        agents_dir = pipeline_output / ".gemini" / "agents"
+        assert agents_dir.is_dir()
+        assert list(agents_dir.glob("*.md"))
+        assert not list(agents_dir.glob("*.toml"))
+
+    def test_gemini_settings_json_exists_and_parses(
+        self, pipeline_output: Path
+    ) -> None:
+        settings_path = pipeline_output / ".gemini" / "settings.json"
+        assert settings_path.exists()
+        data = json.loads(settings_path.read_text(encoding="utf-8"))
+        assert data["hooks"]["SessionStart"]
+
+    def test_gemini_skill_count_matches_source(self, pipeline_output: Path) -> None:
+        source_skills = [d for d in (FIXTURE_SOURCE / "skills").iterdir() if d.is_dir()]
+        output_skills = [
+            d for d in (pipeline_output / ".gemini" / "skills").iterdir() if d.is_dir()
+        ]
+        assert len(output_skills) == len(source_skills)

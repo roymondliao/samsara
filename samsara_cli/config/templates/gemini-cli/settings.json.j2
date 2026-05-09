@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "{{ session_start_matchers | join('|') }}",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "{{ hooks_dir }}/samsara-session-start.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

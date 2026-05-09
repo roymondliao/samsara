@@ -1,0 +1,131 @@
+feature: gemini-cli-integration
+coverage_type: verified
+
+scenarios:
+  - name: "Silent failure - existing Gemini settings overwritten during project install"
+    type: death_path
+    given: "a project with an existing .gemini/settings.json containing unrelated settings and hooks"
+    when: "samsara-cli install gemini-cli --scope project runs"
+    then:
+      - "unrelated settings and hooks remain present after install"
+      - "samsara SessionStart hook is added exactly once"
+      - "install outcome is exactly one of: success, failure, unknown"
+      - "unknown or invalid JSON must fail install, never overwrite settings"
+
+  - name: "Silent failure - repeated install duplicates SessionStart hook"
+    type: death_path
+    given: "a project or user Gemini settings file already containing the samsara SessionStart hook"
+    when: "samsara-cli install gemini-cli is run again"
+    then:
+      - "settings.json contains one equivalent samsara hook entry, not duplicates"
+      - "existing non-samsara hooks remain unchanged"
+      - "the merge decision can be reconstructed from test assertions or logs"
+
+  - name: "Silent failure - hook stdout is not valid JSON"
+    type: death_path
+    given: "a converted .gemini/hooks/samsara-session-start.sh script"
+    when: "the hook receives a minimal Gemini SessionStart JSON payload on stdin"
+    then:
+      - "stdout parses as JSON"
+      - "stdout contains no plain-text logs outside JSON"
+      - "stderr may contain diagnostics but must not be required for normal success"
+
+  - name: "Silent failure - bootstrap context is displayed but not injected"
+    type: death_path
+    given: "a converted Gemini SessionStart hook"
+    when: "the hook script runs successfully"
+    then:
+      - "stdout JSON includes hookSpecificOutput.additionalContext"
+      - "additionalContext contains the samsara bootstrap context"
+      - "systemMessage alone is insufficient and must not count as success"
+
+  - name: "Silent failure - Gemini agent output uses wrong format"
+    type: death_path
+    given: "source agents/*.md exists"
+    when: "samsara-cli convert --platform gemini-cli runs"
+    then:
+      - "converted agents are .gemini/agents/*.md files"
+      - "each agent starts with YAML frontmatter containing name and description"
+      - "no Gemini agent is emitted as TOML"
+
+  - name: "Silent failure - unconverted source syntax leaks into Gemini output"
+    type: death_path
+    given: "source skills or agents contain Claude/Codex-specific invocation syntax"
+    when: "Gemini conversion and target validation run"
+    then:
+      - "converted .md and .txt files contain no invoke `samsara:X` source pattern"
+      - "converted .md and .txt files contain no subagent_type: source pattern"
+      - "validation fails before final output is committed if either pattern remains"
+
+  - name: "Silent failure - output uses .agents/skills alias"
+    type: death_path
+    given: "gemini-cli platform config is selected"
+    when: "conversion completes"
+    then:
+      - "skills are written under .gemini/skills"
+      - "no .agents/skills directory is created for Gemini skill output"
+      - "references may still use .agents/references if configured"
+
+  - name: "Degradation - Gemini CLI unavailable during smoke tests"
+    type: degradation
+    given: "gemini --version is not available on the test machine"
+    when: "Gemini smoke tests run"
+    then:
+      - "smoke tests skip with an explicit reason"
+      - "unit and structural integration tests still run"
+      - "absence of Gemini CLI is not reported as conversion success"
+
+  - name: "Degradation - bootstrap skill file cannot be read by hook"
+    type: degradation
+    given: "the converted hook script cannot read .gemini/skills/samsara-samsara-bootstrap/SKILL.md"
+    when: "SessionStart hook runs"
+    then:
+      - "hook emits valid JSON"
+      - "additionalContext marks degraded bootstrap loading"
+      - "hook does not print shell errors to stdout"
+
+  - name: "Unknown outcome - partial install copy"
+    type: death_path
+    given: "file copy or settings write fails during install"
+    when: "samsara-cli install gemini-cli runs"
+    then:
+      - "install reports failure or unknown, not success"
+      - "global install has a settings backup before modification"
+      - "instructions do not tell the user that Gemini is ready"
+
+  - name: "Success - convert produces Gemini native output"
+    type: happy_path
+    given: "a valid samsara source tree"
+    when: "samsara-cli convert --platform gemini-cli runs"
+    then:
+      - ".gemini/skills contains all source skill directories with samsara-prefixed names"
+      - ".gemini/agents contains markdown subagent files"
+      - ".gemini/settings.json contains hooks.SessionStart"
+      - "target validation passes with no errors"
+
+  - name: "Success - project install is local and idempotent"
+    type: happy_path
+    given: "a project directory and converted Gemini output"
+    when: "samsara-cli install gemini-cli --scope project is run twice"
+    then:
+      - "project .gemini files exist after install"
+      - "HOME/.gemini is not modified"
+      - "second install produces the same semantic settings JSON"
+
+  - name: "Success - global install writes only patched HOME"
+    type: happy_path
+    given: "tests patch HOME to an isolated temporary directory"
+    when: "samsara-cli install gemini-cli --scope global runs"
+    then:
+      - "files are installed under the patched HOME/.gemini"
+      - "settings.json.bak exists before settings mutation"
+      - "the real user HOME/.gemini is not touched"
+
+  - name: "Success - Codex regression suite still passes"
+    type: happy_path
+    given: "Gemini support has been added through shared converter and installer code"
+    when: "existing Codex unit, integration, and snapshot tests run"
+    then:
+      - "Codex output remains structurally valid"
+      - "Codex snapshots fail only for intentional reviewed changes"
+      - "no Codex platform config behavior is changed accidentally"

@@ -44,6 +44,16 @@ class TestPlatformDetectorCLINotInstalled:
             "returning True would allow installer to proceed silently"
         )
 
+    def test_gemini_detect_returns_false_when_version_cmd_fails(self):
+        """Gemini CLI absence must return False, not raise or silently pass."""
+        from samsara_cli.installer.detect import PlatformDetector
+
+        detector = PlatformDetector()
+        with patch("subprocess.run") as mock_run:
+            mock_run.side_effect = FileNotFoundError("gemini: command not found")
+            result = detector.detect("gemini-cli")
+        assert result is False
+
     def test_detect_returns_false_when_version_cmd_nonzero_exit(self):
         """DC-8-1: version_cmd exits with non-zero → detect() returns False."""
         from samsara_cli.installer.detect import PlatformDetector
@@ -127,6 +137,9 @@ class TestPlatformDetectorInvalidPlatform:
         assert "codex" in error_msg.lower(), (
             "Error must list available platforms — 'codex' must appear in the error message"
         )
+        assert "gemini-cli" in error_msg.lower(), (
+            "Error must list available platforms — 'gemini-cli' must appear in the error message"
+        )
 
     def test_available_platforms_returns_nonempty_list(self):
         """DC-8-5: available_platforms() must return non-empty list for error formatting."""
@@ -136,6 +149,7 @@ class TestPlatformDetectorInvalidPlatform:
         platforms = detector.available_platforms()
         assert len(platforms) > 0, "available_platforms() must not return empty list"
         assert "codex" in platforms, "codex must be in available platforms"
+        assert "gemini-cli" in platforms, "gemini-cli must be in available platforms"
 
     def test_detect_with_none_platform_raises_value_error(self):
         """DC-8-5: detect(None) must raise ValueError — not AttributeError or TypeError."""
