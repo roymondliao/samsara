@@ -1,0 +1,57 @@
+feature: "gemini-cli-integration"
+signal_lost_initial: 19
+
+budget:
+  max_rounds: 3
+  reviewer_retry_limit: 2
+
+rounds:
+  - round: 1
+    signal_lost_before: 19
+    budget_context:
+      remaining_rounds_at_start: 2
+      stagnation_count_at_start: 0
+      net_rot_previous_round: 0
+      strategy_hint: explore
+    items_triaged: 19
+    triage_result:
+      fix:
+        - "Gemini settings validation checks SessionStart presence but not full hook command executability."
+        - "Hook duplicate detection uses exact JSON object equality; semantically identical commands with different formatting could duplicate."
+        - "Gemini markdown frontmatter validation is delimiter/simple key-value based, not a full YAML parse."
+        - "Live Gemini smoke only checks gemini --version; project skill discovery is not verified."
+        - "Gemini snapshot comparison does not show first differing line like Codex snapshot comparison."
+        - "Gemini hook JSON escaping was investigated; final decision is to align with Codex-style common escaping rather than maintain a large bash control-character table."
+      accept: []
+      defer:
+        - "Gemini hook matcher remains startup-only until a reliable non-interactive hook event matrix is available."
+        - "Gemini CLI executable name is assumed to be gemini; alternate binary names remain unsupported."
+        - "Agent descriptions are still extracted heuristically from heading/first non-empty line."
+        - "Gemini agent name constraints beyond local slug validation are not fully runtime-verified."
+        - "Gemini hook script consumes stdin without event-specific branching; settings-level wiring remains responsible for event selection."
+        - "Raw JSON control characters beyond quote, backslash, newline, carriage return, and tab remain a documented shell escaping limitation, matching the Codex hook template."
+        - "Gemini hook SessionStart shape is structurally validated and script-tested, but not proven by a reliable non-interactive Gemini hook firing command."
+        - "Gemini JSON settings merge does not deep-merge arbitrary nested non-hook objects."
+        - "CLI tests still use mocks rather than full installed-console-script subprocess coverage."
+        - "Installer still fails later if Gemini CLI is absent; this is expected install-time behavior."
+    fixes_applied: 6
+    fixes_scar_count: 1
+    budget_spent:
+      implementer_dispatches: 0
+      reviewer_dispatches: 0
+      reviewer_retries: 0
+      validation_runs: 15
+    evidence_gained:
+      - "Added validator checks rejecting missing, non-executable, and absolute Gemini hook commands."
+      - "Added installer test proving semantically equivalent Gemini hook commands are deduped by command identity."
+      - "Added malformed YAML frontmatter test and switched Gemini agent frontmatter validation to yaml.safe_load."
+      - "Verified installed Gemini CLI 0.41.2 and added live smoke coverage for project skill discovery with isolated GEMINI_CLI_HOME and GEMINI_CLI_TRUST_WORKSPACE=true."
+      - "Added shared snapshot diff helper so Gemini snapshot failures report the first differing line."
+      - "Added common JSON character hook test and aligned Gemini hook escaping with Codex after rejecting node/runtime dependency and large bash control-character table approaches."
+    residual_risk:
+      - "Generated hook shell JSON escaping intentionally matches Codex's common-character coverage; raw uncommon control characters in SKILL.md can still produce malformed JSON."
+      - "Live Gemini smoke verifies project skill discovery, not subagent invocation or actual SessionStart hook firing."
+      - "Some remaining items are product/runtime assumptions rather than bounded code fixes."
+    signal_lost_after: 10
+    decision: stop
+    decision_reason: "User asked to fix what can be fixed; remaining items are deferred residual risks or require broader Gemini runtime behavior decisions."
