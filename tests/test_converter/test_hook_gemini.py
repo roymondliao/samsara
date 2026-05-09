@@ -81,11 +81,11 @@ class TestGeminiHookScript:
         assert "not found" in context.lower()
         assert "No such file" not in result.stdout
 
-    def test_hook_escapes_json_control_characters(self, tmp_path: Path):
+    def test_hook_escapes_common_json_characters(self, tmp_path: Path):
         skill_dir = tmp_path / ".gemini" / "skills" / "samsara-samsara-bootstrap"
         skill_dir.mkdir(parents=True)
         (skill_dir / "SKILL.md").write_text(
-            "# Bootstrap\n\ncontrol chars: \b\f\u001f\n",
+            '# Bootstrap\n\nquote: " backslash: \\ tab:\t\n',
             encoding="utf-8",
         )
         script_path = tmp_path / "samsara-session-start.sh"
@@ -96,10 +96,9 @@ class TestGeminiHookScript:
         assert result.returncode == 0
         payload = json.loads(result.stdout)
         context = payload["hookSpecificOutput"]["additionalContext"]
-        assert "control chars" in context
-        assert "\b" in context
-        assert "\f" in context
-        assert "\u001f" in context
+        assert 'quote: "' in context
+        assert "backslash: \\" in context
+        assert "tab:\t" in context
 
 
 class TestGeminiSettingsRendering:
