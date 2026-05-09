@@ -17,6 +17,9 @@ tests/container-samples/
 .agents/
 .codex/
 
+# Gemini
+.gemini/
+
 # For Packer
 mcp_label_structure.pkrvars.hcl
 

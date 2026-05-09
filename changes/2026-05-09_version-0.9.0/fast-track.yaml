@@ -1,0 +1,29 @@
+type: fast_track
+description: "Bump samsara release metadata to 0.9.0 for the Gemini CLI integration release."
+death_clause: "If samsara-cli version reports anything other than 0.9.0 after the bump, this change is failed."
+acceptance:
+  - "pyproject.toml declares project version 0.9.0."
+  - ".claude-plugin plugin and marketplace metadata declare version 0.9.0."
+  - "uv.lock records the editable samsara package as version 0.9.0."
+  - "samsara-cli version reports samsara-cli 0.9.0."
+scar_tag: none
+scar_items: []
+files_changed:
+  - ".claude-plugin/marketplace.json"
+  - ".claude-plugin/plugin.json"
+  - "pyproject.toml"
+  - "uv.lock"
+  - "tests/test_cli/test_main.py"
+quality_checklist:
+  - criterion: "C5 Reuse"
+    checked: true
+    note: "No helper logic was added; the change reuses the existing CLI version command path."
+  - criterion: "C6 Clear Structure"
+    checked: true
+    note: "Version values remain in existing metadata files and the existing CLI test module."
+  - criterion: "C7 Elegant Logic"
+    checked: true
+    note: "The only test addition asserts the release string from the existing command."
+  - criterion: "C8 No Redundancy"
+    checked: true
+    note: "The duplicate version fields already existed as release metadata; this change synchronizes them rather than adding a new source."

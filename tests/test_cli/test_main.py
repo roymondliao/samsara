@@ -116,6 +116,13 @@ class TestCLIVersion:
         result = runner.invoke(app, ["version"])
         assert len(result.output.strip()) > 0
 
+    def test_version_outputs_release_version(self):
+        """version reports the current packaged release."""
+        from samsara_cli.main import app
+
+        result = runner.invoke(app, ["version"])
+        assert result.output.strip() == "samsara-cli 0.9.0"
+
 
 # ---------------------------------------------------------------------------
 # convert command
