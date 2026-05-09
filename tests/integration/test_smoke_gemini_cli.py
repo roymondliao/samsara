@@ -124,3 +124,28 @@ class TestGeminiLiveCli:
             check=False,
         )
         assert result.returncode == 0
+
+    def test_live_gemini_cli_discovers_project_skills(
+        self, smoke_output_dir: Path, tmp_path: Path
+    ) -> None:
+        if not _is_gemini_installed():
+            pytest.skip("Gemini CLI is not installed; live discovery smoke skipped.")
+
+        env = os.environ.copy()
+        env["GEMINI_CLI_HOME"] = str(tmp_path / "gemini-home")
+        env["GEMINI_CLI_TRUST_WORKSPACE"] = "true"
+        result = subprocess.run(
+            ["gemini", "skills", "list", "--all"],
+            capture_output=True,
+            text=True,
+            cwd=smoke_output_dir,
+            env=env,
+            timeout=20,
+            check=False,
+        )
+        output = result.stdout + result.stderr
+
+        assert result.returncode == 0
+        assert "implement [Enabled]" in output
+        assert ".gemini/skills/samsara-implement/SKILL.md" in output
+        assert "untrusted" not in output.lower()
