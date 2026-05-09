@@ -1,0 +1,38 @@
+delivered_capability: "samsara-cli can convert, validate, install, and smoke-test samsara artifacts for Gemini CLI using native .gemini skills, agents, hooks, and settings."
+
+known_failure_modes:
+  - mode: "Existing Gemini settings.json could be invalid or structurally incompatible with hooks merge."
+    severity: degradation
+    detection: "Installer JSON parsing fails loudly with InstallerError; tests cover invalid JSON and non-list hook events."
+  - mode: "Gemini SessionStart hook can emit malformed JSON if bootstrap skill content contains raw uncommon control characters beyond quote, backslash, newline, carriage return, and tab."
+    severity: degradation
+    detection: "Hook stdout JSON tests cover common characters; residual raw-control risk is documented in iteration-log.yaml."
+  - mode: "Gemini CLI runtime may change project skill discovery, trust behavior, or hook loading semantics."
+    severity: degradation
+    detection: "Skip-safe live smoke test runs gemini skills list --all with isolated GEMINI_CLI_HOME and GEMINI_CLI_TRUST_WORKSPACE=true."
+  - mode: "Gemini hook command configuration could point outside generated output if validator regresses."
+    severity: silent_corruption
+    detection: "Target validator rejects absolute paths, missing commands, non-executable commands, and commands escaping output_dir."
+  - mode: "Converted Gemini agent metadata could become malformed YAML."
+    severity: degradation
+    detection: "Target validator parses frontmatter with yaml.safe_load and rejects malformed or missing name/description fields."
+
+accepted_risks:
+  - risk: "Live smoke verifies Gemini project skill discovery but not actual subagent invocation or live SessionStart hook firing."
+    accepted_by: "human"
+    expires: "2026-08-09"
+  - risk: "Gemini hook shell JSON escaping intentionally matches Codex common-character coverage instead of maintaining a large bash control-character escape table."
+    accepted_by: "human"
+    expires: "2026-08-09"
+  - risk: "Gemini agent descriptions are still derived heuristically from source headings or first non-empty lines."
+    accepted_by: "human"
+    expires: "2026-08-09"
+
+silent_failure_surface: high
+
+monitoring_hooks:
+  - "Run uv run pytest before release; full suite currently covers Gemini config, conversion, installer merge, target validation, snapshots, and skip-safe smoke."
+  - "Run uv run pytest tests/integration/test_smoke_gemini_cli.py on machines with Gemini CLI installed to verify live project skill discovery."
+  - "Run samsara-cli validate --platform gemini-cli --source <converted-output> before installing generated Gemini artifacts."
+
+kill_switch: "Do not run samsara-cli install gemini-cli; remove generated .gemini/skills/samsara-*, .gemini/agents/samsara-*.md, .gemini/hooks/samsara-session-start.sh, and the samsara SessionStart hook entry from .gemini/settings.json."
