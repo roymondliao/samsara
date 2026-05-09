@@ -158,6 +158,21 @@ class TestGeminiTargetValidation:
         assert errors
         assert "absolute" in " ".join(errors).lower()
 
+    def test_gemini_rejects_hook_command_path_traversal(self, tmp_path: Path):
+        output = make_gemini_output(tmp_path)
+        outside_script = tmp_path / "outside.sh"
+        outside_script.write_text("#!/usr/bin/env bash\n")
+        outside_script.chmod(0o755)
+        settings_path = output / ".gemini" / "settings.json"
+        settings = json.loads(settings_path.read_text())
+        settings["hooks"]["SessionStart"][0]["hooks"][0]["command"] = "../outside.sh"
+        settings_path.write_text(json.dumps(settings))
+
+        errors = TargetValidator().validate(output_dir=output, platform="gemini-cli")
+
+        assert errors
+        assert "escapes output directory" in " ".join(errors)
+
     def test_gemini_detects_source_patterns(self, tmp_path: Path):
         output = make_gemini_output(tmp_path)
         skill_md = output / ".gemini" / "skills" / "samsara-research" / "SKILL.md"

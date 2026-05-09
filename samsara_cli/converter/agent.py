@@ -357,7 +357,7 @@ class AgentConverter:
             name=agent_name,
             description=description or agent_name,
             body=transformed_body.rstrip(),
-            source_path=str(source_path),
+            source_path=source_path.name,
         )
 
         if not rendered_content.startswith("---\n"):

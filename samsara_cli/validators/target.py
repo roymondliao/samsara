@@ -287,6 +287,13 @@ class TargetValidator:
                     continue
 
                 command_path = output_dir / command
+                try:
+                    command_path.resolve(strict=False).relative_to(output_dir.resolve())
+                except ValueError:
+                    errors.append(
+                        f"Gemini SessionStart hook command escapes output directory: {command!r}."
+                    )
+                    continue
                 if not command_path.exists():
                     errors.append(
                         f"Gemini SessionStart hook command target does not exist: {command}."

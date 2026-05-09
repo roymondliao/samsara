@@ -42,6 +42,8 @@ class TestGeminiAgentMarkdownConversion:
         assert 'description: "Implementer"' in converted.rendered_content
         assert "read_file tool" in converted.rendered_content
         assert "developer_instructions" not in converted.rendered_content
+        assert f"Source: {source_path.name}" in converted.rendered_content
+        assert str(tmp_path) not in converted.rendered_content
 
     def test_gemini_agent_conversion_rejects_empty_body(self, tmp_path: Path):
         config, template = _gemini_inputs()
