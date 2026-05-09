@@ -179,9 +179,21 @@ Samsara produces structured artifacts throughout the workflow:
 | Implement | Scar report | YAML | Per-task wounds: assumptions, silent failures, edge cases |
 | Validate | Ship manifest | YAML | Delivery summary with failure budget |
 
-## Version
+## Release
 
-Current version: **0.5.0**
+`.claude-plugin/marketplace.json` `metadata.version` is the release source of truth.
+
+When preparing a release:
+
+```bash
+source .venv/bin/activate
+uv run samsara-cli release sync-version
+uv run samsara-cli release check-version
+```
+
+`sync-version` updates `.claude-plugin/plugin.json` and `pyproject.toml` to match marketplace metadata. `check-version` fails if any version drifts before CI or the release workflow creates a tag.
+
+The GitHub release workflow runs when a pull request is closed by merging into `main`. Branch protection is expected to require the PR CI workflow to pass before merge.
 
 ## License
 

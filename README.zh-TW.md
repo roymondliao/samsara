@@ -179,9 +179,21 @@ Samsara 在工作流程中產出結構化的產出物：
 | Implement | Scar report | YAML | 每個任務的傷疤：假設、靜默失敗、邊界條件 |
 | Validate | Ship manifest | YAML | 交付摘要，含失敗預算 |
 
-## 版本
+## Release
 
-目前版本：**0.5.0**
+`.claude-plugin/marketplace.json` 的 `metadata.version` 是 release 的 source of truth，也是唯一版本來源。
+
+準備 release 時請執行：
+
+```bash
+source .venv/bin/activate
+uv run samsara-cli release sync-version
+uv run samsara-cli release check-version
+```
+
+`sync-version` 會把 `.claude-plugin/plugin.json` 與 `pyproject.toml` 同步到 marketplace metadata；`check-version` 會在 CI 或 release workflow 建 tag 前擋下任何版本漂移。
+
+GitHub release workflow 會在 PR merge 進 `main`、並且 PR 被 closed 後執行。前提是假設 branch protection 已要求該 PR 的 CI 必須先通過才能 merge。
 
 ## 授權
 

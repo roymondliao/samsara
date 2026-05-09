@@ -24,6 +24,7 @@ Source discovery convention:
 - A valid samsara source directory contains .claude-plugin/plugin.json
 """
 
+import json
 from pathlib import Path
 from typing import Annotated, Optional
 
@@ -34,11 +35,22 @@ from rich.panel import Panel
 from samsara_cli.converter.engine import ConversionEngine, EngineError
 from samsara_cli.installer.detect import PlatformDetector
 from samsara_cli.installer.install import Installer, InstallerError
+from samsara_cli.release.version_metadata import (
+    PartialSyncError,
+    SyncResult,
+    VersionDriftError,
+    VersionMetadata,
+    VersionMetadataError,
+)
 from samsara_cli.validators.target import TargetValidator
 
 app = typer.Typer(
     name="samsara-cli",
     help="Convert samsara Claude Code plugins to other platform formats.",
+    no_args_is_help=True,
+)
+release_app = typer.Typer(
+    help="Inspect and synchronize release version metadata.",
     no_args_is_help=True,
 )
 
@@ -69,6 +81,16 @@ def _validate_platform(platform: str) -> None:
         )
 
 
+def _format_sync_result(result: SyncResult) -> str:
+    changed = ", ".join(path.name for path in result.changed_paths) or "none"
+    mode = "check-only" if result.check_only else "written"
+    return (
+        f"marketplace version: {result.version}\n"
+        f"release tag: {result.tag}\n"
+        f"changed files ({mode}): {changed}"
+    )
+
+
 # ---------------------------------------------------------------------------
 # version
 # ---------------------------------------------------------------------------
@@ -84,6 +106,108 @@ def version() -> None:
     except Exception:
         ver = "unknown"
     typer.echo(f"samsara-cli {ver}")
+
+
+@release_app.command("check-version")
+def release_check_version(
+    root: Annotated[
+        Path,
+        typer.Option("--root", help="Repository root containing version metadata"),
+    ] = Path.cwd(),
+    json_output: Annotated[
+        bool,
+        typer.Option("--json", help="Emit machine-readable JSON"),
+    ] = False,
+) -> None:
+    """Check whether marketplace, plugin, and pyproject versions are synchronized."""
+    try:
+        metadata = VersionMetadata.load(root)
+    except VersionDriftError as exc:
+        mismatch_lines = [
+            {
+                "path": str(mismatch.path),
+                "field": mismatch.field,
+                "expected": mismatch.expected,
+                "actual": mismatch.actual,
+            }
+            for mismatch in exc.mismatches
+        ]
+        if json_output:
+            typer.echo(
+                json.dumps(
+                    {
+                        "status": "failure",
+                        "error": "version_drift",
+                        "mismatches": mismatch_lines,
+                    }
+                )
+            )
+            raise typer.Exit(code=1)
+        detail = "\n".join(
+            f"  - {item['path']} ({item['field']}): expected {item['expected']}, got {item['actual']}"
+            for item in mismatch_lines
+        )
+        _exit_with_error(f"Version drift detected:\n{detail}")
+    except VersionMetadataError as exc:
+        if json_output:
+            typer.echo(json.dumps({"status": "failure", "error": str(exc)}))
+            raise typer.Exit(code=1)
+        _exit_with_error(str(exc))
+
+    if json_output:
+        typer.echo(
+            json.dumps(
+                {
+                    "status": "success",
+                    "version": metadata.marketplace_version,
+                    "tag": metadata.tag,
+                    "is_synced": metadata.is_synced,
+                }
+            )
+        )
+        return
+
+    typer.echo(
+        f"Versions synchronized: {metadata.marketplace_version} ({metadata.tag})"
+    )
+
+
+@release_app.command("sync-version")
+def release_sync_version(
+    root: Annotated[
+        Path,
+        typer.Option("--root", help="Repository root containing version metadata"),
+    ] = Path.cwd(),
+    check_only: Annotated[
+        bool,
+        typer.Option("--check", help="Report required changes without writing files"),
+    ] = False,
+) -> None:
+    """Synchronize plugin and pyproject versions to marketplace metadata.version."""
+    try:
+        result = VersionMetadata.sync_from_marketplace(root, check_only=check_only)
+    except PartialSyncError as exc:
+        _exit_with_error(str(exc))
+    except VersionMetadataError as exc:
+        _exit_with_error(str(exc))
+
+    typer.echo(_format_sync_result(result))
+
+
+@release_app.command("print-tag")
+def release_print_tag(
+    root: Annotated[
+        Path,
+        typer.Option("--root", help="Repository root containing version metadata"),
+    ] = Path.cwd(),
+) -> None:
+    """Print the release tag derived from marketplace metadata.version."""
+    try:
+        metadata = VersionMetadata.load(root)
+    except VersionMetadataError as exc:
+        _exit_with_error(str(exc))
+
+    typer.echo(metadata.tag)
 
 
 # ---------------------------------------------------------------------------
@@ -339,6 +463,9 @@ def validate(
         raise typer.Exit(code=1)
 
     console.print("[green]Validation passed[/green] — no errors found.")
+
+
+app.add_typer(release_app, name="release")
 
 
 if __name__ == "__main__":
