@@ -137,6 +137,52 @@ class TestGeminiProjectInstall:
         ]
         assert len(samsara_entries) == 1
 
+    def test_project_install_dedupes_semantically_equivalent_hook_command(
+        self, tmp_path: Path
+    ):
+        from samsara_cli.installer.install import Installer
+
+        project = tmp_path / "project"
+        settings_dir = project / ".gemini"
+        settings_dir.mkdir(parents=True)
+        (settings_dir / "settings.json").write_text(
+            json.dumps(
+                {
+                    "hooks": {
+                        "SessionStart": [
+                            {
+                                "matcher": "manual",
+                                "hooks": [
+                                    {
+                                        "type": "command",
+                                        "command": ".gemini/hooks/samsara-session-start.sh",
+                                        "statusMessage": "Existing equivalent command",
+                                    }
+                                ],
+                            }
+                        ]
+                    }
+                }
+            )
+        )
+
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="gemini 1.0")
+            Installer("gemini-cli").install(
+                source_dir=make_source(tmp_path),
+                scope="project",
+                cwd=project,
+                converted_source_dir=make_gemini_converted_output(tmp_path),
+            )
+
+        settings = json.loads((settings_dir / "settings.json").read_text())
+        commands = [
+            hook["command"]
+            for entry in settings["hooks"]["SessionStart"]
+            for hook in entry["hooks"]
+        ]
+        assert commands.count(".gemini/hooks/samsara-session-start.sh") == 1
+
     def test_project_install_invalid_existing_settings_aborts(self, tmp_path: Path):
         from samsara_cli.installer.install import Installer, InstallerError
 

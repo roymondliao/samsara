@@ -462,14 +462,43 @@ class Installer:
                 raise InstallerError(
                     f"Cannot merge Gemini hooks event {event_name!r}: target is not a list."
                 )
+            existing_identities = self._hook_entry_identities(existing)
             for entry in entries:
-                if entry not in existing:
+                entry_identities = self._hook_entry_identities([entry])
+                if not entry_identities:
+                    if entry not in existing:
+                        existing.append(entry)
+                    continue
+                if existing_identities.isdisjoint(entry_identities):
                     existing.append(entry)
+                    existing_identities.update(entry_identities)
 
         target_path.write_text(
             json.dumps(target, indent=2, ensure_ascii=False) + "\n",
             encoding="utf-8",
         )
+
+    def _hook_entry_identities(self, entries: list) -> set[tuple[str, str]]:
+        """Return semantic identities for hook commands inside entries.
+
+        Gemini hook entries can differ in matcher/status metadata while still
+        invoking the same command. Command identity is the stable duplicate guard.
+        """
+        identities: set[tuple[str, str]] = set()
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+            hooks = entry.get("hooks")
+            if not isinstance(hooks, list):
+                continue
+            for hook in hooks:
+                if not isinstance(hook, dict):
+                    continue
+                hook_type = hook.get("type")
+                command = hook.get("command")
+                if isinstance(hook_type, str) and isinstance(command, str):
+                    identities.add((hook_type, command))
+        return identities
 
     def _merge_config_toml(self, source_path: Path, target_path: Path) -> None:
         """Merge required Codex config flags into an existing config.toml."""
