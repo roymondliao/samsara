@@ -54,6 +54,7 @@ Assumptions:
 
 import json
 import logging
+import os
 import re
 import tomllib
 from pathlib import Path
@@ -233,6 +234,66 @@ class TargetValidator:
         session_start = hooks.get("SessionStart")
         if not isinstance(session_start, list) or not session_start:
             errors.append("Gemini settings.json missing hooks.SessionStart entries.")
+        else:
+            errors.extend(
+                self._validate_gemini_session_start_commands(
+                    output_dir=output_dir,
+                    entries=session_start,
+                )
+            )
+
+        return errors
+
+    def _validate_gemini_session_start_commands(
+        self,
+        output_dir: Path,
+        entries: list,
+    ) -> list[str]:
+        """Validate Gemini SessionStart hook command targets."""
+        errors: list[str] = []
+
+        for entry_idx, entry in enumerate(entries):
+            if not isinstance(entry, dict):
+                errors.append(
+                    f"Gemini SessionStart entry {entry_idx} is not an object."
+                )
+                continue
+            hooks = entry.get("hooks")
+            if not isinstance(hooks, list) or not hooks:
+                errors.append(
+                    f"Gemini SessionStart entry {entry_idx} has no hooks list."
+                )
+                continue
+
+            for hook_idx, hook in enumerate(hooks):
+                if not isinstance(hook, dict):
+                    errors.append(
+                        f"Gemini SessionStart hook {entry_idx}.{hook_idx} is not an object."
+                    )
+                    continue
+                command = hook.get("command")
+                if not isinstance(command, str) or not command.strip():
+                    errors.append(
+                        f"Gemini SessionStart hook {entry_idx}.{hook_idx} missing command."
+                    )
+                    continue
+                if command.startswith("/") or Path(command).is_absolute():
+                    errors.append(
+                        f"Gemini SessionStart hook command is absolute: {command!r}. "
+                        "Commands must be relative to the project root."
+                    )
+                    continue
+
+                command_path = output_dir / command
+                if not command_path.exists():
+                    errors.append(
+                        f"Gemini SessionStart hook command target does not exist: {command}."
+                    )
+                    continue
+                if not os.access(command_path, os.X_OK):
+                    errors.append(
+                        f"Gemini SessionStart hook command target is not executable: {command}."
+                    )
 
         return errors
 

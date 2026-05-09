@@ -6,6 +6,7 @@ legacy Codex/fixture fallbacks.
 """
 
 import json
+import os
 from pathlib import Path
 
 from samsara_cli.validators.target import TargetValidator
@@ -32,7 +33,9 @@ def make_gemini_output(tmp_path: Path) -> Path:
 
     hooks_dir = output / ".gemini" / "hooks"
     hooks_dir.mkdir(parents=True)
-    (hooks_dir / "samsara-session-start.sh").write_text("#!/usr/bin/env bash\n")
+    script = hooks_dir / "samsara-session-start.sh"
+    script.write_text("#!/usr/bin/env bash\n")
+    script.chmod(0o755)
     (output / ".gemini" / "settings.json").write_text(
         json.dumps(
             {
@@ -109,6 +112,39 @@ class TestGeminiTargetValidation:
 
         assert errors
         assert "SessionStart" in " ".join(errors)
+
+    def test_gemini_rejects_missing_referenced_hook_script(self, tmp_path: Path):
+        output = make_gemini_output(tmp_path)
+        os.remove(output / ".gemini" / "hooks" / "samsara-session-start.sh")
+
+        errors = TargetValidator().validate(output_dir=output, platform="gemini-cli")
+
+        assert errors
+        assert "does not exist" in " ".join(errors)
+
+    def test_gemini_rejects_non_executable_referenced_hook_script(self, tmp_path: Path):
+        output = make_gemini_output(tmp_path)
+        script = output / ".gemini" / "hooks" / "samsara-session-start.sh"
+        script.chmod(0o644)
+
+        errors = TargetValidator().validate(output_dir=output, platform="gemini-cli")
+
+        assert errors
+        assert "executable" in " ".join(errors).lower()
+
+    def test_gemini_rejects_absolute_hook_command(self, tmp_path: Path):
+        output = make_gemini_output(tmp_path)
+        settings_path = output / ".gemini" / "settings.json"
+        settings = json.loads(settings_path.read_text())
+        settings["hooks"]["SessionStart"][0]["hooks"][0]["command"] = (
+            "/tmp/samsara-session-start.sh"
+        )
+        settings_path.write_text(json.dumps(settings))
+
+        errors = TargetValidator().validate(output_dir=output, platform="gemini-cli")
+
+        assert errors
+        assert "absolute" in " ".join(errors).lower()
 
     def test_gemini_detects_source_patterns(self, tmp_path: Path):
         output = make_gemini_output(tmp_path)
