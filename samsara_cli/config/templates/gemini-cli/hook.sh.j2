@@ -14,9 +14,37 @@ escape_for_json() {
     local s="$1"
     s="${s//\\/\\\\}"
     s="${s//\"/\\\"}"
-    s="${s//$'\n'/\\n}"
-    s="${s//$'\r'/\\r}"
-    s="${s//$'\t'/\\t}"
+    s="${s//$'\001'/\\u0001}"
+    s="${s//$'\002'/\\u0002}"
+    s="${s//$'\003'/\\u0003}"
+    s="${s//$'\004'/\\u0004}"
+    s="${s//$'\005'/\\u0005}"
+    s="${s//$'\006'/\\u0006}"
+    s="${s//$'\007'/\\u0007}"
+    s="${s//$'\010'/\\b}"
+    s="${s//$'\011'/\\t}"
+    s="${s//$'\012'/\\n}"
+    s="${s//$'\013'/\\u000b}"
+    s="${s//$'\014'/\\f}"
+    s="${s//$'\015'/\\r}"
+    s="${s//$'\016'/\\u000e}"
+    s="${s//$'\017'/\\u000f}"
+    s="${s//$'\020'/\\u0010}"
+    s="${s//$'\021'/\\u0011}"
+    s="${s//$'\022'/\\u0012}"
+    s="${s//$'\023'/\\u0013}"
+    s="${s//$'\024'/\\u0014}"
+    s="${s//$'\025'/\\u0015}"
+    s="${s//$'\026'/\\u0016}"
+    s="${s//$'\027'/\\u0017}"
+    s="${s//$'\030'/\\u0018}"
+    s="${s//$'\031'/\\u0019}"
+    s="${s//$'\032'/\\u001a}"
+    s="${s//$'\033'/\\u001b}"
+    s="${s//$'\034'/\\u001c}"
+    s="${s//$'\035'/\\u001d}"
+    s="${s//$'\036'/\\u001e}"
+    s="${s//$'\037'/\\u001f}"
     printf '%s' "$s"
 }
 
@@ -28,11 +56,20 @@ else
     degraded="true"
 fi
 
-bootstrap_escaped=$(escape_for_json "$bootstrap_content")
-session_context="<IMPORTANT>\nYou are operating under the Samsara framework (向死而驗).\n\n**Below is the full content of your 'samsara:samsara-bootstrap' skill:**\n\n${bootstrap_escaped}\n</IMPORTANT>"
-
 if [ "${degraded}" = "true" ]; then
-    session_context="<IMPORTANT>\nSamsara bootstrap context loading is degraded.\n\n${bootstrap_escaped}\n</IMPORTANT>"
+    session_context="<IMPORTANT>
+Samsara bootstrap context loading is degraded.
+
+${bootstrap_content}
+</IMPORTANT>"
+else
+    session_context="<IMPORTANT>
+You are operating under the Samsara framework (向死而驗).
+
+**Below is the full content of your 'samsara:samsara-bootstrap' skill:**
+
+${bootstrap_content}
+</IMPORTANT>"
 fi
 
 session_context_escaped=$(escape_for_json "$session_context")
