@@ -1,0 +1,17 @@
+name: General Question
+description: Ask a question
+title: "[Question]: "
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this question form!
+        Please complete the following form to help us assist you.
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: Ask your question here!
+    validations:
+      required: true
