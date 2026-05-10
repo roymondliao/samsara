@@ -1,0 +1,78 @@
+feature: auto-version-release
+coverage_type: verified
+
+scenarios:
+  - name: "Silent failure - version drift would publish lying metadata"
+    type: death_path
+    given: "marketplace metadata.version is 0.10.0 while plugin.json or pyproject.toml is 0.9.0"
+    when: "version check or release workflow runs"
+    then:
+      - "the check exits non-zero before any tag or release step"
+      - "the output lists every mismatched file and field"
+      - "state must be exactly one of: success, failure, unknown"
+      - "unknown must block release, never silently pass through"
+
+  - name: "Silent failure - workflow omits version gate"
+    type: death_path
+    given: "GitHub workflow YAML exists"
+    when: "static workflow contract tests inspect CI and release workflows"
+    then:
+      - "CI workflow must include `samsara-cli release check-version`"
+      - "release workflow validation must include version check before tag creation"
+      - "release job must not run with write permissions before validation succeeds"
+
+  - name: "Silent failure - existing tag points at different commit"
+    type: death_path
+    given: "remote tag v0.10.0 already exists and points at a commit different from github.sha"
+    when: "release workflow resolves the tag"
+    then:
+      - "workflow fails before creating or editing a release"
+      - "workflow must not move or delete the existing tag"
+      - "error output must identify the existing tag SHA and current SHA"
+
+  - name: "Unknown outcome - partial version sync write"
+    type: death_path
+    given: "plugin.json can be written but pyproject.toml write fails"
+    when: "`samsara-cli release sync-version` runs"
+    then:
+      - "command exits non-zero and reports partial-write risk"
+      - "caller must not treat the repository as synchronized"
+      - "the next `check-version` must still detect drift if drift remains"
+
+  - name: "Degradation - release already exists"
+    type: degradation
+    given: "tag v0.10.0 and GitHub Release v0.10.0 both already exist"
+    when: "release workflow is rerun for the same version and commit"
+    then:
+      - "workflow marks the release step as no-op"
+      - "workflow must not push a tag, move a tag, or create a duplicate release"
+      - "output must include degradation_reason: already_released"
+
+  - name: "Degradation - tag exists but release is missing"
+    type: degradation
+    given: "tag v0.10.0 exists at github.sha but no GitHub Release exists"
+    when: "release workflow runs"
+    then:
+      - "workflow creates only the missing GitHub Release"
+      - "workflow must verify the tag before release creation"
+      - "output must include degradation_reason: release_missing_for_existing_tag"
+
+  - name: "Success - local sync updates secondary metadata"
+    type: happy_path
+    given: "marketplace metadata.version is changed to 0.10.0"
+    when: "`samsara-cli release sync-version` runs"
+    then:
+      - "plugin.json version becomes 0.10.0"
+      - "pyproject.toml project.version becomes 0.10.0"
+      - "`samsara-cli release check-version` exits 0"
+      - "`samsara-cli release print-tag` prints exactly v0.10.0"
+
+  - name: "Success - main branch release creates tag and release"
+    type: happy_path
+    given: "main branch contains synchronized version 0.10.0 and no remote v0.10.0 tag exists"
+    when: "release workflow runs after validation succeeds"
+    then:
+      - "workflow creates annotated tag v0.10.0 at github.sha"
+      - "workflow pushes the tag once"
+      - "workflow creates GitHub Release v0.10.0 with generated notes"
+      - "success evidence includes: version, tag, commit SHA, validation job result"

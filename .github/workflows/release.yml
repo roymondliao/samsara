@@ -1,0 +1,109 @@
+name: Release
+
+"on":
+  pull_request:
+    types:
+      - closed
+    branches:
+      - main
+    paths:
+      - ".claude-plugin/marketplace.json"
+      - ".claude-plugin/plugin.json"
+      - "pyproject.toml"
+      - ".github/workflows/release.yml"
+
+permissions:
+  contents: write
+
+env:
+  uv-version: "0.11.10"
+  python-version: "3.14"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
+    permissions:
+      contents: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.python-version }}
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ env.uv-version }}
+
+      - name: Sync dependencies
+        run: uv sync --frozen
+
+      - name: Derive release tag
+        id: release_meta
+        shell: bash
+        run: |
+          source .venv/bin/activate
+          uv run samsara-cli release check-version --root "$GITHUB_WORKSPACE"
+          tag="$(uv run samsara-cli release print-tag --root "$GITHUB_WORKSPACE")"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Inspect remote tag and release state
+        id: remote_state
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
+        run: |
+          set -euo pipefail
+          tag="${{ steps.release_meta.outputs.tag }}"
+          current_sha="$MERGE_SHA"
+          tag_commit="$(git ls-remote --tags origin "refs/tags/${tag}^{}" | awk '{print $1}')"
+          if [ -z "$tag_commit" ]; then
+            tag_commit="$(git ls-remote --tags origin "refs/tags/${tag}" | awk '{print $1}')"
+          fi
+          if gh release view "$tag" --json tagName >/dev/null 2>&1; then
+            release_exists=true
+          else
+            release_exists=false
+          fi
+          if [ -n "$tag_commit" ] && [ "$tag_commit" != "$current_sha" ]; then
+            echo "Existing tag ${tag} points to ${tag_commit}, current commit is ${current_sha}." >&2
+            exit 1
+          fi
+          echo "tag_commit=$tag_commit" >> "$GITHUB_OUTPUT"
+          echo "release_exists=$release_exists" >> "$GITHUB_OUTPUT"
+
+      - name: Create annotated tag
+        if: steps.remote_state.outputs.tag_commit == ''
+        shell: bash
+        env:
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
+        run: |
+          set -euo pipefail
+          tag="${{ steps.release_meta.outputs.tag }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$tag" "$MERGE_SHA" -m "Release ${tag}"
+          git push origin "$tag"
+
+      - name: Create GitHub release
+        if: steps.remote_state.outputs.release_exists != 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
+        run: |
+          set -euo pipefail
+          tag="${{ steps.release_meta.outputs.tag }}"
+          gh release create "$tag" --verify-tag --target "$MERGE_SHA" --generate-notes
+
+      - name: Release already exists
+        if: steps.remote_state.outputs.release_exists == 'true'
+        run: echo "degradation_reason=already_released"

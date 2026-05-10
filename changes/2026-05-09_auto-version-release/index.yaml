@@ -1,0 +1,31 @@
+feature: auto-version-release
+status: done
+
+tasks:
+  - id: task-1
+    title: "Add release version metadata core"
+    status: done
+    scar_count: 3
+    unresolved_assumptions: null
+    depends_on: []
+
+  - id: task-2
+    title: "Expose release version CLI commands"
+    status: done
+    scar_count: 3
+    unresolved_assumptions: null
+    depends_on: ["task-1"]
+
+  - id: task-3
+    title: "Add GitHub CI and release workflows"
+    status: done
+    scar_count: 3
+    unresolved_assumptions: "Live GitHub Actions execution was not verified from this environment; workflow contracts are covered by static tests only."
+    depends_on: ["task-2"]
+
+  - id: task-4
+    title: "Document release process and stale version cleanup"
+    status: done
+    scar_count: 3
+    unresolved_assumptions: null
+    depends_on: ["task-3"]

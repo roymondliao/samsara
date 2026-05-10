@@ -1,0 +1,24 @@
+task_id: task-1
+completion_status: done
+
+known_shortcuts:
+  - description: "Sync rewrites pyproject TOML via tomli_w, so comments and original formatting are not preserved."
+    deferred_to_feature_iteration: false
+
+silent_failure_conditions:
+  - description: "If a future release policy requires versions that do not match the current semver regex, sync/check will hard-fail until the validator is updated."
+    deferred_to_feature_iteration: false
+
+assumptions_made:
+  - assumption: "Semver with optional prerelease/build metadata is the correct acceptance boundary for release tags."
+    verified: true
+    note: "Covered by release metadata tests for normal and prerelease versions."
+    deferred_to_feature_iteration: false
+
+debt_registered: true
+debt_location: "samsara_cli/release/version_metadata.py"
+
+resolved_items:
+  - original_section: "silent_failure_conditions"
+    original_description: "Version drift could be reported only for the first mismatched file."
+    resolution: "VersionDriftError now carries the full mismatch list and tests assert plugin.json plus pyproject.toml both surface."

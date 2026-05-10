@@ -1,0 +1,24 @@
+task_id: task-2
+completion_status: done
+
+known_shortcuts:
+  - description: "JSON output is implemented for check-version only; sync-version and print-tag stay plain-text because current CI usage does not require structured output there."
+    deferred_to_feature_iteration: false
+
+silent_failure_conditions:
+  - description: "If future shell callers depend on stderr/stdout separation beyond current tests, richer CLI formatting could still break automation."
+    deferred_to_feature_iteration: false
+
+assumptions_made:
+  - assumption: "GitHub Actions will consume print-tag through stdout capture and needs an exact single-line tag."
+    verified: true
+    note: "Verified by CLI tests asserting print-tag output equals the raw tag with no extra text."
+    deferred_to_feature_iteration: false
+
+debt_registered: true
+debt_location: "samsara_cli/main.py"
+
+resolved_items:
+  - original_section: "silent_failure_conditions"
+    original_description: "Release CLI could silently mask malformed metadata with a generic traceback."
+    resolution: "Commands now route expected metadata failures through _exit_with_error and death tests assert no traceback leakage."

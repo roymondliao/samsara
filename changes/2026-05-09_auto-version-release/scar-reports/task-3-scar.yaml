@@ -1,0 +1,24 @@
+task_id: task-3
+completion_status: done_with_concerns
+
+known_shortcuts:
+  - description: "Workflow coverage is static only; no live GitHub Actions run was performed from this environment."
+    deferred_to_feature_iteration: true
+
+silent_failure_conditions:
+  - description: "GitHub-hosted runner behavior could still differ from local static expectations for gh availability, token scopes, or annotated-tag push semantics."
+    deferred_to_feature_iteration: true
+
+assumptions_made:
+  - assumption: "actions/setup-python@v5 with Python 3.14 and astral-sh/setup-uv@v6 are valid on the target GitHub runner image."
+    verified: false
+    note: "Validated against planning research and static workflow tests only; a live workflow run is still required."
+    deferred_to_feature_iteration: true
+
+debt_registered: true
+debt_location: ".github/workflows/ci.yml; .github/workflows/release.yml"
+
+resolved_items:
+  - original_section: "silent_failure_conditions"
+    original_description: "Release workflow could run on every main push and fail against an older tag SHA."
+    resolution: "Restricted push trigger to version-related paths so non-release commits do not enter the release lane."

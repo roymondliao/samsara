@@ -1,0 +1,24 @@
+task_id: task-4
+completion_status: done
+
+known_shortcuts:
+  - description: "README release guidance stays concise and does not document advanced cases like manual workflow_dispatch recovery."
+    deferred_to_feature_iteration: false
+
+silent_failure_conditions:
+  - description: "If future docs reintroduce manual version editing instructions, maintainers may drift from marketplace-as-source-of-truth."
+    deferred_to_feature_iteration: false
+
+assumptions_made:
+  - assumption: "README should document the release workflow but should not embed a current version line."
+    verified: true
+    note: "Confirmed by the latest user direction and enforced by the updated README doc test."
+    deferred_to_feature_iteration: false
+
+debt_registered: true
+debt_location: "README.md; README.zh-TW.md; tests/test_release/test_readme_release_docs.py"
+
+resolved_items:
+  - original_section: "known_shortcuts"
+    original_description: "README could keep a stale inline version number that drifts from marketplace metadata."
+    resolution: "Removed the version section from both READMEs and kept release instructions focused on sync/check commands."
