@@ -31,6 +31,7 @@ class TestCIWorkflow:
         assert "samsara-cli release check-version" in step_text
         assert "uv run pytest" in step_text
         assert "uv run pre-commit run --all-files" in step_text
+        assert '-m "not requires_codex and not requires_gemini"' in step_text
 
     def test_ci_activates_venv_before_python_commands(self):
         workflow_text = CI_WORKFLOW.read_text(encoding="utf-8")

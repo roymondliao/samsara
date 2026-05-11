@@ -327,8 +327,10 @@ class TestDC103TempDirMustBeCleanedUp:
 # ---------------------------------------------------------------------------
 # Shared session fixture — run pipeline ONCE, reuse across all smoke tests
 #
-# The fixture checks Codex installation and skips the entire session if absent.
-# Cleanup happens in the finally block — guaranteed even on test failure.
+# Structural Codex smoke does not require a local Codex CLI. The conversion
+# pipeline is filesystem-only, so CI can still validate output shape without a
+# live Codex installation. Cleanup happens in the finally block — guaranteed
+# even on test failure.
 # ---------------------------------------------------------------------------
 
 
@@ -336,7 +338,6 @@ class TestDC103TempDirMustBeCleanedUp:
 def smoke_install_dir():
     """Run full pipeline and return the output directory.
 
-    Skips all tests in this module if Codex CLI is not installed.
     Yields the output directory (Path) for structural assertions.
     Cleans up in the finally block — guaranteed cleanup on pass or fail.
 
@@ -344,12 +345,6 @@ def smoke_install_dir():
     Assumption: ConversionEngine("codex") works without running Codex CLI
                 (conversion is filesystem-only, no Codex invocation needed).
     """
-    if not _is_codex_installed():
-        pytest.skip(
-            "Codex CLI not installed — skipping smoke tests. "
-            "Install Codex CLI from: https://github.com/openai/codex"
-        )
-
     temp_dir = Path(tempfile.mkdtemp(prefix="samsara-smoke-"))
     try:
         output_dir = temp_dir / "codex_output"

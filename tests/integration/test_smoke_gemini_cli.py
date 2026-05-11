@@ -111,6 +111,7 @@ class TestGeminiNativeStructure:
 
 
 @pytest.mark.integration
+@pytest.mark.requires_gemini
 class TestGeminiLiveCli:
     def test_live_gemini_cli_presence_or_skip(self) -> None:
         if not _is_gemini_installed():
