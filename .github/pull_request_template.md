@@ -21,11 +21,13 @@ Clearly describe the purpose and main content of this PR:
 
 ---
 
-### Jira Tickets
+### How to Test
 
-Please provide the Jira ticket number:
+<!-- Steps to verify this change works. For bugs: reproduction steps + proof that the fix works. -->
 
-> Example: [VIC-XXXX](<Jira Ticket URL>) \<Ticket Title\>
+1.
+2.
+3.
 
 ---
 
