@@ -11,9 +11,10 @@ name: Release
       - ".claude-plugin/plugin.json"
       - "pyproject.toml"
       - ".github/workflows/release.yml"
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 env:
   uv-version: "0.11.10"
@@ -22,7 +23,7 @@ env:
 jobs:
   release:
     runs-on: ubuntu-latest
-    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
+    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main')
     permissions:
       contents: write
     steps:

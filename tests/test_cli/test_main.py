@@ -121,7 +121,7 @@ class TestCLIVersion:
         from samsara_cli.main import app
 
         result = runner.invoke(app, ["version"])
-        assert result.output.strip() == "samsara-cli 0.9.0"
+        assert result.output.strip() == "samsara-cli 0.9.1"
 
 
 # ---------------------------------------------------------------------------

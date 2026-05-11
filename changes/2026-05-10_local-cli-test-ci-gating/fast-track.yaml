@@ -1,0 +1,36 @@
+type: fast_track
+description: "Exclude local-only Codex and Gemini CLI smoke tests from PR CI while keeping them runnable on developer machines."
+death_clause: "If PR CI can still execute live Codex or Gemini CLI smoke tests on a runner without those CLIs installed, this change is failed."
+acceptance:
+  - "Tests that require a local Gemini CLI are marked with `requires_gemini`."
+  - "`.github/workflows/ci.yml` excludes both markers from the default pytest run."
+  - "Codex structural smoke tests remain eligible to run in CI without a local Codex CLI."
+  - "Non-local structural integration tests remain eligible to run in CI."
+scar_tag: 1
+scar_items:
+  - "Gemini live CLI smoke remains local-only until a dedicated CLI-capable runner exists in CI."
+files_changed:
+  - ".claude-plugin/marketplace.json"
+  - ".claude-plugin/plugin.json"
+  - "pyproject.toml"
+  - ".github/workflows/ci.yml"
+  - ".github/workflows/release.yml"
+  - "tests/test_cli/test_main.py"
+  - "tests/integration/test_smoke_codex.py"
+  - "tests/integration/test_smoke_gemini_cli.py"
+  - "tests/test_workflows/test_github_actions.py"
+  - "tests/test_release/test_local_cli_markers.py"
+  - "uv.lock"
+quality_checklist:
+  - criterion: "C5 Reuse"
+    checked: true
+    note: "Reused pytest markers and existing workflow contract tests instead of inventing a second CI selection mechanism."
+  - criterion: "C6 Clear Structure"
+    checked: true
+    note: "Marker ownership lives with the tests that truly require local CLIs; CI only consumes the marker expression."
+  - criterion: "C7 Elegant Logic"
+    checked: true
+    note: "Used a single pytest marker filter in CI rather than conditional shell detection or workflow branching."
+  - criterion: "C8 No Redundancy"
+    checked: true
+    note: "The source of truth for local-only gating is now the pytest markers plus the Codex smoke fixture contract, not duplicated skip logic inside CI."

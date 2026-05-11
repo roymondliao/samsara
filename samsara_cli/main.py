@@ -55,7 +55,6 @@ release_app = typer.Typer(
 )
 
 console = Console()
-error_console = Console(stderr=True)
 
 
 # ---------------------------------------------------------------------------
@@ -65,7 +64,7 @@ error_console = Console(stderr=True)
 
 def _exit_with_error(message: str, exit_code: int = 1) -> None:
     """Print error message and exit with given code."""
-    error_console.print(f"[red]Error:[/red] {message}")
+    typer.echo(f"Error: {message}", err=True)
     raise typer.Exit(code=exit_code)
 
 
@@ -455,11 +454,9 @@ def validate(
     errors = validator.validate(output_dir=source_dir, platform=platform)
 
     if errors:
-        error_console.print(
-            f"[red]Validation failed:[/red] {len(errors)} error(s) found\n"
-        )
+        typer.echo(f"Validation failed: {len(errors)} error(s) found\n", err=True)
         for i, error in enumerate(errors, 1):
-            error_console.print(f"  {i}. {error}")
+            typer.echo(f"  {i}. {error}", err=True)
         raise typer.Exit(code=1)
 
     console.print("[green]Validation passed[/green] — no errors found.")

@@ -38,7 +38,7 @@ jobs:
         shell: bash
         run: |
           source .venv/bin/activate
-          uv run pytest
+          uv run pytest -m "not requires_codex and not requires_gemini"
 
       - name: Run pre-commit
         shell: bash
