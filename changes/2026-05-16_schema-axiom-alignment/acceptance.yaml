@@ -1,0 +1,139 @@
+feature: schema-axiom-alignment
+coverage_type: verified
+
+# Note: This file uses the NEW schema (per-event enum: silent_failure | boundary_fail | degradation | happy_path)
+# defined by this very feature. It is the first acceptance.yaml to bootstrap on the new schema.
+# Self-application is intentional and required — framework 用新 schema 描述自己這次升級.
+
+scenarios:
+  # ============================================================
+  # Silent failure paths (system 啟動後死亡：看起來活著實際在說謊)
+  # ============================================================
+
+  - name: "Silent failure - partial migration leaves cross-doc schema drift"
+    type: silent_failure
+    given: "task-1 改了 planning enum 但 task-2 漏改 scar-schema.yaml 對應結構"
+    when: "implementer 開啟新 acceptance.yaml 寫死路，並在同 task 內寫 scar report"
+    then:
+      - "Acceptance 使用 type: silent_failure | boundary_fail"
+      - "Scar report 仍只有單一 silent_failure_conditions 欄位"
+      - "同一 feature 內 schema 漂移——看起來新 schema 已採用實際未完整內化"
+      - "task-7 cross-doc grep 必須能偵測：要求 silent_failure_conditions 與 boundary_fail_conditions 兩欄位同時存在於 scar-schema.yaml"
+
+  - name: "Silent failure - self-application clause forgotten in docs/develop.md"
+    type: silent_failure
+    given: "task-4 改了某些段落但漏掉核心字串 'Self-Application' 或 'L97 also applies'"
+    when: "未來某次 framework 升級設計階段，maintainer 翻閱 docs/develop.md 確認原則"
+    then:
+      - "develop.md 看起來被更新（git diff 顯示有改動）"
+      - "但實際缺乏關鍵字串——未來再次違反 L97 原則時無錨點可指"
+      - "Rot 重生——同樣的責任模糊問題會再發生一次"
+      - "task-7 必須 grep 精確字串：'Self-Application' AND 'L97' 同時存在"
+
+  - name: "Silent failure - legacy v0.9.1 changes/ unevenly marked"
+    type: silent_failure
+    given: "task-6 跑批次但漏掉某 1-2 個既有 changes/2026-*/ 目錄"
+    when: "新 implementer 開啟既有 changes/2026-04-21_security-privacy-review/acceptance.yaml 找 reference"
+    then:
+      - "ls 該目錄看不到 _LEGACY_IMPRECISE.md"
+      - "implementer 誤用舊 schema 為 template 寫新 acceptance.yaml"
+      - "新 feature 誤用 type: death_path → 直接違反這次升級目的"
+      - "task-7 必須 enumerate 既有 changes/2026-*/ 確認每個都有 marker（本 feature 目錄除外）"
+
+  - name: "Silent failure - README 中英版本悄悄漂移"
+    type: silent_failure
+    given: "task-5 改了 README.md 但忘了同步 README.zh-TW.md"
+    when: "git commit 顯示兩個 README 都被改（但實際只有英文版含新詞彙）"
+    then:
+      - "英文 reader 看 boundary_fail"
+      - "中文 reader 仍看 death_path"
+      - "Vocabulary 漂移從內部 schema 蔓延至外部對外接口"
+      - "task-7 必須 cross-check：新詞彙 grep count 在兩個 README 中對應"
+
+  - name: "Silent failure - grep 死路測試自身偽 pass"
+    type: silent_failure
+    given: "task-7 grep 規則只查 `type: death_path` literal 字串，未涵蓋 prose 描述"
+    when: "skill prose 殘留如 'Write death tests for all death paths' 這類句子"
+    then:
+      - "Grep 全綠 → task-7 通過"
+      - "但 prose vocabulary 仍漂移——framework 看似活著實際在說謊"
+      - "task-7 必須含 anti-test：在 fixture 中故意放一句 'death path' prose，驗證 grep 規則能抓到"
+
+  # ============================================================
+  # Boundary fail paths (system 啟動前死亡：user 立即知道)
+  # ============================================================
+
+  - name: "Boundary fail - acceptance.yaml type 欄位使用未定義 enum 值"
+    type: boundary_fail
+    given: "schema 重構後，type 限定為 silent_failure | boundary_fail | degradation | happy_path 四值"
+    when: "implementer 寫 type: death_path 或 type: failure 等無效值"
+    then:
+      - "在 boundary（schema validation 時點）明確拒絕"
+      - "Error 訊息明確列出合法 enum 值"
+      - "系統不容許 silent default 替代——user 立即知道並負責修正"
+
+  - name: "Boundary fail - 既有 v0.9.1 changes/ 被當作 template fork"
+    type: boundary_fail
+    given: "task-6 完成 + legacy_imprecise marker 已 apply 到所有既有 changes/"
+    when: "implementer 開啟既有 changes/ 試圖 cp -r 為新 feature 起點"
+    then:
+      - "_LEGACY_IMPRECISE.md 在目錄頂層即可見"
+      - "Marker 內容明確說明：「不可作為 template」"
+      - "Boundary 在「ls 該目錄的一瞬間」設立，責任轉移至 user"
+
+  - name: "Boundary fail - task 執行時發現需改 samsara_cli 程式碼"
+    type: boundary_fail
+    given: "task-2 或 task-3 執行中發現 schema 結構改動需要 parser 配合"
+    when: "implementer 試圖在 task 範圍內修改 samsara_cli/"
+    then:
+      - "Task 必須立即停下"
+      - "回 Planning 重新評估（recalibration）"
+      - "不允許 silent 擴張 task 範圍至 code layer"
+
+  # ============================================================
+  # Degradation paths
+  # ============================================================
+
+  - name: "Degradation - 部分 skill prose 殘留舊 vocabulary 但 type 欄位已更新"
+    type: degradation
+    given: "task-3 改了 skill 的 type 欄位範例但 prose 中仍寫『silent failure 是 death path 的一種』"
+    when: "implementer 跟著 prose 思維但用新 type"
+    then:
+      - "Type 欄位語法上正確（新 enum）"
+      - "但 prose 仍用舊概念框架描述新 enum——concept drift 在 metadata 與 narrative 之間"
+      - "必須標記為 degraded：grep 規則需擴展到 prose layer，不僅檢查 type 欄位"
+
+  - name: "Degradation - task-6 marker 內容過於 generic"
+    type: degradation
+    given: "task-6 寫的 _LEGACY_IMPRECISE.md 內容只說「這是 legacy」"
+    when: "implementer 開啟 marker 想理解為什麼是 legacy"
+    then:
+      - "Marker 存在（grep 通過）"
+      - "但 implementer 無法判斷「legacy 在哪個維度」、「該如何閱讀此目錄」"
+      - "看似 cover 實際只是 placeholder——必須在 marker 中明寫 schema version + 不可作 template 的原因"
+
+  # ============================================================
+  # Happy paths (with evidence chain)
+  # ============================================================
+
+  - name: "Happy path - 全部 7 task 完成 + cross-doc grep 全綠"
+    type: happy_path
+    given: "task-1~6 完成 + task-7 grep 死路測試執行"
+    when: "Cross-doc grep 對 skills/ + docs/develop.md + README + changes/ 跑完"
+    then:
+      - "skills/ 路徑無任何 `type: death_path` 字串殘留"
+      - "skills/implement/templates/scar-schema.yaml 同時含 silent_failure_conditions 與 boundary_fail_conditions"
+      - "docs/develop.md 含 'Self-Application' 且引用 L97"
+      - "docs/develop.md 含 workaround 三個 cases 名稱（silent default fallback / try-except swallow / cache-stale）"
+      - "所有 changes/2026-*/ 含 _LEGACY_IMPRECISE.md（本 feature 目錄 schema-axiom-alignment 除外）"
+      - "README.md 與 README.zh-TW.md 新詞彙 grep count 對應"
+      - "Evidence chain: 本 acceptance.yaml + 1.6-recalibration.md 簽收記錄 + task-1~7 scar reports + ship-manifest"
+
+  - name: "Happy path - acceptance.yaml self-bootstrap 驗證"
+    type: happy_path
+    given: "本 acceptance.yaml 採用新 schema 撰寫"
+    when: "task-7 grep 跑到本檔案"
+    then:
+      - "本檔案無 `type: death_path` 字串"
+      - "本檔案 type 欄位值僅為 silent_failure | boundary_fail | degradation | happy_path"
+      - "Self-application 驗證——framework 用新 schema 描述自己的這次升級即為新 schema 的 first user"
