@@ -1,0 +1,109 @@
+task_id: iter-fix-A
+completion_status: done
+
+known_shortcuts:
+  - description: >
+      The partial-group definition covers the binary case (header + no A: lines = partial).
+      It does not address a more exotic corruption: a group where answers are present but
+      the group header line itself is malformed (e.g., `### Group` with no number, or a
+      header with a typo). Such a case would not match the `### Group N:` pattern expected
+      by an agent, and the agent's behavior is undefined. This scenario is unlikely in
+      normal interrupted-write conditions but possible if the file is manually edited.
+    deferred_to_feature_iteration: true
+
+silent_failure_conditions:
+  - description: >
+      The definition "followed by at least one `**A:**` answer line" does not specify
+      how far to scan. If an agent checks only the immediately next line (rather than
+      all remaining lines until the next `### Group` header), a group with a blank line
+      before the first answer could be misclassified as partial. The instruction uses
+      "followed by" which is ambiguous about proximity. An agent could silently re-issue
+      questions for a group that was actually complete.
+    deferred_to_feature_iteration: false
+    # NOTE: resolved in self-iteration — see resolved_items
+
+assumptions_made:
+  - assumption: >
+      The `### Group N:` header format and `**A:**` answer line format are consistent
+      throughout pre-thinking.md — meaning the detection heuristic "header present, no
+      A: lines" reliably identifies partial writes rather than groups that simply have
+      no answers yet for another reason.
+    verified: true
+    note: >
+      Verified: templates/pre-thinking.md uses `### Group N: <theme>` headers and
+      `**A:**` for answer lines consistently. The format is specified in SKILL.md and
+      the template. No alternative formats exist in the current template.
+
+  - assumption: >
+      The §4 "visible Step B groups" language (line 76 in flow.md) includes partial
+      groups — i.e., a group with only its header written is "visible" and will be
+      included in the baseline reconstruction.
+    verified: true
+    note: >
+      Confirmed by reading flow.md §4 line 76: "all visible Step B groups" — a header
+      without answers is visible in the file. The new §5 definition is consistent: that
+      same partial group will be in the baseline as incomplete, and Resume will re-issue
+      it. No contradiction exists between §4 and the new §5 sub-bullets.
+
+debt_registered: true
+debt_location: >
+  skills/pre-thinking/support/flow.md §5 — "followed by" proximity ambiguity in partial-group
+  detection (see silent_failure_conditions). Also §5 — malformed header handling undefined
+  (see known_shortcuts).
+
+narrative: |
+  This fix addresses task-2-scar.yaml known_shortcuts[1]: partial-write group detection
+  was unspecified in §5 K3b Recovery.
+
+  The fix adds two sub-bullets under "Identify the last completed section" that define:
+  1. Complete = header + at least one **A:** answer line
+  2. Partial = header + no **A:** answer lines → treat as NEXT INCOMPLETE group, resume from it
+
+  The §4 fallback procedure uses "visible Step B groups" which naturally includes partial
+  groups (their headers are visible). The new §5 definition assigns those partial groups
+  "incomplete" status, making the Resume path's "proceed to next incomplete group" instruction
+  unambiguous for the partial-write case.
+
+  One residual ambiguity remains: "followed by" could be interpreted as "immediately
+  followed by" (next line) or "anywhere between this header and the next header." This
+  was not fixed because adding scan-range language would expand the bullet beyond the
+  ≤3 line budget constraint in the dispatch instructions and risks introducing new
+  ambiguities. Documented as a silent_failure_condition.
+
+resolved_items:
+  - original_section: known_shortcuts
+    original_description: >
+      flow.md §5 K3b Recovery does not specify how to determine which group is "last" if
+      a group's append is partial (file write interrupted mid-write). The recovery procedure
+      assumes groups are always fully present or fully absent; a partial-write scenario
+      is unaddressed.
+    resolution: >
+      Added two sub-bullets to §5 "Identify the last completed section" in flow.md.
+      A group is complete if its header is followed by at least one **A:** answer line.
+      A group is partial (header present, no **A:** lines) and must be treated as the
+      NEXT INCOMPLETE group — Resume re-issues it. This closes the binary ambiguity that
+      was the primary death case.
+
+  - original_section: silent_failure_conditions
+    original_description: >
+      "followed by at least one **A:** answer line" proximity ambiguity — agent might
+      check only the immediately next line, misclassifying a complete group with a
+      blank line before its first answer as partial.
+    resolution: >
+      Amended the complete-group definition to include explicit scan range: "followed by
+      at least one **A:** answer line (anywhere before the next ### Group header or end
+      of file)." This removes the proximity ambiguity within the same bullet, staying
+      within the ≤3 line budget.
+
+budget_spent:
+  validation_runs: "4"
+  reviewer_retries_consumed: "0"
+
+evidence_gained:
+  - "DT-A1: current §5 text (pre-fix) did not define partial group handling — death test confirmed RED against original text"
+  - "UT-A1/A2: post-fix lines 94-95 of flow.md contain complete/partial definition and resume-from-it instruction — confirmed GREEN"
+  - "UT-A3: §4 'visible Step B groups' includes partial groups (headers visible) — no contradiction with new §5 definition — confirmed GREEN"
+  - "Verified template uses consistent ### Group N: and **A:** format — assumption confirmed"
+
+residual_risk:
+  - "Malformed group headers (e.g., typo in Group N: format) are not addressed — behavior undefined for manual-edit corruptions; deferred to feature iteration as out-of-scope for a normal interrupted-write scenario"

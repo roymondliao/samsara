@@ -91,6 +91,8 @@ Before EACH Step B append (every group, every round):
 3. **If present AND `## Step C — Commitment` section exists:** session is already complete — proceed to planning. Do not re-run Step A or Step B. (The presence check is reliable only because `## Step C — Commitment` is never written before the AskUserQuestion commitment response is received — see §8 Quick-Pass and Step C in `templates/pre-thinking.md`.)
 4. **If present AND `## Step C — Commitment` section is ABSENT:** session was interrupted (K3b state).
    - Identify the last completed section (Step A written? Which Step B groups are present?).
+     - A group is **complete** if its `### Group N:` header is followed by at least one `**A:**` answer line (anywhere before the next `### Group` header or end of file).
+     - A group is **partial** (header present, no `**A:**` lines) — treat it as the NEXT INCOMPLETE group and resume from it.
    - Inform the user: `"Pre-thinking was interrupted before commitment was reached. [Last completed section: Step A / Step B Group N]"`
    - Offer via AskUserQuestion (header ≤ 12 chars):
      - **Resume** — continue from the next incomplete group in Step B; do NOT re-run Step A
