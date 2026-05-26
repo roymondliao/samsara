@@ -1,0 +1,96 @@
+task_id: iter-fix-C
+completion_status: done
+
+known_shortcuts:
+  - description: >
+      The condensed Q4 removes the phrase "race conditions between sessions" from bullet 2.
+      The original read "introduce K3b cross-session half-finished state and race conditions
+      between sessions." The condensed version reads "introduce K3b cross-session state."
+      The race-condition consequence is dropped to stay within word budget. Authors who
+      do not already understand K3b will have a weaker warning about the failure mode.
+    deferred_to_feature_iteration: false
+    # NOTE: Accepted risk. "K3b cross-session state" is the canonical label. The race-condition
+    # detail is implicit in K3b. Adding it back would cost the words we just cut.
+
+silent_failure_conditions:
+  - description: >
+      The word count constraint ("< 500 words") is enforced only by manual counting at
+      edit time. There is no automated CI check on SKILL.md body word count. A future
+      edit to writing-skills/SKILL.md that adds even a few words could push the count
+      over 500 without any failing test or warning. The file's own rule would then be
+      violated again, silently.
+    deferred_to_feature_iteration: false
+
+assumptions_made:
+  - assumption: >
+      The authoritative body word count method is `tail -n +6 SKILL.md | wc -w` — skipping
+      the 4-line frontmatter block (line 1: ---, line 2: name:, line 3: description:, line 4: ---,
+      line 5: blank). Under this method, the pre-fix count was 504 and the post-fix count is 477.
+    verified: true
+    note: >
+      Verified by running three separate counting methods: (1) wc -w on full file = 524,
+      (2) tail -n +6 = 504, (3) grep -Ev frontmatter lines = 490. The dispatch prompt cited
+      524 (full file count) with a 27-word cut target. The actual body count exceeded 500
+      by only 4 words (504), not 27. The condensed Q4 still cuts 27 words (110 → 83),
+      leaving body at 477. All three methods confirm the file is now under budget.
+
+  - assumption: >
+      The three semantic points in Q4 are preserved if the following identifiers are present:
+      (1) "AskUserQuestion" in bullet 1, (2) "K3b" in bullet 2, (3) "redesign" in bullet 3.
+    verified: true
+    note: >
+      Confirmed by grep after edit. All three identifiers present. Q4 retains 3 bullets.
+
+debt_registered: false
+
+narrative: |
+  This fix resolves task-6-scar.yaml known_shortcuts[1]: writing-skills/SKILL.md body
+  word count exceeded the < 500 word budget defined in the same file.
+
+  The fix condenses question 4's three bullets from 110 words to 83 words by removing
+  redundant phrasing ("to any artifact produced by the skill", "BY the LLM", "half-finished
+  state and race conditions between sessions", "that is a signal the", "either be", "or the
+  interaction") while preserving all three semantic points: LLM-sole-writer via AskUserQuestion,
+  dual-writer → K3b risk, user-needs-to-edit → split or redesign.
+
+  The dispatch prompt's word-count discrepancy (cited 524 as "body words"; actual body count
+  was 504 via tail method) does not affect the outcome — the fix brings body count from 504 to
+  477, well under 500 by any method.
+
+  One semantic narrowing accepted: "race conditions between sessions" removed from bullet 2.
+  The K3b label is the canonical reference; the race-condition detail is implicit. Authors
+  familiar with K3b will have full context; authors unfamiliar with K3b have a marginally
+  weaker warning. This is the minimum viable shortcut to meet the word budget.
+
+resolved_items:
+  - original_section: known_shortcuts (task-6-scar.yaml item 2)
+    original_description: >
+      Addition of Q4 pushes writing-skills/SKILL.md body word count from 414 to 524 words,
+      exceeding the < 500-word budget. Deferred to feature iteration.
+    resolution: >
+      Condensed Q4 from 110 words to 83 words. Body word count (tail -n +6 method) reduced
+      from 504 to 477. All three semantic points in Q4 confirmed present after condensing.
+      Budget constraint now satisfied.
+
+  - original_section: "assumptions_made (task-6-scar.yaml, verified: false)"
+    original_description: >
+      The 500-word budget applies to all SKILL.md files including writing-skills/SKILL.md itself.
+      If true, the file was non-compliant by 24 words (using full wc -w minus frontmatter).
+    resolution: >
+      Budget now satisfied under all three counting methods. Assumption no longer an open
+      concern — the file is compliant regardless of which counting method is authoritative.
+
+budget_spent:
+  validation_runs: "6"
+  reviewer_retries_consumed: "0"
+
+evidence_gained:
+  - "Pre-fix body word count (tail -n +6): 504 — exceeded 500-word budget"
+  - "Post-fix body word count (tail -n +6): 477 — under 500-word budget"
+  - "Death test (count < 500) was RED before fix, GREEN after fix"
+  - "Unit tests for AskUserQuestion, K3b, redesign, Q4 heading, 3 bullets: all GREEN after fix"
+  - "Q4 word count before: 110 words; after: 83 words (27-word reduction)"
+
+residual_risk:
+  - "No automated CI check on SKILL.md body word count — future edits can push over 500 without detection"
+  - "Bullet 2 loses 'race conditions between sessions' detail; K3b label still present but consequence partially implicit"
