@@ -46,6 +46,7 @@ from samsara_cli.installer.detect import PlatformDetector
 logger = logging.getLogger(__name__)
 
 Scope = Literal["project", "global"]
+DEPRECATED_FEATURE_FLAGS = {"codex_hooks": "hooks"}
 
 
 class InstallerError(Exception):
@@ -514,8 +515,27 @@ class Installer:
                 )
             for key, value in source_features.items():
                 target_features[key] = value
+            self._remove_deprecated_feature_flags(target_features, source_features)
 
         target_path.write_text(tomli_w.dumps(target), encoding="utf-8")
+
+    def _remove_deprecated_feature_flags(
+        self,
+        target_features: dict,
+        desired_features: dict,
+    ) -> None:
+        """Remove old Codex feature flag keys when their replacement is desired."""
+        for deprecated_key, replacement_key in DEPRECATED_FEATURE_FLAGS.items():
+            if (
+                replacement_key in desired_features
+                and deprecated_key in target_features
+            ):
+                del target_features[deprecated_key]
+                logger.info(
+                    "Removed deprecated feature flag: %s (use %s)",
+                    deprecated_key,
+                    replacement_key,
+                )
 
     def _update_config_toml(
         self,
@@ -537,14 +557,13 @@ class Installer:
         result = copy.deepcopy(config)
 
         # --- Feature flags (idempotent) ---
-        # TOML: [features]
-        # codex_hooks = true
         if self._config.permissions and self._config.permissions.feature_flags:
             features_section = result.get("features", {})
             if not isinstance(features_section, dict):
                 features_section = {}
 
-            for key, value in self._config.permissions.feature_flags.items():
+            desired_features = self._config.permissions.feature_flags
+            for key, value in desired_features.items():
                 existing = features_section.get(key)
                 if existing != value:
                     features_section[key] = value
@@ -556,6 +575,7 @@ class Installer:
                         value,
                     )
 
+            self._remove_deprecated_feature_flags(features_section, desired_features)
             result["features"] = features_section
 
         return result

@@ -208,10 +208,10 @@ class TestPermissionsConfig:
     def test_valid_permissions_config(self):
         perms = PermissionsConfig(
             sandbox_mode="workspace-write",
-            feature_flags={"codex_hooks": True},
+            feature_flags={"hooks": True},
         )
         assert perms.sandbox_mode == "workspace-write"
-        assert perms.feature_flags["codex_hooks"] is True
+        assert perms.feature_flags["hooks"] is True
 
     def test_permissions_feature_flags_optional(self):
         perms = PermissionsConfig(sandbox_mode="workspace-write")

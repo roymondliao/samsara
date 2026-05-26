@@ -1,0 +1,24 @@
+type: fast_track
+description: "Refresh stale CI expectations for the Codex hooks feature flag and make the CLI version test follow package metadata."
+death_clause: "If generated Codex output still contains the deprecated codex_hooks flag or the CLI version test hard-codes a release version instead of package metadata, this change is failed."
+acceptance:
+  - "Codex snapshot comparison passes with hooks = true in .codex/config.toml."
+  - "CLI version test expects the version reported by installed package metadata."
+scar_tag: none
+scar_items: []
+files_changed:
+  - "tests/fixtures/expected/codex/.codex/config.toml"
+  - "tests/test_cli/test_main.py"
+quality_checklist:
+  - criterion: "C5 Reuse"
+    checked: true
+    note: "Changed only existing expected values; no helper or duplicated logic was introduced."
+  - criterion: "C6 Clear Structure"
+    checked: true
+    note: "Snapshot data remains in the existing fixture path and the release assertion remains in the existing CLI version test."
+  - criterion: "C7 Elegant Logic"
+    checked: true
+    note: "No new abstraction or control flow was added for static expected-value drift."
+  - criterion: "C8 No Redundancy"
+    checked: true
+    note: "The version assertion now reads package metadata directly, avoiding a second hard-coded release value in the test."

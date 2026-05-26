@@ -118,10 +118,12 @@ class TestCLIVersion:
 
     def test_version_outputs_release_version(self):
         """version reports the current packaged release."""
+        from importlib.metadata import version as pkg_version
+
         from samsara_cli.main import app
 
         result = runner.invoke(app, ["version"])
-        assert result.output.strip() == "samsara-cli 0.9.1"
+        assert result.output.strip() == f"samsara-cli {pkg_version('samsara')}"
 
 
 # ---------------------------------------------------------------------------

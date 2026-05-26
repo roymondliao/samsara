@@ -62,7 +62,7 @@ def make_converted_output(tmp_path: Path) -> Path:
     (output / ".codex" / "hooks.json").write_text(
         json.dumps({"hooks": {"SessionStart": []}})
     )
-    (output / ".codex" / "config.toml").write_text("[features]\ncodex_hooks = true\n")
+    (output / ".codex" / "config.toml").write_text("[features]\nhooks = true\n")
     return output
 
 
@@ -99,6 +99,36 @@ class TestInstallerProjectScope:
         assert (project_dir / ".agents" / "skills" / "samsara-research").is_dir()
         assert (project_dir / ".codex" / "agents").is_dir()
         assert (project_dir / ".codex" / "hooks.json").exists()
+
+    def test_project_install_migrates_deprecated_codex_feature_flag(self, tmp_path):
+        """Project install replaces deprecated codex_hooks with hooks."""
+        from samsara_cli.installer.install import Installer
+
+        project_dir = tmp_path / "project"
+        project_codex_dir = project_dir / ".codex"
+        project_codex_dir.mkdir(parents=True)
+        config_path = project_codex_dir / "config.toml"
+        config_path.write_text("[features]\ncodex_hooks = true\n")
+        source_dir = make_minimal_source(tmp_path)
+        converted_dir = make_converted_output(tmp_path)
+
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="codex 1.2.3")
+            with patch(
+                "samsara_cli.installer.install.Installer._run_convert",
+                return_value=converted_dir,
+            ):
+                installer = Installer(platform="codex")
+                installer.install(
+                    source_dir=source_dir,
+                    scope="project",
+                    cwd=project_dir,
+                )
+
+        config = tomllib.loads(config_path.read_text())
+        features = config.get("features", {})
+        assert features.get("hooks") is True
+        assert "codex_hooks" not in features
 
     def test_project_install_returns_instructions(self, tmp_path):
         """Project install returns post-install instructions string."""
@@ -148,8 +178,7 @@ class TestInstallerProjectScope:
                     cwd=project_dir,
                 )
 
-        # Should mention codex_hooks since it's the feature flag for codex
-        assert "codex_hooks" in instructions.lower() or "codex" in instructions.lower()
+        assert "hooks = true" in instructions.lower()
 
 
 # ---------------------------------------------------------------------------
@@ -218,7 +247,8 @@ class TestInstallerGlobalScope:
                     )
 
         content = config_path.read_text()
-        assert "codex_hooks = true" in content
+        assert "hooks = true" in content
+        assert "codex_hooks" not in content
 
     def test_global_install_config_toml_is_valid_toml(self, tmp_path):
         """Global install must produce valid TOML in config.toml."""

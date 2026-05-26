@@ -7,6 +7,7 @@ error handling, source validator integration, target validator integration.
 """
 
 import json
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -255,6 +256,21 @@ class TestCodexNativeOutput:
 
         hooks_json = output / ".codex" / "hooks.json"
         assert hooks_json.exists(), "Native .codex/hooks.json missing"
+
+    def test_engine_produces_current_codex_hooks_feature_flag(self, tmp_path: Path):
+        """Codex config.toml uses hooks, not deprecated codex_hooks."""
+        from samsara_cli.converter.engine import ConversionEngine
+
+        source = make_source_structure(tmp_path)
+        output = tmp_path / "output"
+
+        engine = ConversionEngine(platform="codex")
+        engine.run(source_dir=source, output_dir=output)
+
+        config = tomllib.loads((output / ".codex" / "config.toml").read_text())
+        features = config.get("features", {})
+        assert features.get("hooks") is True
+        assert "codex_hooks" not in features
 
     def test_engine_does_not_emit_codex_plugin_manifest(self, tmp_path: Path):
         """Codex native output does not use .codex-plugin/plugin.json."""
