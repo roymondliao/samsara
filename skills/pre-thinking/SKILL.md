@@ -56,7 +56,7 @@ Read both research artifacts. Identify every decision planning would need to mak
 
 ## Step B — Question Groups
 
-Group gaps by topic domain and answer-interdependency (≤3 questions per AskUserQuestion call). After each call, append answers to `pre-thinking.md` below all existing content — never rewrite or truncate. Read the file before each append; if the file differs from the last-written state, incorporate user edits before appending. See `support/flow.md` §2 for group formation rules, §3 for group overflow procedure, §4 for file-edit detection, §7 for AskUserQuestion header constraint (≤12 chars).
+Group gaps by topic domain and answer-interdependency (≤3 questions per AskUserQuestion call). After each call, append answers to `pre-thinking.md` below all existing content — never rewrite or truncate. Read the file before each append; if the file differs from the last-written state, incorporate user edits before appending. See `support/flow.md` §2 for group formation rules, §3 for group overflow procedure, §4 for file-edit detection, §6 for mid-session Return to Research write format, §7 for AskUserQuestion header constraint (≤12 chars).
 
 ## Step C — Commitment
 

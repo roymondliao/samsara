@@ -16,7 +16,7 @@ Read from the feature's `changes/` directory:
 - `problem-autopsy.md` — translation delta, kill conditions
 - `pre-thinking.md` — user-LLM assumption alignment and commitment
 
-**Guard:** If `pre-thinking.md` is absent, or present but missing `## Step C — Commitment` section, **STOP**. Do not proceed to Step 2. Re-invoke `samsara:pre-thinking`.
+**Guard:** If `pre-thinking.md` is absent, or present but missing `## Step C — Commitment` section, **STOP**. Do not proceed to Step 2: Technical Specification. Re-invoke `samsara:pre-thinking`.
 
 ## Process
 
