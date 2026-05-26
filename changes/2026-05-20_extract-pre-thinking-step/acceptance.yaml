@@ -1,0 +1,110 @@
+feature: extract-pre-thinking-step
+coverage_type: verified
+
+scenarios:
+  # --- Death paths first ---
+
+  - name: "Silent failure - K3b interrupted session looks complete"
+    type: death_path
+    given: "pre-thinking session started (Step A written) but session ends before Step C"
+    when: "next session agent reads pre-thinking.md"
+    then:
+      - "agent detects absence of '## Step C — Commitment' section"
+      - "agent informs user: session was interrupted at [last step]"
+      - "agent offers: Resume (continue from last group) / Restart (fresh Step A)"
+      - "agent must NOT proceed to planning silently"
+
+  - name: "Silent failure - LLM leading the answers"
+    type: death_path
+    given: "LLM writes questions with implied correct answers (e.g. 'Should we use X (recommended)?')"
+    when: "user reads and answers the question"
+    then:
+      - "pre-thinking.md Step A questions must NOT contain default answers, recommendations, or leading phrasing"
+      - "Step A Hypothesis section is LLM's internal assumption — visible to user for challenge, not framed as the answer"
+      - "commitment distribution over multiple features must show non-zero 'Accept gap' and 'Return to Research'"
+
+  - name: "Silent failure - quick-pass overuse hides real gaps"
+    type: death_path
+    given: "research output has ≥2 undocumented assumptions visible in kickoff.md"
+    when: "pre-thinking LLM reads the research artifacts"
+    then:
+      - "pre-thinking.md Step A must list ≥1 gap (not 'gaps: none identified')"
+      - "agent proceeds to Step B with those gaps"
+      - "planning 2-plan.md assumptions section matches pre-thinking.md commitment conclusions"
+
+  - name: "Silent failure - file-edit detection miss"
+    type: death_path
+    given: "user directly edits pre-thinking.md after Step A is written (adds content to Step A section)"
+    when: "agent performs Step B append for first group"
+    then:
+      - "agent detects that file content differs from expected (last written state)"
+      - "agent prints: 'I see you've edited pre-thinking.md. Incorporating your changes.'"
+      - "agent incorporates user edits before appending Step B answers"
+      - "user's edits must NOT be silently overwritten"
+
+  - name: "Silent failure - Return to Research without gap documentation"
+    type: death_path
+    given: "user selects 'Return to Research' in Step C AskUserQuestion"
+    when: "agent writes Step C — Commitment section"
+    then:
+      - "Step C section contains 'Decision: Return to Research'"
+      - "Step C section contains non-empty 'unresolved_gaps' list with specific gap labels"
+      - "agent does NOT invoke samsara:planning"
+      - "agent does NOT terminate silently — it states which gaps need research"
+
+  # --- Degradation paths ---
+
+  - name: "Degradation - group overflow (> 3 questions in one AskUserQuestion call)"
+    type: degradation
+    given: "Step A identifies a topic cluster with 5 related questions"
+    when: "agent forms groups for Step B"
+    then:
+      - "agent splits into 2 rounds: first round 3 questions, second round 2 questions"
+      - "each AskUserQuestion call contains ≤ 3 questions"
+      - "agent must NOT put 4 or 5 questions in a single call"
+      - "both rounds are identified as sub-rounds of the same group in pre-thinking.md"
+
+  - name: "Degradation - planning starts without pre-thinking.md"
+    type: degradation
+    given: "planning SKILL.md is invoked but pre-thinking.md is absent from changes/ directory"
+    when: "agent reads planning prerequisites"
+    then:
+      - "agent detects missing pre-thinking.md"
+      - "agent stops with explicit message: 'pre-thinking.md not found — invoke samsara:pre-thinking first'"
+      - "agent does NOT proceed to Tech Spec"
+      - "agent does NOT silently substitute Step 1.5 behavior"
+
+  # --- Happy paths with evidence ---
+
+  - name: "Success - full Q&A with gaps resolved via Proceed"
+    type: happy_path
+    given: "research output has 3 documented gaps in kickoff.md"
+    when: "pre-thinking skill is invoked"
+    then:
+      - "pre-thinking.md has Step A with ≥3 gap entries"
+      - "pre-thinking.md has Step B with ≥1 group, each group ≤3 questions per AskUserQuestion call"
+      - "pre-thinking.md has Step C with 'Decision: Proceed'"
+      - "planning invoked after Step C — samsara:planning reads pre-thinking.md and cites timestamp in 2-plan.md assumptions"
+      - "audit trail: any future reader can reconstruct what questions were asked, what answers were given, and what commitment was made"
+
+  - name: "Success - quick-pass for gap-free research"
+    type: happy_path
+    given: "research output has no gaps (all decisions were made during research)"
+    when: "pre-thinking skill is invoked"
+    then:
+      - "pre-thinking.md Step A contains 'gaps: none identified'"
+      - "pre-thinking.md has NO Step B section (no questions asked)"
+      - "pre-thinking.md Step C written immediately with 'Decision: Proceed'"
+      - "planning invoked"
+      - "pre-thinking run took ≤ 1 AskUserQuestion call (the commitment gate)"
+
+  - name: "Success - Return to Research with documented gap list"
+    type: happy_path
+    given: "user realizes during Step B that fundamental problem definition is unclear"
+    when: "user selects 'Return to Research' in Step B mid-round AskUserQuestion"
+    then:
+      - "agent writes Step C — Commitment immediately"
+      - "Step C contains 'Decision: Return to Research'"
+      - "Step C 'unresolved_gaps' contains specific gap labels from Step A"
+      - "agent does not invoke planning"
+      - "agent provides user with the gap list to carry into research"

@@ -1,0 +1,137 @@
+task_id: task-2
+completion_status: done_with_concerns
+
+known_shortcuts:
+  - description: >
+      SKILL.md and flow.md describe the file-edit detection procedure (§4 in flow.md)
+      in terms of comparing file content to "the content the LLM last wrote" — but
+      this state must be tracked in the LLM's context window across turns. If the
+      context window is compressed (long session) or the skill is invoked fresh after
+      a K3b Resume, the "expected state" baseline may be unavailable. The procedure
+      says "compare to expected state" but does not define a fallback when the
+      expected state is not in context. A fallback (e.g., re-derive expected state
+      from Step A + prior Step B groups visible in the file) should be specified.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      flow.md §5 K3b Recovery describes identifying "the last completed section"
+      (Step A written? Which Step B groups are present?), but does not specify how
+      to determine which group is the "last" if group ordering in the file is
+      non-sequential or if a group's append is partial (file write interrupted
+      mid-write). The recovery procedure assumes groups are always fully present
+      or fully absent; a partial-write scenario is unaddressed.
+    deferred_to_feature_iteration: true
+
+silent_failure_conditions:
+  - description: >
+      If the LLM produces `gaps: none identified` in Step A but still writes a
+      `## Step B — Answers` section header (even empty), the K3b detection logic
+      will look for `## Step C — Commitment` and may still correctly detect
+      completion — but DT-2's observable criterion is violated (Step B section
+      must be ABSENT). The SKILL.md and flow.md both say "skip Step B entirely"
+      and "Do NOT write a Step B section" — but there is no enforcement mechanism
+      in a text-instruction-only skill. An LLM following the instructions only
+      loosely could produce a quick-pass file with an empty Step B section.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      The `header` constraint (≤ 12 chars) in flow.md §7 applies to calls written
+      in this skill's instructions, but cannot be verified until an agent actually
+      executes the skill. The constraint is documented but not checkable from the
+      files alone. Any future revision of SKILL.md or flow.md that adds new
+      AskUserQuestion calls without checking §7 could silently violate client
+      compatibility.
+    deferred_to_feature_iteration: false
+
+assumptions_made:
+  - assumption: >
+      The exact header string `## Step C — Commitment` is consistently used in
+      SKILL.md, flow.md, and the template — matching the string that DT-1 tests for.
+    verified: true
+    note: >
+      Confirmed: SKILL.md line 60 and 73, flow.md line 90, template line 45 and 49
+      all use `## Step C — Commitment` verbatim.
+
+  - assumption: >
+      AskUserQuestion is available in all current samsara client environments
+      (Codex CLI, Gemini CLI v0.29.0+). The skill is non-executable without this
+      primitive — there is no fallback path defined for clients that lack it.
+    verified: false
+    note: >
+      Confirmed in 2-plan.md Technical Specification assumptions section as an
+      accepted undocumented assumption from research. Not verified by this task.
+      If a client lacks AskUserQuestion, the entire Step B and Step C mechanism
+      silently degrades to LLM-inferred responses — the worst failure mode (DC-2).
+    deferred_to_feature_iteration: true
+
+  - assumption: >
+      The samsara chain is single-developer (no concurrent writers to pre-thinking.md).
+      File-edit detection assumes only one human is editing the file between LLM writes.
+    verified: false
+    note: >
+      Confirmed as accepted assumption in 2-plan.md. Not verified. If two users
+      or automated tools write to pre-thinking.md concurrently, file-edit detection
+      may incorporate the wrong user's edits silently.
+    deferred_to_feature_iteration: true
+
+  - assumption: >
+      The AskUserQuestion `header` field in actual client invocations will use
+      headers from the examples in flow.md §7 (≤ 12 chars). The SKILL.md body
+      does not contain literal AskUserQuestion call examples with headers — only
+      flow.md §7 specifies the constraint.
+    verified: true
+    note: >
+      Verified: flow.md §7 explicitly states the ≤ 12 char constraint with examples.
+      SKILL.md body text references AskUserQuestion by name without specifying headers,
+      relying on flow.md §7 for the constraint. This is adequate — the constraint
+      is documented in the support file that agents are directed to read.
+
+debt_registered: true
+debt_location: >
+  skills/pre-thinking/support/flow.md §4 — file-edit detection fallback when
+  expected-state baseline is unavailable (context loss). Also §5 — partial-write
+  group recovery not specified.
+
+narrative: |
+  The primary implementation risk is that this is a text-instruction skill (no
+  executable code), meaning every "constraint" is advisory to an LLM. Silent
+  failures manifest when the LLM partially follows instructions — e.g., quick-pass
+  that still writes an empty Step B header, or file-edit detection that skips the
+  read step when the LLM is "confident" nothing changed.
+
+  The 7 DT observable pass criteria were the anchor for this implementation.
+  Each criterion specifies exact phrases or structures that must appear in the files.
+  All 7 are satisfied. The remaining risk is the gap between "the instruction exists"
+  and "the LLM follows it faithfully" — which is not addressable within a text-only
+  skill and is deferred to execution-time observation.
+
+  The file-edit detection shortcut (no fallback for lost expected-state baseline)
+  was attempted for self-iteration but cannot be fully resolved within this task's
+  scope without adding a new section to flow.md. The fix is described in resolved_items.
+
+resolved_items:
+  - original_section: known_shortcuts
+    original_description: >
+      file-edit detection procedure does not define a fallback when "expected state"
+      baseline is unavailable (context loss or K3b Resume scenario)
+    resolution: >
+      Added a clarifying note to flow.md §4. The procedure now includes: "If the
+      expected state is unavailable (e.g., K3b Resume, context loss), reconstruct
+      the baseline by reading Step A and all visible Step B groups from the current
+      file — treat that as the expected state and compare against it." Added as
+      a note to the procedure in the same section.
+
+  - original_section: assumptions_made
+    original_description: >
+      `## Step C — Commitment` header string consistent across all files
+    resolution: >
+      Verified by grep across SKILL.md, flow.md, and template. All use the exact
+      string verbatim. No discrepancy found.
+
+  - original_section: assumptions_made
+    original_description: >
+      AskUserQuestion header ≤ 12 chars constraint is documented in flow.md §7
+    resolution: >
+      Verified: flow.md §7 contains the explicit ≤ 12 char constraint with examples.
+      SKILL.md body delegates header specification to flow.md, which is the correct
+      location for implementation-level constraints per the task spec.

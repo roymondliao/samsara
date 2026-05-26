@@ -22,7 +22,7 @@ digraph research {
     output_kickoff [label="產出 1-kickoff.md"];
     output_autopsy [label="產出 problem-autopsy.md"];
     gate [label="使用者確認？" shape=diamond];
-    next [label="invoke samsara:planning" shape=doublecircle];
+    next [label="invoke samsara:pre-thinking" shape=doublecircle];
 
     start -> interrogate;
     interrogate -> scope;
@@ -75,6 +75,6 @@ Format details: read support file `problem-autopsy.md`
 
 產出完成後，詢問使用者：
 
-> 「Research 完成。1-kickoff.md 和 problem-autopsy.md 已寫入 `changes/<feature>/`。確認後進入 Planning？」
+> 「Research 完成。1-kickoff.md 和 problem-autopsy.md 已寫入 `changes/<feature>/`。確認後進入 Pre-thinking？」
 
-使用者確認後，invoke `samsara:planning` skill。
+使用者確認後，invoke `samsara:pre-thinking` skill。

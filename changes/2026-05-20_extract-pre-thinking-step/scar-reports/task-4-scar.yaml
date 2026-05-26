@@ -1,0 +1,94 @@
+task_id: task-4
+completion_status: done
+
+known_shortcuts:
+  - description: >
+      Only two locations in skills/research/SKILL.md needed changing (dot graph label
+      and Transition section final line). Both were updated. The risk of only updating one
+      location was confirmed as the primary shortcut — addressed by verifying both with
+      grep after the edit.
+    deferred_to_feature_iteration: false
+
+silent_failure_conditions:
+  - description: >
+      If a future agent or template-generation tool re-renders skills/research/SKILL.md
+      from a source that still contains "samsara:planning" (e.g., a cached template,
+      a generator script, or another copy of the file), the edit would be silently
+      overwritten. This file appears to be authoritative and hand-maintained, so the
+      risk is low — but no check was made for generator scripts.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      The Transition section's confirmation prompt still says "確認後進入 Planning？"
+      (line 78). This user-facing question asks "enter Planning?" but the actual next
+      step is now pre-thinking. An agent reading this prompt will display "Planning"
+      to the user before invoking pre-thinking, which is misleading. This was NOT in
+      the task's change list (the task only specified updating line 80 and the dot
+      graph), so it was not changed.
+    deferred_to_feature_iteration: true
+
+assumptions_made:
+  - assumption: >
+      No support files in skills/research/ (problem-autopsy.md, templates/kickoff.md,
+      templates/problem-autopsy.md) contain a "planning" reference in a transition
+      context that also needs updating.
+    verified: true
+    note: >
+      grep -rn "planning" on all support files returned only zero results or
+      results unrelated to transition instructions (none of the files contain
+      "invoke samsara:planning" or equivalent).
+
+  - assumption: >
+      The text "before any planning or implementation" in the SKILL.md frontmatter
+      description (line 3) is context text, not a transition instruction, and should
+      NOT be changed to "pre-thinking".
+    verified: true
+    note: >
+      Line 3 reads: "Use when starting new feature work, investigating a problem,
+      or when the user describes something they want to build — before any planning
+      or implementation". This is a usage description, not a skill invocation
+      instruction. Confirmed by reading the full file: it refers to the general
+      planning activity, not the samsara:planning skill.
+
+  - assumption: >
+      The task spec's dot graph change (next node label) and Transition section change
+      (final line) are the only two locations requiring update. No other section in
+      the file references the skill chain transition.
+    verified: true
+    note: >
+      grep for all "invoke" and "samsara:" occurrences confirmed exactly two locations.
+      Step 1.5 (North Star) was verified to not contain any chain transition references.
+
+debt_registered: false
+
+narrative: |
+  This is a two-location text substitution in a documentation skill file. The
+  primary risk was partial update (updating only one of the two locations). Both
+  locations were confirmed changed by grep after implementation.
+
+  One new silent failure was identified during review: line 78 of the Transition
+  section still contains the user-facing prompt "確認後進入 Planning？" which now
+  refers to the wrong next step (the user will be asked "enter Planning?" when
+  actually pre-thinking comes next). This was intentionally outside the task's
+  specified change list and has been flagged as a deferred item for feature iteration.
+
+  All support files in skills/research/ were checked — none contain transition-context
+  references to samsara:planning.
+
+resolved_items:
+  - original_section: assumptions_made
+    original_description: >
+      No support files in skills/research/ contain a "planning" reference in a
+      transition context.
+    resolution: >
+      Verified by running grep -rn "planning" on problem-autopsy.md,
+      templates/kickoff.md, and templates/problem-autopsy.md. No transition
+      instructions found. Assumption confirmed true.
+
+  - original_section: assumptions_made
+    original_description: >
+      Only two locations in SKILL.md require updating (dot graph + Transition section).
+    resolution: >
+      Verified by running grep -n "invoke" and grep -n "samsara:" on SKILL.md.
+      Exactly two "invoke" occurrences found, both now pointing to samsara:pre-thinking.
+      Step 1.5 (North Star) confirmed to contain no chain transition reference.
