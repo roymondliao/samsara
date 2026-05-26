@@ -52,7 +52,7 @@ naming:
 permissions:
   sandbox_mode: "workspace-write"
   feature_flags:
-    codex_hooks: true
+    hooks: true
 
 transformations:
   # IMPORTANT: Regex patterns use single-quoted YAML strings.

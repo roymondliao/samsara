@@ -72,7 +72,7 @@ def make_converted_output(tmp_path: Path) -> Path:
     (output / ".codex" / "hooks.json").write_text(
         json.dumps({"hooks": {"SessionStart": []}})
     )
-    (output / ".codex" / "config.toml").write_text("[features]\ncodex_hooks = true\n")
+    (output / ".codex" / "config.toml").write_text("[features]\nhooks = true\n")
     return output
 
 
@@ -389,15 +389,49 @@ class TestInstallerGlobalIdempotent:
         run_install()
         content_after_second = config_path.read_text()
 
-        first_count = content_after_first.count("codex_hooks")
-        second_count = content_after_second.count("codex_hooks")
+        first_count = content_after_first.count("hooks")
+        second_count = content_after_second.count("hooks")
 
-        assert first_count > 0, "codex_hooks flag must appear after first install"
+        assert first_count > 0, "hooks flag must appear after first install"
         assert second_count == first_count, (
-            f"DC-8-4 violated: codex_hooks appeared {first_count} "
+            f"DC-8-4 violated: hooks appeared {first_count} "
             f"time(s) after first install but {second_count} time(s) after second install. "
             "Repeated installs must not duplicate entries."
         )
+
+    def test_global_install_uses_current_codex_hooks_feature_flag(self, tmp_path):
+        """DC-8-7: global install must not write deprecated codex_hooks flag."""
+        import tomllib
+        from samsara_cli.installer.install import Installer
+
+        fake_home = tmp_path / "home"
+        codex_config_dir = fake_home / ".codex"
+        codex_config_dir.mkdir(parents=True)
+        config_path = codex_config_dir / "config.toml"
+
+        project_dir = tmp_path / "project"
+        project_dir.mkdir()
+        source_dir = make_minimal_source(tmp_path)
+        converted_dir = make_converted_output(tmp_path)
+
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="codex 1.2.3")
+            with patch.dict("os.environ", {"HOME": str(fake_home)}):
+                with patch(
+                    "samsara_cli.installer.install.Installer._run_convert",
+                    return_value=converted_dir,
+                ):
+                    installer = Installer(platform="codex")
+                    installer.install(
+                        source_dir=source_dir,
+                        scope="global",
+                        cwd=project_dir,
+                    )
+
+        config = tomllib.loads(config_path.read_text())
+        features = config.get("features", {})
+        assert features.get("hooks") is True
+        assert "codex_hooks" not in features
 
     def test_repeated_global_install_produces_valid_toml(self, tmp_path):
         """DC-8-4: config.toml must remain valid TOML after repeated installs."""
