@@ -18,6 +18,7 @@ This skill applies ONLY when:
 
 If the failure is in code you're currently writing → that's implementation (use `samsara:implement`).
 If the spec doesn't match reality → that's spec drift (use `samsara:validate-and-ship`).
+If the failure comes from a recently delivered feature with `changes/<feature>/pre-thinking.md`, read its Evaluation Contract. The **Primary evaluator** is the canonical feedback source and its **Feedback loop** is the first repair path unless production evidence disproves it.
 
 ## Process
 
@@ -50,6 +51,11 @@ digraph debugging {
 ## Phase 1: Interrogate the Failure
 
 Do NOT jump to root cause. First, interrogate the failure itself.
+
+If an Evaluation Contract exists, answer:
+- Did the Primary evaluator pass during validation?
+- Is the current report a Fail signal that evaluator should have caught?
+- Does the documented Feedback loop still point to the right first fix?
 
 ### Failure Classification
 

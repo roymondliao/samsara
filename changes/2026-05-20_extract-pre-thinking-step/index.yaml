@@ -1,0 +1,45 @@
+feature: extract-pre-thinking-step
+status: complete
+
+tasks:
+  - id: task-1
+    title: "Write death tests (death-tests.md)"
+    status: done_with_concerns
+    scar_count: 4
+    unresolved_assumptions: 1
+    depends_on: []
+
+  - id: task-2
+    title: "Create samsara:pre-thinking skill (SKILL.md + flow.md + template)"
+    status: done_with_concerns
+    scar_count: 4
+    unresolved_assumptions: 0
+    depends_on: [task-1]
+
+  - id: task-3
+    title: "Update skills/planning/SKILL.md (remove Step 1.5, add prerequisite guard)"
+    status: done_with_concerns
+    scar_count: 3
+    unresolved_assumptions: 0
+    depends_on: [task-1, task-2]
+
+  - id: task-4
+    title: "Update skills/research/SKILL.md (transition to pre-thinking)"
+    status: done_with_concerns
+    scar_count: 2
+    unresolved_assumptions: 0
+    depends_on: [task-1, task-2]
+
+  - id: task-5
+    title: "Update skills/samsara-bootstrap/SKILL.md (dot graph + chain skills list)"
+    status: done_with_concerns
+    scar_count: 2
+    unresolved_assumptions: 0
+    depends_on: [task-1, task-2]
+
+  - id: task-6
+    title: "Update skills/writing-skills/SKILL.md (single-writer invariant)"
+    status: done_with_concerns
+    scar_count: 3
+    unresolved_assumptions: 0
+    depends_on: [task-1]

@@ -1,0 +1,136 @@
+task_id: task-3
+completion_status: done
+
+known_shortcuts:
+  - description: >
+      The frontmatter `description` field in skills/planning/SKILL.md still says
+      "Use when research/kickoff is complete" without mentioning pre-thinking as a
+      prerequisite. An agent routing by description alone might invoke planning without
+      having run pre-thinking — but the Prerequisites guard inside the skill body will
+      stop it. The description is a routing hint, not a gate; the omission is acceptable
+      but noted.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      The planning skill body is silent about pre-thinking internals (it just reads
+      the artifact). This is correct per task spec. However, the guard text says
+      "Re-invoke samsara:pre-thinking" without specifying the feature directory context.
+      An agent that doesn't carry the feature context across skill invocations could
+      invoke pre-thinking in the wrong directory. This is a samsara framework-level
+      issue, not a Task 3 issue.
+    deferred_to_feature_iteration: true
+
+silent_failure_conditions:
+  - description: >
+      The guard text says STOP and re-invoke samsara:pre-thinking. If the LLM agent
+      reads the guard but interprets "STOP" as advisory (not mandatory) and proceeds
+      to Step 2 anyway, the failure is silent — no runtime enforcement exists. The
+      only protection is the explicitness of the guard wording. The wording uses
+      bold **STOP** and "Do not proceed to Step 2" which is as strong as samsara
+      text instructions get. But it is still an LLM behavioral contract, not a
+      code assertion.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      If a user manually creates a pre-thinking.md that contains "## Step C — Commitment"
+      but with a Decision value of "Return to Research" (indicating planning should NOT
+      start), the planning guard passes — it only checks for presence of the section,
+      not the Decision value. Planning would proceed on a "Return to Research" commitment.
+      This is a gap in the guard condition. The task spec's guard only checks for section
+      presence, so this behavior matches the spec — but it is a known silent failure path.
+    deferred_to_feature_iteration: false
+
+assumptions_made:
+  - assumption: >
+      The exact guard string "## Step C — Commitment" used in the planning guard matches
+      the exact section header written by samsara:pre-thinking SKILL.md (Task 2 output).
+    verified: true
+    note: >
+      Confirmed by reading skills/pre-thinking/SKILL.md — the section is defined as
+      "## Step C — Commitment" (line 61) and the Yin Constraints reference the exact
+      same string (line 74). The planning guard check string matches the pre-thinking
+      output string.
+
+  - assumption: >
+      Task 2 (samsara:pre-thinking SKILL.md) was completed before Task 3, so
+      "samsara:pre-thinking" referenced in the guard is an existing invocable skill.
+    verified: true
+    note: >
+      Confirmed by checking skills/pre-thinking/SKILL.md exists at
+      /Users/yuyu_liao/personal/samsara/skills/pre-thinking/SKILL.md with
+      name: pre-thinking in frontmatter. The skill is present and invocable.
+
+  - assumption: >
+      No planning skill support files (death-first-spec.md, task-format.md, templates/)
+      reference "Step 1.5" by name or depend on the removed section's behavior.
+    verified: true
+    note: >
+      Checked all files in skills/planning/ with grep — no references to Step 1.5
+      found in death-first-spec.md, task-format.md, or templates/.
+
+  - assumption: >
+      The "Re-invoke samsara:pre-thinking" instruction in the guard is sufficient
+      for agents to know what action to take when blocked. The skill name alone
+      (samsara:pre-thinking) is the standard invocation pattern in samsara framework.
+    verified: true
+    note: >
+      Verified by cross-referencing: planning/SKILL.md uses "invoke samsara:implement"
+      (line 36 dot graph) and pre-thinking/SKILL.md uses "invoke samsara:planning"
+      (line 31 dot graph). The "samsara:<skillname>" invocation pattern is consistent
+      across both skills already read. The guard's "Re-invoke samsara:pre-thinking"
+      follows this convention without deviation.
+
+debt_registered: false
+
+narrative: |
+  Task 3 makes three surgical changes to skills/planning/SKILL.md:
+  1. Prerequisites section: added pre-thinking.md entry plus explicit guard
+  2. dot graph: replaced start->prethink->spec chain with start->guard->spec,
+     added blocked node, removed prethink and human_pt nodes entirely
+  3. Body: removed all 52 lines of Step 1.5 section
+
+  The guard wording is the critical element. It uses bold **STOP** and explicitly
+  names both failure conditions (absent file, present file missing Step C section).
+  This matches the task spec's guard requirement verbatim.
+
+  One silent failure path was identified that is within spec but worth noting: the
+  guard checks for presence of "## Step C — Commitment" section but not for the
+  Decision value inside it. A "Return to Research" commitment would pass the guard.
+  The task spec prescribes only presence-check; this is intentional design in the
+  spec (the planning guard is not a commitment-value validator). Noted for feature
+  iteration if decision-value validation is later deemed necessary.
+
+  The assumption about "samsara:pre-thinking" invocation convention is unverified
+  because the samsara-bootstrap skill (Tasks 4-5 scope) has not been read. The
+  pattern matches existing text in the same file ("invoke samsara:implement"),
+  making this low risk.
+
+resolved_items:
+  - original_section: assumptions_made
+    original_description: >
+      Guard string "## Step C — Commitment" matches pre-thinking SKILL.md output.
+    resolution: >
+      Verified by reading skills/pre-thinking/SKILL.md lines 61 and 74. Exact string
+      match confirmed. assumption.verified updated to true.
+
+  - original_section: assumptions_made
+    original_description: >
+      Task 2 pre-thinking skill exists and is invocable.
+    resolution: >
+      Verified by filesystem check — skills/pre-thinking/SKILL.md exists with
+      name: pre-thinking frontmatter. assumption.verified updated to true.
+
+  - original_section: assumptions_made
+    original_description: >
+      No planning support files reference Step 1.5.
+    resolution: >
+      Verified by grep across all files in skills/planning/ directory. No references
+      found. assumption.verified updated to true.
+
+  - original_section: assumptions_made
+    original_description: >
+      "samsara:pre-thinking" invocation convention matches samsara framework standard.
+    resolution: >
+      Verified by cross-referencing existing usage in planning/SKILL.md ("invoke
+      samsara:implement") and pre-thinking/SKILL.md ("invoke samsara:planning"). The
+      "samsara:<skillname>" pattern is consistent. assumption.verified updated to true.

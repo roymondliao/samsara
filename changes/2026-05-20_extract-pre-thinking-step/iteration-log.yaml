@@ -1,0 +1,93 @@
+feature: extract-pre-thinking-step
+signal_lost_initial: 9
+
+budget:
+  max_rounds: 3
+  reviewer_retry_limit: 2
+
+rounds:
+  - round: 1
+    signal_lost_before: 9
+    budget_context:
+      remaining_rounds_at_start: 2
+      stagnation_count_at_start: 0
+      net_rot_previous_round: 0
+      strategy_hint: explore
+    items_triaged: 9
+    triage_result:
+      fix:
+        - "task-2 known_shortcuts[1]: partial-write K3b — flow.md §5 K3b Recovery does not define complete vs. partial group when file write is interrupted mid-write"
+        - "task-6 known_shortcuts[1]: writing-skills/SKILL.md body word count exceeded <500-word budget after Q4 addition (504 words)"
+      accept:
+        - description: >
+            task-1 known_shortcuts[1]: 'Degradation - planning starts without pre-thinking.md'
+            death test (DT check from pre-thinking side) is covered; the reciprocal guard
+            enforcement from the planning side was out of task-1 scope. Task 3 addresses it,
+            but the cross-coverage gap between death-tests.md and planning/SKILL.md guard is
+            not verified end-to-end.
+          expiry_date: "2026-11-26"
+          rationale: "Task 3 implements the planning guard. Cross-task verification gap is an audit concern, not a shipped defect. Revisit if a planning-without-pre-thinking failure is observed in the wild."
+        - description: >
+            task-1 assumptions_made[1] (verified: false): 'LLM leading the answers' acceptance.yaml
+            scenario is only partially covered by DT-6 (AskUserQuestion gate). Multi-session
+            distribution check (commitment shows non-zero Accept gap across features) cannot be
+            expressed as a single-session behavioral scenario.
+          expiry_date: "2027-05-26"
+          rationale: "Multi-session distribution checks require longitudinal observation. Accept until a multi-feature usage pattern is observable. Revisit at 1-year mark."
+        - description: >
+            task-2 assumptions_made[1] (verified: false): AskUserQuestion primitive availability
+            is not verified across all samsara client environments (Codex CLI, Gemini CLI v0.29.0+).
+            The entire Step B and Step C mechanism silently degrades to LLM-inferred responses
+            if a client lacks this primitive — the worst failure mode (DC-2).
+          expiry_date: "2026-11-26"
+          rationale: "AskUserQuestion is confirmed available in the primary client used for development. Broader compatibility is a platform concern. Revisit when a new client environment is onboarded."
+        - description: >
+            task-2 assumptions_made[2] (verified: false): single-developer assumption for
+            pre-thinking.md. File-edit detection assumes only one human is editing between LLM
+            writes. Concurrent write by two users or automated tools could silently incorporate
+            the wrong edits.
+          expiry_date: "2027-05-26"
+          rationale: "Samsara is a single-developer workflow by design. Concurrent-writer scenario is architecturally out of scope. Accept until samsara explicitly supports multi-user sessions."
+        - description: >
+            task-3 known_shortcuts[1]: planning skill guard says 'Re-invoke samsara:pre-thinking'
+            without specifying the feature directory context. An agent that does not carry feature
+            context across skill invocations could invoke pre-thinking in the wrong directory.
+          expiry_date: "2026-11-26"
+          rationale: "A samsara framework-level issue, not a task-3 defect. Feature directory context is established at session start and maintained across skills by the framework. Accept until a cross-directory confusion is observed in practice."
+        - description: >
+            task-5 silent_failure_conditions[0]: if the bootstrap skill is injected via a cached
+            system prompt (not read live from the file), an update to skills/samsara-bootstrap/SKILL.md
+            would not be seen until the cache is invalidated. An agent operating from a stale cached
+            bootstrap would still route research → planning directly, bypassing pre-thinking.
+          expiry_date: "2026-11-26"
+          rationale: "Cache invalidation is a platform/session management concern. The file has been updated; new sessions will read the correct routing. Accept risk for in-progress sessions; risk expires when all active sessions are refreshed."
+        - description: >
+            task-6 assumptions_made[1] (verified: false): the <500-word budget rule in
+            writing-skills/SKILL.md may apply to all SKILL.md files including itself. After Fix C,
+            body word count is 469 — under budget by all counting methods. The unverified assumption
+            is now moot as the file is compliant.
+          expiry_date: "2026-08-26"
+          rationale: "The file is now compliant (469 words). The assumption about budget scope is academic — compliance is satisfied regardless of interpretation. Short expiry: review if writing-skills/SKILL.md is edited again."
+      defer: []
+    fixes_applied: 2
+    fixes_scar_count: 2
+    budget_spent:
+      implementer_dispatches: 2
+      reviewer_dispatches: 4
+      reviewer_retries: 0
+      validation_runs: 10
+    evidence_gained:
+      - "Fix A: DT-A1 confirmed partial-write K3b was unhandled (RED before fix, GREEN after)"
+      - "Fix A: complete/partial group definition added to flow.md §5 with explicit scan range"
+      - "Fix A: §4 'visible Step B groups' confirmed consistent with §5 partial-group definition"
+      - "Fix C: body word count confirmed 504 (pre-fix) → 469 (post-fix) via tail -n +6 | wc -w"
+      - "Fix C: all three semantic points in Q4 confirmed present after condensing (AskUserQuestion, K3b, redesign)"
+      - "Fix C: YAML parse error in iter-fix-C-scar.yaml resolved before commit (quoted original_section value)"
+    residual_risk:
+      - "iter-fix-A: malformed group headers (typo in '### Group N:' format) are undefined behavior; deferred to feature iteration in iter-fix-A-scar.yaml"
+      - "iter-fix-A: 'followed by' proximity scan range added, but still relies on LLM interpretation of 'anywhere before next ### Group header or end of file'"
+      - "iter-fix-C: 'race conditions between sessions' detail removed from Q4 bullet 2; K3b label present but consequence partially implicit for authors unfamiliar with K3b"
+      - "No automated CI check on SKILL.md body word count — future edits can silently exceed 500-word budget"
+    signal_lost_after: 7
+    decision: stop
+    decision_reason: "User chose to stop after round 1. Items B, D, E, F, G, H, I accepted with expiry dates. Two fixes applied (Fix A + Fix C). signal_lost reduced from 9 to 7. Proceeding to security-privacy-review."

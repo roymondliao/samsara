@@ -13,6 +13,7 @@ Aggregate remaining scar items from all tasks, triage cross-task patterns, fix s
 
 Read from the feature's `changes/` directory:
 - `index.yaml` — task list with scar_count and unresolved_assumptions
+- `pre-thinking.md` — Evaluation Contract with Primary evaluator and Feedback loop
 - `scar-reports/task-N-scar.yaml` — all scar reports (post Level 1 self-iteration)
 
 ## Process
@@ -21,7 +22,7 @@ Read from the feature's `changes/` directory:
 digraph iteration {
     node [shape=box];
 
-    entry [label="Entry\n讀取 scar-reports/ + index.yaml\nAggregate remaining items\n計算 signal_lost" shape=doublecircle];
+    entry [label="Entry\n讀取 scar-reports/\n+ index.yaml\n+ pre-thinking.md\n計算 signal_lost" shape=doublecircle];
     empty [label="有 actionable items？" shape=diamond];
     triage [label="Triage（human gate）\n每個 remaining item:\nfix / accept / defer\nFocus: cross-task patterns"];
     fix [label="Fix\nbudget-aware dispatch\nper-fix commit\nscar report per fix"];
@@ -47,6 +48,13 @@ digraph iteration {
 ```
 
 ## Step 1: Aggregate Remaining Scars
+
+Read `pre-thinking.md` first and extract:
+- **Primary evaluator** — the canonical feedback source
+- **Pass signal / Fail signal**
+- **Feedback loop** — the first correction path when the evaluator fails
+
+If implementation appears complete but the Primary evaluator fails, add that evaluator failure to the remaining scar set as a cross-task pattern. Do not invent a new success standard during iteration.
 
 Read all `scar-reports/task-N-scar.yaml` files. Collect remaining items:
 
@@ -90,6 +98,8 @@ Unaddressed:
 ```
 
 User triages each item. AI can suggest classifications but user decides.
+
+When a remaining item maps to the Evaluation Contract, prefer the documented Feedback loop as the first suggested fix path.
 
 ## Step 3: Fix (Per-Fix Commit)
 

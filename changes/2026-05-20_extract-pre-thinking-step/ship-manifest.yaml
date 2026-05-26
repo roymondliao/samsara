@@ -1,0 +1,188 @@
+delivered_capability: >
+  New chain skill samsara:pre-thinking that runs unconditionally between
+  samsara:research and samsara:planning. Surfaces user-LLM assumption gaps
+  via AskUserQuestion groups (≤3 questions/call), produces an append-only
+  audit log (pre-thinking.md), and gates planning until a commitment is
+  reached (Proceed / Accept gap / Return to Research). Includes K3b
+  interrupted-session recovery, file-edit detection, and group overflow
+  procedure. Four existing skills updated to wire the new chain node:
+  planning (prerequisite guard), research (transition target), samsara-bootstrap
+  (dot graph + Chain Skills list), writing-skills (single-writer invariant Q4).
+
+known_failure_modes:
+  - mode: >
+      K3b hard stop with no fallback: if AskUserQuestion is unavailable in
+      a client environment, the K3b recovery procedure detects the interrupted
+      session and issues 'Wait for user selection' — but cannot complete
+      because there is no AskUserQuestion fallback path defined. The entire
+      Step B and Step C commitment mechanism silently degrades to LLM-inferred
+      responses.
+    severity: silent_corruption
+    detection: >
+      No in-session signal when AskUserQuestion is absent. Detected only by
+      observing absence of AskUserQuestion calls in session transcripts, or by
+      a session that completes pre-thinking without any interactive Q&A.
+
+  - mode: >
+      Quick-pass overuse: LLM marks all research output as gap-free and always
+      takes the quick-pass path. pre-thinking.md is created (chain compliance
+      visible) but assumption gaps are smuggled into planning as implicit
+      assumptions, undermining the skill's core purpose.
+    severity: silent_corruption
+    detection: >
+      Monitor commitment distribution across features: if Proceed rate ≈ 100%
+      and Accept-gap + Return-to-Research rates ≈ 0% across ≥3 consecutive
+      features, quick-pass overuse is likely. Also: Q count = 0 in all
+      pre-thinking.md Step B sections is a DC-3 signal.
+
+  - mode: >
+      LLM leading the answers: questions in Step A contain embedded
+      recommendations or implied correct answers, causing user to rubber-stamp
+      LLM assumptions. pre-thinking.md shows user answers (alignment appears
+      to have happened) but the LLM filled its own gaps under a question format.
+    severity: silent_corruption
+    detection: >
+      Audit Step A questions in pre-thinking.md for leading phrasing
+      (e.g., 'Should we use X (recommended)?'). Multi-session distribution
+      check: commitment distribution showing 100% Proceed with zero Accept-gap
+      across multiple features is a DC-2 signal.
+
+  - mode: >
+      Return to Research commitment passes planning guard: planning/SKILL.md
+      guard checks only for presence of '## Step C — Commitment' section, not
+      for the Decision value inside it. A pre-thinking.md with
+      Decision: Return to Research passes the guard and planning proceeds.
+    severity: degradation
+    detection: >
+      Check 2-plan.md output — if planning was invoked after a 'Return to
+      Research' commitment, 2-plan.md will exist without a valid pre-thinking
+      commitment. Manual audit of pre-thinking.md Decision field vs. planning
+      invocation timestamp.
+
+  - mode: >
+      STOP instruction interpreted as advisory: the planning/SKILL.md guard
+      uses bold **STOP** and explicit text, but as an LLM behavioral contract
+      (not code assertion). An agent reading the guard loosely could proceed
+      to Step 2: Technical Specification even when pre-thinking.md is absent
+      or incomplete.
+    severity: degradation
+    detection: >
+      Presence of 2-plan.md in changes/<feature>/ without a corresponding
+      pre-thinking.md is a direct detection signal. Monitor for planning
+      output without pre-thinking artifact.
+
+  - mode: >
+      Cached system prompt bypass: if samsara-bootstrap is injected via a
+      cached system prompt (not read live from file), existing sessions will
+      still route research → planning directly, bypassing pre-thinking.
+    severity: degradation
+    detection: >
+      Session where research completes and planning is invoked without an
+      intermediate pre-thinking step or pre-thinking.md artifact.
+
+  - mode: >
+      Read truncation misses Q4 in writing-skills/SKILL.md: question 4
+      (single-writer artifact invariant) is at the end of the Yin-Side Check.
+      An agent that stops reading before the end of the section will not
+      perform the single-writer check when authoring new skills.
+    severity: degradation
+    detection: >
+      New skills authored without enforcing the single-writer invariant
+      (dual-writer artifacts introduced). Post-authoring audit of new skill
+      files for artifact write patterns.
+
+  - mode: >
+      Malformed group header in pre-thinking.md (e.g., typo in '### Group N:'
+      format) causes undefined K3b recovery behavior. The partial-group
+      detection heuristic depends on the exact header format.
+    severity: degradation
+    detection: >
+      K3b Recovery procedure fails to correctly identify last completed group
+      if the header line is malformed. The recoverable detection is: agent
+      offers Restart when Resume would have been correct, causing loss of
+      partially-answered groups.
+
+accepted_risks:
+  - risk: >
+      task-1: planning-guard cross-task coverage gap. DT check from the
+      pre-thinking side is covered; the reciprocal guard enforcement from
+      the planning side is not verified end-to-end across the two task scopes.
+    accepted_by: human
+    expires: "2026-11-26"
+
+  - risk: >
+      task-1: 'LLM leading the answers' acceptance scenario only partially
+      covered by DT-6 (AskUserQuestion gate). Multi-session distribution check
+      (non-zero Accept-gap rate across features) cannot be expressed as a
+      single-session behavioral scenario and was not verified.
+    accepted_by: human
+    expires: "2027-05-26"
+
+  - risk: >
+      task-2: AskUserQuestion primitive availability not verified across all
+      samsara client environments. The entire Step B and Step C mechanism
+      silently degrades to LLM-inferred responses (DC-2, the worst failure
+      mode) if a client lacks this primitive.
+    accepted_by: human
+    expires: "2026-11-26"
+
+  - risk: >
+      task-2: single-developer assumption unverified. File-edit detection
+      assumes only one human edits pre-thinking.md between LLM writes.
+      Concurrent writes by two users or automated tools could silently
+      incorporate the wrong user's edits.
+    accepted_by: human
+    expires: "2027-05-26"
+
+  - risk: >
+      task-3: planning guard says 'Re-invoke samsara:pre-thinking' without
+      specifying the feature directory context. An agent without feature
+      context across skill invocations could invoke pre-thinking in the
+      wrong directory.
+    accepted_by: human
+    expires: "2026-11-26"
+
+  - risk: >
+      task-5: cached system prompt bypass. Sessions active at time of
+      deployment will still use old research → planning routing until their
+      session context refreshes.
+    accepted_by: human
+    expires: "2026-11-26"
+
+  - risk: >
+      task-6: 500-word budget scope interpretation unverified. After Fix C,
+      writing-skills/SKILL.md body is 469 words — compliant regardless of
+      interpretation. Risk is now moot but retained for audit trail.
+    accepted_by: human
+    expires: "2026-08-26"
+
+  - risk: >
+      validate-and-ship code review: planning/SKILL.md guard admits
+      'Decision: Return to Research' commitment — guard checks section
+      presence, not Decision value. Accepted as intentional spec behavior;
+      decision-value validation deferred to future iteration if observed
+      in production.
+    accepted_by: human
+    expires: "2026-11-26"
+
+silent_failure_surface: high
+# 8 unique silent_failure_conditions remaining across task scar reports.
+# Threshold: high = >7 OR any unverified critical assumption.
+# Also: AskUserQuestion availability (task-2 assumptions_made[1]) is an
+# unverified critical assumption that affects the entire Step B/C mechanism.
+
+monitoring_hooks:
+  - "Commitment distribution: monitor pre-thinking.md Step C Decision across features. If Proceed rate = 100% and Accept-gap + Return-to-Research = 0% across ≥3 consecutive features, suspect DC-2 (LLM leading) or DC-3 (quick-pass overuse)."
+  - "Q count rate: monitor Step B group count in pre-thinking.md. If Step B is absent in all files (quick-pass every time), suspect DC-3."
+  - "Guard bypass signal: presence of 2-plan.md without pre-thinking.md in the same changes/<feature>/ directory = planning ran without pre-thinking commitment."
+  - "Audit log integrity: check that pre-thinking.md Step C section contains Decision: field after each completed session."
+
+kill_switch: >
+  To immediately disable the pre-thinking step and restore the original
+  research → planning chain: remove the pre-thinking.md prerequisite and
+  guard from skills/planning/SKILL.md Prerequisites section (the block added
+  by this feature). Planning will proceed without requiring pre-thinking.md.
+  Also revert research/SKILL.md line 80 from 'invoke samsara:pre-thinking skill'
+  back to 'invoke samsara:planning skill'. This does not delete any created
+  files — pre-thinking.md artifacts in changes/ directories are inert without
+  the chain enforcement.

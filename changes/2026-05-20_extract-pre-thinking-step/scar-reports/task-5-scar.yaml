@@ -1,0 +1,120 @@
+task_id: task-5
+completion_status: done
+
+known_shortcuts:
+  - description: >
+      The dot graph and Chain Skills list are the two representations of the chain.
+      If one were updated without the other, an agent reading bootstrap would get
+      inconsistent routing information. Both were updated in this task. However, there
+      is no automated consistency check between the two representations — a future
+      edit could update one and silently desync the other.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      pre-thinking is listed only in Chain Skills, not in Entry Skills. This is
+      correct per the task spec and architecture (it is NOT directly invocable from
+      user intent). Verified by inspecting both sections of the updated file.
+    deferred_to_feature_iteration: false
+
+silent_failure_conditions:
+  - description: >
+      The dot graph and Chain Skills list are both prose/graph representations read
+      by an agent at session start. If the bootstrap skill is injected via a cached
+      system prompt (not read live from the file), an update to the file would not
+      be seen until the cache is invalidated. An agent operating from a stale cached
+      bootstrap would still route research → planning directly, bypassing pre-thinking.
+      The first discoverer would be a session where the new pre-thinking.md file is
+      expected but not written.
+    deferred_to_feature_iteration: true
+
+  - description: >
+      If a future task modifies the Chain Skills section and uses a different ordering
+      convention (e.g., alphabetical), pre-thinking could appear after planning in the
+      list even if the dot graph is correct. This silently breaks the ordering guarantee
+      verified by the death test check.
+    deferred_to_feature_iteration: false
+
+assumptions_made:
+  - assumption: >
+      The file at skills/samsara-bootstrap/SKILL.md on disk is the canonical version
+      that agents read. The task spec notes that system-injected bootstrap context
+      is read-only. Changes here affect future sessions; agents operating from an
+      already-loaded session context will not see the update until their next session.
+    verified: true
+    note: >
+      The task spec explicitly warns: "The file at skills/samsara-bootstrap/SKILL.md
+      in the working directory is the LOCAL copy you should edit. The system also
+      injects a bootstrap skill content into the session context — that is read-only
+      system context, not the file." This distinction is acknowledged.
+
+  - assumption: >
+      The node identifier pre_thinking (underscore) is consistent with dot language
+      conventions and does not conflict with any reserved keyword. The label
+      "samsara:pre-thinking\n(assumption alignment)" uses a colon and hyphen which
+      are valid in a quoted dot label string.
+    verified: true
+    note: >
+      Verified by running a Python-based graph node reference check. All declared
+      nodes are referenced in edges; all edge-referenced nodes are declared. No
+      undeclared node reference found.
+
+  - assumption: >
+      The Chain Skills list ordering in the file corresponds to chain execution order
+      (top to bottom = first to last invoked). This is the existing convention
+      (planning → implement → iteration → security_review → validate-and-ship).
+    verified: true
+    note: >
+      Confirmed by reading the existing Chain Skills list before editing. The
+      pre-thinking entry was inserted at the top of the Chain Skills list (before
+      planning), matching the chain execution order.
+
+debt_registered: false
+
+narrative: |
+  This task makes a high-visibility change to the bootstrap skill that every session
+  reads at start. The two changes (dot graph + Chain Skills list) are two separate
+  representations of the same architectural decision: pre-thinking is a mandatory
+  chain step between research and planning.
+
+  The main risk was partial update — changing only the graph or only the prose list.
+  Both changes were applied and both death tests were verified by inspection and
+  programmatic check.
+
+  The dot graph node `pre_thinking` was added to the node declarations section (before
+  the edge declarations), which follows the existing convention for all other nodes.
+  The node label matches the skill name format used for other chain skills.
+
+  The Chain Skills entry text was taken verbatim from the task spec with no deviation.
+
+  One ongoing risk: the two representations can silently desync on future edits.
+  There is no automated check ensuring graph edges and Chain Skills list stay in sync.
+  This is noted in known_shortcuts and silent_failure_conditions.
+
+resolved_items:
+  - original_section: assumptions_made
+    original_description: >
+      The node identifier pre_thinking is syntactically valid and all graph node
+      references are consistent.
+    resolution: >
+      Verified programmatically using Python regex on the extracted dot block. All
+      15 declared node identifiers are referenced in edges; all edge-referenced
+      identifiers are declared. The only false-positive warning was for the global
+      attribute setting "node [shape=box]" which is not an actual node.
+
+  - original_section: assumptions_made
+    original_description: >
+      Chain Skills list ordering corresponds to chain execution order.
+    resolution: >
+      Verified by re-reading the existing list before editing and confirmed by
+      programmatic check that pre-thinking (line 99) appears before planning (line 100)
+      in the file after editing.
+
+  - original_section: silent_failure_conditions
+    original_description: >
+      If a future task modifies Chain Skills ordering, pre-thinking could appear after
+      planning silently.
+    resolution: >
+      Not deferred to feature iteration because this is an ongoing maintenance risk,
+      not a current failure. The death test check (pre_think_line < planning_line)
+      provides a reviewable criterion for any future editor. No code fix needed beyond
+      documentation.

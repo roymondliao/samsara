@@ -1,6 +1,6 @@
 ---
 name: research
-description: Use when starting new feature work or investigating a problem before planning
+description: Use when starting new feature work or investigating a problem before pre-thinking and planning
 ---
 
 # Research — Interrogate, Scope, Define
@@ -15,4 +15,4 @@ Use the grep_search tool to search for patterns.
 
 ## Transition
 
-After completing research outputs, activate the `samsara-planning` skill skill.
+After completing research outputs, activate the `samsara-pre-thinking` skill skill.

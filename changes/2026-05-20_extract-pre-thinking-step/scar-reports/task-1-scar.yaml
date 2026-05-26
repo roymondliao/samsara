@@ -1,0 +1,124 @@
+task_id: task-1
+completion_status: done_with_concerns
+
+known_shortcuts:
+  - description: >
+      DT-6 (Commitment via AskUserQuestion) maps to acceptance.yaml scenario
+      "Silent failure - LLM leading the answers" but covers only one sub-case:
+      commitment inferred from conversation. The full acceptance.yaml scenario also
+      requires that Step A questions are non-leading (no embedded recommendations) and
+      that commitment distribution shows non-zero "Accept gap" rates across features.
+      The distribution check cannot be expressed as a single-session behavioral test.
+      DT-6 verifies the AskUserQuestion gate; it does not verify question phrasing
+      or multi-session distribution.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      "Degradation - planning starts without pre-thinking.md" in acceptance.yaml is
+      partially deferred to Task 3 (planning SKILL.md modification). DT-1 covers the
+      pre-thinking detection side; the planning guard (blocking when pre-thinking.md
+      absent) is not tested here because it is outside Task 1's file scope. The
+      cross-reference note in coverage verification makes this gap visible to Task 3.
+    deferred_to_feature_iteration: true
+
+silent_failure_conditions:
+  - description: >
+      If the SKILL.md or flow.md produced in Tasks 2–3 uses different section header
+      text than "## Step C — Commitment", DT-1 would pass as written but the skill
+      would fail at runtime — the detection string would not match. These tests assume
+      the exact header string. No verification is possible until Tasks 2–3 produce
+      their files.
+    deferred_to_feature_iteration: true
+
+  - description: >
+      DT-5 (file-edit detection) assumes the LLM implementation tracks "last-written
+      state" between Step A and Step B. If the implementation uses a diff approach
+      (comparing to a hash, a snapshot variable, or reading back the file) and that
+      state is lost between agent turns (e.g., context window compression), the test
+      scenario cannot be reproduced as written. The failure mode would be silent:
+      file-edit goes undetected without error.
+    deferred_to_feature_iteration: true
+
+assumptions_made:
+  - assumption: >
+      The exact header string "## Step C — Commitment" is used consistently across
+      SKILL.md, flow.md, and the pre-thinking.md template (as shown in 2-plan.md
+      Template Structure section).
+    verified: true
+    note: >
+      Confirmed in 2-plan.md lines 189-196 template spec and line 47 ("Detection:
+      Check for '## Step C — Commitment' section"). The string is used verbatim
+      throughout all planning documents.
+
+  - assumption: >
+      "LLM leading the answers" in acceptance.yaml is adequately represented by the
+      single test case of commitment inferred from conversation (DT-6), even though
+      the acceptance.yaml scenario lists three observable indicators (question phrasing,
+      Step A hypothesis framing, commitment distribution).
+    verified: false
+    note: >
+      The multi-session distribution check ("commitment distribution over multiple
+      features must show non-zero Accept gap") cannot be expressed as a single
+      behavioral scenario. DT-6 addresses what is testable in isolation. If a
+      reviewer decides the distribution check requires its own test scenario, a DT-8
+      would need to be added.
+    deferred_to_feature_iteration: true
+
+  - assumption: >
+      The 7 scenarios in the task specification map one-to-one to the 7 death cases
+      listed in 2-plan.md (DC-1 through DC-7 minus DC-7 "Planning Reads Stale
+      Pre-thinking"). The task specification omits DC-7 (stale pre-thinking) and adds
+      DT-6 (commitment via AskUserQuestion, which maps to DC-2). This mapping was
+      accepted as intentional.
+    verified: true
+    note: >
+      Cross-referenced 2-plan.md Death Cases (DC-1 through DC-7) against the 7 task
+      scenarios. DC-7 (stale pre-thinking / timestamp check) is not in the task's
+      required test list. The task's DT-6 covers DC-2 (LLM leading the answers)
+      from the AskUserQuestion gate angle. No missing scenario was identified in
+      the required 7.
+
+debt_registered: true
+debt_location: >
+  changes/2026-05-20_extract-pre-thinking-step/death-tests.md — Coverage
+  Verification section, note on "Degradation - planning starts without
+  pre-thinking.md"; and DT-6 known_shortcuts item above.
+
+narrative: |
+  The primary risk in this task is abstractness: tests that describe behavior
+  without naming what observable output proves correctness. Each scenario was
+  written with an explicit "Observable pass criterion" that names the specific
+  text or instruction that must appear in the implementation files. This makes
+  the tests reviewable by a human comparing the skill files to the criteria.
+
+  One gap remains: acceptance.yaml scenario "Silent failure - LLM leading the
+  answers" has three sub-criteria. DT-6 covers one (the AskUserQuestion gate).
+  The other two (non-leading question phrasing, distribution) are either style
+  constraints enforced by flow.md wording (verifiable in Task 2) or multi-session
+  metrics not expressible as single-scenario tests. This is noted in known_shortcuts
+  and assumptions_made.
+
+  DC-7 (stale pre-thinking — planning reads old pre-thinking.md from a prior
+  research cycle) from 2-plan.md is not in the required task scenarios and was not
+  added. It would be a Task 3 concern (planning guard must check timestamp or
+  session marker). If the feature iteration needs this covered, it should be added
+  to Task 3's scope.
+
+resolved_items:
+  - original_section: assumptions_made
+    original_description: >
+      The exact header string "## Step C — Commitment" is used consistently
+      across all files.
+    resolution: >
+      Verified against 2-plan.md template spec (lines 189-196) and death case
+      definitions (line 47). The string appears verbatim in all relevant planning
+      documents. No discrepancy found.
+
+  - original_section: assumptions_made
+    original_description: >
+      7 task scenarios map to 7 required death cases from planning documents.
+    resolution: >
+      Cross-referenced all 7 task scenarios against 2-plan.md DC-1 through DC-7
+      and acceptance.yaml scenarios. Mapping confirmed. DC-7 (stale pre-thinking)
+      absence is intentional and noted in narrative. Coverage verification table
+      added to death-tests.md bottom section.

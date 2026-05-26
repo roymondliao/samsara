@@ -82,3 +82,7 @@ Before committing a new skill, answer:
 1. **If this skill disappeared, would agent behavior degrade?** If no, the skill shouldn't exist.
 2. **What behavior does this skill assume will never change?** Document that assumption.
 3. **How would you know if this skill stopped working?** Define the observable signal.
+4. **Does this skill produce a persisted artifact?** If yes: who is the sole writer?
+   - LLM must be the sole writer. User interaction goes through AskUserQuestion — the LLM writes answers to the artifact, not the user directly.
+   - Dual-writer artifacts (user + LLM both write the same file) introduce K3b cross-session state. Do not design them.
+   - If you find yourself needing the user to directly edit a file: split the artifact (LLM-only part + user-editable part) or redesign as AskUserQuestion.

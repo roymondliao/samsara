@@ -1,0 +1,52 @@
+feature: schema-axiom-alignment
+status: pending
+
+tasks:
+  - id: task-1
+    title: "Define new enum schema in planning templates (acceptance.yaml + death-first-spec.md + planning prose)"
+    status: pending
+    scar_count: null
+    unresolved_assumptions: null
+    depends_on: []
+
+  - id: task-2
+    title: "Update implement skill scar structure (scar-schema.yaml per-event typing + scar-report.md + SKILL.md)"
+    status: pending
+    scar_count: null
+    unresolved_assumptions: null
+    depends_on: [task-1]
+
+  - id: task-3
+    title: "Sync vocabulary in remaining skills (validate-and-ship + codebase-map + debugging + iteration)"
+    status: pending
+    scar_count: null
+    unresolved_assumptions: null
+    depends_on: [task-1]
+
+  - id: task-4
+    title: "Add self-application clause + workaround 3 cases to docs/develop.md (M5 + M3)"
+    status: pending
+    scar_count: null
+    unresolved_assumptions: null
+    depends_on: [task-1]
+
+  - id: task-5
+    title: "Atomic vocabulary refresh in README.md + README.zh-TW.md"
+    status: pending
+    scar_count: null
+    unresolved_assumptions: null
+    depends_on: [task-1]
+
+  - id: task-6
+    title: "Apply legacy_imprecise markers to existing changes/2026-*/ directories"
+    status: pending
+    scar_count: null
+    unresolved_assumptions: null
+    depends_on: [task-1]
+
+  - id: task-7
+    title: "Cross-doc grep death test verification script"
+    status: pending
+    scar_count: null
+    unresolved_assumptions: null
+    depends_on: [task-2, task-3, task-4, task-5, task-6]

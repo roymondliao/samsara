@@ -11,3 +11,7 @@ description: Bootstrap skill loaded at session start — defines the samsara fra
 
 Every implementation starts with STEP 0: answer three prerequisite questions.
 Death tests are written before unit tests. Scar reports are produced before reporting.
+
+## Chain
+
+research -> pre-thinking -> planning -> implement

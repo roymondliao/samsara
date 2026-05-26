@@ -54,6 +54,7 @@ digraph samsara_routing {
 
     fast_track [label="samsara:fast-track\n(簡化流程)"];
     research [label="samsara:research"];
+    pre_thinking [label="samsara:pre-thinking\n(assumption alignment)"];
     planning [label="samsara:planning"];
     implement [label="samsara:implement\n(含 Level 1 task iteration)"];
     iteration [label="samsara:iteration\n(Level 2 feature iteration)"];
@@ -70,7 +71,8 @@ digraph samsara_routing {
     classify -> research [label="新功能/新需求"];
     classify -> debugging [label="production failure"];
 
-    research -> planning [label="human gate"];
+    research -> pre_thinking [label="human gate"];
+    pre_thinking -> planning [label="human gate"];
     planning -> implement [label="human gate"];
     implement -> iteration [label="human gate\n(iterate)"];
     implement -> security_review [label="human gate\n(skip iteration)"];
@@ -95,7 +97,8 @@ digraph samsara_routing {
 - **samsara:debugging** — production failure。四階段陰面 debugging
 
 **Chain Skills（鏈式 — 由前一階段觸發，不直接 invoke）：**
-- **samsara:planning** — research 完成後。產出 plan + acceptance + tasks
+- **samsara:pre-thinking** — research 完成後、planning 前。顯化 user-LLM assumption gap，產出 pre-thinking.md audit log；恆被 invoke（無條件）
+- **samsara:planning** — pre-thinking 完成後（commitment = Proceed 或 Accept gap）。產出 plan + acceptance + tasks
 - **samsara:implement** — plan 就緒後。death test first 的實作流程（含 Level 1 task-scope self-iteration）
 - **samsara:iteration** — implement 完成後（可選）。Level 2 feature-level scar resolution — cross-task patterns, system-level rot
 - **samsara:security-privacy-review** — implement/iteration 完成後。平台內建 security & privacy review gate
