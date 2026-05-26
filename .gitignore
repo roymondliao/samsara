@@ -16,9 +16,13 @@ tests/container-samples/
 # Codex
 .agents/
 .codex/
+!tests/fixtures/expected/codex/.agents/
+!tests/fixtures/expected/codex/.agents/**
 
 # Gemini
 .gemini/
+!tests/fixtures/expected/gemini-cli/.gemini/
+!tests/fixtures/expected/gemini-cli/.gemini/**
 
 # For Packer
 mcp_label_structure.pkrvars.hcl

@@ -4,14 +4,23 @@ This file expands the SKILL.md step descriptions into agent-executable instructi
 
 ---
 
-## 1. Gap Identification
+## 1. Gap and Design Identification
 
 A **gap** is a decision the LLM would need to make during planning that research has not constrained.
 
-Gap examples:
+There are two categories:
+- **Information gaps** — research did not establish a fact planning needs.
+- **Design decision gaps** — research established constraints, but multiple valid system designs remain and the choice changes task decomposition, artifact contracts, ownership, or failure modes.
+
+Information gap examples:
 - Interface ownership is unclear ("Should this live in module A or B?")
 - Success definition is undefined ("How many is 'enough' for the north star metric?")
 - Location is ambiguous ("Does this new file go in `lib/` or `core/`?")
+
+Design decision gap examples:
+- Boundary is unclear ("Is this a new chain skill, a planning responsibility, or a validate-and-ship check?")
+- Artifact contract is unclear ("Which file owns the canonical evaluation result?")
+- Feedback route is unclear ("Should evaluator failure return to iteration, debugging, or planning?")
 
 **Not a gap:**
 - Implementation detail choices that don't change observable behavior (e.g., which loop style to use)
@@ -82,14 +91,18 @@ Before EACH Step B append (every group, every round):
 
 ---
 
-## 5. K3b Recovery Procedure
+## 5. K3b Recovery and Completion Procedure
 
 **On session start, before Step A:**
 
 1. Check if `pre-thinking.md` exists in `changes/<feature>/`.
 2. **If absent:** proceed normally to Step A.
-3. **If present AND `## Step C — Commitment` section exists:** session is already complete — proceed to planning. Do not re-run Step A or Step B. (The presence check is reliable only because `## Step C — Commitment` is never written before the AskUserQuestion commitment response is received — see §8 Quick-Pass and Step C in `templates/pre-thinking.md`.)
-4. **If present AND `## Step C — Commitment` section is ABSENT:** session was interrupted (K3b state).
+3. **If present AND complete:** read the `Decision:` field and Evaluation Contract.
+   - `Decision: Proceed` or `Decision: Accept gap` + complete Evaluation Contract = planning-ready.
+   - `Decision: Return to Research` = complete but NOT planning-ready. Stop and ask user to re-invoke `samsara:research` with the unresolved gaps.
+   - Step C heading without one of these decisions is incomplete.
+   - Any Step C without Evaluation Contract is incomplete.
+4. **If present AND incomplete:** session was interrupted (K3b state).
    - Identify the last completed section (Step A written? Which Step B groups are present?).
      - A group is **complete** if its `### Group N:` header is followed by at least one `**A:**` answer line (anywhere before the next `### Group` header or end of file).
      - A group is **partial** (header present, no `**A:**` lines) — treat it as the NEXT INCOMPLETE group and resume from it.
@@ -101,11 +114,40 @@ Before EACH Step B append (every group, every round):
    - For Resume: before proceeding, reconstruct the expected-state baseline using the §4 file-edit detection fallback procedure (read current file's Step A and all visible Step B groups as the baseline). Then proceed to the next incomplete Step B group (or Step C if all groups done).
    - For Restart: overwrite `pre-thinking.md`, run Step A fresh.
 
-**Failure to detect K3b = planning may be invoked with zero commitment.** This check is mandatory at session start, not optional.
+**Failure to detect K3b = planning may be invoked with zero commitment.** This check is mandatory at session start, not optional. Never use heading presence alone as a completion signal.
 
 ---
 
-## 6. Return to Research Write Format
+## 6. Evaluation Contract
+
+Evaluation is never optional. Even when Step A produces `gaps: none identified`, the agent must ask for an Evaluation Contract before Step C.
+
+Ask the user:
+
+> "What is the one Primary evaluator the agent should use to decide this task is actually done? It must be something the agent can run, inspect, or apply consistently."
+
+Write the result in this exact structure:
+
+```
+## Evaluation Contract
+
+**Primary evaluator:** <one canonical method>
+**Agent can perform it by:** <command, browser flow, artifact inspection, snapshot comparison, log check, or stable rubric>
+**Pass signal:** <observable condition>
+**Fail signal:** <observable condition>
+**Feedback loop:** <what the agent should do first if it fails>
+**Out of scope validation:** <things the user may care about but the agent cannot reliably evaluate, or "none">
+```
+
+Rules:
+- `Primary evaluator` must be singular. Supporting evidence is allowed, but there is only one canonical feedback source.
+- TDD and death-path tests remain mandatory engineering gates. They are not the Primary evaluator unless the user explicitly chooses "tests only" as the unique standard.
+- If the user gives multiple evaluators, ask one follow-up question to choose the canonical one.
+- Planning, iteration, debugging, and validate-and-ship must use this same Primary evaluator instead of inventing a new success standard.
+
+---
+
+## 7. Return to Research Write Format
 
 **When commitment = Return to Research (from mid-Step-B OR Step C):**
 
@@ -131,7 +173,7 @@ Before EACH Step B append (every group, every round):
 
 ---
 
-## 7. AskUserQuestion Header Constraint
+## 8. AskUserQuestion Header Constraint
 
 All `AskUserQuestion` calls in this skill must use a `header` field of **≤ 12 characters** for broadest client compatibility (Codex CLI, Gemini CLI v0.29.0+).
 
@@ -139,13 +181,13 @@ Examples of compliant headers: `"Pre-thinking"` (12 chars), `"Gap review"` (10 c
 
 ---
 
-## 8. Quick-Pass Path
+## 9. Quick-Pass Path
 
 When Step A produces `gaps: none identified`:
 
 1. Write Step A section with content: `gaps: none identified — proceeding directly to commitment.`
-2. **Skip Step B entirely.** Do NOT write a Step B section. Do NOT issue any Step B AskUserQuestion calls.
-3. Proceed directly to Step C.
-4. Issue exactly one AskUserQuestion call for the Step C commitment.
+2. **Skip gap-question groups entirely.** Do NOT write an empty answers section. Do NOT issue gap AskUserQuestion calls.
+3. Ask the Evaluation Contract question.
+4. Proceed to Step C.
 5. Write Step C after receiving the commitment response.
-6. Total AskUserQuestion calls for a quick-pass session: exactly 1 (the Step C commitment gate).
+6. Total AskUserQuestion calls for a quick-pass session: one or two. Prefer folding Evaluation Contract and Step C into one call if the client supports multiple questions in one AskUserQuestion call.

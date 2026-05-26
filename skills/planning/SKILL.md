@@ -14,9 +14,9 @@ Transform research output into an executable plan. Write the death paths before 
 Read from the feature's `changes/` directory:
 - `1-kickoff.md` — scope, north star, stakeholders
 - `problem-autopsy.md` — translation delta, kill conditions
-- `pre-thinking.md` — user-LLM assumption alignment and commitment
+- `pre-thinking.md` — user-LLM design alignment, Evaluation Contract, and commitment
 
-**Guard:** If `pre-thinking.md` is absent, or present but missing `## Step C — Commitment` section, **STOP**. Do not proceed to Step 2: Technical Specification. Re-invoke `samsara:pre-thinking`.
+**Guard:** If `pre-thinking.md` is absent, missing Evaluation Contract, missing `## Step C — Commitment`, or has `Decision: Return to Research`, **STOP**. Do not proceed to Step 2: Technical Specification. Re-invoke `samsara:pre-thinking` or `samsara:research` as directed by the unresolved gaps. Proceed only when Step C contains `Decision: Proceed` or `Decision: Accept gap`.
 
 ## Process
 
@@ -25,7 +25,7 @@ digraph planning {
     node [shape=box];
 
     start [label="讀取 1-kickoff.md\n+ problem-autopsy.md\n+ pre-thinking.md" shape=doublecircle];
-    guard [label="pre-thinking.md\n完整？" shape=diamond];
+    guard [label="pre-thinking.md\nProceed/Accept\n+ Evaluation?" shape=diamond];
     blocked [label="STOP:\nre-invoke\nsamsara:pre-thinking" shape=doublecircle];
     spec [label="Tech Spec\n- I/O + unknown_output\n- death cases（非 edge cases）"];
     acceptance [label="Acceptance\n- 死路先行 BDD\n- silent failure scenarios first\n- then happy path"];
@@ -36,7 +36,7 @@ digraph planning {
     next [label="invoke samsara:implement" shape=doublecircle];
 
     start -> guard;
-    guard -> spec [label="yes\n(commitment present)"];
+    guard -> spec [label="yes\n(valid decision)"];
     guard -> blocked [label="no"];
     spec -> acceptance;
     acceptance -> plan;
@@ -49,6 +49,18 @@ digraph planning {
 ```
 
 ## Step 2: Technical Specification
+
+### Pre-thinking Commitments Consumed
+
+Before writing the technical plan, copy the following from `pre-thinking.md` into `2-plan.md`:
+- **Decision:** `Proceed` or `Accept gap`
+- **Accepted gaps:** labels and consequences, or `none`
+- **System design constraints:** task-shaping design decisions from Step A/B
+- **Primary evaluator:** the single canonical agent-evaluable method
+- **Pass signal / Fail signal:** observable criteria
+- **Feedback loop:** first action if the Primary evaluator fails
+
+Planning must decompose tasks to satisfy the Primary evaluator. Acceptance criteria and task files can add engineering tests, but they cannot replace or contradict this evaluator.
 
 ### I/O with Unknown Output
 
