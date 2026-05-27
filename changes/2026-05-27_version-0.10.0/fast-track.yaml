@@ -1,0 +1,30 @@
+type: fast_track
+description: "Bump Samsara release metadata to 0.10.0 for the project-dir install release."
+death_clause: "If marketplace, plugin, pyproject, or uv.lock versions drift from 0.10.0, this change is failed."
+acceptance:
+  - ".claude-plugin marketplace metadata declares version 0.10.0."
+  - ".claude-plugin plugin metadata, pyproject.toml, and uv.lock declare version 0.10.0."
+  - "`samsara-cli release check-version` reports synchronized 0.10.0 metadata."
+  - "`samsara-cli release print-tag` prints exactly v0.10.0."
+  - "`samsara-cli version` reports samsara-cli 0.10.0."
+scar_tag: none
+scar_items: []
+files_changed:
+  - ".claude-plugin/marketplace.json"
+  - ".claude-plugin/plugin.json"
+  - "pyproject.toml"
+  - "uv.lock"
+  - "changes/2026-05-27_version-0.10.0/fast-track.yaml"
+quality_checklist:
+  - criterion: "C5 Reuse"
+    checked: true
+    note: "Used existing release sync-version tooling instead of editing every secondary version by hand."
+  - criterion: "C6 Clear Structure"
+    checked: true
+    note: "Kept marketplace metadata as the source of truth and synchronized only the established secondary metadata files."
+  - criterion: "C7 Elegant Logic"
+    checked: true
+    note: "No new logic was added; this is a metadata-only bump plus lockfile refresh."
+  - criterion: "C8 No Redundancy"
+    checked: true
+    note: "Did not add another version source; existing duplicate fields remain synchronized by release tooling."

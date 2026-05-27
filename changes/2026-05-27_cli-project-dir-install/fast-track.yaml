@@ -1,0 +1,27 @@
+type: fast_track
+description: "Add explicit project destination support to samsara-cli install and update."
+death_clause: "If --project-dir is treated as the Samsara source or files still target the caller cwd, this change is failed."
+acceptance:
+  - "`samsara-cli install <platform> --project-dir <target>` passes the target project as installer cwd."
+  - "`samsara-cli update <platform> --project-dir <target>` passes the target project as installer cwd."
+  - "When --source is omitted, source still defaults to the current Samsara repo cwd."
+  - "`--project-dir` is rejected with `--scope global` instead of being silently ignored."
+scar_tag: none
+scar_items: []
+files_changed:
+  - "samsara_cli/main.py"
+  - "tests/test_cli/test_main_death.py"
+  - "changes/2026-05-27_cli-project-dir-install/fast-track.yaml"
+quality_checklist:
+  - criterion: "C5 Reuse"
+    checked: true
+    note: "Reused the existing Installer cwd parameter instead of adding a second installer destination path."
+  - criterion: "C6 Clear Structure"
+    checked: true
+    note: "Kept destination parsing in the Typer boundary; installer continues to receive source_dir, scope, cwd, and converted_source_dir."
+  - criterion: "C7 Elegant Logic"
+    checked: true
+    note: "Added one optional Path option and one target_dir fallback per command without introducing helper abstractions."
+  - criterion: "C8 No Redundancy"
+    checked: true
+    note: "Did not duplicate platform detection or install logic; tests assert the existing installer call contract."

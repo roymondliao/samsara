@@ -309,6 +309,13 @@ def install(
             help="Source samsara directory (default: current working directory)",
         ),
     ] = None,
+    project_dir: Annotated[
+        Optional[Path],
+        typer.Option(
+            "--project-dir",
+            help="Target project directory for project-scope install (default: current working directory)",
+        ),
+    ] = None,
     converted_source: Annotated[
         Optional[Path],
         typer.Option(
@@ -334,8 +341,11 @@ def install(
         _exit_with_error(
             f"Invalid scope: {scope!r}. Valid scopes are: 'project', 'global'."
         )
+    if scope == "global" and project_dir is not None:
+        _exit_with_error("--project-dir is only valid with --scope project.")
 
     source_dir = source or Path.cwd()
+    target_dir = project_dir or Path.cwd()
 
     console.print(
         f"Installing [bold]{platform}[/bold] files (scope: [bold]{scope}[/bold])"
@@ -346,7 +356,7 @@ def install(
         instructions = installer.install(
             source_dir=source_dir,
             scope=scope,  # type: ignore[arg-type]
-            cwd=Path.cwd(),
+            cwd=target_dir,
             converted_source_dir=converted_source,
         )
     except InstallerError as e:
@@ -379,6 +389,13 @@ def update(
             help="Source samsara directory (default: current working directory)",
         ),
     ] = None,
+    project_dir: Annotated[
+        Optional[Path],
+        typer.Option(
+            "--project-dir",
+            help="Target project directory for project-scope update (default: current working directory)",
+        ),
+    ] = None,
 ) -> None:
     """Update the samsara plugin installation (re-convert + re-install).
 
@@ -392,8 +409,11 @@ def update(
         _exit_with_error(
             f"Invalid scope: {scope!r}. Valid scopes are: 'project', 'global'."
         )
+    if scope == "global" and project_dir is not None:
+        _exit_with_error("--project-dir is only valid with --scope project.")
 
     source_dir = source or Path.cwd()
+    target_dir = project_dir or Path.cwd()
 
     console.print(
         f"Updating [bold]{platform}[/bold] plugin (scope: [bold]{scope}[/bold])"
@@ -404,7 +424,7 @@ def update(
         instructions = installer.update(
             source_dir=source_dir,
             scope=scope,  # type: ignore[arg-type]
-            cwd=Path.cwd(),
+            cwd=target_dir,
         )
     except InstallerError as e:
         _exit_with_error(str(e))
