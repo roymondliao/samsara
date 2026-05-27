@@ -8,7 +8,7 @@ DC-8-6: convert with non-samsara --source must fail at source validation
 
 import json
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from typer.testing import CliRunner
 
@@ -130,6 +130,88 @@ class TestCLIInstallCLINotInstalled:
         assert "codex" in output, "Error message must mention the platform name"
         # Must not just say "done" or be empty
         assert len(result.output.strip()) > 5, "Error message must not be empty"
+
+
+# ---------------------------------------------------------------------------
+# project destination must be explicit when installing from samsara repo
+# ---------------------------------------------------------------------------
+
+
+class TestCLIProjectDirDestination:
+    """Project installs must support a destination separate from samsara source."""
+
+    def test_install_project_dir_is_destination_not_source(self, tmp_path):
+        """--project-dir must be passed as installer cwd while source defaults to cwd."""
+        from samsara_cli.main import app
+
+        project_dir = tmp_path / "target-project"
+        project_dir.mkdir()
+
+        with patch("samsara_cli.main.Installer") as MockInstaller:
+            mock_installer = MagicMock()
+            MockInstaller.return_value = mock_installer
+            mock_installer.install.return_value = "installed"
+
+            source_cwd = Path.cwd()
+            result = runner.invoke(
+                app,
+                ["install", "codex", "--project-dir", str(project_dir)],
+            )
+
+        assert result.exit_code == 0, result.output
+        mock_installer.install.assert_called_once_with(
+            source_dir=source_cwd,
+            scope="project",
+            cwd=project_dir,
+            converted_source_dir=None,
+        )
+
+    def test_update_project_dir_is_destination_not_source(self, tmp_path):
+        """update must use --project-dir as destination while source defaults to cwd."""
+        from samsara_cli.main import app
+
+        project_dir = tmp_path / "target-project"
+        project_dir.mkdir()
+
+        with patch("samsara_cli.main.Installer") as MockInstaller:
+            mock_installer = MagicMock()
+            MockInstaller.return_value = mock_installer
+            mock_installer.update.return_value = "updated"
+
+            source_cwd = Path.cwd()
+            result = runner.invoke(
+                app,
+                ["update", "gemini-cli", "--project-dir", str(project_dir)],
+            )
+
+        assert result.exit_code == 0, result.output
+        mock_installer.update.assert_called_once_with(
+            source_dir=source_cwd,
+            scope="project",
+            cwd=project_dir,
+        )
+
+    def test_global_scope_rejects_project_dir(self, tmp_path):
+        """--project-dir must not be silently ignored for global installs."""
+        from samsara_cli.main import app
+
+        project_dir = tmp_path / "target-project"
+        project_dir.mkdir()
+
+        result = runner.invoke(
+            app,
+            [
+                "install",
+                "codex",
+                "--scope",
+                "global",
+                "--project-dir",
+                str(project_dir),
+            ],
+        )
+
+        assert result.exit_code != 0
+        assert "--project-dir is only valid with --scope project" in result.output
 
 
 # ---------------------------------------------------------------------------
