@@ -377,6 +377,18 @@ class TestPipelineOutputStructure:
             f"Found .md files in agents/ (unconverted): {md_files}"
         )
 
+    def test_codex_output_contains_auto_gatekeeper_agent(
+        self, pipeline_output: Path
+    ) -> None:
+        """Auto mode silently fails if converted Codex output lacks the gatekeeper."""
+        agent_file = (
+            pipeline_output / ".codex" / "agents" / "samsara-auto-gatekeeper.toml"
+        )
+        assert agent_file.exists(), (
+            "Converted Codex output is missing samsara-auto-gatekeeper.toml. "
+            "Auto-mode workflow skills can dispatch an agent that is not installed."
+        )
+
     def test_implement_companion_file_preserved(self, pipeline_output: Path) -> None:
         """dispatch-template.md companion file must be preserved in output skill dir."""
         # samsara-implement should have dispatch-template.md (companion file)
@@ -477,6 +489,21 @@ class TestGeminiPipelineOutputStructure:
         assert agents_dir.is_dir()
         assert list(agents_dir.glob("*.md"))
         assert not list(agents_dir.glob("*.toml"))
+
+    def test_gemini_output_contains_auto_gatekeeper_agent(
+        self, pipeline_output: Path
+    ) -> None:
+        agent_file = (
+            pipeline_output / ".gemini" / "agents" / "samsara-auto-gatekeeper.md"
+        )
+        assert agent_file.exists(), (
+            "Converted Gemini output is missing samsara-auto-gatekeeper.md. "
+            "Auto-mode workflow skills can dispatch an agent that is not installed."
+        )
+        content = agent_file.read_text(encoding="utf-8")
+        assert "auto-decisions.md" in content
+        assert "workflow_prompt" in content
+        assert "gatekeeper_answer" in content
 
     def test_gemini_settings_json_exists_and_parses(
         self, pipeline_output: Path

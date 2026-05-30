@@ -1,0 +1,84 @@
+task_id: task-6
+completion_status: done_with_concerns
+
+known_shortcuts:
+  - description: >
+      The task verifies release metadata and tag text locally, but it does not
+      create or push the git tag and does not publish a GitHub release.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      `sync-version` now updates the `samsara` package entry in `uv.lock` using a
+      targeted lockfile rewrite after parsing the lockfile. It avoids rewriting
+      the full lockfile, but it still assumes uv keeps the package name and
+      version fields in the normal uv lockfile package block format.
+    deferred_to_feature_iteration: true
+
+silent_failure_conditions:
+  - description: >
+      A future uv lockfile format could represent editable package metadata in a
+      shape that parses correctly but does not match the targeted rewrite logic.
+    deferred_to_feature_iteration: true
+
+  - description: >
+      Current release tests verify metadata synchronization and CLI output, but
+      they do not exercise the GitHub release workflow that runs after PR merge.
+    deferred_to_feature_iteration: true
+
+assumptions_made:
+  - assumption: >
+      Marketplace metadata remains the only release source of truth.
+    verified: true
+    note: >
+      Verified by updating `.claude-plugin/marketplace.json` first, then using
+      `uv run samsara-cli release sync-version` to synchronize secondary files.
+    deferred_to_feature_iteration: false
+
+  - assumption: >
+      `uv lock` is the correct way to refresh the real repository lockfile after
+      `pyproject.toml` version synchronization.
+    verified: true
+    note: >
+      Verified by running `uv lock`, which reported `Updated samsara v0.10.0 ->
+      v0.11.0`, and then passing `uv run samsara-cli release check-version`.
+    deferred_to_feature_iteration: false
+
+  - assumption: >
+      CLI version output should pin to the synchronized package metadata for this
+      release.
+    verified: true
+    note: >
+      Verified by `uv run samsara-cli version`, which printed
+      `samsara-cli 0.11.0`, and by the current release version contract test.
+    deferred_to_feature_iteration: false
+
+debt_registered: true
+debt_location: >
+  samsara_cli/release/version_metadata.py lockfile rewrite helper;
+  release workflow publish/tag execution remains outside this task
+
+narrative: >
+  Task 6 bumped the marketplace source-of-truth version to `0.11.0`, synchronized
+  `.claude-plugin/plugin.json`, `pyproject.toml`, and `uv.lock`, and verified
+  `v0.11.0` / `samsara-cli 0.11.0` outputs. While doing this, the release checker
+  exposed a real blind spot: it previously ignored `uv.lock`, so a stale lockfile
+  could ship unnoticed. The release metadata loader now treats the lockfile as a
+  first-class drift source.
+
+resolved_items:
+  - original_section: known_shortcuts
+    original_description: >
+      Manually editing secondary version files instead of using
+      `release sync-version`.
+    resolution: >
+      Only `.claude-plugin/marketplace.json` was edited manually. Plugin and
+      pyproject metadata were synchronized through `release sync-version`, and
+      the real lockfile was refreshed with `uv lock`.
+
+  - original_section: silent_failure_conditions
+    original_description: >
+      Release metadata could pass while `uv.lock` still reports the old package
+      version.
+    resolution: >
+      Added `uv.lock` parsing, drift reporting, sync support, and tests that list
+      lockfile drift alongside plugin and pyproject drift.

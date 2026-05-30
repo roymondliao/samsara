@@ -24,7 +24,7 @@ digraph implement {
     compound=true;
 
     start [label="讀取 index.yaml\n分析 task 依賴\n+ TaskCreate per task" shape=doublecircle];
-    mode [label="選擇執行模式？" shape=diamond];
+    mode [label="Execution strategy gate\nhuman: ask\nauto: gatekeeper" shape=diamond];
 
     subgraph cluster_implementer {
         label="samsara:implementer（subagent 或 inline）";
@@ -42,7 +42,7 @@ digraph implement {
     update [label="主 agent: 更新 index.yaml\n+ TaskUpdate completed"];
     more [label="還有 task？" shape=diamond];
     commit [label="主 agent: Commit\n（全部 task 完成後）"];
-    gate [label="使用者確認？" shape=diamond];
+    gate [label="Completion gate\nhuman: ask\nauto: gatekeeper" shape=diamond];
     next [label="invoke samsara:security-privacy-review\nor samsara:iteration" shape=doublecircle];
 
     start -> mode;
@@ -84,7 +84,8 @@ Always update both together. Never update one without the other.
 
 ## Execution Mode Selection
 
-On entry, analyze `index.yaml` for task dependencies, create TaskCreate items for each task, then ask:
+On entry, analyze `index.yaml` for task dependencies, create TaskCreate items
+for each task, then use this execution strategy prompt:
 
 > 「Plan 中有 N 個 tasks。
 >
@@ -98,6 +99,12 @@ On entry, analyze `index.yaml` for task dependencies, create TaskCreate items fo
 > (C) Inline sequential — 主 agent 自己依序執行
 >
 > 選哪個？」
+
+- If `Execution mode: human-in-the-loop`, ask the user this question and follow
+  the selected strategy.
+- If `Execution mode: auto`, do not ask the user. Use the Auto Mode Gate below
+  to dispatch `samsara:auto-gatekeeper`, append the strategy decision to
+  `auto-decisions.md`, and follow the recorded execution strategy.
 
 ### Subagent Context
 
@@ -193,12 +200,47 @@ All tasks complete. Calculate remaining scar items:
 - Count items across all `changes/<feature>/scar-reports/` where `deferred_to_feature_iteration: true` or items without `resolved_items` coverage
 - These are the **feature-level items** that Level 1 self-iteration could not resolve
 
-Then ask:
+Then use the implementation completion prompt to decide the next workflow path:
 
 > 「Implementation 完成。N 個 tasks 已執行，共 M 個 scar report items（Level 1 self-iteration 已處理 R 個，剩餘 K 個 feature-level items）。
 >
 > (A) 進入 Iteration — 審視 feature-level scar items（cross-task patterns, system-level rot）
 > (B) Skip — 直接進入 Security & Privacy Review（剩餘 items 由 validate-and-ship 的 failure budget review 處理）」
 
-- 使用者選 A → invoke `samsara:iteration`
-- 使用者選 B → invoke `samsara:security-privacy-review`
+- If `Execution mode: human-in-the-loop`, ask the user this question.
+  - User chooses A → invoke `samsara:iteration`
+  - User chooses B → invoke `samsara:security-privacy-review`
+- If `Execution mode: auto`, do not ask the user. Use the Auto Mode Gate below
+  to dispatch `samsara:auto-gatekeeper`, record the decision, and invoke the
+  next skill named by the recorded decision.
+
+## Auto Mode Gate
+
+When the session context contains `Execution mode: auto`, keep the implementation
+execution decisions but route them through `samsara:auto-gatekeeper` instead of
+pausing for input.
+Dispatch it with the Agent tool using `subagent_type: "samsara:auto-gatekeeper"`.
+
+The gatekeeper must append an append-only entry to
+`changes/<feature>/auto-decisions.md` before continuing. Use the canonical
+schema in `references/auto-mode.md`; this stage must provide `prompt_type`,
+`workflow_prompt`, and `gatekeeper_answer` for the entry.
+
+Use the implementation completion choice as `workflow_prompt`: choose whether to
+enter iteration for feature-level scar review or continue to security/privacy
+review.
+
+Also route the implementation execution-mode selection through the gatekeeper.
+Use the original `(A) Subagent parallel / (B) Subagent sequential / (C) Inline sequential`
+prompt as `workflow_prompt`; the gatekeeper answer chooses the
+execution strategy and records why that strategy fits the task dependencies.
+
+Then follow the recorded decision:
+
+- `proceed` — invoke the next skill named by the gatekeeper answer:
+  `samsara:iteration` or `samsara:security-privacy-review`.
+- `revise` — revise implementation artifacts or scar reports, then re-run this
+  gate.
+- `reject` — stop the auto run and leave the rejection in `auto-decisions.md`.
+- `accept_gap` — continue to the recorded next skill with the accepted gap visible
+  in the next-stage context.

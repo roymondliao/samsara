@@ -5,6 +5,8 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
+from conftest import FIXTURE_VERSION
+
 
 runner = CliRunner()
 
@@ -53,7 +55,7 @@ class TestReleaseCommandDeaths:
             tmp_path,
             marketplace_version="1.0.0",
             plugin_version="0.9.0",
-            pyproject_version="0.8.0",
+            pyproject_version=FIXTURE_VERSION,
         )
 
         result = runner.invoke(app, ["release", "check-version", "--root", str(repo)])

@@ -37,6 +37,42 @@ description: Injected at session start — establishes samsara axiom, agent cons
 3. 每次被要求優化時先問：「值得優化嗎？還是不應該存在？」
 4. 遇到模糊需求時，不選最合理解釋繼續——讓模糊本身可見
 
+## Execution Mode Selection
+
+before invoking `samsara:research` for new feature work, ask the user to choose
+the session-level execution mode:
+
+- `human-in-the-loop` — Default mode and default selection. Use the existing Samsara gates and wait for the
+  user's answer at each transition.
+- `auto` — Run the same workflow, but route each later workflow question or
+  confirmation through `samsara:auto-gatekeeper` and append the decision to
+  `changes/<feature>/auto-decisions.md`.
+  Source dispatch target: `subagent_type: "samsara:auto-gatekeeper"`.
+
+Use this prompt before research:
+
+> Execution mode? Choose `human-in-the-loop` or `auto`.
+
+Record the selected mode as an explicit session context line before research:
+
+```text
+Execution mode: human-in-the-loop
+```
+
+or:
+
+```text
+Execution mode: auto
+```
+
+Later skills read this explicit `Execution mode:` line as the active execution
+mode. If no mode is selected, record `Execution mode: human-in-the-loop`;
+unknown mode must not silently become `auto`.
+
+Persistent config, including `samsara_config.yaml`, is out of scope for the
+first auto-mode implementation. Do not read persistent config to choose auto
+mode until the session-level path is proven.
+
 ## Skill Matching（強制）
 
 When the user describes work, you MUST invoke the matching samsara skill using the Skill tool BEFORE any response. This is not optional. Do not answer, clarify, or explore code before invoking.

@@ -31,7 +31,7 @@ digraph validate_and_ship {
     reconciliation [label="5. Reconciliation check\n實際行為 vs spec 漂移量"];
     code_review [label="6. Code Review\n(invoke code-reviewer agent)\n- 能刪嗎？\n- 命名說謊嗎？\n- 三年後詛咒點？\n- 最後才問對不對"];
     ship [label="產出 ship-manifest.yaml"];
-    choose [label="使用者選擇？" shape=diamond];
+    choose [label="Execution-mode gate\nhuman: choose\nauto: gatekeeper" shape=diamond];
     merge [label="Merge to main" shape=doublecircle];
     pr [label="Create PR" shape=doublecircle];
     keep [label="Keep branch" shape=doublecircle];
@@ -104,7 +104,8 @@ Write `ship-manifest.yaml` using the template. See support file `ship-manifest.m
 
 ## Transition
 
-Ship manifest complete. Present exactly four options:
+Ship manifest complete. Use the validation completion and delivery prompt to
+decide the final workflow path:
 
 > 「Validation 完成。Ship manifest 已寫入。選擇交付方式：
 >
@@ -113,4 +114,45 @@ Ship manifest complete. Present exactly four options:
 > (C) Keep branch（不合併）
 > (D) Discard（放棄此分支）」
 
-Execute the user's choice.
+- If `Execution mode: human-in-the-loop`, present exactly these four options to
+  the user and execute the user's choice.
+- If `Execution mode: auto`, do not ask the user. Use the Auto Mode Gate below
+  to dispatch `samsara:auto-gatekeeper`, append the final delivery decision to
+  `auto-decisions.md`, verify the full decision trace, and prepare the recorded
+  delivery action.
+
+## Auto Mode Gate
+
+When the session context contains `Execution mode: auto`, keep validation and
+ship readiness checks but route the final completion decision through
+`samsara:auto-gatekeeper` instead of pausing for input.
+Dispatch it with the Agent tool using `subagent_type: "samsara:auto-gatekeeper"`.
+
+Before the final validation decision, validate prior gate entries in the
+append-only decision trace at `changes/<feature>/auto-decisions.md`. The
+validation must confirm that every workflow question or confirmation before the
+current validation completion gate has a matching entry with `workflow_prompt`
+and `gatekeeper_answer`. Missing, malformed, generic, or contradictory entries
+must fail validation.
+
+The gatekeeper must append an append-only entry to
+`changes/<feature>/auto-decisions.md` before continuing. Use the canonical
+schema in `references/auto-mode.md`; this stage must provide `prompt_type`,
+`workflow_prompt`, and `gatekeeper_answer` for the entry.
+
+Use the validation completion and delivery choice as `workflow_prompt`, including
+the primary evaluator result, acceptance validation result, failure budget, and
+ship manifest status.
+
+after appending the final validation decision, run the trace check again. The
+second check must include the final validation `workflow_prompt` and
+`gatekeeper_answer`; if the final entry is missing, malformed, generic, or
+contradictory, the run must fail validation before completion.
+
+Then follow the recorded decision:
+
+- `proceed` — complete validation and prepare the recorded delivery action.
+- `revise` — revise validation outputs or ship manifest, then re-run this gate.
+- `reject` — stop the auto run and leave the rejection in `auto-decisions.md`.
+- `accept_gap` — continue only if the accepted gap is recorded in both
+  `auto-decisions.md` and the ship manifest.

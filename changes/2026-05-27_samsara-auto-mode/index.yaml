@@ -1,0 +1,52 @@
+feature: samsara-auto-mode
+status: completed
+
+tasks:
+  - id: task-1
+    title: "Define auto gatekeeper and decision protocol"
+    status: completed
+    scar_count: 7
+    unresolved_assumptions: 1
+    depends_on: []
+
+  - id: task-2
+    title: "Add mode routing and early-stage auto gates"
+    status: completed
+    scar_count: 7
+    unresolved_assumptions: 1
+    depends_on:
+      - task-1
+
+  - id: task-3
+    title: "Add implementation, iteration, security, and validation auto gates"
+    status: completed
+    scar_count: 7
+    unresolved_assumptions: 1
+    depends_on:
+      - task-1
+
+  - id: task-4
+    title: "Add primary evaluator and converter coverage"
+    status: completed
+    scar_count: 6
+    unresolved_assumptions: 0
+    depends_on:
+      - task-1
+      - task-2
+      - task-3
+
+  - id: task-5
+    title: "Document auto mode and run validation"
+    status: completed
+    scar_count: 7
+    unresolved_assumptions: 0
+    depends_on:
+      - task-4
+
+  - id: task-6
+    title: "Bump release version to 0.11.0"
+    status: completed
+    scar_count: 7
+    unresolved_assumptions: 0
+    depends_on:
+      - task-5

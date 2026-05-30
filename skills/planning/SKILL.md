@@ -32,7 +32,7 @@ digraph planning {
     plan [label="產出 2-plan.md\n+ acceptance.yaml"];
     decompose [label="Task Decompose\n- self-contained tasks\n- 每個 task 附 death test 要求"];
     output [label="產出 overview.md\n+ index.yaml\n+ tasks/task-N.md"];
-    gate [label="使用者確認？" shape=diamond];
+    gate [label="Execution-mode gate\nhuman: confirm\nauto: gatekeeper" shape=diamond];
     next [label="invoke samsara:implement" shape=doublecircle];
 
     start -> guard;
@@ -43,7 +43,7 @@ digraph planning {
     plan -> decompose;
     decompose -> output;
     output -> gate;
-    gate -> next [label="confirmed"];
+    gate -> next [label="proceed"];
     gate -> spec [label="revise"];
 }
 ```
@@ -112,8 +112,38 @@ All output files go to `changes/YYYY-MM-DD_<feature-name>/`:
 
 ## Transition
 
-All output files written, then ask:
+All output files written, then use the planning completion prompt to decide the
+next workflow path:
 
 > 「Planning 完成。2-plan.md、acceptance.yaml、index.yaml 和 N 個 tasks 已就緒。確認後進入 Implementation？」
 
-使用者確認後，invoke `samsara:implement` skill。
+- If `Execution mode: human-in-the-loop`, ask the user this question. After
+  confirmation, invoke `samsara:implement`; if the user asks for revision,
+  revise the planning artifacts and ask again.
+- If `Execution mode: auto`, do not ask the user. Use the Auto Mode Gate below
+  to dispatch `samsara:auto-gatekeeper`, record the decision, and follow the
+  recorded decision.
+
+## Auto Mode Gate
+
+When the session context contains `Execution mode: auto`, keep the planning
+completion question but route it through `samsara:auto-gatekeeper` rather than
+pausing for human input.
+Dispatch it with the Agent tool using `subagent_type: "samsara:auto-gatekeeper"`.
+
+The gatekeeper must append an append-only entry to
+`changes/<feature>/auto-decisions.md` before continuing. Use the canonical
+schema in `references/auto-mode.md`; this stage must provide `prompt_type`,
+`workflow_prompt`, and `gatekeeper_answer` for the entry.
+
+Use the original transition prompt as `workflow_prompt`:
+
+> 「Planning 完成。2-plan.md、acceptance.yaml、index.yaml 和 N 個 tasks 已就緒。確認後進入 Implementation？」
+
+Then follow the recorded decision:
+
+- `proceed` — invoke `samsara:implement`.
+- `revise` — revise the plan artifacts, then re-run this gate.
+- `reject` — stop the auto run and leave the rejection in `auto-decisions.md`.
+- `accept_gap` — invoke `samsara:implement` with the recorded gap visible in the
+  implementation context.

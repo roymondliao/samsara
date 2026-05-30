@@ -9,6 +9,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from conftest import FIXTURE_VERSION
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -21,7 +23,7 @@ def make_minimal_source(tmp_path: Path) -> Path:
     plugin_dir = source / ".claude-plugin"
     plugin_dir.mkdir(parents=True)
     (plugin_dir / "plugin.json").write_text(
-        json.dumps({"name": "samsara", "version": "0.8.0"})
+        json.dumps({"name": "samsara", "version": FIXTURE_VERSION})
     )
     skills_dir = source / "skills"
     skills_dir.mkdir()

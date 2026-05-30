@@ -12,12 +12,14 @@ def make_repo(
     marketplace_version: str = "0.9.0",
     plugin_version: str | None = None,
     pyproject_version: str | None = None,
+    lock_version: str | None = None,
 ) -> Path:
     repo = tmp_path / "repo"
     plugin_version = marketplace_version if plugin_version is None else plugin_version
     pyproject_version = (
         marketplace_version if pyproject_version is None else pyproject_version
     )
+    lock_version = marketplace_version if lock_version is None else lock_version
     plugin_dir = repo / ".claude-plugin"
     plugin_dir.mkdir(parents=True)
     (plugin_dir / "marketplace.json").write_text(
@@ -57,6 +59,16 @@ def make_repo(
         ),
         encoding="utf-8",
     )
+    (repo / "uv.lock").write_text(
+        (
+            "version = 1\n\n"
+            "[[package]]\n"
+            'name = "samsara"\n'
+            f'version = "{lock_version}"\n'
+            'source = { editable = "." }\n'
+        ),
+        encoding="utf-8",
+    )
     return repo
 
 
@@ -71,6 +83,7 @@ class TestVersionMetadata:
         assert metadata.marketplace_version == "1.2.3"
         assert metadata.plugin_version == "1.2.3"
         assert metadata.pyproject_version == "1.2.3"
+        assert metadata.lock_version == "1.2.3"
         assert metadata.tag == "v1.2.3"
 
     def test_inspect_reports_sync_state_without_raising(self, tmp_path: Path):
@@ -97,6 +110,7 @@ class TestVersionMetadata:
             marketplace_version="2.0.0",
             plugin_version="0.9.0",
             pyproject_version="0.9.0",
+            lock_version="0.9.0",
         )
 
         result = VersionMetadata.sync_from_marketplace(repo)
@@ -106,6 +120,7 @@ class TestVersionMetadata:
         assert {path.name for path in result.changed_paths} == {
             "plugin.json",
             "pyproject.toml",
+            "uv.lock",
         }
 
         metadata = VersionMetadata.load(repo)
@@ -119,6 +134,7 @@ class TestVersionMetadata:
             marketplace_version="2.1.0",
             plugin_version="0.9.0",
             pyproject_version="0.9.0",
+            lock_version="0.9.0",
         )
         plugin_before = (repo / ".claude-plugin" / "plugin.json").read_text(
             encoding="utf-8"
@@ -130,6 +146,7 @@ class TestVersionMetadata:
         assert {path.name for path in result.changed_paths} == {
             "plugin.json",
             "pyproject.toml",
+            "uv.lock",
         }
         assert (repo / ".claude-plugin" / "plugin.json").read_text(
             encoding="utf-8"
@@ -144,6 +161,7 @@ class TestVersionMetadata:
             marketplace_version="1.0.0-rc.1",
             plugin_version="0.9.0",
             pyproject_version="0.9.0",
+            lock_version="0.9.0",
         )
 
         result = VersionMetadata.sync_from_marketplace(repo)

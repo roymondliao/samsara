@@ -1,6 +1,6 @@
 # Unit tests for agent.py -- AgentConverter.
 #
-# Tests per-agent conversion of the 6 samsara agents, description extraction,
+# Tests per-agent conversion of the real samsara agents, description extraction,
 # frontmatter parsing, and the full pipeline integration.
 
 import tomllib
@@ -16,11 +16,10 @@ from samsara_cli.converter.agent import AgentConverter, ConvertedAgent
 # Helpers
 # ---------------------------------------------------------------------------
 
-AGENTS_DIR = Path(
-    "/Users/yuyu_liao/personal/samsara/.claude/worktrees/multi-platform-support/agents"
-)
+AGENTS_DIR = Path(__file__).resolve().parents[2] / "agents"
 
 SAMSARA_AGENTS = [
+    "auto-gatekeeper",
     "code-quality-reviewer",
     "code-reviewer",
     "implementer",
@@ -300,7 +299,7 @@ class TestFrontmatterHandling:
 
 
 # ---------------------------------------------------------------------------
-# Full pipeline: each of the 6 real samsara agents
+# Full pipeline: each real samsara agent
 # ---------------------------------------------------------------------------
 
 

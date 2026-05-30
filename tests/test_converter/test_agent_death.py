@@ -353,13 +353,14 @@ class TestAgentNameDispatchConsistency:
             f"got {result.agent_name!r}"
         )
 
-    def test_all_six_samsara_agents_produce_expected_names(self):
-        # All 6 agent filenames must generate names matching their expected dispatch names.
+    def test_all_samsara_agents_produce_expected_names(self):
+        # All agent filenames must generate names matching their expected dispatch names.
         converter = AgentConverter()
         template = get_codex_template()
         naming = make_naming(prefix="samsara", sep="-")
 
         expected_names = {
+            "auto-gatekeeper": "samsara-auto-gatekeeper",
             "code-quality-reviewer": "samsara-code-quality-reviewer",
             "code-reviewer": "samsara-code-reviewer",
             "implementer": "samsara-implementer",
@@ -472,9 +473,8 @@ class TestLargeBodyHandling:
 
     def test_code_quality_reviewer_real_file_converts_without_truncation(self):
         # The real code-quality-reviewer.md (>8KB) must convert cleanly.
-        real_path = Path(
-            "/Users/yuyu_liao/personal/samsara/.claude/worktrees/multi-platform-support"
-            "/agents/code-quality-reviewer.md"
+        real_path = (
+            Path(__file__).resolve().parents[2] / "agents" / "code-quality-reviewer.md"
         )
         if not real_path.exists():
             pytest.skip("Real agent file not available in this environment")

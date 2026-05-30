@@ -1,0 +1,91 @@
+task_id: task-5
+completion_status: done_with_concerns
+
+known_shortcuts:
+  - description: >
+      README documentation describes the auto-mode contract and first-cut limits,
+      but it cannot prove that future agent sessions will follow the wording
+      during a live auto run.
+    deferred_to_feature_iteration: true
+
+  - description: >
+      The documentation tests are static string-contract checks. They catch
+      unsupported claims like `samsara_config.yaml` support or human fallback,
+      but they do not validate generated user-facing docs outside these README
+      files.
+    deferred_to_feature_iteration: true
+
+silent_failure_conditions:
+  - description: >
+      Future edits could add a new README section that contradicts Auto Mode
+      without using the exact prohibited phrases covered by the tests.
+    deferred_to_feature_iteration: true
+
+  - description: >
+      The overview lists required validation surfaces, but the list can drift
+      from the actual release checklist unless validate-and-ship continues to
+      enforce the same coverage.
+    deferred_to_feature_iteration: true
+
+assumptions_made:
+  - assumption: >
+      It is acceptable for the public README to document session-level auto mode
+      before a persistent project configuration mechanism exists.
+    verified: true
+    note: >
+      Verified against the planning decision that `samsara_config.yaml` is out of
+      scope for the first cut and that the bootstrap session ask is the supported
+      entry point.
+    deferred_to_feature_iteration: false
+
+  - assumption: >
+      The task-5 validation surface is sufficient for documentation and
+      conversion coverage.
+    verified: true
+    note: >
+      Verified by running `tests/test_auto_mode`,
+      `tests/test_converter/test_agent.py`,
+      `tests/test_converter/test_agent_death.py`,
+      `tests/integration/test_pipeline.py`,
+      `tests/integration/test_format_validation.py`, and
+      `tests/test_release/test_readme_release_docs.py`.
+    deferred_to_feature_iteration: false
+
+  - assumption: >
+      Full pre-commit is the right final formatting and linting guard for this
+      task even though the feature is mostly Markdown and static contract tests.
+    verified: true
+    note: >
+      Verified by running `uv run pre-commit run --all-files`; the first run
+      reformatted files and the second run passed.
+    deferred_to_feature_iteration: false
+
+debt_registered: true
+debt_location: >
+  README auto-mode sections, README docs tests, overview validation-surface list
+
+narrative: >
+  Task 5 makes the user-facing auto-mode contract explicit in English and
+  Traditional Chinese: auto mode is selected before research, preserves the full
+  workflow, routes former human gates to `samsara-auto-gatekeeper`, records
+  append-only decisions, and does not support `samsara_config.yaml` in the first
+  cut. The validation suite now catches unsupported claims, but this remains a
+  static documentation guarantee rather than live autonomous execution proof.
+
+resolved_items:
+  - original_section: known_shortcuts
+    original_description: >
+      Docs could describe future config support as if implemented.
+    resolution: >
+      Added README death tests that require the explicit phrase
+      "`samsara_config.yaml` is not supported" / "不支援 `samsara_config.yaml`"
+      and reject positive config-support claims.
+
+  - original_section: known_shortcuts
+    original_description: >
+      Validation could skip converter coverage because the feature is
+      instruction-level.
+    resolution: >
+      Overview and tests now require the primary evaluator, converter tests, and
+      integration pipeline/format validation to be part of the task-5 validation
+      surface.

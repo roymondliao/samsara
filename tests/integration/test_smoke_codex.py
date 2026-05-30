@@ -744,6 +744,15 @@ class TestCodexAgentStructure:
                 "An agent with no instructions is a silent no-op in Codex."
             )
 
+    def test_auto_gatekeeper_agent_installed(self, smoke_install_dir: Path) -> None:
+        """Codex install must include the auto-mode gatekeeper agent."""
+        agent_file = (
+            smoke_install_dir / ".codex" / "agents" / "samsara-auto-gatekeeper.toml"
+        )
+        assert agent_file.exists(), (
+            "samsara-auto-gatekeeper.toml missing from Codex install output."
+        )
+
 
 # ---------------------------------------------------------------------------
 # Codex discovery test — aspirational, deferred

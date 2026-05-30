@@ -54,6 +54,14 @@ fast-track（小改動）───────────────┘
 debugging（production 故障）──────┘
 ```
 
+## Auto Mode
+
+在 `samsara:research` 之前，Samsara 會先詢問 execution mode：`human-in-the-loop` 或 `auto`。`human-in-the-loop` 保留現有的 human gate；`auto` 仍然完整跑同一條 workflow：`research -> pre-thinking -> planning -> implement -> iteration -> security-privacy-review -> validate-and-ship`，但原本要問 human 的問題與確認，會交給 `samsara:auto-gatekeeper` 回答。
+
+這個 gatekeeper 是可重用的 principle-level reviewer，帶有 project context、architecture judgment、first-principles reasoning。每一個 auto decision 都會 append 到 `changes/<feature>/auto-decisions.md`，這是一份 append-only 記錄，保留原始 `workflow_prompt`、`gatekeeper_answer`、rationale、uncertainty、consequences。
+
+第一版 scope 刻意只做 session-level：不支援 `samsara_config.yaml`。Auto run 啟動後，同一輪 run 不會重新請 user 接手 gate；不確定性會記錄在 `auto-decisions.md`，security/privacy unknown 會成為 high-uncertainty reject decision。
+
 ### Skills
 
 | Skill | 使用時機 | 關鍵產出 |

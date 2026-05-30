@@ -20,6 +20,8 @@ import json
 import pytest
 from pathlib import Path
 
+from conftest import FIXTURE_VERSION
+
 
 def _make_manifest_path(tmp_path: Path, content: dict) -> Path:
     """Write a plugin.json to tmp_path and return its path."""
@@ -101,7 +103,7 @@ class TestDMD1MissingRequiredFields:
             tmp_path,
             {
                 "name": "samsara",
-                "version": "0.8.0",
+                "version": FIXTURE_VERSION,
                 "description": "desc",
             },
         )
@@ -122,7 +124,7 @@ class TestDMD1MissingRequiredFields:
             tmp_path,
             {
                 "name": None,  # JSON null
-                "version": "0.8.0",
+                "version": FIXTURE_VERSION,
             },
         )
         converter = ManifestConverter()
@@ -171,7 +173,7 @@ class TestDMD2UnknownFieldsPreserved:
             tmp_path,
             {
                 "name": "samsara",
-                "version": "0.8.0",
+                "version": FIXTURE_VERSION,
                 "description": "desc",
                 "author": {"name": "Roymond Liao"},
             },
@@ -198,7 +200,7 @@ class TestDMD2UnknownFieldsPreserved:
             tmp_path,
             {
                 "name": "samsara",
-                "version": "0.8.0",
+                "version": FIXTURE_VERSION,
                 "description": "desc",
                 "future_field_xyz": "some_value_2030",
             },
@@ -221,7 +223,7 @@ class TestDMD2UnknownFieldsPreserved:
             tmp_path,
             {
                 "name": "samsara",
-                "version": "0.8.0",
+                "version": FIXTURE_VERSION,
                 "description": "desc",
                 "author": {"name": "Roymond Liao"},
                 "homepage": "https://github.com/roymond/samsara",
@@ -257,7 +259,7 @@ class TestDMD3ExtraFieldsIncluded:
             tmp_path,
             {
                 "name": "samsara",
-                "version": "0.8.0",
+                "version": FIXTURE_VERSION,
                 "description": "desc",
             },
         )
@@ -281,7 +283,7 @@ class TestDMD3ExtraFieldsIncluded:
             tmp_path,
             {
                 "name": "samsara",
-                "version": "0.8.0",
+                "version": FIXTURE_VERSION,
             },
         )
         converter = ManifestConverter()
@@ -307,7 +309,7 @@ class TestDMD3ExtraFieldsIncluded:
             tmp_path,
             {
                 "name": "samsara",
-                "version": "0.8.0",
+                "version": FIXTURE_VERSION,
                 "skills": "./old-skills/",
             },
         )
@@ -342,7 +344,7 @@ class TestDMD4FullManifestInteraction:
             tmp_path,
             {
                 "name": "samsara",
-                "version": "0.8.0",
+                "version": FIXTURE_VERSION,
                 "description": "samsara plugin",
                 "author": {"name": "Roymond Liao"},
             },
@@ -352,7 +354,7 @@ class TestDMD4FullManifestInteraction:
 
         # Required fields
         assert result["name"] == "samsara"
-        assert result["version"] == "0.8.0"
+        assert result["version"] == FIXTURE_VERSION
         # Unknown source field preserved
         assert result["author"] == {"name": "Roymond Liao"}
         # Extra field from platform config included

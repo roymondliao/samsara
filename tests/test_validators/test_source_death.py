@@ -16,6 +16,8 @@ Silent failures guarded:
 import json
 from pathlib import Path
 
+from conftest import FIXTURE_VERSION
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -28,7 +30,7 @@ def make_valid_source(tmp_path: Path, skill_names: list[str] | None = None) -> P
     plugin_dir = source / ".claude-plugin"
     plugin_dir.mkdir(parents=True)
     (plugin_dir / "plugin.json").write_text(
-        json.dumps({"name": "samsara", "version": "0.8.0"})
+        json.dumps({"name": "samsara", "version": FIXTURE_VERSION})
     )
 
     skills_dir = source / "skills"
@@ -171,7 +173,7 @@ class TestDCSV1PluginJsonRequiredFields:
 
         source = make_valid_source(tmp_path)
         (source / ".claude-plugin" / "plugin.json").write_text(
-            json.dumps({"version": "0.8.0"})  # missing 'name'
+            json.dumps({"version": FIXTURE_VERSION})  # missing 'name'
         )
 
         validator = SourceValidator()

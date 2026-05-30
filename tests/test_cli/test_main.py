@@ -8,6 +8,8 @@ from unittest.mock import MagicMock, patch
 
 from typer.testing import CliRunner
 
+from conftest import FIXTURE_VERSION
+
 
 runner = CliRunner()
 
@@ -23,7 +25,7 @@ def make_minimal_source(tmp_path: Path) -> Path:
     plugin_dir = source / ".claude-plugin"
     plugin_dir.mkdir(parents=True)
     (plugin_dir / "plugin.json").write_text(
-        json.dumps({"name": "samsara", "version": "0.8.0"})
+        json.dumps({"name": "samsara", "version": FIXTURE_VERSION})
     )
     (source / "skills").mkdir()
     skill = source / "skills" / "research"
