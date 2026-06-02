@@ -30,7 +30,7 @@ digraph planning {
     spec [label="Tech Spec\n- I/O + unknown_output\n- death cases（非 edge cases）"];
     acceptance [label="Acceptance\n- 死路先行 BDD\n- silent failure scenarios first\n- then happy path"];
     plan [label="產出 2-plan.md\n+ acceptance.yaml"];
-    decompose [label="Task Decompose\n- self-contained tasks\n- 每個 task 附 death test 要求"];
+    decompose [label="Task Decompose\n- self-contained tasks\n- 每個 task 附 death test 要求\n- 每個 task 命名 unit-test contract source"];
     output [label="產出 overview.md\n+ index.yaml\n+ tasks/task-N.md"];
     gate [label="Execution-mode gate\nhuman: confirm\nauto: gatekeeper" shape=diamond];
     next [label="invoke samsara:implement" shape=doublecircle];
@@ -97,6 +97,7 @@ A test plan with only success cases has `coverage_type: prayer`. Not accepted.
 Break the plan into self-contained tasks. Each task:
 - Can be executed by an agent with zero context beyond the task file + overview.md
 - Includes death test requirements (what death tests must be written)
+- Names its unit-test contract source — the observable contract a unit test may assert (public API/return value, documented artifact shape, or a source from `references/test-contract.md`) — alongside the death test requirements. The contract is named UPSTREAM here so the implementer asserts it instead of inferring a contract from the current implementation. See the `Unit Test Contract` section in support file `task-format.md`.
 - Includes expected scar report items (what shortcuts/assumptions to watch for)
 - Follows the format in support file `task-format.md`
 
