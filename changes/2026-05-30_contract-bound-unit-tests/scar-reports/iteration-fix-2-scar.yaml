@@ -1,0 +1,213 @@
+task_id: iteration-fix-2
+completion_status: done
+
+narrative: >
+  Level-2 feature iteration fix. Code review caught the SAME failure-mode family six
+  times across all six tasks: an assertion that proves a topic is *mentioned* rather
+  than *asserted in the right direction*. The reference already taught "both poles" and
+  the Silent-Green Guard but did NOT capture the five concrete sub-rules the build
+  proved necessary. This fix (a) adds a new reference section "Writing assertions that
+  can fail in the right direction" to references/test-contract.md codifying the five
+  sub-rules (weakest-token-in-an-OR floor; presence-not-polarity; green-by-construction;
+  order-by-label; boundary bleed), framed generally and tied back to the Contract Gate /
+  both-poles material via the unifying principle "an assertion is only as strong as its
+  weakest clause, and must be able to fail in the direction the contract cares about";
+  (b) adds an ASSERTION_DISCIPLINE concept group to the DATA module _contract_tokens.py
+  (NOT _token_lib.py, which is engine-only post iteration-fix-1) and merges it into
+  REFERENCE_CONCEPTS (the reference IS the surface responsible for the discipline); and
+  (c) adds a new evaluator test_assertion_discipline.py that asserts the reference
+  carries the concepts AND — critically — that the new tokens themselves obey all five
+  rules: a hostile unrelated-prose decoy asserting ZERO discipline concepts covered,
+  three wrong-direction decoys for the polarity-bearing rules, and a reuse of
+  pinned_heading_offenders. minimal_fix scope honoured: only the section + group + tests
+  + decoys; no reorganizing the reference, no retokenizing other groups. 124
+  contract-bound tests pass (was 116, +8). pre-commit clean. The 4 unrelated repo
+  failures (snapshot x2, release-version-drift x2) are pre-existing, confirmed by
+  git-stash on a clean tree.
+
+known_shortcuts:
+  - description: >
+      RULE 5's token rx(r"\[\^\.\]") matches the literal "[^.]" appearing as code/regex
+      in the reference doc. This is the honest assertion (naming the loose stop class IS
+      the concept), but it would also match if a future author quoted "[^.]" in an
+      unrelated context within the reference. Accepted: the reference is a focused
+      test-contract doc; a "[^.]" mention there is overwhelmingly about the boundary-bleed
+      rule. The OR-tuple also carries three direction-bound alternatives, so this is not
+      the weakest-floor trap — removing the literal would not weaken the other clauses.
+    location: tests/test_contract_bound_tests/_contract_tokens.py
+    fix_cost: low
+    deferred_to_feature_iteration: false
+  - description: >
+      SUPERSEDED by review round 1 (see resolved_items). This shortcut was WRONG, not
+      merely accepted: leaving green_by_construction and presence_not_polarity without a
+      dedicated wrong-direction decoy let their FIRST token stay a bare compound-phrase
+      match (rx("green-by-construction") / rx("presence-not-polarity")) that fired on the
+      section heading regardless of teach-vs-endorse — the self-refuting polarity hole.
+      For green_by_construction it was worse: the stricter siblings' gaps span the doc's
+      line-wrap (correctly forbidden by the tight stop class), so the bare heading token
+      was the ONLY thing carrying coverage. Both first tokens are now directional-ized and
+      both rules have a dedicated wrong-direction decoy.
+    location: tests/test_contract_bound_tests/test_assertion_discipline.py
+    fix_cost: low
+    deferred_to_feature_iteration: false
+
+silent_failure_conditions:
+  - condition: >
+      A future author rewrites the reference section using synonyms none of the four
+      alternative tokens per rule anticipate (e.g. drops "weakest"/"loosest" entirely and
+      says "least specific member dominates"). The concept would be reported MISSING and
+      the reference-coverage test would go RED — so this fails LOUD, not silent. The only
+      silent path is the inverse: prose that satisfies a token by coincidence while not
+      actually teaching the rule.
+    detection: >
+      The hostile unrelated-prose decoy (test_no_discipline_concept_covered_by_hostile_decoy)
+      is the forcing function against coincidental satisfaction: it sprinkles the exact
+      keywords and asserts ZERO coverage. Verified by mutation: adding a bare rx("weakest")
+      token makes the decoy report that concept covered, reddening the test.
+  - condition: >
+      The three wrong-direction decoys are hand-written fixtures; they prove the polarity
+      tokens reject THOSE specific endorsements, not every conceivable wrong-direction
+      phrasing. A doc endorsing the bug in wording the decoy does not anticipate could
+      still slip past a polarity token.
+    detection: >
+      Bounded by the four-alternative directional construction of each token (each binds
+      the keyword to its direction/cure), backstopped by review. Same class of limit as
+      the existing FIX_THE_TEST / PLANNING_FORBID_GENERIC_UNIT_WORDING polarity tokens.
+
+assumptions_made:
+  - assumption: >
+      The five assertion-discipline concepts belong to the reference surface (so the group
+      joins REFERENCE_CONCEPTS), and adding them does not break the existing reference
+      meta-tests that iterate REFERENCE_CONCEPTS (heading-rename survival, unrelated-prose
+      decoy, named-floor decoy, pinned-heading scan).
+    verified: true
+    how_verified: >
+      Ran TestEvaluatorIsNotOverfitDeath (heading-rename + both unrelated-prose decoys +
+      pinned-heading scan): all 4 pass with the new concepts merged. The heading-rename
+      test confirms the new tokens survive an honest rename; the unrelated-decoy tests
+      confirm the new concepts report MISSING on unrelated prose.
+  - assumption: >
+      All five new concepts are satisfied ONLY by the new section, not by pre-existing
+      reference prose (no green-by-construction against the reference itself).
+    verified: true
+    how_verified: >
+      Mutate-to-red: programmatically excised the new section from the reference text and
+      ran missing_concepts — all five concepts went MISSING (set equality with the full
+      group). No pre-existing prose satisfies any of them.
+  - assumption: >
+      The hostile decoy is a real forcing function, not vacuously green.
+    verified: true
+    how_verified: >
+      Injected a green-by-construction token rx("weakest") into the group and ran
+      concepts_covered_by on the hostile decoy: it reported weakest_clause_sets_the_floor
+      covered, which would redden the decoy test. The guard catches the bug it documents.
+  - assumption: >
+      The new group lives in the DATA module only (no engine code added), respecting the
+      iteration-fix-1 module split.
+    verified: true
+    how_verified: >
+      Added only a dict literal (ASSERTION_DISCIPLINE) to _contract_tokens.py; no def.
+      test_module_split_death.py (all 3) passes.
+  - assumption: >
+      The 4 failing tests elsewhere in the repo are pre-existing and unrelated.
+    verified: true
+    how_verified: >
+      git stash on the working tree then ran the snapshot + release-death tests: same 4
+      failures on the clean tree. Restored via stash pop.
+
+debt_registered: >
+  No new structural debt. This fix RESOLVES the cross-task scar that review named six
+  times (presence-not-polarity / weakest-floor / green-by-construction assertions) by
+  codifying the five sub-rules in the reference and pinning them with a self-disciplined
+  concept group + hostile/wrong-direction decoys. Two accepted low-cost shortcuts (the
+  "[^.]" literal token; two rules guarded by hostile decoy rather than a dedicated
+  wrong-direction decoy) are conscious, not deferred debt.
+debt_location: >
+  tests/test_contract_bound_tests/_contract_tokens.py (ASSERTION_DISCIPLINE group),
+  tests/test_contract_bound_tests/test_assertion_discipline.py,
+  references/test-contract.md ("Writing assertions that can fail in the right direction")
+
+resolved_items:
+  - source: cross-task scar (tasks 1-6, code-review synthesis)
+    original: >
+      The same failure-mode family was caught six times: assertions proving a topic is
+      mentioned rather than asserted in the right direction (weakest-token-in-an-OR floor,
+      presence-not-polarity, green-by-construction, order-by-label, boundary bleed). The
+      reference taught both-poles + Silent-Green Guard but did not codify these five
+      concrete sub-rules.
+    resolution: >
+      Added a reference section codifying all five sub-rules generally (tied to the
+      Contract Gate via "only as strong as its weakest clause; must fail in the direction
+      the contract cares about"). Added the ASSERTION_DISCIPLINE concept group (intent-
+      bearing, directional, no weakest-OR floor) to the DATA module and merged it into
+      REFERENCE_CONCEPTS. Added an evaluator with a hostile unrelated-prose decoy (ZERO
+      concepts covered) and three wrong-direction decoys, proving the new tokens obey the
+      very rules they document. Mutate-to-red verified the decoy and the section-dependency.
+  - source: iteration-fix-2 self-iteration / assumptions
+    original: >
+      Initial assumptions (concepts belong to REFERENCE_CONCEPTS without breaking existing
+      meta-tests; section is the sole source of coverage; hostile decoy is non-vacuous;
+      module split respected) were unverified at scar-draft time.
+    resolution: >
+      Verified all four during self-iteration: ran the reference over-fit meta-suite,
+      excised-section mutate-to-red, injected-bad-token mutate-to-red, and the module-split
+      death test. All assumptions now verified: true.
+  - source: review round 1 (yin Important) — self-refuting polarity hole
+    original: >
+      ASSERTION_DISCIPLINE["green_by_construction"] and ["presence_not_polarity"] each had
+      a FIRST token that was a bare compound phrase — rx("green[- ]by[- ]construction") and
+      rx("presence[- ]not[- ]polarity") — firing on the section HEADING regardless of
+      whether the doc TEACHES the rule or ENDORSES the bug. In an OR-tuple the weakest token
+      sets the floor (rule 1 of this very section), so these bare tokens nullified their
+      stricter siblings: a doc saying "green-by-construction tokens are fine here" would
+      satisfy the concept — the exact bug the section forbids, committed in its own guard.
+      For green_by_construction the bare token was additionally the ONLY token matching the
+      real section (the stricter siblings' proximity gaps span the doc's line-wrap, which
+      the tight [^.?!>\n] clause correctly forbids).
+    resolution: >
+      Directional-ized BOTH first tokens: each now binds the compound phrase to its cure/
+      failure DIRECTION within a TIGHT clause ([^.?!>\n], no boundary bleed) — green-by-
+      construction within {never go red | matches almost any | tighten}; presence-not-
+      polarity within {reject | wrong direction | must fail | polarity holds}, in both
+      orders. Added a single-line directional sentence to each paragraph in
+      references/test-contract.md so the tight token has a same-line phrase to match.
+      Added two wrong-direction decoy death tests
+      (test_endorsing_green_by_construction_is_missing_concept,
+      test_endorsing_presence_not_polarity_is_missing_concept) in
+      TestWrongDirectionDecoyDeath. Mutate-to-red proven: the endorsing fixtures are
+      COVERED under the old bare token and MISSING under the new directional token; the
+      REAL section is still COVERED (no over-tighten / false-fail). All five polarity-
+      bearing rules now have a dedicated wrong-direction decoy, so the
+      TestWrongDirectionDecoyDeath docstring "for each polarity-bearing rule" (FIX 2,
+      previously an overclaim covering 3 of 5) is now accurate and was updated.
+  - source: review round 1 (quality Cohesion) — positional orphan
+    original: >
+      ASSERTION_DISCIPLINE was appended after the PLANNING_* groups, extending the same
+      append-order disorder that DAMP_OVER_DRY's comment already admits, with no note that
+      it is a reference-surface cohort group merged into REFERENCE_CONCEPTS.
+    resolution: >
+      Added a one-line PLACEMENT (cohesion) comment at ASSERTION_DISCIPLINE noting it is a
+      reference-surface cohort group placed here by append-order (like DAMP_OVER_DRY),
+      conceptually belonging with CONTRACT_GATE..UNIT_VS_DEATH, merged into
+      REFERENCE_CONCEPTS. No reorder (minimal_fix scope honoured).
+
+deferred_to_feature_iteration:
+  - finding: review round 1 (quality DRY) — duplicated wrong-direction decoy shape
+    detail: >
+      The wrong-direction decoy SHAPE (define an endorsing fixture, assert
+      concept_present is False) is duplicated across several evaluator files
+      (test_assertion_discipline.py, the FIX_THE_TEST / PLANNING_FORBID_GENERIC_UNIT_WORDING
+      polarity tests, the reviewer evaluators). A shared decoy helper (e.g.
+      assert_endorsement_missing(concept, text)) could unify them. This is a cross-file
+      refactor beyond minimal_fix scope and touches files outside this fix's scope, so it
+      is deferred to a future feature iteration rather than fixed here.
+    deferred_to_feature_iteration: true
+
+accepted_suggestions:
+  - The unit-test loop in TestAssertionDisciplineSection overlaps the per-concept
+    coverage already asserted elsewhere — accepted, not fixed (harmless redundancy that
+    keeps this evaluator's contract legible at its own point of assertion; DAMP over DRY).
+  - REFERENCE path is re-derived (ROOT / "references" / "test-contract.md") in this
+    evaluator rather than imported from a shared constant — accepted, not fixed (the path
+    literal is single-sourced for TOKENS via REFERENCE_PATH_RX; the filesystem Path here
+    is a local test concern, low value to centralize).

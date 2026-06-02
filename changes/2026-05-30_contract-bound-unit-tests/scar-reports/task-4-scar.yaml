@@ -1,0 +1,232 @@
+task_id: task-4
+completion_status: done  # done | done_with_concerns | blocked
+
+narrative: >
+  Task 4 makes REVIEWER enforcement real — closing the loop so the contract-bound
+  unit-test gate documented in the reference/implementer/skill/planning surfaces is
+  actually ASKED at review time (death case DC4). Three surfaces changed plus the
+  shared token module:
+
+  (1) agents/code-reviewer.md gains a new Review Order step "4. Test Quality (tests
+  reviewed first)" inserted BEFORE the correctness step (correctness renumbered 5->6).
+  The step makes the yin reviewer review tests as a first-class subject, flag BOTH the
+  over-fit pole (brittle) and the silent-green pole (tautological), grant the
+  directional "fix the test, not the implementation" verdict, and CHALLENGE a
+  perfunctory contract label (Clean Scar — a slogan mapping to no observable
+  behavior/API/schema/artifact/death-case). Issue Classification updated to score
+  these.
+
+  (2) agents/code-quality-reviewer.md gains a Scope-Boundary paragraph claiming
+  STRUCTURAL test coupling (tests coupled to implementation structure) as its lane via
+  the Coupling principle, and explicitly REFERRING test silent-rot/correctness
+  concerns to the yin reviewer — keeping the role split sharp.
+
+  (3) skills/implement/dispatch-template.md gains a "## Test-Quality Review (mandatory)"
+  block inside BOTH reviewer dispatch templates (Yin block: brittle/tautological/
+  fix-the-test/Clean-Scar; Code Quality block: structural test coupling + refer
+  silent-rot to yin). This is the DC4 core: the gate is now ASKED on dispatch, not
+  merely documented.
+
+  (4) tests/test_contract_bound_tests/_contract_tokens.py gains six reviewer-surface
+  concept groups (REVIEWER_REVIEWS_TESTS, REVIEWER_FIX_THE_TEST,
+  REVIEWER_CHALLENGE_CLEAN_SCAR, REVIEWER_STRUCTURAL_TEST_COUPLING,
+  REVIEWER_REFERS_SILENT_ROT, DISPATCH_TEST_QUALITY_PROMPT), NOT merged into
+  REFERENCE_CONCEPTS (they are reviewer/dispatch-surface, not reference-doc concepts).
+
+  The "tests reviewed BEFORE correctness" claim is asserted STRUCTURALLY (the exact
+  mistake that failed task-3 review): the evaluator reads the source positions of the
+  Test-Quality step heading and the Correctness step heading within the Review Order
+  section and asserts tests_pos < correctness_pos. A synthetic reversed-order fixture
+  (labels preserved, positions swapped) proves the check goes RED — which a presence
+  token never would. The directional tokens are decoy-tested (hostile prose ->
+  MISSING) and polarity-tested (endorsing-wrong-practice / mere-mention -> MISSING).
+  Verified RED first: 16 protocol/death tests failed against the unmodified docs while
+  the 8 token-quality guards (decoy, polarity, pinned-heading, reversed-fixture,
+  pre-existing referral) passed; then GREEN after the doc edits (24 passed). Full
+  contract-bound suite: 95 passed, no regression.
+
+  ROUND-2 (post dual review, both PASS_WITH_CONCERNS, no Critical). Two reviewer-surface
+  tokens carried the recurring PRESENCE-NOT-POLARITY disease (a weak token in an OR-tuple
+  sets the coverage floor and nullifies its directional siblings):
+  (a) REVIEWER_REFERS_SILENT_ROT token1 `refer ... code-reviewer` fired on the GENERIC
+  Scope-Boundary hand-off line already in code-quality-reviewer.md, so the SPECIFIC
+  "refer test silent-rot to the yin reviewer" sentence could be deleted and the concept
+  stay falsely COVERED. (b) DISPATCH_TEST_QUALITY_PROMPT token1 `test[- ]quality` fired on
+  a bare "ensure test quality" with no brittle/tautological/contract enforcement content.
+  Both bare tokens REMOVED; remaining tokens bind the act to its directional subject. Two
+  new polarity death tests added (test_generic_handoff_without_subject_is_missing_referral_concept,
+  test_bare_test_quality_mention_is_missing_dispatch_concept), mutate-to-red verified
+  (both FAIL on the old weak tokens, PASS after) and the REAL docs confirmed still covered
+  (no over-tighten). The optional DRY suggestion was applied: review_order_section() and
+  dispatch_block() now share extract_section(lines, start_prefix, end_prefixes), each
+  keeping its distinct boundary-prefix set (Review Order ends at '## ' only; dispatch
+  blocks end at '### '/'## '). Full contract-bound suite: 97 passed, no regression.
+
+known_shortcuts:
+  - description: >
+      Expected shortcut (from task spec): the reviewer agent contains rules but the
+      dispatch prompt never activates them (DC4). MITIGATED: the dispatch template
+      carries a mandatory Test-Quality Review block in BOTH reviewer dispatch
+      sub-blocks, and the evaluator checks each block SEPARATELY
+      (test_yin_dispatch_block_asks_for_test_quality,
+      test_quality_dispatch_block_asks_for_test_quality,
+      test_both_blocks_distinct_and_both_carry_prompt) so a prompt added to only one
+      block cannot satisfy the gate. This is the death case this task exists to close;
+      it is covered, not deferred.
+    deferred_to_feature_iteration: false
+  - description: >
+      Expected shortcut (from task spec): both reviewers duplicate the same
+      responsibility instead of splitting yin silent-rot vs structural coupling.
+      MITIGATED: the code-quality reviewer's added paragraph explicitly draws the line
+      ("you own how the test is structurally coupled; the yin reviewer owns whether
+      the test can fail and whether it asserts the right contract") and the evaluator
+      pins the referral (REVIEWER_REFERS_SILENT_ROT) plus the structural-coupling lane
+      (REVIEWER_STRUCTURAL_TEST_COUPLING) as DISTINCT concepts. The code-coupling decoy
+      death test proves the structural-test-coupling token does not match generic
+      code-coupling prose, so the two lanes cannot silently collapse into one.
+    deferred_to_feature_iteration: false
+  - description: >
+      _contract_tokens.py is a single module split by SURFACE comment-banner only, not by
+      file. Task-4 added six reviewer/dispatch-surface groups, worsening the module's size
+      and the "many death reasons in one file" smell flagged across tasks. A by-surface
+      module split (reference vs implementer vs skill vs reviewer vs planning groups) is
+      DEFERRED to feature iteration: it is a cross-task refactor touching every evaluator's
+      imports, outside task-4's file scope, and is NOT a blocker (the keys are the stable
+      public contract regardless of which file they live in). Round-1 review confirmed this
+      as deferred, not Critical.
+    deferred_to_feature_iteration: true
+
+silent_failure_conditions:
+  - description: >
+      The reviewer-surface concept tokens assert PRESENCE/DIRECTION of instruction
+      text in markdown agent files; they cannot verify that a live reviewer LLM
+      actually OBEYS the instruction at runtime. A reviewer that reads the Test-Quality
+      step but rubber-stamps a tautological test would pass every test here and still
+      let the rotten test through. The evaluator guards the instruction surface, not
+      reviewer behavior — the same structural limit as tasks 2/3/5.
+    deferred_to_feature_iteration: true
+  - description: >
+      The structural ordering check (tests < correctness) reads '### ' step HEADINGS
+      within the '## Review Order' section. If a future edit moves the test-quality
+      review OUT of a numbered '### ' step (e.g. into a paragraph under the Mother
+      Rules) while keeping prose, first_step_pos_matching would return None and the
+      death test fails LOUD — but a heading whose body drops every STEP_TEST_REVIEW
+      token (test+quality/brittle/etc.) would also return None and read as "step
+      removed", which is the intended loud failure, not a silent one. The residual
+      risk: if BOTH a renamed Review Order heading AND a moved step coincided, the
+      section-not-found branch fires first (loud), so no silent path remains here.
+    deferred_to_feature_iteration: false
+
+assumptions_made:
+  - assumption: >
+      The yin code reviewer can carry the test-contract review step without weakening
+      its domain-reference protocol (Step 0 domain routing, the UNKNOWN hard-stops, and
+      the reference-file-unavailable rule).
+    verified: true
+    note: >
+      VERIFIED by diff inspection: the change inserts a new Review Order step (4) and
+      renumbers correctness 5->6, and extends Issue Classification. It does NOT touch
+      Step 0, the Reference File Protocol, the UNKNOWN outcomes, or domain routing
+      (git diff shows no edits to those sections). The new step is driven by Mother
+      Rule 3, consistent with the existing Silent Rot step, so it adds a review concern
+      without altering how the reviewer selects/loads its reference file.
+    deferred_to_feature_iteration: false
+  - assumption: >
+      The dispatch-template.md section parser (dispatch_block) correctly isolates the
+      two reviewer dispatch sub-blocks by their '### Yin reviewer' / '### Code Quality
+      reviewer' headings, so a per-block check is genuinely per-block.
+    verified: true
+    note: >
+      VERIFIED at runtime: test_both_blocks_distinct_and_both_carry_prompt asserts the
+      two blocks resolve to DIFFERENT text and each independently carries the prompt;
+      it passes, confirming the parser distinguishes the blocks rather than returning
+      overlapping/identical slices.
+    deferred_to_feature_iteration: false
+  - assumption: >
+      The new reviewer-surface tokens are intent-bearing and can go RED (not
+      green-by-construction on the common words test/review/contract/coupling).
+    verified: true
+    note: >
+      VERIFIED at runtime by five guards: test_new_concepts_fail_on_hostile_decoy
+      (all six groups MISSING on hostile prose), test_new_concept_tokens_are_not_
+      pinned_headings, test_endorsing_wrong_practice_is_missing_fix_concept (polarity),
+      test_mentioning_contract_is_missing_clean_scar_concept (polarity), and
+      test_code_coupling_without_test_subject_is_missing (decoy). All pass.
+
+resolved_items:
+  - original_section: assumptions_made
+    original_description: >
+      code-reviewer can apply the test-contract review without weakening its domain
+      reference protocol.
+    resolution: >
+      Verified during self-iteration via git-diff inspection of code-reviewer.md:
+      confirmed Step 0, Reference File Protocol, UNKNOWN outcomes, and domain routing
+      are untouched; only a new Review Order step and Issue Classification changed.
+      Flag flipped to verified: true.
+  - original_section: silent_failure_conditions
+    original_description: >
+      Initial concern that the structural ordering check could silently misread a
+      moved/renamed Review Order step.
+    resolution: >
+      Traced the failure branches during self-iteration: a missing section returns
+      None -> loud assert; a missing step heading returns None -> loud assert; a
+      renamed heading fires the section-not-found branch first. No silent path remains.
+      Documented the residual (loud) behavior rather than leaving the risk implicit.
+  - original_section: silent_failure_conditions
+    original_description: >
+      ROUND-2, previously-unsurfaced (round-1 reviewer noted the scar omitted it):
+      REVIEWER_REFERS_SILENT_ROT token1 `rx(r"refer[^.?!\n]{0,60}(samsara:)?code[- ]reviewer")`
+      was a PRESENCE-NOT-POLARITY weak token. It fired on the GENERIC Scope-Boundary
+      hand-off line already present in code-quality-reviewer.md ("→ Refer to
+      samsara:code-reviewer"), so a future author could DELETE the SPECIFIC "refer test
+      silent-rot/correctness to the yin reviewer" sentence and the concept would silently
+      stay COVERED via the generic line — the role-split enforcement would rot green. The
+      group's own comment claimed DIRECTIONAL but token1 was not. This risk was NOT
+      recorded in the round-1 scar.
+    resolution: >
+      Removed the bare referral token. Every remaining token binds the referral ACT to the
+      silent-rot/correctness/tautological/wrong-contract/test SUBJECT (subject-then-refer
+      and refer-then-subject), with newline-tolerant gaps because the real binding wraps
+      across lines. Added polarity death test
+      test_generic_handoff_without_subject_is_missing_referral_concept: a code-quality doc
+      with ONLY a generic hand-off is now reported MISSING. Mutate-to-red verified (FAILs
+      on the old bare token, PASSes after); the REAL code-quality-reviewer.md confirmed
+      still covered via its lines 44-49 silent-rot referral (no over-tighten).
+  - original_section: silent_failure_conditions
+    original_description: >
+      ROUND-2: DISPATCH_TEST_QUALITY_PROMPT token1 `rx(r"test[- ]quality")` was a
+      PRESENCE-NOT-POLARITY weak token. It fired on a bare "ensure test quality" mention
+      or a lone "## Test-Quality Review" heading with NO brittle/over-fit/tautological/
+      silent-green/contract enforcement content, so the DC4 gate could be gutted (drop the
+      enforcement bullets, keep the heading) and stay falsely COVERED while the dispatch no
+      longer ASKED for the review. Token1 was the weak link; the other tokens were already
+      directional.
+    resolution: >
+      Removed the bare `test[- ]quality` token. The concept now REQUIRES the dispatch block
+      to actually ask for brittle/over-fit/tautological/silent-green/contract review. Added
+      polarity death test test_bare_test_quality_mention_is_missing_dispatch_concept: a
+      block saying only "ensure good test quality" is now reported MISSING. Mutate-to-red
+      verified (FAILs on the old bare token, PASSes after); BOTH real dispatch blocks
+      confirmed still covered via the existing brittle/tautological bullets (no
+      over-tighten).
+  - original_section: narrative
+    original_description: >
+      ROUND-2 optional DRY suggestion (round-1, low-risk): review_order_section() and
+      dispatch_block() shared a ~15-line heading-scan-to-next-boundary pattern differing
+      only in boundary-heading prefixes.
+    resolution: >
+      Extracted shared extract_section(lines, start_prefix, end_prefixes); both call sites
+      now delegate to it while keeping their DISTINCT boundary criteria (Review Order ends
+      at '## ' only so its '### N.' step headings stay CONTENT; dispatch blocks end at
+      '### '/'## ' so sibling reviewer blocks do not merge and defeat the per-block DC4
+      check). Full suite re-run: 97 passed, no regression. Low-risk as scoped: passing
+      tests unchanged.
+
+deferred_items:
+  - original_section: known_shortcuts
+    description: >
+      By-surface module split of _contract_tokens.py (see known_shortcuts). Cross-task
+      refactor outside task-4 file scope; not a blocker. Deferred to feature iteration.
+
+debt_registered: true
+debt_location: changes/2026-05-30_contract-bound-unit-tests/scar-reports/task-4-scar.yaml

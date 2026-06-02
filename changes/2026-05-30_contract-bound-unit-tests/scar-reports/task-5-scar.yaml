@@ -1,0 +1,254 @@
+task_id: task-5
+completion_status: done  # done | done_with_concerns | blocked
+
+narrative: >
+  Task 5 moves the unit-test contract ORIGIN upstream into planning. Two surfaces
+  changed: (1) the TEMPLATE skills/planning/task-format.md now has a required
+  `## Unit Test Contract` section plus a parallel Rule (#4) forbidding generic
+  "appropriate tests" wording and requiring an observable, named contract source;
+  the template's "Write unit tests" Implementation Step now references the contract
+  gate. (2) skills/planning/SKILL.md's Task Decomposition step (and the process
+  digraph node) now tell the planner to name each task's unit-test contract source
+  ALONGSIDE the death test requirements, so the contract is named at planning time
+  and the implementer asserts it instead of inferring a contract from the current
+  implementation.
+
+  The evaluator and its three new concept groups (PLANNING_UNIT_TEST_CONTRACT_SECTION,
+  PLANNING_FORBID_GENERIC_UNIT_WORDING, PLANNING_DECOMPOSITION_NAMES_CONTRACT) were
+  found ALREADY PRESENT in tests/test_contract_bound_tests/_contract_tokens.py and
+  tests/test_contract_bound_tests/test_planning_test_contract.py from a prior partial
+  run; the doc edits and this scar report were the missing pieces. I verified the
+  evaluator was RED against the unmodified docs (3 death tests + 3 unit tests failing,
+  while the 5 decoy/polarity/pinned-heading/historical-non-enforcement guards already
+  passed), then turned it GREEN with the doc edits. Scope is TEMPLATE-only: the
+  evaluator anchors on the single template path and a death test (DC4-HISTORICAL) pins
+  that it never globs changes/**/task-*.md — 64 of 70 historical task files lack the
+  section and a global check would brick the suite.
+
+known_shortcuts:
+  - description: >
+      Potential shortcut (from task spec): adding a Unit Test Contract heading
+      WITHOUT requiring an observable contract source — a label with no structure
+      satisfiable by "write appropriate tests". MITIGATED: the template carries Rule
+      #4 forbidding generic "appropriate tests"/"appropriate unit tests" wording and
+      requiring a named observable contract source, and the DC3-LABEL-NOT-STRUCTURE
+      death test plus the DC-POLARITY death test prove the forbid token is DIRECTIONAL
+      (an endorsing template that says "write appropriate tests" is reported MISSING
+      the concept, confirmed by a runtime polarity check on the live decoy).
+    deferred_to_feature_iteration: false
+  - description: >
+      Potential shortcut (from task spec): making planning verbose by embedding the
+      full testing catalog in every task. MITIGATED: the template names the contract
+      SOURCE categories (public API/return value, documented artifact shape, emitted
+      output) and POINTS to references/test-contract.md rather than pasting its
+      catalog; SKILL.md decomposition adds one bullet and points to the
+      `Unit Test Contract` section in task-format.md. No catalog is duplicated.
+    deferred_to_feature_iteration: false
+
+silent_failure_conditions:
+  - description: >
+      SILENT FAILURE: if a future "tighten the check" edit makes the evaluator glob
+      changes/**/task-*.md to enforce the Unit Test Contract section globally, the
+      suite would brick on 64 pre-existing historical task files (the green-by-rot
+      inverse). DETECTED by death test TestNoHistoricalEnforcementDeath: it pins that
+      the evaluator target is the single template FILE (not under changes/) and that a
+      known historical task file (changes/2026-04-21_security-privacy-review/tasks/
+      task-1.md) genuinely lacks the section yet the suite stays green.
+    deferred_to_feature_iteration: false
+  - description: >
+      SILENT FAILURE: the new planning-surface tokens could be green-by-construction
+      (key on common words "unit/test/contract/appropriate") or presence-not-polarity
+      (match a doc that ENDORSES the generic wording), so they could never go red and
+      the planning surface could rot undetected. DETECTED by the DC-DECOY death test
+      (hostile decoy prose -> all three concepts reported MISSING), the pinned-heading
+      guard (no token carries "##"), and the DC-POLARITY death test (endorsing prose
+      reported MISSING the forbid rule). All confirmed passing.
+    deferred_to_feature_iteration: false
+  - description: >
+      SILENT FAILURE: the historical-non-enforcement fixture
+      (changes/2026-04-21_security-privacy-review/tasks/task-1.md) could one day be
+      migrated to add a Unit Test Contract section, silently voiding the non-enforcement
+      proof while staying green. DETECTED: the death test asserts the fixture STILL
+      lacks the section ("unit test contract" not in it) and loudly instructs repointing
+      to another pre-2026-05-30 task file if it ever gains one. Accepted risk: this is a
+      maintenance signal, not an auto-repair; the failure is LOUD, not silent.
+    deferred_to_feature_iteration: false
+
+assumptions_made:
+  - assumption: >
+      Existing historical task files under changes/ do NOT need migration for this
+      feature; the Unit Test Contract section is enforced on the TEMPLATE only, going
+      forward.
+    verified: true
+    note: >
+      Verified by running the full evaluator GREEN while the DC4-HISTORICAL death test
+      confirms a real historical task file lacks the section and the suite does not
+      read it. Also confirmed the whole feature suite (69 tests) stays green — no
+      regression, no historical artifact is touched.
+    deferred_to_feature_iteration: false
+  - assumption: >
+      The three planning-surface concept groups already in _contract_tokens.py are
+      intent-bearing (polarity- and decoy-checked) and correctly target the planning
+      surface, not REFERENCE_CONCEPTS.
+    verified: true
+    note: >
+      Verified: the groups are NOT merged into REFERENCE_CONCEPTS (correct, per the
+      DELIBERATELY EXCLUDED contract — these are planning-surface, not reference-doc,
+      concepts). Verified the forbid token is directional by a live runtime check: my
+      template edit is covered, the endorsing decoy is not.
+    deferred_to_feature_iteration: false
+  - assumption: >
+      The Implementation Steps "Write unit tests" line referencing the contract gate
+      does not break the death→gate→unit structural ordering enforced for the SKILL/
+      implementer surfaces.
+    verified: true
+    note: >
+      task-format.md is a TEMPLATE and is not subject to the structural
+      step_index_of_concept ordering check (that targets implementer.md / implement
+      SKILL.md). Confirmed: the full feature suite stays green; no ordering test reads
+      task-format.md.
+
+debt_registered: true
+debt_location: >
+  changes/2026-05-30_contract-bound-unit-tests/scar-reports/task-5-scar.yaml
+  (silent_failure_conditions above). No code debt registered elsewhere; the residual
+  items are LOUD maintenance signals (fixture repointing) guarded by death tests, not
+  silent debt.
+
+resolved_items:
+  - original_section: assumptions_made
+    original_description: >
+      Existing task files do not need migration unless tests enforce historical
+      artifacts (the spec's "assumption to verify").
+    resolution: >
+      Verified true. The evaluator is template-only; DC4-HISTORICAL death test proves
+      a real historical task file lacks the section and the suite stays green, and the
+      full feature suite passes with no historical artifact touched.
+  - original_section: known_shortcuts
+    original_description: >
+      Adding a heading without requiring observable contract sources.
+    resolution: >
+      Resolved within task scope. Added Rule #4 to task-format.md forbidding generic
+      "appropriate tests" wording and requiring a named observable contract source;
+      proven directional by the DC3 and DC-POLARITY death tests.
+  - original_section: known_shortcuts
+    original_description: >
+      Making planning too verbose by embedding the full testing catalog in every task.
+    resolution: >
+      Resolved within task scope. Template and SKILL.md name source categories and
+      POINT to references/test-contract.md instead of pasting the catalog; one bullet
+      added to decomposition, no duplication.
+
+  # --- Dual-review (yin FAIL + quality PWC) fixes, 2026-06-01 -----------------
+  - original_section: review_finding_yin_critical
+    original_description: >
+      PRESENCE-NOT-POLARITY (4th recurrence): PLANNING_DECOMPOSITION_NAMES_CONTRACT's
+      first token rx(r"unit[- ]test\s+contract(\s+source)?") matched ANY mention of the
+      phrase, including a NEGATING sentence ("the unit-test contract source is NOT
+      required at planning time" / "left to the implementer's discretion"). A SKILL.md
+      that drops the decomposition obligation but mentions the phrase would pass.
+    resolution: >
+      Removed the bare first token. The naming-act token was also tightened from
+      rx(r"(name|naming|includes)\s+[^.]{0,40}unit[- ]test\s+contract") to
+      rx(r"names?\s+(its|the|each\s+task.s?)\s+unit[- ]test\s+contract\s+source") because
+      the looser form still matched "Whether to name a unit-test contract source is left
+      to discretion". Only directional tokens remain (declarative "names its/the/each
+      task's unit-test contract source"; "contract is named upstream/at planning"). Added
+      polarity death test test_negating_decomposition_obligation_is_missing_concept with a
+      HOSTILE decoy that USES the compound phrase in a negating context (the DC-DECOY
+      missed this because it avoided the phrase). Mutate-to-red verified: the old bare
+      token COVERS the negating decoy (death test would fail); the new tokens report it
+      MISSING. Live SKILL.md still matches via both retained tokens.
+  - original_section: review_finding_yin_important_1
+    original_description: >
+      unit_test_contract_section_required proved PRESENCE, not REQUIREMENT: tokens fired
+      on a template saying "Unit Test Contract section: optional" while the key claims
+      "required".
+    resolution: >
+      Made the concept directional. Tokens now bind the section NAME to a 'must'
+      imperative: rx(r"unit[- ]test\s+contract[^.]{0,120}\bmust\b") and the reverse
+      rx(r"\bmust\b[^.]{0,120}unit[- ]test\s+contract"). The live template matches via the
+      body line "a unit test MUST assert this named contract source" and Rule #4 "the Unit
+      Test Contract section MUST name an observable contract source". Added negative death
+      test test_optional_section_template_is_missing_required_concept (an "optional"
+      template -> reported MISSING). Mutate-to-red verified against the old bare token.
+      Tokens carry no "##" so the pinned-heading guard still passes; the two PLANNING
+      groups' first tokens are confirmed substring-distinct (no group collapse).
+  - original_section: review_finding_yin_important_2
+    original_description: >
+      Dishonest historical-non-enforcement test: test_known_historical_task_lacks_
+      section_and_suite_stays_green only checked fixture state, never asserted the
+      evaluator ignores historical files; the name overpromised; the glob-guard missed a
+      future SECOND read of changes/** added elsewhere.
+    resolution: >
+      Renamed to test_evaluator_source_has_no_directory_walk_and_historical_task_would_
+      brick. Part (a) now PARSES the evaluator's own source to AST and asserts NO
+      directory-walk call exists anywhere (.glob/.rglob/.iterdir/.scandir, os.walk/
+      listdir/scandir, glob.glob) — a directory walk is the only mechanism that could
+      enforce the section on changes/**/task-*.md, and AST (not substring grep) is immune
+      to the docstring that legitimately MENTIONS the forbidden pattern. Part (b) keeps the
+      fixture brick-proof (a real historical task file lacks the now-directional required
+      section and HAS death tests, so a walk WOULD brick the suite). Both halves are now in
+      the name.
+  - original_section: review_finding_quality_suggestions
+    original_description: >
+      (i) Confirm the two PLANNING groups are distinguishable after removing the bare
+      token. (ii) DAMP_OVER_DRY orphaned after PLANNING_* groups. (iii) Repeated
+      ROOT = Path(__file__).resolve().parents[2] across 5 files. (iv) read_skill() name
+      collision across two evaluators.
+    resolution: >
+      (i) Confirmed distinct (first tokens have no substring overlap; full suite green).
+      (ii) Added a one-line cohort comment to DAMP_OVER_DRY explaining it is a
+      REFERENCE_CONCEPTS-cohort group left in place to avoid a churny reorder. (iii)
+      Exported shared ROOT from _contract_tokens.py; the planning evaluator now imports
+      ROOT instead of re-deriving it. (A repo_root() function form was also exported in
+      round 2 but had no caller — see review_finding_quality_round2 below, where it was
+      removed.) The other 4 evaluators are left untouched per the review's scoping
+      (non-destructive); future evaluators import the shared export. (iv) Renamed the
+      planning evaluator's read_skill() to read_planning_skill() to remove the
+      cross-evaluator name collision.
+
+  # --- Round-2 dual review (yin PWC + quality PWC) fixes, 2026-06-01 ----------
+  - original_section: review_finding_yin_important_round2
+    original_description: >
+      BOUNDARY BLEED = silent-green false-pass. unit_test_contract_section_required used
+      `[^.]{0,120}` between the section name and `\bmust\b`. `[^.]` only stops at a
+      literal period, so in the full-form task-format template the Death Test
+      Requirements comment "<!-- What death tests must be written BEFORE implementation?
+      -->" (~109 chars before the "## Unit Test Contract" heading, separated only by `?`,
+      `-->`, newlines, dashes) let its `must` bind to the UTC section name. A template
+      that marks UTC "optional" but keeps the standard DTR block would false-pass — the
+      exact silent-green disease.
+    resolution: >
+      Tightened the boundary class on BOTH directional tokens from `[^.]` to `[^.?!>\n]`,
+      so `must` and the section name must belong to the same clause/line (the newline
+      stop is what kills the cross-block DTR bleed; `?`/`!`/`>` close the comment/markdown
+      boundaries). STRENGTHENED test_optional_section_template_is_missing_required_concept
+      to use a FULL-FORM fixture that INCLUDES the standard DTR comment block ("...must be
+      written...") AND marks the Unit Test Contract section optional, asserting the concept
+      is reported MISSING. Mutate-to-red verified: this full-form-optional fixture is
+      COVERED on the old `[^.]` token (silent-green, test would fail) and reported MISSING
+      on `[^.?!>\n]`. Confirmed NO over-tighten: the real skills/planning/task-format.md
+      still reports the concept COVERED (via the same-line Rule #4 "Unit Test Contract
+      section must name an observable contract source"). Full suite green (71 tests).
+  - original_section: review_finding_quality_round2
+    original_description: >
+      PHANTOM repo_root(). _contract_tokens.py exported both ROOT and repo_root(); no
+      caller used repo_root() (the planning evaluator imports the ROOT constant directly).
+      A phantom surface commitment.
+    resolution: >
+      Deleted repo_root() and kept the single-sourced ROOT constant. Confirmed by grep
+      that no caller imports/uses the function (the only matches were its own definition
+      and an unrelated local `repo_root` variable/param in samsara_cli/release/, a
+      different namespace). Updated the ROOT-anchor comment to record why a function form
+      was removed and when to add one back (only with a real caller). Full suite green.
+
+deferred_to_feature_iteration_notes:
+  - description: >
+      STRUCTURAL DEBT (deferred, flagged in task-3 and task-5 reviews): the shared module
+      _contract_tokens.py carries three death-reasons at once — token definitions, matching
+      helpers (token_present/concept_present/missing_concepts/concepts_covered_by/
+      pinned_heading_offenders), and structural parsers (numbered_steps/step_index_of_
+      concept). Splitting it into separate modules (tokens / matching / structural) is a
+      feature-level refactor touching all 5 evaluators' imports, out of this task's scope.
+    deferred_to_feature_iteration: true

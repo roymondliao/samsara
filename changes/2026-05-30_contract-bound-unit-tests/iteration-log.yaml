@@ -1,0 +1,54 @@
+# Iteration Log — Feature-Level Iteration Tracking (Level 2)
+# Feature: contract-bound-unit-tests
+# Entry: 2026-06-02. No separate pre-thinking.md — Evaluation Contract lives in 2-plan.md.
+
+feature: "contract-bound-unit-tests"
+signal_lost_initial: 8  # 7 deferred_to_feature_iteration items + 1 unverified assumption, across 6 task scar reports
+
+budget:
+  max_rounds: 3
+  reviewer_retry_limit: 2
+
+rounds:
+  - round: 1
+    signal_lost_before: 8
+    budget_context:
+      remaining_rounds_at_start: 2
+      stagnation_count_at_start: 0
+      net_rot_previous_round: 0
+      strategy_hint: minimal_fix
+    items_triaged: 5  # 5 distinct cross-task patterns (8 raw scar items collapse into these)
+    triage_result:
+      fix:
+        - "_contract_tokens.py carries multiple death-reasons (token-group DATA + matching/parsing ENGINE) in one module — deferred by tasks 4/5/6 (iteration-fix-1)"
+        - "the recurring presence-not-polarity / weakest-OR-token / order-by-label / boundary-bleed lesson was never codified into references/test-contract.md (iteration-fix-2)"
+      accept:
+        - description: "Behavioral gap: the feature is verified by static source inspection; no live implement run proves agents now write contract-bound tests (task-6 done_with_concerns + task-1 static-only deferral)"
+          expiry_date: "2026-12-02"
+          rationale: "Static suite is comprehensive (126 contract-bound tests); the 6 death-first-TDD tasks are themselves partial behavioral evidence. Revisit with a live representative implement run if the protocol is reported ineffective in practice."
+        - description: "Runtime-obedience limit: every evaluator guards instruction TEXT, not live reviewer/implementer LLM behavior (task-2/4/6)"
+          expiry_date: "2026-12-02"
+          rationale: "Fundamental limit of the instruction-surface approach (shared by all of samsara); no token can verify runtime obedience. Revisit only if a behavioral eval harness becomes feasible."
+        - description: "Token/scan blind spots: .count() evades the heading scan; ast.Name routing misses import-aliasing/dynamic dispatch; downstream-omission of a needed concept import (task-1/task-6)"
+          expiry_date: "2026-12-02"
+          rationale: "Documented at each guard and backstopped by the routing guard + code review; exploitation requires deliberate, reviewable contortion. Low likelihood, loud-on-review."
+      defer:
+        - "Cross-file DRY: the wrong-direction-decoy fixture shape + the routing-detection logic are duplicated across the evaluator files; a shared decoy/scan helper would unify them (new, surfaced by iteration-fix reviews; beyond minimal_fix scope)"
+    fixes_applied: 2
+    fixes_scar_count: 2  # iteration-fix-1-scar.yaml, iteration-fix-2-scar.yaml
+    budget_spent:
+      implementer_dispatches: 4   # fix-1 (1) + fix-2 (1) + fix-2 polarity re-roll (1) + fix-1 inline tightening by main agent counted as 1
+      reviewer_dispatches: 4      # fix-1 (yin+quality) + fix-2 (yin+quality)
+      reviewer_retries: 0
+      validation_runs: 8
+    evidence_gained:
+      - "iteration-fix-1: _token_lib.py (engine) split from _contract_tokens.py (data); all 11 import sites updated with no blanket re-export; test_module_split_death.py AST-pins the separation (mutate-to-red both directions); broadened to catch dict + {**spread} aggregate + STEP_* token tuples; real engine flags zero offenders."
+      - "iteration-fix-2: references/test-contract.md gained the 'Writing assertions that can fail in the right direction' section codifying all 5 sub-rules; ASSERTION_DISCIPLINE group merged into REFERENCE_CONCEPTS; hostile-decoy + 5 wrong-direction decoys; the green_by_construction / presence_not_polarity tokens were themselves directional-ized (closing the self-refuting recursion the reviewer caught) — endorsing prose now reported MISSING, real section COVERED."
+      - "126 contract-bound tests pass; test_auto_mode + test_format_validation pass; pre-commit all 12 hooks pass. The 4 repo-wide failures (snapshot x2, release-version-drift x2) confirmed pre-existing via clean-tree git-stash, unrelated to this feature."
+    residual_risk:
+      - "Behavioral gap (accepted, expiry 2026-12-02): static inspection != runtime behavior change."
+      - "Wrong-direction decoys are hand-written fixtures pinning named endorsements, not every conceivable phrasing (backstopped by review)."
+      - "Cross-file decoy/scan duplication (deferred): a semantic change to one decoy could silently diverge from the others."
+    signal_lost_after: 5  # module-split cluster (3 raw items) resolved; the remaining 5 raw items are all in the Accept set
+    decision: stop
+    decision_reason: "User triaged (human gate): Fix #2 + #5, Accept #1/#3/#4 with expiry 2026-12-02. Both Fix items completed and dual-reviewed (no Critical). No Fix items remain; remaining signal_lost is entirely accepted risk. Proceed to security-privacy-review."
