@@ -1,0 +1,35 @@
+type: fast_track
+description: "Prune contract-bound test evaluators down to high-value workflow invariants."
+death_clause: "If markdown prose rewrites fail tests without changing workflow invariants, this change is failed."
+acceptance:
+  - "tests/test_contract_bound_tests keeps only named-surface, ordering, dispatch, and planning-scope guards."
+  - "Shared token/prose/meta-heavy evaluators are removed."
+  - "Focused contract-bound test suite passes."
+scar_tag: none
+scar_items: []
+files_changed:
+  - "tests/test_contract_bound_tests/_contract_tokens.py"
+  - "tests/test_contract_bound_tests/_token_lib.py"
+  - "tests/test_contract_bound_tests/test_assertion_discipline.py"
+  - "tests/test_contract_bound_tests/test_coverage_manifest.py"
+  - "tests/test_contract_bound_tests/test_coverage_manifest_death.py"
+  - "tests/test_contract_bound_tests/test_implement_skill_test_contract.py"
+  - "tests/test_contract_bound_tests/test_implementer_test_contract.py"
+  - "tests/test_contract_bound_tests/test_module_split_death.py"
+  - "tests/test_contract_bound_tests/test_planning_test_contract.py"
+  - "tests/test_contract_bound_tests/test_reviewer_test_contract.py"
+  - "tests/test_contract_bound_tests/test_test_contract_reference.py"
+  - "tests/test_contract_bound_tests/test_test_contract_reference_death.py"
+quality_checklist:
+  - criterion: "C5 Reuse"
+    checked: true
+    note: "Removed the shared token/matching helper layer because the retained tests are self-contained and do not need regex concept reuse."
+  - criterion: "C6 Clear Structure"
+    checked: true
+    note: "Retained four test files aligned to the remaining invariant boundaries: manifest, implement skill, reviewer dispatch/order, and planning scope."
+  - criterion: "C7 Elegant Logic"
+    checked: true
+    note: "Replaced concept-token routing and meta scans with direct section/ordering checks for the few invariants being kept."
+  - criterion: "C8 No Redundancy"
+    checked: true
+    note: "Deleted reference, implementer, assertion-discipline, module-split, and manifest-death tests that restated token-system guarantees no longer in scope."

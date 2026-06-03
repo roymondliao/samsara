@@ -1,11 +1,15 @@
 feature: contract-bound-unit-tests
-coverage_type: verified
+coverage_type: source_inspection_verified
 
 # Validation scope: tasks verify the contract-bound protocol is PRESENT in every
 # instruction surface via source inspection. "Protocol documented" != "agent
 # behavior changed" — the runtime behavioral claim is covered by the recommended
 # representative implement run in task-6 and by the death_path below, not by the
 # static evaluator alone.
+#
+# Current note: the original concept-token evaluator architecture was later pruned
+# by changes/2026-06-03_prune-contract-bound-tests. The remaining live tests guard
+# only high-value workflow invariants; they do not claim full prose coverage.
 
 scenarios:
   - name: "Silent failure - brittle unit test passes review"

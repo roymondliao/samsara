@@ -127,11 +127,12 @@ Agent tool:
     ## Test-Quality Review (mandatory — structural test coupling)
     Review the TESTS for structural test coupling: tests coupled to the
     implementation STRUCTURE (private internals, call sequence, member layout,
-    mock-call order) rather than to an observable contract. Score these under the
-    Coupling principle with file:line evidence. A test coupled to implementation
-    structure is brittle by construction — it reddens on any behavior-preserving
-    refactor. Refer test silent-rot / correctness concerns (tautological tests,
-    wrong-contract tests) to the yin code reviewer.
+    mock-call order) rather than to an observable contract. Report this as
+    structural evidence under the Coupling principle with file:line evidence.
+    Structural coupling is evidence for the yin reviewer's brittle-test review;
+    refer any brittle / wrong-contract / fix-the-test verdict, plus test
+    silent-rot / correctness concerns (tautological tests, wrong-contract tests),
+    to the yin code reviewer.
 ```
 
 Both reviewers must report back. If either reports FAIL or PASS_WITH_CONCERNS with Critical issues, the implementer must fix before proceeding.

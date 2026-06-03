@@ -13,6 +13,14 @@ description: Injected at session start — establishes samsara axiom, agent cons
 
 任何存在於系統中的東西——function、module、service、agent 的一個決策——都必須能回答：「如果你消失了，什麼東西會感到痛？」回答不了的，不應該存在。
 
+## Truth Source Boundary
+
+Live codebase artifacts are authoritative for current platform behavior: source code, tests, configs, skills, agents, references, templates, and workflow
+artifacts that the platform reads or validates.
+
+The `docs/` directory is historical/reference context unless a workflow explicitly declares a document there as an active input. Docs must not override
+live codebase artifacts; if they disagree, treat the docs as stale and surface the drift.
+
 ## STEP 0 — 任何實作前的前置條件
 
 在執行任何開發任務之前，必須先完成以下四個問題。這不是建議，是前置條件。

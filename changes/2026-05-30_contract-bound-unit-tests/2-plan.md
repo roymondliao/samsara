@@ -53,6 +53,12 @@ catalogs and examples there, and wire a short mandatory gate through the
 implementer, implement skill, review agents, dispatch template, and planning
 task format.
 
+Current note: the evaluator architecture described in this plan was later
+superseded by `changes/2026-06-03_prune-contract-bound-tests`. The live suite no
+longer uses `_contract_tokens.py` or prose-wide concept-token coverage; it keeps
+only high-value workflow-invariant tests. The implementation tasks below remain
+historical context for how the feature was first built.
+
 Role split:
 
 - `agents/implementer.md` changes behavior at the test-writing point.
@@ -66,10 +72,9 @@ Role split:
   for test-quality review.
 - `skills/planning/task-format.md` makes the contract source visible before
   implementation begins.
-- `tests/test_contract_bound_tests/_contract_tokens.py` is the single shared
-  source of the canonical concept tokens. Task-1 defines it; every per-task
-  evaluator imports it. No evaluator hard-codes its own phrase list, so the
-  checks cannot drift and the feature's own tests are not brittle.
+- The original plan used `tests/test_contract_bound_tests/_contract_tokens.py`
+  as a shared concept-token source. That layer has been removed from the live
+  suite; see the current note above.
 
 ## I/O With Unknown Output
 

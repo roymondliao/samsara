@@ -38,7 +38,7 @@ Read: overview.md
 - [ ] Step 5: Implement minimal code to pass all tests
 - [ ] Step 6: Run all tests — verify they pass
 - [ ] Step 7: Write scar report
-- [ ] Step 8: Commit
+- [ ] Step 8: Report back (do not commit)
 
 ## Expected Scar Report Items
 <!-- What shortcuts or assumptions should the agent watch for? -->

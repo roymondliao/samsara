@@ -1,9 +1,20 @@
 # Overview: contract-bound-unit-tests
 
+## Current Note
+
+This feature's original source-inspection evaluator architecture was later
+pruned by `changes/2026-06-03_prune-contract-bound-tests`. The live platform now
+keeps only high-value workflow-invariant tests for named surfaces, implement
+ordering, reviewer dispatch, and planning scope. The historical task/scar files
+below still describe the original implementation path and should not be read as
+current evaluator architecture.
+
 ## Goal
 
-Make Samsara write and review unit tests that assert behavioral contracts rather
-than implementation details.
+Make Samsara's live instructions require writing and reviewing unit tests that
+assert behavioral contracts rather than implementation details. Source
+inspection verifies the protocol surfaces; it does not prove runtime agent
+obedience without a representative live implement run.
 
 ## Architecture
 
@@ -32,9 +43,10 @@ existing converter/format validation test suites.
   implementation begins.
 - No scar schema change: brittle tests can be recorded under existing
   `silent_failure_conditions`.
-- Self-exemplar: this feature's own evaluator must obey the protocol it ships.
-  Evaluators assert intent-bearing concept tokens, never exact headings/prose,
-  and import one shared canonical token source defined in task-1.
+- Self-exemplar (superseded): this feature originally used concept-token
+  evaluators as its own exemplar. That evaluator layer was later pruned because
+  it over-constrained markdown evolution; live tests now guard workflow
+  invariants instead of prose coverage.
 - Behavioral gap is accepted, not hidden: static source inspection proves the
   protocol is present, not that agents write contract-bound tests. Task-6
   recommends a representative live implement run as the behavioral check.
@@ -68,7 +80,6 @@ existing converter/format validation test suites.
 - `agents/code-quality-reviewer.md` - structural test coupling review.
 - `skills/planning/task-format.md` - upstream Unit Test Contract section.
 - `skills/planning/SKILL.md` - optional task decomposition wording.
-- `tests/test_contract_bound_tests/` - focused evaluator coverage for the protocol.
-- `tests/test_contract_bound_tests/_contract_tokens.py` - single shared canonical
-  concept-token source; imported by every per-task evaluator so the checks
-  cannot drift and stay non-brittle.
+- `tests/test_contract_bound_tests/` - current high-value workflow-invariant
+  tests; the original concept-token helper/evaluator files were pruned by
+  `changes/2026-06-03_prune-contract-bound-tests`.
