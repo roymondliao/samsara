@@ -47,6 +47,27 @@ digraph pre_thinking {
 
 Write `pre-thinking.md` from the template. Identify two categories: information gaps (research did not establish a needed fact) and design decision gaps (multiple valid designs remain and the choice changes task decomposition, artifact contracts, ownership, or failure modes). If no gaps exist, write `gaps: none identified`, but continue to Evaluation Contract.
 
+### Atomic Context Boundary
+
+Before declaring Step A complete, derive the useful system facts from live codebase artifacts:
+
+- module ownership and responsibility boundaries
+- public interfaces and runtime entrypoints
+- config/env sources and deployment/runtime assumptions
+- external services, data flow, and side-effect boundaries
+- existing tests or evaluators that define current behavior
+
+Check `.samsara/codebase-map.yaml` first when it exists. Use it as derived
+context, not as truth over the live codebase: if the map and live artifacts
+disagree, live artifacts win and the drift must be surfaced. If the map is
+missing or stale, either run targeted local inspection for the task scope or
+record an information gap recommending `samsara:codebase-map`.
+
+If any of these facts are needed for planning and cannot be verified from the
+live codebase, record an information gap. Do not let yin/yang framing substitute
+for this map; yin and yang are review lenses, while boundary and environment
+facts are prerequisite design context.
+
 ## Step B — Question Groups
 
 Route gap question groups by execution mode. Questions must be non-leading and
