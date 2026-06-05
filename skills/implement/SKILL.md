@@ -24,13 +24,14 @@ digraph implement {
     compound=true;
 
     start [label="讀取 index.yaml\n分析 task 依賴\n+ TaskCreate per task" shape=doublecircle];
-    mode [label="選擇執行模式？" shape=diamond];
+    mode [label="Execution strategy gate\nhuman: ask\nauto: gatekeeper" shape=diamond];
 
     subgraph cluster_implementer {
         label="samsara:implementer（subagent 或 inline）";
         style=dashed;
-        step0 [label="STEP 0 前置三問"];
+        step0 [label="STEP 0 前置四問"];
         death_test [label="Death Test 先行"];
+        contract_gate [label="Test Contract Gate\n→ references/test-contract.md"];
         unit_test [label="Unit Test"];
         integration [label="Integration Test\n（如適用）"];
         scar [label="寫 scar-report\n→ changes/<feature>/scar-reports/task-N-scar.yaml"];
@@ -42,7 +43,7 @@ digraph implement {
     update [label="主 agent: 更新 index.yaml\n+ TaskUpdate completed"];
     more [label="還有 task？" shape=diamond];
     commit [label="主 agent: Commit\n（全部 task 完成後）"];
-    gate [label="使用者確認？" shape=diamond];
+    gate [label="Completion gate\nhuman: ask\nauto: gatekeeper" shape=diamond];
     next [label="invoke samsara:security-privacy-review\nor samsara:iteration" shape=doublecircle];
 
     start -> mode;
@@ -50,7 +51,8 @@ digraph implement {
     mode -> step0 [label="C: 主 agent\n自己執行" lhead=cluster_implementer];
 
     step0 -> death_test;
-    death_test -> unit_test;
+    death_test -> contract_gate;
+    contract_gate -> unit_test;
     unit_test -> integration;
     integration -> scar;
     scar -> report;
@@ -84,7 +86,8 @@ Always update both together. Never update one without the other.
 
 ## Execution Mode Selection
 
-On entry, analyze `index.yaml` for task dependencies, create TaskCreate items for each task, then ask:
+On entry, analyze `index.yaml` for task dependencies, create TaskCreate items
+for each task, then use this execution strategy prompt:
 
 > 「Plan 中有 N 個 tasks。
 >
@@ -98,6 +101,12 @@ On entry, analyze `index.yaml` for task dependencies, create TaskCreate items fo
 > (C) Inline sequential — 主 agent 自己依序執行
 >
 > 選哪個？」
+
+- If `Execution mode: human-in-the-loop`, ask the user this question and follow
+  the selected strategy.
+- If `Execution mode: auto`, do not ask the user. Use the Auto Mode Gate below
+  to dispatch `samsara:auto-gatekeeper`, append the strategy decision to
+  `auto-decisions.md`, and follow the recorded execution strategy.
 
 ### Subagent Context
 
@@ -133,30 +142,37 @@ This order is mandatory. Death test before unit test. Scar report before self-it
 
 ### Implementer（subagent 或 inline）
 
-1. STEP 0 — answer the three prerequisite questions
+1. STEP 0 — answer the four prerequisite questions
 2. Write death tests — test silent failure paths first
 3. Run death tests — verify they fail (red)
-4. Write unit tests
-5. Run unit tests — verify they fail (red)
-6. Implement minimal code to pass all tests
-7. Run all tests — verify they pass (green)
-8. Write scar report → `changes/<feature>/scar-reports/task-N-scar.yaml` (read `templates/scar-schema.yaml` for the exact format; `<feature>` = the feature directory name from `changes/`)
-9. Self-iteration (Level 1) — review scar items, fix task-scope actionable items
-10. Update scar report — add `resolved_items` for fixed items, mark remaining items with `deferred_to_feature_iteration` flags where applicable
-11. Run all tests — verify no regression from self-iteration fixes
-12. Report back (do NOT commit)
+4. **Test Contract Gate (before unit tests)** — for each unit-test assertion,
+   run the contract gate from `references/test-contract.md`. Every unit test must
+   assert a behavioral contract, not implementation details. This gate runs BEFORE
+   unit tests are written — do not skip to writing unit tests. See
+   `references/test-contract.md` for the contract sources and the both-poles rules
+   (over-fit and silent-green); it is the single source of truth — do not restate
+   the source list here.
+5. Write unit tests — each bound to a named contract per the gate
+6. Run unit tests — verify they fail (red)
+7. Implement minimal code to pass all tests
+8. Run all tests — verify they pass (green)
+9. Write scar report → `changes/<feature>/scar-reports/task-N-scar.yaml` (read `templates/scar-schema.yaml` for the exact format; `<feature>` = the feature directory name from `changes/`)
+10. Self-iteration (Level 1) — review scar items, fix task-scope actionable items
+11. Update scar report — add `resolved_items` for fixed items, mark remaining items with `deferred_to_feature_iteration` flags where applicable
+12. Run all tests — verify no regression from self-iteration fixes
+13. Report back (do NOT commit)
 
 ### Main agent（review + bookkeeping）
 
-13. **Parallel dispatch both reviewers in the same message** — `samsara:code-reviewer` (yin) and `samsara:code-quality-reviewer` (quality). See `./dispatch-template.md` for both dispatch templates.
+14. **Parallel dispatch both reviewers in the same message** — `samsara:code-reviewer` (yin) and `samsara:code-quality-reviewer` (quality). See `./dispatch-template.md` for both dispatch templates.
     - Both outputs must arrive. A reviewer output that did not arrive is **not** the same as PASS or PASS_WITH_CONCERNS — it is an absent output. If only one review output is received → **FAIL with "missing reviewer" error**. Re-dispatch the missing reviewer (max 2 retries); if it still does not arrive, escalate and do not proceed.
-14. If either reviewer reports Critical issues → implementer fixes → re-review (both reviewers again)
-15. Update `index.yaml` — set status, scar_count, unresolved_assumptions + TaskUpdate the corresponding task to `completed`
-16. Proceed to next task
+15. If either reviewer reports Critical issues → implementer fixes → re-review (both reviewers again)
+16. Update `index.yaml` — set status, scar_count, unresolved_assumptions + TaskUpdate the corresponding task to `completed`
+17. Proceed to next task
 
 ### After all tasks complete
 
-17. Commit all changes
+18. Commit all changes
 
 ## Yin-Side Constraints
 
@@ -164,6 +180,7 @@ These are non-negotiable:
 
 - **No optimistic completion:** A task without a scar report has status `completion_unverified`, not `done`
 - **Death test ordering:** Death tests must be written and run before unit tests. This order cannot be swapped.
+- **Test Contract Gate before unit tests:** Every unit-test assertion must pass the contract gate in `references/test-contract.md` BEFORE the unit test is written. A unit test asserts a behavioral contract, not implementation details. This gate runs before unit tests, never after — a gate run after the test is already on disk cannot stop a tautological test from landing.
 - **Review before index update:** `index.yaml` is updated only after code-reviewer passes. No pre-review status changes.
 - **Commit after all tasks:** Do not commit per-task. Commit once after all tasks complete and all reviews pass.
 
@@ -178,6 +195,9 @@ These are non-negotiable:
 - Dispatch multiple implementer subagents in parallel (file conflicts)
 - Ignore subagent NEEDS_CONTEXT or BLOCKED status — provide context or escalate
 - Accept a task as DONE without a scar report
+- Skip the Test Contract Gate before writing unit tests — a unit test with no named contract is brittle or tautological by default
+- Accept an **over-fit / brittle** unit test that reddens on a behavior-preserving refactor (pins implementation details)
+- Accept a **silent-green / tautological** unit test (a vague test that asserts almost nothing and can never go red — it stays green when the behavior actually breaks) — guarding only the over-fit pole re-creates the disease at the silent-green pole
 - Let subagent commit — only the main agent commits, after all tasks complete
 - Update index.yaml before both code-reviewer and code-quality-reviewer pass
 - Assume an absent review output means PASS — missing reviewer output is always a FAIL
@@ -186,6 +206,7 @@ These are non-negotiable:
 
 - `./dispatch-template.md` — prompt template for implementer and reviewer dispatch
 - `./scar-report.md` — scar report format reference
+- `references/test-contract.md` — the canonical Test Contract Gate protocol (over-fit and silent-green poles, snapshot/spy/minimum-contract patterns); the Test Contract Gate points here rather than duplicating the catalog
 
 ## Transition
 
@@ -193,12 +214,47 @@ All tasks complete. Calculate remaining scar items:
 - Count items across all `changes/<feature>/scar-reports/` where `deferred_to_feature_iteration: true` or items without `resolved_items` coverage
 - These are the **feature-level items** that Level 1 self-iteration could not resolve
 
-Then ask:
+Then use the implementation completion prompt to decide the next workflow path:
 
 > 「Implementation 完成。N 個 tasks 已執行，共 M 個 scar report items（Level 1 self-iteration 已處理 R 個，剩餘 K 個 feature-level items）。
 >
 > (A) 進入 Iteration — 審視 feature-level scar items（cross-task patterns, system-level rot）
 > (B) Skip — 直接進入 Security & Privacy Review（剩餘 items 由 validate-and-ship 的 failure budget review 處理）」
 
-- 使用者選 A → invoke `samsara:iteration`
-- 使用者選 B → invoke `samsara:security-privacy-review`
+- If `Execution mode: human-in-the-loop`, ask the user this question.
+  - User chooses A → invoke `samsara:iteration`
+  - User chooses B → invoke `samsara:security-privacy-review`
+- If `Execution mode: auto`, do not ask the user. Use the Auto Mode Gate below
+  to dispatch `samsara:auto-gatekeeper`, record the decision, and invoke the
+  next skill named by the recorded decision.
+
+## Auto Mode Gate
+
+When the session context contains `Execution mode: auto`, keep the implementation
+execution decisions but route them through `samsara:auto-gatekeeper` instead of
+pausing for input.
+Dispatch it with the Agent tool using `subagent_type: "samsara:auto-gatekeeper"`.
+
+The gatekeeper must append an append-only entry to
+`changes/<feature>/auto-decisions.md` before continuing. Use the canonical
+schema in `references/auto-mode.md`; this stage must provide `prompt_type`,
+`workflow_prompt`, and `gatekeeper_answer` for the entry.
+
+Use the implementation completion choice as `workflow_prompt`: choose whether to
+enter iteration for feature-level scar review or continue to security/privacy
+review.
+
+Also route the implementation execution-mode selection through the gatekeeper.
+Use the original `(A) Subagent parallel / (B) Subagent sequential / (C) Inline sequential`
+prompt as `workflow_prompt`; the gatekeeper answer chooses the
+execution strategy and records why that strategy fits the task dependencies.
+
+Then follow the recorded decision:
+
+- `proceed` — invoke the next skill named by the gatekeeper answer:
+  `samsara:iteration` or `samsara:security-privacy-review`.
+- `revise` — revise implementation artifacts or scar reports, then re-run this
+  gate.
+- `reject` — stop the auto run and leave the rejection in `auto-decisions.md`.
+- `accept_gap` — continue to the recorded next skill with the accepted gap visible
+  in the next-stage context.

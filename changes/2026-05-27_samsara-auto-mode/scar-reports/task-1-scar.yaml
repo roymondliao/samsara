@@ -1,0 +1,80 @@
+task_id: task-1
+completion_status: done_with_concerns
+
+known_shortcuts:
+  - description: >
+      The gatekeeper contract is validated by markdown inspection, not by running a
+      live auto-mode gatekeeper against a real workflow prompt. The tests prove the
+      protocol exists and contains required guardrails, but they do not prove an LLM
+      will follow the contract under pressure.
+    deferred_to_feature_iteration: true
+
+  - description: >
+      The first contract tests assert required phrases and fields instead of parsing
+      a structured machine-readable schema. This is appropriate for the current
+      markdown-first workflow, but it leaves room for malformed examples that still
+      contain the expected strings.
+    deferred_to_feature_iteration: true
+
+silent_failure_conditions:
+  - description: >
+      A future edit could preserve the required field names while weakening the
+      surrounding instructions. The current tests catch missing fields and obvious
+      human-input paths, but not every semantic dilution of the gatekeeper role.
+    deferred_to_feature_iteration: true
+
+  - description: >
+      Converter coverage now includes the new real agent file, but full installed
+      platform output is not verified by this task. A later converter or integration
+      regression could still omit the agent outside the targeted unit coverage.
+    deferred_to_feature_iteration: true
+
+assumptions_made:
+  - assumption: >
+      `agents/` in the repository root is the correct source of truth for real agent
+      conversion tests.
+    verified: true
+    note: >
+      Verified by updating `tests/test_converter/test_agent.py` to use the repository
+      root `agents/` directory and running the task test set successfully.
+    deferred_to_feature_iteration: false
+
+  - assumption: >
+      A markdown reference file is the right first-cut location for the reusable
+      auto-mode protocol.
+    verified: true
+    note: >
+      Verified against the task plan, which explicitly requires
+      `references/auto-mode.md`; later workflow tasks will consume this reference.
+    deferred_to_feature_iteration: false
+
+  - assumption: >
+      The agent executing `samsara-auto-gatekeeper` will treat append-only logging
+      and no human-input behavior as hard requirements.
+    verified: false
+    note: >
+      This cannot be verified without a live auto-mode workflow run. Task 4's
+      primary evaluator should cover source-level workflow integration, but live
+      behavior remains a later validation concern.
+    deferred_to_feature_iteration: true
+
+debt_registered: true
+debt_location: >
+  agents/auto-gatekeeper.md and references/auto-mode.md contract semantics;
+  tests/test_auto_mode/test_gatekeeper_contract*.py markdown inspection coverage
+
+narrative: >
+  Task 1 establishes the reusable contract that later tasks will wire into workflow
+  skills. The main residual risk is medium mismatch: the protocol is written as
+  markdown instructions for agents, so tests can verify presence and some semantic
+  guardrails but cannot fully enforce runtime LLM compliance.
+
+resolved_items:
+  - original_section: known_shortcuts
+    original_description: >
+      Converter tests previously pointed at a stale worktree path, which allowed real
+      agent conversion coverage to skip when source agents were absent.
+    resolution: >
+      Updated `tests/test_converter/test_agent.py` to use the repository root
+      `agents/` directory and added `auto-gatekeeper` to the real-agent conversion
+      list.

@@ -1,0 +1,80 @@
+task_id: task-4
+completion_status: done_with_concerns
+
+known_shortcuts:
+  - description: >
+      The primary evaluator is still fixture-driven source and conversion
+      inspection, not a live autonomous workflow run. It proves protocol coverage
+      and installed-agent presence, but not LLM compliance during a real auto run.
+    deferred_to_feature_iteration: true
+
+  - description: >
+      Integration coverage checks that `samsara-auto-gatekeeper` exists in Codex
+      and Gemini outputs, but it does not execute the converted agent.
+    deferred_to_feature_iteration: true
+
+silent_failure_conditions:
+  - description: >
+      A future workflow stage could be added without updating
+      `REQUIRED_WORKFLOW_STAGES`. The evaluator would remain internally
+      consistent but incomplete relative to the real workflow.
+    deferred_to_feature_iteration: true
+
+  - description: >
+      Fixture conversion coverage can diverge from full repository source if the
+      fixture agent is simplified too far. The integration and smoke tests both
+      convert the committed fixture source, so they verify both platform conversion
+      paths but do not prove full repository source parity.
+    deferred_to_feature_iteration: true
+
+assumptions_made:
+  - assumption: >
+      Fixture-driven inspection is acceptable as the first primary evaluator
+      before live auto execution exists.
+    verified: true
+    note: >
+      Verified against the pre-thinking Evaluation Contract and task-4 plan, both
+      of which define the first evaluator as source/fixture inspection rather than
+      a live autonomous run.
+    deferred_to_feature_iteration: false
+
+  - assumption: >
+      Adding `auto-gatekeeper.md` to the fixture source agents is enough for both
+      Codex and Gemini conversion paths to expose the installed gatekeeper.
+    verified: true
+    note: >
+      Verified by `tests/integration/test_pipeline.py`,
+      `tests/integration/test_format_validation.py`,
+      `tests/integration/test_smoke_codex.py`, and
+      `tests/integration/test_smoke_gemini_cli.py`.
+    deferred_to_feature_iteration: false
+
+debt_registered: true
+debt_location: >
+  tests/test_auto_mode/protocol_helpers.py evaluator stage list;
+  tests/fixtures/source/agents/auto-gatekeeper.md simplified conversion fixture;
+  integration/smoke tests that verify fixture conversion output but not live agent behavior
+
+narrative: >
+  Task 4 makes the primary evaluator concrete for the first implementation:
+  inspect every workflow skill for auto-mode gate protocol, and verify the
+  gatekeeper converts into both Codex and Gemini outputs. This materially improves
+  confidence over keyword-only source tests, but still stops short of an actual
+  end-to-end auto run.
+
+resolved_items:
+  - original_section: silent_failure_conditions
+    original_description: >
+      Evaluator could omit a required workflow skill and still pass.
+    resolution: >
+      Added `REQUIRED_WORKFLOW_STAGES` and tests asserting the evaluator stage set
+      exactly matches research, pre-thinking, planning, implement, iteration,
+      security-privacy-review, and validate-and-ship.
+
+  - original_section: silent_failure_conditions
+    original_description: >
+      Converted Codex or Gemini output could omit `samsara-auto-gatekeeper`.
+    resolution: >
+      Added pipeline, format validation, and smoke assertions for
+      `samsara-auto-gatekeeper.toml` in Codex output and
+      `samsara-auto-gatekeeper.md` in Gemini output.

@@ -1,0 +1,208 @@
+task_id: task-2
+completion_status: done  # done | done_with_concerns | blocked
+
+known_shortcuts:
+  - description: >
+      Risk of adding a slogan ("write behavior tests, not implementation tests")
+      without a checkable contract source. MITIGATED: the execution-order line and
+      the new "Contract-Bound Unit Tests" section name the canonical contract
+      sources verbatim (observable behaviour, public API/schema, user-visible
+      output, documented artifact shape, stable boundary interaction, bug/
+      death-case contract) and point at references/test-contract.md. The evaluator
+      enforces this via CONTRACT_BOUND_UNIT tokens that go RED on decoy prose.
+    deferred_to_feature_iteration: false
+  - description: >
+      Risk of treating every test failure as an implementation failure. MITIGATED:
+      the "implement minimal code to pass all tests" line now carries the
+      fix-the-test caveat inline (not only in a faraway note), and a death test
+      (test_fix_the_test_caveat_rides_the_execution_order_line) pins that the
+      caveat rides the execution-order line itself.
+    deferred_to_feature_iteration: false
+
+silent_failure_conditions:
+  - description: >
+      If a future edit re-introduces a "three questions"/"three prerequisite"
+      occurrence anywhere in agents/implementer.md, the STEP 0 count silently
+      desyncs (agent answers four, some line claims three). GUARDED by
+      test_no_three_questions_desync_survives + test_no_surviving_three_questions_reference.
+    deferred_to_feature_iteration: false
+  - description: >
+      If a future edit guards only the over-fit pole (brittleness) and drops the
+      silent-green pole — the "assert less" trap — the agent would write
+      tautological tests that never go red. GUARDED by test_silent_green_pole_guarded
+      and test_guards_both_poles (both BRITTLENESS_FILTER and SILENT_GREEN_GUARD).
+    deferred_to_feature_iteration: false
+  - description: >
+      If a future edit lets anti-over-fit language bleed onto death tests, a death
+      test pinning its exact failure mode could be silently softened. GUARDED by
+      test_anti_overfit_does_not_weaken_death_tests (UNIT_VS_DEATH concepts) and an
+      explicit "Unit tests are not death tests" paragraph in implementer.md.
+    deferred_to_feature_iteration: false
+  - description: >
+      A new concept token added to _contract_tokens.py could be green-by-
+      construction (key on the bare words "contract"/"fix") and never go red.
+      GUARDED by test_new_concepts_fail_on_hostile_decoy, which asserts every new
+      CONTRACT_BOUND_UNIT and FIX_THE_TEST concept is reported MISSING on hostile
+      decoy prose that sprinkles in "contract" and "fix".
+    deferred_to_feature_iteration: false
+  - description: >
+      The tightened names_a_contract_source token binds source words to the literal
+      verb "assert" within 80 chars. If implementer.md is rewritten to express the
+      binding WITHOUT the word "assert" (e.g. "every unit test is pinned to a named
+      contract source: observable behaviour ..."), only the test-contract.md PATH
+      token would still fire — the source-binding tokens would silently stop
+      contributing, and a future presence-not-binding regression in those source
+      tokens would go unnoticed. PARTIALLY GUARDED: the path token keeps the concept
+      green and the mention-only death test keeps it honest, but the assert-binding
+      phrasings are not themselves regression-pinned against an honest reword.
+      Accepted for now; flag for feature-iteration if tasks 3-6 reword the binding.
+    deferred_to_feature_iteration: true
+
+assumptions_made:
+  - assumption: >
+      Amending the STEP 0 question count from three to four does not desync other
+      consumers WITHIN agents/implementer.md that count on "three questions".
+    verified: true
+    note: >
+      grep -niE 'three (questions|prerequisite)' over agents/implementer.md after
+      the edit returns no matches; all three original occurrences (intro,
+      execution-order step 1, report-format) were updated to four. skills/implement/
+      SKILL.md also contains such references but is explicitly OUT OF SCOPE for this
+      task (belongs to task-3) and was not edited; this evaluator checks
+      agents/implementer.md only.
+    deferred_to_feature_iteration: false
+  - assumption: >
+      The canonical Q4 longevity wording matches the samsara-bootstrap skill.
+    verified: true
+    note: >
+      Compared against skills/samsara-bootstrap/SKILL.md line 23; the Q4 string
+      "目前做的事情在未來是否還活著？ 如果不能活著表示現在做的內容只是屬於當下這個
+      時間點，過了一段時間，這件事就沒必要存在了。" is byte-for-byte the canonical
+      wording.
+    deferred_to_feature_iteration: false
+  - assumption: >
+      The new concept groups CONTRACT_BOUND_UNIT and FIX_THE_TEST should live in
+      the shared token module but NOT be merged into REFERENCE_CONCEPTS, because
+      they are implementer-surface concepts the reference doc is not responsible
+      for enumerating.
+    verified: true
+    note: >
+      Added as separate groups; not merged into REFERENCE_CONCEPTS. Re-ran the full
+      tests/test_contract_bound_tests/ suite (35 passed) — task-1's reference
+      death/unit tests, which iterate REFERENCE_CONCEPTS, are unaffected.
+    deferred_to_feature_iteration: false
+
+debt_registered: true
+debt_location: >
+  agents/implementer.md (STEP 0 intro, execution-order steps 1/4/6, new
+  "Contract-Bound Unit Tests" section, Self-Review, Report Format) and
+  tests/test_contract_bound_tests/_contract_tokens.py (new CONTRACT_BOUND_UNIT +
+  FIX_THE_TEST groups) and tests/test_contract_bound_tests/test_implementer_test_contract.py
+
+narrative: |
+  Task 2 binds the implementer agent's unit-test step to a checkable contract and
+  guards both failure poles. The highest-leverage move was making the
+  execution-order line itself carry the constraints (contract-binding on step 4,
+  fix-the-test caveat on step 6) so an agent following the numbered steps cannot
+  skip them.
+
+  The trickiest correctness concern was the new tokens being green-by-
+  construction: "contract" appears in every scar-report sentence and "fix" appears
+  everywhere in the agent file. The CONTRACT_BOUND_UNIT and FIX_THE_TEST tokens
+  therefore bind those words to the *act* (assert/bind a test to a contract; fix a
+  test asserting the WRONG contract) and are decoy-tested against hostile prose so
+  they can actually go red. The death tests were verified red before the
+  implementer edits (17 failed, 2 passed — the 2 passing being the decoy and
+  pinned-heading guards), then green after (19 passed).
+
+resolved_items:
+  - original_section: known_shortcuts
+    original_description: >
+      Risk of a slogan without a checkable contract source.
+    resolution: >
+      Named the canonical contract sources verbatim in implementer.md and pointed
+      at references/test-contract.md; enforced by CONTRACT_BOUND_UNIT tokens that
+      go red on decoy prose (decoy test passes, confirming red-ability).
+  - original_section: known_shortcuts
+    original_description: >
+      Risk of treating every test failure as implementation failure.
+    resolution: >
+      Added the fix-the-test caveat to the execution-order line itself and a death
+      test asserting the caveat rides that line, not only a separate note.
+  - original_section: assumptions_made
+    original_description: >
+      STEP 0 count change does not desync other in-scope consumers.
+    resolution: >
+      Verified via grep over implementer.md (no surviving 'three' references) and
+      pinned by two evaluator tests; SKILL.md left untouched as out-of-scope.
+
+  # --- Dual-review remediation (yin FAIL + quality PASS_WITH_CONCERNS) ---------
+  - original_section: review_finding_critical_yin
+    original_description: >
+      FIX_THE_TEST["fix_rotten_test_not_impl"] contained a bare
+      rx(r"fix\s+the\s+test") — a presence-not-polarity backdoor (same class as
+      task-1's bare "assert less"). A doc ENDORSING the wrong practice ("always fix
+      the test to make it pass") would pass identically to "fix the test, not the
+      implementation", silently defeating the unit test and the DC3-CAVEAT death
+      test that guard polarity.
+    resolution: >
+      Removed the bare token; replaced with the DIRECTIONAL
+      rx(r"fix\s+the\s+test,?\s+not\s+the\s+implementation") and kept the three
+      other directional tokens (wrong/rotten-contract->fix, not-every-failing-test,
+      do-not-bend-the-implementation). Added polarity DEATH test
+      test_endorsing_wrong_practice_is_missing_fix_concept: a synthetic string that
+      endorses the wrong practice must be reported MISSING the concept. Mutate-to-red
+      verified: OLD bare token covers the endorsing prose (True == backdoor); NEW
+      directional token does not (False). Confirmed the live implementer.md step 6
+      ("fix the test, not the implementation") still matches a directional token.
+  - original_section: review_finding_important_yin
+    original_description: >
+      CONTRACT_BOUND_UNIT["names_a_contract_source"] was presence-not-binding: bare
+      source words (observable behaviour, public api or schema, documented artifact
+      shape) fired on a doc that merely MENTIONS them without binding a unit test to
+      them ("we reference test-contract.md; observable behaviour is described
+      elsewhere").
+    resolution: >
+      Tightened the source-word tokens to require BINDING to the act of asserting
+      (rx unit test must assert ...(observable|public api|artifact|schema); rx
+      assert a named contract source ...(...)) while keeping the canonical reference
+      PATH token (test-contract.md). Added negative DEATH test
+      test_mention_only_sources_are_missing_contract_source: mention-only prose
+      (sources named, no assert-binding) must be reported MISSING. Mutate-to-red
+      verified. contract_bound_requirement kept as the harder gate.
+  - original_section: review_finding_important_yin
+    original_description: >
+      test_fix_the_test_caveat_rides_the_execution_order_line used a fixed
+      lines[anchor_idx:anchor_idx+2] window — over-fit: a behavior-preserving rewrap
+      of step 6 across more lines would falsely redden it, ironic in an
+      anti-brittleness exemplar.
+    resolution: >
+      Replaced the fixed +2 window with a scan from the anchor line to the NEXT
+      numbered list item ("7."), so the caveat must live within the SAME
+      execution-order step however that step is wrapped. Added a bounded fallback
+      (anchor+8) if step 7 is ever renumbered, so the caveat must still be near the
+      anchor, never an arbitrary distance.
+  - original_section: review_finding_important_quality
+    original_description: >
+      REFERENCE_CONCEPTS intentionally excludes CONTRACT_BOUND_UNIT and FIX_THE_TEST
+      (implementer-surface, not reference-doc concepts) but the exclusion was not
+      stated at the definition site, risking a future task author blindly adding new
+      groups there.
+    resolution: >
+      Added a DELIBERATELY EXCLUDED comment block at the REFERENCE_CONCEPTS
+      definition naming the excluded groups and WHY (agent-surface imperatives the
+      reference doc is not responsible for), plus guidance that agent/skill/reviewer
+      concepts stay in their own groups.
+  - original_section: review_finding_structural
+    original_description: >
+      The heading-pin check loop and the hostile-decoy coverage check were
+      duplicated verbatim across test_test_contract_reference_death.py (task-1) and
+      test_implementer_test_contract.py (task-2), risking a split-lie across tasks
+      3-6.
+    resolution: >
+      Extracted authoritative shared helpers into _contract_tokens.py:
+      pinned_heading_offenders(groups) -> list[(key, literal)] and
+      concepts_covered_by(text, groups) -> set. Updated BOTH task-1's death file and
+      task-2's evaluator to call them. Decoy STRINGS kept local in each file
+      (genuinely different hostile prose — healthy DAMP); only the CHECK logic is
+      shared. Task-1 tests still green (no regression).

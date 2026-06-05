@@ -132,18 +132,52 @@ The reference file illustrates what silent rot looks like in this domain — swa
 exceptions, fallbacks without degraded state, default values turning unknown into known,
 retry without idempotency. Use these as recognition aids, not as an exhaustive checklist.
 
-### 4. Scar Report Integrity
+### 4. Test Quality (tests reviewed first)
+
+**Mother Rule 3: Any abstraction must make errors easier to see, not harder.** A test
+is an abstraction over the contract it guards. Review the test quality as a
+first-class subject **before** the implementation-correctness step (Step 6) — a
+rotten test reviewed after the implementation has already forced a wrong
+implementation change. Review each test for brittle, over-fit, tautological, or
+silent-green assertions before trusting it.
+
+Guard BOTH poles when reviewing a test:
+
+- **Brittle / over-fit (the over-fit pole):** the test reddens when nothing the user
+  cares about changed — it pins implementation details (private internals, call
+  order, member layout) instead of an observable contract. Flag brittle / over-fit
+  tests as Critical: they make every refactor lie.
+- **Tautological / silent-green (the silent-green pole):** the test can never go red
+  — it asserts almost nothing (truthy, `>= 0`, not-null), so it stays green when the
+  behavior breaks. Flag tautological / silent-green tests as Critical: a test that
+  cannot fail is cover for unknown rot.
+
+**Fix the test, not the implementation.** When a test fails because it is bound to
+the WRONG contract (an implementation detail, a rotten assertion), the correct
+verdict is **fix the test, not the implementation** — do not bend the implementation
+to a rotten test. Not every failing test means the implementation is wrong. You may
+say "fix the test" when the test asserts the wrong contract.
+
+**Challenge a perfunctory contract label (the Clean Scar anti-pattern).** A named
+contract is only real if it maps to an observable behavior, a public API/schema, a
+documented artifact shape, or a death/bug case. A perfunctory contract label — a
+slogan like `# contract: it works` that maps to NO observable behavior, API, schema,
+artifact, or death-case — does NOT satisfy the gate. Reject the perfunctory contract
+declaration; a tautological contract label that maps to no observable behavior is a
+Clean Scar and is Critical.
+
+### 5. Scar Report Integrity
 
 If the review includes a scar report (`changes/<feature>/scar-reports/task-N-scar.yaml`), check:
 - **Schema compliance:** Does the scar report follow `scar-schema.yaml`? Are items using the structured format (`{description, deferred_to_feature_iteration}`) rather than plain strings?
 - **Self-iteration honesty:** If `resolved_items` is empty and all items have `deferred_to_feature_iteration: true`, flag as Important — why were zero task-scope items fixable? Each deferred item should have a rationale.
 - **Resolved items validity:** Do `resolved_items` accurately describe what was fixed? Does the resolution match the diff?
 
-### 5. Correctness (last)
+### 6. Correctness (last)
 
-Only after completing steps 1-4, review for conventional correctness.
-Steps 1-3 asked structural questions driven by the Mother Rules. This step asks: does the
-code behave correctly?
+Only after completing steps 1-5, review for conventional correctness.
+Steps 1-4 asked structural and test-quality questions driven by the Mother Rules.
+This step asks: does the code behave correctly?
 
 The reference file illustrates what correctness concerns look like in this domain —
 logic errors, off-by-one, race conditions, security vulnerabilities. Use these as
@@ -153,8 +187,8 @@ recognition aids, not as an exhaustive checklist.
 
 ## Issue Classification
 
-- **Critical** (must fix): Silent failure paths, dishonest naming, deletable dead code, unmarked degradation, security issues
-- **Important** (should fix): Missing death case test coverage, unrecorded assumptions, unclear error classification (transient vs permanent vs unknown)
+- **Critical** (must fix): Silent failure paths, dishonest naming, deletable dead code, unmarked degradation, security issues, brittle/over-fit tests, tautological/silent-green tests, perfunctory contract labels (Clean Scar)
+- **Important** (should fix): Missing death case test coverage, unrecorded assumptions, unclear error classification (transient vs permanent vs unknown), tests bound to the wrong contract (fix the test, not the implementation)
 - **Suggestion** (nice to have): Readability improvements, structural improvements, documentation
 
 ---

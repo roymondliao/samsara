@@ -1,0 +1,114 @@
+task_id: iteration-fix-1
+completion_status: done
+
+narrative: >
+  Level-2 feature iteration fix. Split the single death-reason-overloaded module
+  tests/test_contract_bound_tests/_contract_tokens.py (flagged 4x by code-quality
+  review as accumulating structural debt) into two modules along its two
+  death-reasons: the token-matching + step-parsing ENGINE moved to a new
+  _token_lib.py; the concept-group DATA (REFERENCE_PATH_RX, all concept groups,
+  STEP_* tuples, REFERENCE_CONCEPTS aggregate) stayed in _contract_tokens.py, which
+  now imports rx + Token from _token_lib (one-directional: data depends on engine,
+  never the reverse). Updated all 8 importing evaluator files plus 3 inline imports
+  in the reference death test to pull HELPERS from _token_lib and GROUPS from
+  _contract_tokens — no blanket re-export shortcut (that would re-merge the
+  death-reasons at the import boundary). Updated the self-refuting routing meta-scan
+  in test_coverage_manifest.py (SHARED_TOKEN_MODULE: _contract_tokens -> _token_lib)
+  so it now verifies routing through the module that actually holds the helpers; the
+  scan and its mutate-to-red synthetic-private test both still pass. Added a new
+  structural death test (test_module_split_death.py) that AST-parses both modules and
+  reddens if an engine helper leaks back into the data module or a concept-group dict
+  sprouts in the engine module — making the split self-guarding against silent
+  re-merge. Behaviour unchanged: 116 contract-bound tests pass (was 113 before adding
+  the 3 split death tests), 67 auto_mode + format_validation pass, pre-commit clean.
+
+known_shortcuts:
+  - description: >
+      The separation death test's data-module guard forbids ANY module-level def in
+      _contract_tokens.py (a blanket "no functions") rather than an allow-list of the
+      specific engine function names. This is intentionally strict — it also catches a
+      brand-new helper that did not exist at split time — but it means a future
+      legitimately-data-only helper (e.g. a pure data-construction factory) would also
+      redden. Accepted: the death-reason of the data module is "data, not code", so a
+      no-functions rule is the honest invariant; if a genuine data factory is ever
+      needed it belongs in _token_lib or a clearly-named third module, and the redness
+      is the prompt to make that decision consciously.
+    location: tests/test_contract_bound_tests/test_module_split_death.py
+    fix_cost: low
+    deferred_to_feature_iteration: false
+
+silent_failure_conditions:
+  - condition: >
+      The routing meta-scan (_source_routes_through_shared_tokens) checks
+      `SHARED_TOKEN_MODULE in n.module` with SHARED_TOKEN_MODULE="_token_lib". A future
+      evaluator that imports a helper via aliasing (from _token_lib import
+      missing_concepts as mc) or dynamic getattr would be a false-negative — the same
+      documented limit that existed before the split, now pointed at _token_lib instead
+      of _contract_tokens. Not introduced by this fix; carried forward unchanged.
+    detection: >
+      Backstopped only by review, as documented in the _source_routes_through_shared_tokens
+      docstring. Not newly worsened by the split.
+  - condition: >
+      The concept-group detection in the engine-has-data death test keys on the
+      structural shape "dict literal whose values are ALL tuple literals". A concept
+      group built dynamically (e.g. via a dict comprehension or {**A, **B} merge) at
+      module level in _token_lib would NOT be a plain ast.Dict-of-tuples and could slip
+      past the guard. Today no group is built that way in either module (REFERENCE_CONCEPTS
+      uses {**...} but lives in the DATA module, which is the correct side), so the gap is
+      latent, not active.
+    detection: >
+      Would be caught by a future code-quality review noticing a group in the engine
+      module; the structural death test covers the literal-dict-of-tuples case only.
+
+assumptions_made:
+  - assumption: >
+      _contract_tokens.py depends on the engine only for rx + Token (no other engine
+      symbol used in its data construction), so importing just those two from _token_lib
+      is sufficient and introduces no import cycle.
+    verified: true
+    how_verified: >
+      Grepped the post-split data module: only rx(...) calls and the Token annotation in
+      REFERENCE_CONCEPTS reference engine symbols. Full suite imports cleanly (no circular
+      import error); 116 contract-bound tests pass.
+  - assumption: >
+      Every coverage evaluator scanned by the routing meta-scan now imports at least one
+      coverage helper from _token_lib, so flipping SHARED_TOKEN_MODULE to _token_lib keeps
+      the routing scan green for all real evaluators.
+    verified: true
+    how_verified: >
+      Ran the routing unit test (test_all_evaluators_route_through_shared_tokens) and the
+      death test (test_every_evaluator_imports_shared_tokens_and_routes_through_helpers):
+      both pass. The mutate-to-red synthetic-private test still reddens a non-importing
+      evaluator.
+  - assumption: >
+      The 4 failing tests elsewhere in the repo (test_snapshot.py x2,
+      test_release_commands_death.py x2) are pre-existing and unrelated to this split.
+    verified: true
+    how_verified: >
+      git stash --include-untracked then ran the release death test on a fully clean tree:
+      it still FAILED (uv.lock not found), proving the failure predates and is independent
+      of this change. Restored changes via stash pop.
+
+debt_registered: >
+  Resolves the cross-task structural-debt scar deferred by tasks 4, 5, and 6: the
+  single module carrying two death-reasons (matching engine + concept catalog). The
+  two reasons are now in separate files and a structural death test pins the
+  separation so it cannot silently re-merge. No new structural debt registered; the
+  one accepted shortcut (no-functions-in-data rule) is a conscious invariant, not debt.
+debt_location: tests/test_contract_bound_tests/_token_lib.py, tests/test_contract_bound_tests/_contract_tokens.py
+
+resolved_items:
+  - source: task-4-scar.yaml / task-5-scar.yaml / task-6-scar.yaml deferred module-split item
+    original: >
+      _contract_tokens.py carries multiple death-reasons (token-matching/parsing ENGINE
+      + concept-group DATA) in one module; flagged 4x by code-quality review as
+      accumulating structural debt; deferred to feature iteration because the split
+      crossed multiple tasks' file scope.
+    resolution: >
+      Split the engine into a new _token_lib.py and kept the data in _contract_tokens.py
+      (data imports rx + Token from the engine, one-directional). Updated all 8 evaluator
+      importers + 3 inline imports to route helpers from _token_lib and groups from
+      _contract_tokens, with NO blanket re-export. Added test_module_split_death.py to
+      self-guard the separation (mutate-to-red verified in both directions). Updated the
+      routing meta-scan to verify routing through _token_lib. All behaviour-preserving:
+      same tests pass.

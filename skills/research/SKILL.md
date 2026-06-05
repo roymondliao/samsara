@@ -21,7 +21,7 @@ digraph research {
     north_star [label="北極星指標\n- 失效條件\n- corruption signature\n- proxy confidence"];
     output_kickoff [label="產出 1-kickoff.md"];
     output_autopsy [label="產出 problem-autopsy.md"];
-    gate [label="使用者確認？" shape=diamond];
+    gate [label="Execution-mode gate\nhuman: confirm\nauto: gatekeeper" shape=diamond];
     next [label="invoke samsara:pre-thinking" shape=doublecircle];
 
     start -> interrogate;
@@ -30,7 +30,7 @@ digraph research {
     north_star -> output_kickoff;
     output_kickoff -> output_autopsy;
     output_autopsy -> gate;
-    gate -> next [label="confirmed"];
+    gate -> next [label="proceed"];
     gate -> interrogate [label="revise"];
 }
 ```
@@ -73,8 +73,36 @@ Format details: read support file `problem-autopsy.md`
 
 ## Transition
 
-產出完成後，詢問使用者：
+產出完成後，使用同一個 transition prompt 決定下一步：
 
 > 「Research 完成。1-kickoff.md 和 problem-autopsy.md 已寫入 `changes/<feature>/`。確認後進入 Pre-thinking？」
 
-使用者確認後，invoke `samsara:pre-thinking` skill。
+- If `Execution mode: human-in-the-loop`, ask the user this question. After
+  confirmation, invoke `samsara:pre-thinking`; if the user asks for revision,
+  revise the research artifacts and ask again.
+- If `Execution mode: auto`, do not ask the user. Use the Auto Mode Gate below
+  to dispatch `samsara:auto-gatekeeper`, record the decision, and follow the
+  recorded decision.
+
+## Auto Mode Gate
+
+When the session context contains `Execution mode: auto`, keep the same
+transition question but route it through `samsara:auto-gatekeeper` instead of
+pausing for human input.
+Dispatch it with the Agent tool using `subagent_type: "samsara:auto-gatekeeper"`.
+
+The gatekeeper must append an append-only entry to
+`changes/<feature>/auto-decisions.md` before continuing. Use the canonical
+schema in `references/auto-mode.md`; this stage must provide `prompt_type`,
+`workflow_prompt`, and `gatekeeper_answer` for the entry.
+
+Use the original transition prompt as `workflow_prompt`:
+
+> 「Research 完成。1-kickoff.md 和 problem-autopsy.md 已寫入 `changes/<feature>/`。確認後進入 Pre-thinking？」
+
+Then follow the recorded decision:
+
+- `proceed` — invoke `samsara:pre-thinking`.
+- `revise` — revise the research artifacts, then re-run this gate.
+- `reject` — stop the auto run and leave the rejection in `auto-decisions.md`.
+- `accept_gap` — invoke `samsara:pre-thinking` with the recorded gap visible.

@@ -1,0 +1,119 @@
+feature: contract-bound-unit-tests
+coverage_type: source_inspection_verified
+
+# Validation scope: tasks verify the contract-bound protocol is PRESENT in every
+# instruction surface via source inspection. "Protocol documented" != "agent
+# behavior changed" — the runtime behavioral claim is covered by the recommended
+# representative implement run in task-6 and by the death_path below, not by the
+# static evaluator alone.
+#
+# Current note: the original concept-token evaluator architecture was later pruned
+# by changes/2026-06-03_prune-contract-bound-tests. The remaining live tests guard
+# only high-value workflow invariants; they do not claim full prose coverage.
+
+scenarios:
+  - name: "Silent failure - brittle unit test passes review"
+    type: death_path
+    given: "an implementer writes a unit test tied to private helpers, internal call sequence, arbitrary fixture count, incidental order, or a full snapshot"
+    when: "the task is reviewed"
+    then:
+      - "the implementer instructions must classify this as an over-fit test unless the task declares that detail as contract"
+      - "the reviewer instructions must inspect tests before approving implementation correctness"
+      - "the evaluator must fail if over-fit test language is missing from implementer, implement skill, reference, or reviewer prompt surfaces"
+
+  - name: "Silent failure - vague unit test stays green when behavior breaks"
+    type: death_path
+    given: "an implementer avoids hard-coded assertions by using only non-empty, no-exception, contains-anything, or mock-exists assertions"
+    when: "the behavior regresses"
+    then:
+      - "the test-contract protocol must name this as a silent-green or tautological test"
+      - "the implementer self-review must ask whether each unit test would fail if behavior actually broke"
+      - "reviewers must fail or flag tests that are too loose to catch regression"
+
+  - name: "Silent failure - rotten test forces wrong implementation change"
+    type: death_path
+    given: "a unit test fails after a behavior-preserving refactor"
+    when: "the failure is caused by an assertion on implementation detail"
+    then:
+      - "the workflow must allow fixing the test rather than forcing code to satisfy the rotten test"
+      - "the reference must distinguish implementation regression from test-contract error"
+      - "reviewers must be able to flag the test as the artifact that is wrong"
+
+  - name: "Silent failure - reviewer gate is documented but not dispatched"
+    type: death_path
+    given: "reviewer agents include test-quality rules"
+    when: "the implement dispatch template omits test-quality instructions"
+    then:
+      - "the evaluator must fail the feature"
+      - "both reviewer prompts in `skills/implement/dispatch-template.md` must ask for test contract source, brittle-test risk, and silent-green risk"
+
+  - name: "Silent failure - planning leaves unit-test contract implicit"
+    type: death_path
+    given: "a task file asks an implementer to write unit tests"
+    when: "the task does not identify the observable contract those tests may assert"
+    then:
+      - "`skills/planning/task-format.md` must provide a `Unit Test Contract` section"
+      - "the implementer should not have to infer unit-test contract from current implementation shape"
+
+  - name: "Degradation - snapshot or golden tests are needed"
+    type: degradation
+    given: "the output format itself is the contract"
+    when: "a snapshot or golden test is used"
+    then:
+      - "the test-contract reference must require volatile fields to be normalized before snapshot assertion"
+      - "the reference must identify path, timestamp, port, random id, version, and ordering noise as presumed incidental unless declared contract"
+      - "reviewers must flag full snapshots that pin unrelated incidental output"
+
+  - name: "Success - contract-bound unit-test workflow exists end to end"
+    type: happy_path
+    given: "an implementation task requires unit tests"
+    when: "planning, implementation, review, and validation inspect the task"
+    then:
+      - "the task can name its Unit Test Contract"
+      - "the implementer writes tests bound to that contract"
+      - "the implement skill points to `references/test-contract.md`"
+      - "reviewers inspect tests before approving code"
+      - "focused evaluator tests verify every instruction surface"
+
+  - name: "Success - death tests keep exact failure-mode pinning"
+    type: happy_path
+    given: "a task includes death test requirements"
+    when: "the implementer writes death tests before unit tests"
+    then:
+      - "death tests may pin the exact silent failure mode because that failure mode is their contract"
+      - "the unit-test anti-overfit rule must not weaken death-first coverage"
+      - "the distinction between death tests and unit tests must be visible in the implementer instructions and test-contract reference"
+
+  - name: "Silent failure - protocol documented but agent behavior unchanged"
+    type: death_path
+    given: "every instruction surface contains the contract-bound test protocol"
+    when: "an agent later executes a real implement task"
+    then:
+      - "static source inspection alone cannot prove the agent now writes contract-bound tests"
+      - "this gap must be visible: the plan records it and task-6 recommends a representative live implement run as the behavioral check"
+      - "the feature must not be declared behaviorally verified on the basis of source inspection alone"
+
+  - name: "Silent failure - evaluator pins headings or prose instead of contract concepts"
+    type: death_path
+    given: "the focused evaluator asserts that instruction surfaces contain the protocol"
+    when: "a heading is renamed or wording is rephrased while the protocol meaning is preserved"
+    then:
+      - "an evaluator that pins exact heading strings or prose is itself an over-fit test and falsely fails — the feature would refute its own thesis"
+      - "the evaluator must assert intent-bearing concept tokens that survive any honest rewrite (e.g. both 'behavior-preserving refactor' and 'behavior actually broke', and 'fix the test'), not exact headings"
+      - "all per-task evaluators must import one shared canonical token source defined in task-1, not each hard-code its own divergent phrase list"
+
+  - name: "Silent failure - evaluator enforces contract section on historical task files"
+    type: death_path
+    given: "64 of 70 existing task files predate the Unit Test Contract section"
+    when: "the evaluator or format validation checks for the required section"
+    then:
+      - "enforcement must target `skills/planning/task-format.md` (the template) and newly generated tasks, not retroactively all historical task files under `changes/`"
+      - "the evaluator must not fail the suite on pre-existing task files that lack the section"
+
+  - name: "Silent failure - reviewer accepts a perfunctory contract label"
+    type: death_path
+    given: "an implementer adds a generic contract label such as '# contract: it works' to satisfy the gate"
+    when: "the reviewer inspects the test"
+    then:
+      - "the reviewer must challenge perfunctory or tautological contract declarations, mirroring the existing Clean Scar challenge in scar-report.md"
+      - "naming a contract is not satisfied by a slogan — the named contract must map to an observable behavior, public API/schema, artifact shape, or death/bug case"

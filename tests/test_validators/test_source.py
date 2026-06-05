@@ -9,8 +9,9 @@ checks, hooks checks, and the shape of ValidationError reporting.
 import json
 from pathlib import Path
 
-
 from samsara_cli.validators.source import SourceValidator
+
+from conftest import FIXTURE_VERSION
 
 
 # ---------------------------------------------------------------------------
@@ -32,7 +33,7 @@ def make_full_source(
     plugin_dir = source / ".claude-plugin"
     plugin_dir.mkdir(parents=True)
     if include_plugin_json:
-        content = plugin_json_content or {"name": "samsara", "version": "0.8.0"}
+        content = plugin_json_content or {"name": "samsara", "version": FIXTURE_VERSION}
         (plugin_dir / "plugin.json").write_text(json.dumps(content))
 
     skills_dir = source / "skills"
@@ -213,7 +214,7 @@ class TestPluginJsonValidation:
         """plugin.json with name and version passes validation."""
         source = make_full_source(
             tmp_path,
-            plugin_json_content={"name": "samsara", "version": "0.8.0"},
+            plugin_json_content={"name": "samsara", "version": FIXTURE_VERSION},
         )
         validator = SourceValidator()
         errors = validator.validate(source_dir=source, expected_skills=["research"])
@@ -225,7 +226,7 @@ class TestPluginJsonValidation:
             tmp_path,
             plugin_json_content={
                 "name": "samsara",
-                "version": "0.8.0",
+                "version": FIXTURE_VERSION,
                 "description": "A plugin",
                 "author": {"name": "Someone"},
             },

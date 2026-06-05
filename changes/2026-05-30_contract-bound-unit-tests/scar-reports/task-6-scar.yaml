@@ -1,0 +1,242 @@
+task_id: task-6
+completion_status: done_with_concerns  # done | done_with_concerns | blocked
+
+narrative: >
+  Task 6 is the consolidating, final task. Tasks 1-5 each wired the contract-bound-
+  unit-test protocol into ONE instruction surface and gave that surface its own focused
+  evaluator. None of them asserted the FULL SET of surfaces is covered: a future edit
+  could delete an entire evaluator file, or strip the protocol off a whole surface, and
+  every remaining test would still pass — the protocol would silently drop off a surface
+  and ship green. Task 6 closes that gap with two consolidated guards in two NEW files
+  under tests/test_contract_bound_tests/:
+
+  (1) test_coverage_manifest.py — a COVERAGE MANIFEST (COVERAGE_MANIFEST) listing all 8
+  required instruction surfaces (references/test-contract.md, agents/implementer.md,
+  skills/implement/SKILL.md, agents/code-reviewer.md, agents/code-quality-reviewer.md,
+  skills/implement/dispatch-template.md, skills/planning/task-format.md,
+  skills/planning/SKILL.md) paired with the concept groups each must carry. Coverage is
+  asserted via the SHARED helpers (missing_concepts / concepts_covered_by) imported from
+  _contract_tokens — never headings, line numbers, or incidental prose. The dispatch
+  template is checked PER BLOCK (gate must be asked of BOTH reviewers), mirroring task-4.
+  A COMPLETENESS death test compares the manifest's surface set against the literal
+  CANONICAL_REQUIRED_SURFACES, so dropping (or adding a stale) surface reddens.
+
+  (2) The SELF-REFUTING META-TEST. routing_offenders() asserts every coverage evaluator
+  imports _contract_tokens and routes coverage through the shared helpers;
+  heading_as_coverage_offenders() AST-scans every evaluator and flags a "## heading"
+  literal used AS a coverage assertion, while EXEMPTING heading literals that are
+  section-LOCATOR constants (REVIEW_ORDER_HEADING, SUPPORT_FILES_HEADING,
+  EXECUTION_ORDER_HEADING, YIN_BLOCK_HEADING, QUALITY_BLOCK_HEADING) used to slice a
+  section. The distinction is structural: only a SINGLE-LINE heading literal sitting
+  directly inside an ast.Compare (in / == / !=) is flagged; a locator constant (a plain
+  Assign used via startswith) and a MULTI-LINE synthetic fixture (passed to the shared
+  helpers) are never flagged. Both sides of the distinction are pinned by mutate-to-red
+  and mutate-to-green death tests reusing the SAME production scanner (no parallel
+  re-implementation).
+
+  Death tests (test_coverage_manifest_death.py) were authored to target the SILENT
+  failure paths and verified RED-capable by mutation: dropping a manifest row breaks the
+  set-equality (proven), a privatized synthetic evaluator is flagged by the routing scan
+  (proven against a real temp evaluator file), and the heading scanner flags a
+  heading-as-coverage bug while staying green on a locator and on a multi-line fixture
+  (all proven). The real suite reports zero offenders on all guards.
+
+  STEP 0 Q4 (is this alive in the future?): the manifest hard-codes the canonical set of
+  8 surfaces. The completeness check forces a future author who ADDS a 9th surface to
+  register it (the guard working). The residual risk is a future author DELETING a
+  surface from CANONICAL_REQUIRED_SURFACES in the same diff that deletes the surface — a
+  visible, reviewable change, not an incidental refactor, but not auto-detected. Recorded
+  below as a silent-failure condition.
+
+  VALIDATION: tests/test_contract_bound_tests (113 tests) green; tests/test_auto_mode (45)
+  green; tests/integration/test_format_validation.py (22) green; pre-commit run --all-files
+  all hooks Passed. The repo's KNOWN pre-existing failures (test_release_commands_death.py
+  release version-sync; an auto-gatekeeper snapshot test) did NOT appear in any of the
+  three validation suites this task runs, so no pre-existing-vs-regression triage was
+  needed — nothing this feature touched broke.
+
+known_shortcuts:
+  - description: >
+      Potential shortcut (from task spec): the evaluator only checks keywords and misses
+      instruction surfaces. MITIGATED two ways: (a) coverage is asserted via the shared
+      intent-bearing concept tokens (missing_concepts / concepts_covered_by), the SAME
+      tokens the focused tasks 1-5 evaluators use — re-asserted centrally so a whole
+      surface cannot silently lose the protocol; (b) the COMPLETENESS death test asserts
+      the manifest's surface set EQUALS CANONICAL_REQUIRED_SURFACES, so a surface dropped
+      from the manifest list reddens. Both proven by mutate-to-red.
+    deferred_to_feature_iteration: false
+  - description: >
+      Potential shortcut (from task spec): the evaluator itself becomes brittle by pinning
+      line numbers or incidental prose. MITIGATED: the manifest holds NO line numbers and
+      NO prose assertions — only surface paths and concept-group references. The
+      self-refuting meta-test (heading_as_coverage_offenders) additionally FAILS the suite
+      if ANY evaluator pins a "## heading" literal as a coverage assertion, and
+      routing_offenders FAILS if any evaluator stops routing through the shared tokens.
+    deferred_to_feature_iteration: false
+  - description: >
+      The heading-as-coverage scanner uses a CONSERVATIVE structural rule: it flags only a
+      single-line "## heading" literal that is a DIRECT operand of an ast.Compare. This
+      cannot catch every conceivable over-fit (e.g. a heading literal stored in a variable,
+      then compared; or a heading asserted via a non-Compare construct like
+      `.count("## X") > 0`). The task explicitly anticipated this and authorized the
+      fallback (routing-through-shared-tokens) as the backstop. The routing guard is the
+      hard floor: even an over-fit the heading scan misses would have to be done WITHOUT
+      the shared tokens to be dangerous, and that is what routing_offenders catches.
+    deferred_to_feature_iteration: true
+  - description: >
+      STRUCTURAL DEBT (inherited from task-3 and task-5 reviews): _contract_tokens.py
+      carries token definitions, matching helpers, and structural parsers in one module.
+      The by-surface / by-concern split is a feature-level refactor touching all
+      evaluators' imports and is out of this task's scope. This task did NOT split it (per
+      the dispatch instruction) and added its new helpers (manifest, scanners) in the
+      task-6 files, not in the shared module, to avoid widening the shared module's
+      responsibilities. Deferred to feature iteration.
+    deferred_to_feature_iteration: true
+
+silent_failure_conditions:
+  - description: >
+      SILENT FAILURE: a future author deletes a surface from CANONICAL_REQUIRED_SURFACES at
+      the SAME time as deleting its manifest row (and the surface). The set-equality stays
+      true, so the completeness check passes while the protocol is no longer enforced on
+      that surface. PARTIALLY DETECTED: test_every_canonical_surface_is_a_real_file and the
+      per-surface coverage tests redden if the surface FILE still exists but loses its
+      concepts; the gap is only the case where the surface file is intentionally removed in
+      the same diff. That is a visible, reviewable change (deleting a canonical anchor +
+      its row + the file), not a silent incidental refactor — flagged here as a maintenance
+      signal, NOT auto-repaired.
+    deferred_to_feature_iteration: false
+  - description: >
+      SILENT FAILURE: the heading-as-coverage scanner's exemption (multi-line fixtures and
+      *_HEADING locator constants) could be widened by an over-fit hidden in a shape the
+      scanner does not inspect (variable-bound heading literal; non-Compare coverage like a
+      regex count). DETECTED-BY-BACKSTOP: routing_offenders requires every evaluator to use
+      the shared concept tokens, so any coverage NOT routed through them fails the suite;
+      and test_meta_scan_reddens_on_synthetic_heading_as_coverage +
+      test_meta_scan_stays_green_on_synthetic_locator_constant pin both sides of the
+      Compare-based distinction. Residual: a sufficiently creative over-fit that still
+      imports the shared tokens AND avoids a Compare operand would slip the heading scan;
+      accepted as a known limit (documented in known_shortcuts), deferred to feature
+      iteration for a stricter scan if it ever recurs.
+    deferred_to_feature_iteration: false
+  - description: >
+      SILENT FAILURE: the routing/heading scans glob test_*_test_contract.py and add the
+      reference + manifest files explicitly. If a future evaluator is named OUTSIDE that
+      pattern AND not added to the explicit list, the scans would skip it (vacuous green).
+      DETECTED: test_evaluator_glob_finds_the_focused_evaluators asserts the scan actually
+      finds all six known evaluators, so an empty/short file set reddens; but a NEW
+      misnamed evaluator added later is not auto-caught. Flagged as a naming-convention
+      maintenance signal.
+    deferred_to_feature_iteration: false
+
+assumptions_made:
+  - assumption: >
+      The concept groups each surface must carry in the manifest exactly match the groups
+      its focused task-1..5 evaluator enforces (no surface is under- or over-specified in
+      the consolidated manifest).
+    verified: true
+    note: >
+      Verified by reading each evaluator's import block and mapping it to the manifest row:
+      implementer -> CONTRACT_BOUND_UNIT + FIX_THE_TEST; implement-skill ->
+      CONTRACT_PRINCIPLE_AND_POINTER + TEST_CONTRACT_GATE + GATE_BEFORE_UNIT +
+      DEATH_TEST_FIRST + CONTRACT_REFERENCE_SUPPORT_FILE; code-reviewer ->
+      REVIEWER_REVIEWS_TESTS + REVIEWER_FIX_THE_TEST + REVIEWER_CHALLENGE_CLEAN_SCAR;
+      code-quality-reviewer -> REVIEWER_STRUCTURAL_TEST_COUPLING + REVIEWER_REFERS_SILENT_ROT;
+      dispatch -> DISPATCH_TEST_QUALITY_PROMPT (per-block); task-format ->
+      PLANNING_UNIT_TEST_CONTRACT_SECTION + PLANNING_FORBID_GENERIC_UNIT_WORDING; planning
+      SKILL -> PLANNING_DECOMPOSITION_NAMES_CONTRACT; reference -> REFERENCE_CONCEPTS.
+      Confirmed each row's groups are non-vacuous (empty text -> missing_concepts non-empty)
+      and the live surfaces report zero missing.
+  - assumption: >
+      Source inspection is sufficient as the FIRST validation, before a live representative
+      implementation task (the spec's "assumption to verify").
+    verified: false
+    note: >
+      ACCEPTED GAP (Step 6). I cannot dispatch a live implement task from this evaluator
+      context, so behavioral verification — that an implementer dispatched under this
+      protocol actually PRODUCES contract-bound unit tests — was NOT performed. Per the task
+      instruction, I do NOT claim behavioral verification on source inspection alone. Source
+      inspection proves the protocol is PRESENT and INTERNALLY CONSISTENT across all 8
+      surfaces and that the evaluators cannot silently drop a surface; it does NOT prove the
+      downstream agent behavior changes. This must be confirmed by one representative live
+      implement task during feature iteration / acceptance.
+    deferred_to_feature_iteration: true
+  - assumption: >
+      The repo's known pre-existing test failures (release version-sync; auto-gatekeeper
+      snapshot) are NOT in the three suites this task validates, so a clean run here is
+      honest evidence of no regression from this task.
+    verified: true
+    note: >
+      Verified: tests/test_contract_bound_tests, tests/test_auto_mode, and
+      tests/integration/test_format_validation.py ALL passed with zero failures, and
+      pre-commit run --all-files passed every hook. The known-failing
+      test_release_commands_death.py and the auto-gatekeeper snapshot test live outside
+      these three suites, so they were never invoked here. No git-stash diff triage was
+      required because nothing failed.
+
+debt_registered: true
+debt_location: >
+  changes/2026-05-30_contract-bound-unit-tests/scar-reports/task-6-scar.yaml
+  (silent_failure_conditions + the deferred known_shortcut above). No code debt registered
+  elsewhere. The residual items are: (a) a LOUD maintenance signal (misnamed-evaluator /
+  same-diff-surface-deletion) and (b) the conservative-scanner limit backstopped by the
+  routing guard. The single behavioral gap (live implement task) is deferred to feature
+  iteration acceptance.
+
+resolved_items:
+  - original_section: known_shortcuts
+    original_description: >
+      Evaluator only checks keywords and misses instruction surfaces (spec shortcut #1).
+    resolution: >
+      Resolved within task scope. Built COVERAGE_MANIFEST over all 8 surfaces plus the
+      CANONICAL_REQUIRED_SURFACES completeness death test (set-equality), and the
+      per-surface coverage tests route through shared concept tokens. Mutate-to-red proven:
+      dropping a manifest row breaks set-equality; empty text makes every row's groups
+      report missing (non-vacuous).
+  - original_section: known_shortcuts
+    original_description: >
+      Evaluator itself becomes brittle by pinning line numbers or incidental prose (spec
+      shortcut #2).
+    resolution: >
+      Resolved within task scope. The self-refuting meta-test (routing_offenders +
+      heading_as_coverage_offenders) fails the suite if any evaluator pins a heading literal
+      as coverage or stops routing through the shared tokens. The Compare-based heading scan
+      distinguishes a locator (allowed) from heading-as-coverage (bug); both sides pinned by
+      mutate-to-red / mutate-to-green death tests that reuse the production scanner.
+  - original_section: silent_failure_conditions
+    original_description: >
+      A privatized evaluator (does its own raw `in` coverage, never imports the shared
+      tokens) could drift from the canonical token source.
+    resolution: >
+      Resolved within task scope. routing_offenders() AST-scans every evaluator for both
+      the _contract_tokens import AND a shared-helper reference; verified mutate-to-red
+      against a real temporary privatized evaluator file (it WAS flagged, then cleaned up).
+      test_evaluator_glob_finds_the_focused_evaluators guards against a vacuously empty scan
+      set.
+  - original_section: known_shortcuts
+    original_description: >
+      FIX 2 (round-2 yin review): dead computation + dishonest docstring.
+      heading_as_coverage_offenders computed _module_level_locator_names and discarded the
+      result, while its docstring claimed an "explicit, documented allow-list" exemption.
+    resolution: >
+      Removed the dead _module_level_locator_names function and its discarded call.
+      Rewrote the docstring to state the exemption honestly: locators are exempt BY
+      CONSTRUCTION (a named locator constant is an ast.Name reference, never an ast.Constant
+      operand of a Compare), so the scan flags only inline single-line "## heading" literals
+      used directly as a Compare operand. No allow-list is maintained.
+  - original_section: known_shortcuts
+    original_description: >
+      FIX 1 + FIX 4 (round-2 review): dead imports and a re-derived routing algorithm.
+      test_coverage_manifest.py imported concept_present / concepts_covered_by unused; the
+      death test re-derived the routing-detection algorithm verbatim instead of calling the
+      production scanner.
+    resolution: >
+      Removed the unused imports (only missing_concepts is used). Refactored
+      routing_offenders to accept an optional {label: source} override and extracted
+      _source_routes_through_shared_tokens as the single authoritative routing algorithm;
+      the death test now feeds its synthetic privatized evaluator through routing_offenders
+      rather than re-deriving imports_shared / names_used / routes. Moved the
+      _scan_heading_as_coverage import to the top import block (dropped the E402 noqa) and
+      removed the now-unused ast / evaluator_source_files imports from the death module.
+      Documented the two marked bets: the required-protocol-surface criterion at
+      CANONICAL_REQUIRED_SURFACES and the ast.Name routing proxy + its aliasing/dynamic-
+      dispatch limits at routing_offenders.

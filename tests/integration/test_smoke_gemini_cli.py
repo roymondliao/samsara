@@ -89,6 +89,18 @@ class TestGeminiNativeStructure:
         assert list(agents_dir.glob("*.md"))
         assert not list(agents_dir.glob("*.toml"))
 
+    def test_auto_gatekeeper_agent_installed(self, smoke_output_dir: Path) -> None:
+        agent_file = (
+            smoke_output_dir / ".gemini" / "agents" / "samsara-auto-gatekeeper.md"
+        )
+        assert agent_file.exists(), (
+            "samsara-auto-gatekeeper.md missing from Gemini install output."
+        )
+        content = agent_file.read_text(encoding="utf-8")
+        assert "auto-decisions.md" in content
+        assert "workflow_prompt" in content
+        assert "gatekeeper_answer" in content
+
     def test_hook_script_exists_and_is_executable(self, smoke_output_dir: Path) -> None:
         script = smoke_output_dir / ".gemini" / "hooks" / "samsara-session-start.sh"
         assert script.exists()

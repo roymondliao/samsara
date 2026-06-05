@@ -1,0 +1,98 @@
+task_id: task-3
+completion_status: done_with_concerns
+
+known_shortcuts:
+  - description: >
+      Later-stage auto gates are still instruction-level markdown contracts, not
+      executable runtime branch logic. Tests inspect the protocol text but do not
+      run a live implementation -> validation auto workflow.
+    deferred_to_feature_iteration: true
+
+  - description: >
+      The security/privacy auto gate uses protocol language to prohibit unknown
+      risk continuation. It does not invoke a real security review capability in
+      this task.
+    deferred_to_feature_iteration: true
+
+silent_failure_conditions:
+  - description: >
+      If an executing agent ignores the `## Auto Mode Gate` section and follows the
+      original transition text, later stages may still wait for input or accept
+      risk outside the auto decision log.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      Validate-and-ship now requires checking `auto-decisions.md`, but this task
+      does not yet implement a parser that proves every workflow gate is matched
+      to an entry.
+    deferred_to_feature_iteration: true
+
+assumptions_made:
+  - assumption: >
+      Later-stage skills can share the same canonical `references/auto-mode.md`
+      schema while adding stage-specific constraints.
+    verified: true
+    note: >
+      Verified by protocol tests requiring all later stages to dispatch the
+      gatekeeper, append `auto-decisions.md`, preserve `workflow_prompt`, and use
+      `gatekeeper_answer`.
+    deferred_to_feature_iteration: false
+
+  - assumption: >
+      Security/privacy unknowns should be represented as high-uncertainty `reject`
+      decisions in auto mode.
+    verified: true
+    note: >
+      Verified by tests requiring `high-uncertainty reject` and `must not transition
+      to validate-and-ship` in the security/privacy auto gate.
+    deferred_to_feature_iteration: false
+
+  - assumption: >
+      A text-level `auto-decisions.md` validation requirement is enough until the
+      primary evaluator harness is added.
+    verified: false
+    note: >
+      Task 4 must turn this into a broader evaluator contract. This task only adds
+      the validate-and-ship instruction and tests for its presence.
+    deferred_to_feature_iteration: true
+
+debt_registered: true
+debt_location: >
+  skills/implement/SKILL.md, skills/iteration/SKILL.md,
+  skills/security-privacy-review/SKILL.md, skills/validate-and-ship/SKILL.md
+  auto-mode protocol sections
+
+narrative: >
+  Task 3 completes source-level protocol coverage for later workflow stages. The
+  main scar is the same medium limitation as Tasks 1 and 2: markdown instructions
+  can specify the behavior, and tests can inspect those contracts, but live agent
+  compliance remains a later evaluator concern.
+
+resolved_items:
+  - original_section: silent_failure_conditions
+    original_description: >
+      Security review language could still imply accepted risk in auto mode.
+    resolution: >
+      Added a security/privacy auto gate requiring absent, unknown, failing, or
+      partial evidence to record a high-uncertainty `reject` decision and not
+      transition to validate-and-ship.
+
+  - original_section: silent_failure_conditions
+    original_description: >
+      Validate-and-ship could report auto completion without checking the auto
+      decision trace.
+    resolution: >
+      Added a validate-and-ship auto gate requiring `auto-decisions.md` inspection
+      before completion, with missing, malformed, generic, or contradictory entries
+      failing validation.
+
+  - original_section: silent_failure_conditions
+    original_description: >
+      If an executing agent ignores the `## Auto Mode Gate` section and follows the
+      original transition text, later stages may still wait for input or accept
+      risk outside the auto decision log.
+    resolution: >
+      Expanded later-stage auto gates to cover internal decision points:
+      implementation execution-mode selection, iteration triage/blocked-fix/round
+      continuation/safety valve decisions, security empty-diff/base-branch/no
+      capability/unknown/fail/risk paths, and validation post-append trace checks.

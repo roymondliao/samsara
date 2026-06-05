@@ -15,11 +15,13 @@ def make_repo(
     marketplace_version: str = "0.9.0",
     plugin_version: str | None = None,
     pyproject_version: str | None = None,
+    lock_version: str | None = None,
 ) -> Path:
     plugin_version = marketplace_version if plugin_version is None else plugin_version
     pyproject_version = (
         marketplace_version if pyproject_version is None else pyproject_version
     )
+    lock_version = marketplace_version if lock_version is None else lock_version
     repo = tmp_path / "repo"
     plugin_dir = repo / ".claude-plugin"
     plugin_dir.mkdir(parents=True)
@@ -42,6 +44,16 @@ def make_repo(
     )
     (repo / "pyproject.toml").write_text(
         (f'[project]\nname = "samsara"\nversion = "{pyproject_version}"\n'),
+        encoding="utf-8",
+    )
+    (repo / "uv.lock").write_text(
+        (
+            "version = 1\n\n"
+            "[[package]]\n"
+            'name = "samsara"\n'
+            f'version = "{lock_version}"\n'
+            'source = { editable = "." }\n'
+        ),
         encoding="utf-8",
     )
     return repo
@@ -82,6 +94,7 @@ class TestReleaseCommands:
             marketplace_version="2.0.0",
             plugin_version="0.9.0",
             pyproject_version="0.9.0",
+            lock_version="0.9.0",
         )
 
         result = runner.invoke(app, ["release", "sync-version", "--root", str(repo)])
@@ -94,6 +107,7 @@ class TestReleaseCommands:
         assert 'version = "2.0.0"' in (repo / "pyproject.toml").read_text(
             encoding="utf-8"
         )
+        assert 'version = "2.0.0"' in (repo / "uv.lock").read_text(encoding="utf-8")
 
     def test_sync_version_check_mode_does_not_write(self, tmp_path: Path):
         from samsara_cli.main import app
@@ -103,10 +117,13 @@ class TestReleaseCommands:
             marketplace_version="2.0.0",
             plugin_version="0.9.0",
             pyproject_version="0.9.0",
+            lock_version="0.9.0",
         )
         plugin_before = (repo / ".claude-plugin" / "plugin.json").read_text(
             encoding="utf-8"
         )
+        pyproject_before = (repo / "pyproject.toml").read_text(encoding="utf-8")
+        lock_before = (repo / "uv.lock").read_text(encoding="utf-8")
 
         result = runner.invoke(
             app, ["release", "sync-version", "--root", str(repo), "--check"]
@@ -114,9 +131,32 @@ class TestReleaseCommands:
 
         assert result.exit_code == 0, result.output
         assert "plugin.json" in result.output
+        assert "uv.lock" in result.output
         assert (repo / ".claude-plugin" / "plugin.json").read_text(
             encoding="utf-8"
         ) == plugin_before
+        assert (repo / "pyproject.toml").read_text(encoding="utf-8") == pyproject_before
+        assert (repo / "uv.lock").read_text(encoding="utf-8") == lock_before
+
+
+class TestCurrentReleaseVersionContract:
+    def test_current_repo_print_tag_is_0_11_0(self):
+        from samsara_cli.main import app
+
+        repo_root = Path(__file__).resolve().parents[2]
+
+        result = runner.invoke(app, ["release", "print-tag", "--root", str(repo_root)])
+
+        assert result.exit_code == 0, result.output
+        assert result.output.strip() == "v0.11.0"
+
+    def test_cli_version_outputs_0_11_0(self):
+        from samsara_cli.main import app
+
+        result = runner.invoke(app, ["version"])
+
+        assert result.exit_code == 0, result.output
+        assert result.output.strip() == "samsara-cli 0.11.0"
 
     def test_print_tag_outputs_exact_tag(self, tmp_path: Path):
         from samsara_cli.main import app

@@ -1,0 +1,205 @@
+task_id: task-1
+completion_status: done  # done | done_with_concerns | blocked
+
+known_shortcuts:
+  - description: >-
+      Concept coverage is checked by intent-bearing tokens that require AT LEAST
+      ONE honest phrasing to be present per concept. This proves the concept is
+      MENTIONED, not that the surrounding prose is correct or non-contradictory.
+      A future edit could keep all tokens while rewriting the prose into nonsense
+      and the evaluator would stay green. (Mitigated, not eliminated: the new
+      hostile-decoy meta death test now proves no token passes on UNRELATED prose,
+      so a token can no longer be green-by-construction; but it still cannot verify
+      that the prose around a correctly-present token is internally coherent.)
+    deferred_to_feature_iteration: false
+
+silent_failure_conditions:
+  - description: >-
+      The reference is verified by static source inspection only. A green suite
+      proves the protocol TEXT exists; it does NOT prove any implementer or
+      reviewer actually applies it when writing tests. The behavioral gap (DC4,
+      documentation-present != behavior-changed) is real and accepted; it is
+      explicitly assigned to task-6's recommended live implement run, outside
+      this task's scope.
+    deferred_to_feature_iteration: true
+  - description: >-
+      _contract_tokens.py is imported by tasks 2-6. If a later task renames a
+      group key or concept key, the import breaks LOUDLY (ImportError) — good.
+      But if a later task silently stops importing a concept it should check,
+      nothing here detects that omission; the shared source cannot enforce that
+      downstream evaluators actually use the right subset.
+    deferred_to_feature_iteration: true
+
+assumptions_made:
+  - assumption: >-
+      references/ is the correct home for this cross-role testing protocol rather
+      than skills/implement/.
+    verified: true
+    note: >-
+      Verified by grep: skills/implement/SKILL.md, skills/fast-track/SKILL.md and
+      every workflow-stage SKILL link references/auto-mode.md and
+      references/code-quality.md; agents/code-reviewer.md and
+      code-quality-reviewer.md route to references/code-review.md etc. references/
+      is the established home for cross-role protocol docs consumed by both skills
+      and agents. test-contract.md matches that precedent exactly.
+    deferred_to_feature_iteration: false
+  - assumption: >-
+      The package-import style `from tests.test_contract_bound_tests._contract_tokens
+      import ...` works under `uv run pytest` and is the convention tasks 2-6
+      should follow.
+    verified: true
+    note: >-
+      Verified two ways: (1) it matches the existing convention in
+      tests/test_auto_mode/test_skill_auto_mode_protocol.py which imports
+      `from tests.test_auto_mode.test_protocol_helpers import ...`; (2) the
+      14-test suite (which uses exactly this import) runs green under
+      `uv run pytest`. pyproject sets pythonpath=["."] so `tests` is importable.
+      Added __init__.py to the new package for explicit, stable package imports.
+    deferred_to_feature_iteration: false
+  - assumption: >-
+      The heading-rename meta death test genuinely proves the evaluator is not
+      over-fit (DC7), rather than passing vacuously.
+    verified: true
+    note: >-
+      Verified by direct execution: 13 heading lines were all renamed to
+      "Renamed Section N" (0 real-named headings remained), concept coverage
+      stayed complete (missing == []), and a heading-pinned probe token
+      "## Contract Gate" was confirmed absent after rename — so a future
+      heading-pinned token WOULD be caught. The meta test exercises a real
+      mutation, not a no-op.
+
+debt_registered: true
+debt_location: >-
+  tests/test_contract_bound_tests/_contract_tokens.py (token-presence proves a
+  concept is MENTIONED in some honest phrasing, not that the surrounding prose is
+  internally coherent) and references/test-contract.md (static-only verification,
+  behavioral gap deferred to task-6). The green-by-construction tokens flagged in
+  the dual review are RESOLVED — see resolved_items below.
+
+narrative: |
+  This task is the feature's self-exemplar. The strongest pull was to make
+  _contract_tokens.py a list of exact heading strings and assert each heading is
+  present — which would have been the over-fit pole the feature exists to forbid
+  (DC7). The tokens are instead intent-bearing concept phrasings (with regex only
+  where several honest wordings share a pattern), each concept covered when ANY
+  one honest phrasing is present. A dedicated meta death test rewrites every
+  heading and asserts coverage survives, plus a second meta test forbids any
+  token from containing "##". Together they make the evaluator prove it obeys the
+  protocol it ships.
+
+resolved_items:
+  - original_section: assumptions_made
+    original_description: >-
+      references/ vs skills/implement/ as the home for the protocol (originally
+      flagged unverified in the task's Expected Scar Report Items).
+    resolution: >-
+      Verified by grepping skills/ and agents/ for references/ links; confirmed
+      references/ is the established cross-role home. Marked verified: true.
+  - original_section: assumptions_made
+    original_description: >-
+      Sibling-import style for tasks 2-6 might not run under uv run pytest.
+    resolution: >-
+      Verified against the existing tests/test_auto_mode import precedent and by
+      a green 14-test run using that exact import. Added __init__.py for a stable
+      package import contract. Marked verified: true.
+  - original_section: known_shortcuts
+    original_description: >-
+      Reference might guard only one pole / might ban snapshots outright (the two
+      shortcuts named in the task's Expected Scar Report Items).
+    resolution: >-
+      Avoided at implementation time: the reference has explicit Brittleness
+      Filter AND Silent-Green Guard sections (both poles), a shared "fix is not
+      assert less / not assert more" section, and a normalize-then-snapshot
+      section that PERMITS snapshots with a worked example rather than banning
+      them. Death tests TestBothPolesGuardedDeath and
+      TestSnapshotsNotBannedOutrightDeath pin these and were verified red before
+      the doc existed, green after.
+
+  # --- Dual-review FAIL findings (2026-05-31 re-roll) -----------------------
+  - original_section: silent_failure_conditions
+    finding: "REVIEW-1 (CRITICAL)"
+    original_description: >-
+      BOTH_POLES_FIX.not_assert_less carried a bare substring "assert less" under
+      any(), making it green-by-construction: a doc ENDORSING "assert less" passed
+      identically to one rejecting it, and the bare substring made the directional
+      rx() alternatives dead.
+    resolution: >-
+      Removed the bare "assert less" token. The concept is now DIRECTIONAL ONLY
+      (rx for "not assert less" / "isn't assert less" / "is not assert less").
+      Verified red on the hostile decoy ("...assert less drama...") before the fix
+      and on the reference-endorsement decoy, green after against the doc's actual
+      "The fix ... is NOT 'assert less'" wording.
+  - original_section: silent_failure_conditions
+    finding: "REVIEW-2 (CRITICAL)"
+    original_description: >-
+      SNAPSHOT_GOLDEN.volatile_fields regex matched the plain English words
+      path/port/version/date anywhere in ANY document, so the concept was green by
+      construction and could never go red.
+    resolution: >-
+      Tightened: the volatile-word list now only matches when bound (within ~80
+      non-period chars) to a normalization verb (normaliz/replac/placeholder).
+      Plus the literal "volatile field". Verified red on the hostile decoy (which
+      contains path/port/version/date with no normalization verb) before, green
+      after against the doc's "normalize volatile fields ... Replace absolute
+      paths, port numbers, version strings ... with stable placeholders".
+  - original_section: known_shortcuts
+    finding: "REVIEW-3 (IMPORTANT)"
+    original_description: >-
+      Dead guards green-by-construction: SNAPSHOT_GOLDEN.snapshot_permitted_not_banned
+      = (golden, snapshot) and BOUNDARY_SPY.spy_or_mock_conditional = (spy, spies,
+      mock) matched any document mentioning the topic and were redundant with the
+      precise keys.
+    resolution: >-
+      Both keys REMOVED (preferred fix). REFERENCE_CONCEPTS still covers snapshot
+      via normalize_before_snapshot and boundary spies via
+      interaction_is_the_feature — the strong keys that prove the actual protocol
+      behavior. Concept count is now 16 and all 16 go red on the hostile decoy.
+  - original_section: known_shortcuts
+    finding: "REVIEW-4 (IMPORTANT)"
+    original_description: >-
+      test_test_contract_reference_death.py used a raw literal
+      token_present(text, "snapshot") that bypassed the shared module and
+      duplicated a key's intent.
+    resolution: >-
+      Removed the ad-hoc literal (and the now-unused token_present import). The
+      snapshot-permitted death test now sources its check solely from
+      SNAPSHOT_GOLDEN["normalize_before_snapshot"], which requires "snapshot" in
+      proximity to a normalization verb — so it proves both presence and the
+      permitted-with-normalization contract from the single shared token source.
+  - original_section: known_shortcuts
+    finding: "REVIEW-5 (IMPORTANT)"
+    original_description: >-
+      SILENT_GREEN_GUARD.vague_assertion depended on the doc keeping the exact
+      example phrases "not null" / "is not none"; an honest rewrite of the
+      examples would false-negative.
+    resolution: >-
+      Replaced the example-dependent literals with intent-bearing tokens: the
+      vague-test concept ("vague unit test", "assert almost nothing", "stays
+      green", "truthy", ">= 0"). The concept now survives an honest rewrite of the
+      negative-example phrases. Verified the doc's "stays green no matter what"
+      and "truthy" still cover it.
+  - original_section: known_shortcuts
+    finding: "REVIEW-6 (IMPORTANT)"
+    original_description: >-
+      .pre-commit-config.yaml exclude ^tests/.*/_[^/]+\.py$ was broader than its
+      stated intent (any leading-underscore file at any depth under tests/).
+    resolution: >-
+      Narrowed to the feature's helper directory only:
+      ^tests/test_contract_bound_tests/_[^/]+\.py$.
+  - original_section: silent_failure_conditions
+    finding: "REVIEW-NEW-META (the forcing function)"
+    original_description: >-
+      No test proved the evaluator itself can fail; findings 1-3 (green-by-
+      construction tokens) slipped through because nothing pinned "no concept
+      token passes by construction".
+    resolution: >-
+      Added two death tests in TestEvaluatorIsNotOverfitDeath:
+      test_no_concept_passes_on_unrelated_decoy_prose (hostile decoy that sprinkles
+      the exact common words a green-by-construction token keys on; asserts ZERO
+      concepts covered) and test_known_overfit_pole_concepts_fail_on_decoy (named
+      floor: not_assert_less / volatile_fields / normalize_before_snapshot /
+      interaction_is_the_feature MUST be reported missing). Both were verified RED
+      against the pre-fix tokens (caught not_assert_less + volatile_fields and the
+      broad set) and GREEN after. Also strengthened DC7
+      test_coverage_survives_heading_rename to assert NO original heading text
+      survives the rename, so the meta-test cannot false-pass.

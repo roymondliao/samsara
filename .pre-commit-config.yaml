@@ -21,6 +21,10 @@ repos:
     - id: detect-private-key
     - id: name-tests-test
       args: ['--pytest-test-first']
+      # Leading-underscore modules under tests/ are shared helpers, not test
+      # files (e.g. tests/test_contract_bound_tests/_contract_tokens.py, the
+      # single canonical concept-token source imported by sibling evaluators).
+      exclude: ^tests/test_contract_bound_tests/_[^/]+\.py$
     - id: check-merge-conflict
     - id: check-added-large-files
       args: ['--maxkb=50000']

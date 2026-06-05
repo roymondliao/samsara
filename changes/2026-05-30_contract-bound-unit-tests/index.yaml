@@ -1,0 +1,55 @@
+feature: contract-bound-unit-tests
+status: pending
+
+tasks:
+  - id: task-1
+    title: "Add test contract reference"
+    status: done
+    scar_count: 3
+    unresolved_assumptions: 0
+    depends_on: []
+
+  - id: task-2
+    title: "Update implementer agent test-writing protocol"
+    status: done
+    scar_count: 8
+    unresolved_assumptions: 0
+    depends_on:
+      - task-1
+
+  - id: task-3
+    title: "Update implement orchestration gate"
+    status: done
+    scar_count: 7
+    unresolved_assumptions: 0
+    depends_on:
+      - task-1
+
+  - id: task-4
+    title: "Add reviewer enforcement and dispatch propagation"
+    status: done
+    scar_count: 6
+    unresolved_assumptions: 0
+    depends_on:
+      - task-1
+      - task-2
+      - task-3
+
+  - id: task-5
+    title: "Add planning task contract origin"
+    status: done
+    scar_count: 5
+    unresolved_assumptions: 0
+    depends_on:
+      - task-1
+
+  - id: task-6
+    title: "Add evaluator coverage and run validation"
+    status: done
+    scar_count: 5
+    unresolved_assumptions: 1
+    depends_on:
+      - task-2
+      - task-3
+      - task-4
+      - task-5

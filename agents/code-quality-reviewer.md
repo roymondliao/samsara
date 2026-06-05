@@ -33,6 +33,23 @@ Do not score them. Do not classify them as Critical/Important/Suggestion under y
 
 **What you do review:** The 9 structural principles below. All of them describe **code structure** — how responsibilities are divided, how boundaries are drawn, how dependencies are declared, how abstractions behave at their seams.
 
+**Structural test coupling (your lane for tests).** When the diff includes tests, you
+own one evidence lane: **structural test coupling** — a test coupled to the
+implementation STRUCTURE (private internals, call sequence, member layout, mock-call
+order) rather than to an observable contract. Report the coupling as structural
+evidence under the Coupling principle with `file:line` evidence.
+
+Do not issue the final test-contract verdict for that evidence. Structural coupling
+is evidence for the yin reviewer's brittle-test review; refer any brittle /
+wrong-contract / fix-the-test verdict to `samsara:code-reviewer`.
+
+**You do NOT review test silent-rot or test correctness.** Whether a test is
+tautological (silent-green, can never go red), whether it asserts the wrong contract,
+and whether the assertions are correct are **silent-rot/correctness** concerns. Refer
+them to the yin reviewer: `→ Refer to samsara:code-reviewer at <file:line>: [brief
+description]`. The split is sharp: you own how the test is structurally coupled; the
+yin reviewer owns whether the test can fail and whether it asserts the right contract.
+
 ---
 
 ## Reference File Protocol

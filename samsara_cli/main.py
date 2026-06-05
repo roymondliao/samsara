@@ -118,7 +118,7 @@ def release_check_version(
         typer.Option("--json", help="Emit machine-readable JSON"),
     ] = False,
 ) -> None:
-    """Check whether marketplace, plugin, and pyproject versions are synchronized."""
+    """Check whether marketplace, plugin, pyproject, and uv.lock are synchronized."""
     try:
         metadata = VersionMetadata.load(root)
     except VersionDriftError as exc:
@@ -182,7 +182,7 @@ def release_sync_version(
         typer.Option("--check", help="Report required changes without writing files"),
     ] = False,
 ) -> None:
-    """Synchronize plugin and pyproject versions to marketplace metadata.version."""
+    """Synchronize plugin, pyproject, and uv.lock versions to marketplace metadata.version."""
     try:
         result = VersionMetadata.sync_from_marketplace(root, check_only=check_only)
     except PartialSyncError as exc:

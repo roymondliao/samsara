@@ -13,6 +13,8 @@ from pathlib import Path
 
 import pytest
 
+from conftest import FIXTURE_VERSION
+
 
 def make_repo(
     tmp_path: Path,
@@ -20,12 +22,14 @@ def make_repo(
     marketplace_version: str = "0.9.0",
     plugin_version: str | None = None,
     pyproject_version: str | None = None,
+    lock_version: str | None = None,
 ) -> Path:
     repo = tmp_path / "repo"
     plugin_version = marketplace_version if plugin_version is None else plugin_version
     pyproject_version = (
         marketplace_version if pyproject_version is None else pyproject_version
     )
+    lock_version = marketplace_version if lock_version is None else lock_version
     plugin_dir = repo / ".claude-plugin"
     plugin_dir.mkdir(parents=True)
     (plugin_dir / "marketplace.json").write_text(
@@ -65,6 +69,16 @@ def make_repo(
         ),
         encoding="utf-8",
     )
+    (repo / "uv.lock").write_text(
+        (
+            "version = 1\n\n"
+            "[[package]]\n"
+            'name = "samsara"\n'
+            f'version = "{lock_version}"\n'
+            'source = { editable = "." }\n'
+        ),
+        encoding="utf-8",
+    )
     return repo
 
 
@@ -79,19 +93,20 @@ class TestVersionMetadataDeath:
             tmp_path,
             marketplace_version="0.10.0",
             plugin_version="0.9.0",
-            pyproject_version="0.8.0",
+            pyproject_version=FIXTURE_VERSION,
+            lock_version="0.7.0",
         )
 
         with pytest.raises(VersionDriftError) as exc_info:
             VersionMetadata.load(repo)
 
         error = exc_info.value
-        assert len(error.mismatches) == 2, (
+        assert len(error.mismatches) == 3, (
             "SILENT FAILURE: version drift error must list every mismatched file, "
             f"not just the first mismatch. Got: {error.mismatches!r}"
         )
         paths = {mismatch.path.name for mismatch in error.mismatches}
-        assert paths == {"plugin.json", "pyproject.toml"}
+        assert paths == {"plugin.json", "pyproject.toml", "uv.lock"}
 
     @pytest.mark.parametrize(
         ("file_kind", "expected_pattern"),
@@ -99,6 +114,7 @@ class TestVersionMetadataDeath:
             ("marketplace", r"metadata\.version"),
             ("plugin", r"\bversion\b"),
             ("pyproject", r"project\.version"),
+            ("lock", r"package\[samsara\]\.version"),
         ],
     )
     def test_missing_version_field_raises(
@@ -123,9 +139,15 @@ class TestVersionMetadataDeath:
             path.write_text(
                 json.dumps({"name": "samsara"}, indent=2) + "\n", encoding="utf-8"
             )
-        else:
+        elif file_kind == "pyproject":
             path = repo / "pyproject.toml"
             path.write_text('[project]\nname = "samsara"\n', encoding="utf-8")
+        else:
+            path = repo / "uv.lock"
+            path.write_text(
+                'version = 1\n\n[[package]]\nname = "samsara"\n',
+                encoding="utf-8",
+            )
 
         with pytest.raises(VersionMetadataError, match=expected_pattern):
             VersionMetadata.load(repo)
@@ -181,6 +203,7 @@ class TestVersionMetadataDeath:
             marketplace_version="1.0.0",
             plugin_version="0.9.0",
             pyproject_version="0.9.0",
+            lock_version="0.9.0",
         )
         plugin_path = repo / ".claude-plugin" / "plugin.json"
         pyproject_path = repo / "pyproject.toml"

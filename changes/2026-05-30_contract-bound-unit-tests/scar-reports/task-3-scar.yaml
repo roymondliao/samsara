@@ -1,0 +1,254 @@
+task_id: task-3
+completion_status: done  # done | done_with_concerns | blocked
+
+narrative: >
+  Task 3 updates the implement ORCHESTRATION skill (skills/implement/SKILL.md) to
+  make a Test Contract Gate mandatory BEFORE unit tests, while keeping the skill
+  LEAN — the gate is a short directive that POINTS to references/test-contract.md
+  rather than re-pasting the catalog. Added four new SKILL-surface concept groups
+  to the single shared token source (_contract_tokens.py): TEST_CONTRACT_GATE,
+  GATE_BEFORE_UNIT, DEATH_TEST_FIRST, CONTRACT_REFERENCE_SUPPORT_FILE. None were
+  added to REFERENCE_CONCEPTS (per the DELIBERATELY EXCLUDED contract — those are
+  reference-doc concepts only). Folded in the cross-file STEP 0 desync fix: SKILL.md
+  digraph node and execution-order line moved from "three"/"三問" to "four"/"四問"
+  to match task-2's agents/implementer.md, guarded by a desync death test.
+
+known_shortcuts:
+  - description: >
+      Risk of duplicating the whole test-contract catalog inside SKILL.md to make
+      the evaluator trivially green (the over-fit pole this feature exists to kill,
+      and a second divergent source of truth). MITIGATED: the Test Contract Gate is
+      a short directive that explicitly says "Do not duplicate the catalog here; the
+      reference is the single source of truth" and points to references/test-contract.md.
+      The skill names only the contract-source list and the two red-flag poles, not
+      the full snapshot/spy/minimum-contract catalog.
+    deferred_to_feature_iteration: false
+  - description: >
+      Risk of adding a Test Contract Gate that is NOT placed before unit-test
+      writing (a gate run after the tautological test is already on disk is
+      worthless). MITIGATED: the gate is step 4 (between death tests at step 3 and
+      "Write unit tests" at step 5) in the execution order, is drawn before
+      unit_test in the digraph, and a Yin-side constraint plus death test
+      (test_gate_runs_before_unit_tests, GATE_BEFORE_UNIT tokens) pin the
+      before-unit ordering directionally.
+
+silent_failure_conditions:
+  - description: >
+      If a future edit guards only the over-fit pole (brittleness) and drops the
+      silent-green / tautological pole, the skill would accept tautological unit
+      tests that never go red. GUARDED by test_silent_green_pole_flagged,
+      test_flags_both_poles (BRITTLENESS_FILTER + SILENT_GREEN_GUARD), and
+      test_silent_green_decoy_separates_poles which proves SILENT_GREEN_GUARD is NOT
+      satisfied by brittleness-only prose (so the omission cannot pass silently).
+    deferred_to_feature_iteration: false
+  - description: >
+      If a future edit re-introduces a "three"/"三問"/"three prerequisite" STEP 0
+      count anywhere in SKILL.md, the orchestration desyncs from agents/implementer.md
+      (agent answers four, skill claims three) with nobody alerted. GUARDED by
+      test_no_three_questions_desync_survives (checks "三問", "three questions",
+      "three prerequisite") and test_no_surviving_three_questions_reference.
+    deferred_to_feature_iteration: false
+  - description: >
+      If a future edit removes references/test-contract.md from the Support Files
+      section, the Test Contract Gate becomes a dangling pointer — the dispatched
+      implementer cannot locate the protocol via the skill's file index. GUARDED by
+      test_reference_registered_as_support_file, which asserts the path appears
+      WITHIN the '## Support Files' section (scanned to the next H2), not merely
+      somewhere in the document.
+    deferred_to_feature_iteration: false
+  - description: >
+      A new SKILL-surface concept token could be green-by-construction (key on the
+      bare word "gate" — the skill has Execution strategy gate / Completion gate /
+      Auto Mode Gate — or on "before"/"unit"/"death") and never go red. GUARDED by
+      test_new_concepts_fail_on_hostile_decoy (asserts TEST_CONTRACT_GATE,
+      GATE_BEFORE_UNIT, DEATH_TEST_FIRST all report MISSING on hostile decoy prose
+      that sprinkles in those exact words) and test_new_concept_tokens_are_not_pinned_headings.
+    deferred_to_feature_iteration: false
+  - description: >
+      The reference path literal "test-contract.md" is now single-sourced as
+      REFERENCE_PATH_RX and consumed by CONTRACT_BOUND_UNIT, TEST_CONTRACT_GATE,
+      CONTRACT_REFERENCE_SUPPORT_FILE, and CONTRACT_PRINCIPLE_AND_POINTER. A literal
+      path is legitimately the contract for a support-file reference (the exact path
+      is what must be present), so a rename of references/test-contract.md still
+      requires a deliberate update — but now a ONE-line change to REFERENCE_PATH_RX,
+      not a scatter-edit. Acceptable single-source coupling, recorded so a future
+      reference rename is known to require that one-line update.
+    deferred_to_feature_iteration: false
+  - description: >
+      The structural ordering check (death < gate < unit) depends on the numbered
+      execution-order step list being machine-parseable ("N. body" lines under the
+      '## Per-Task Execution Order' heading) and on STEP_UNIT_TEST being anchored to
+      the START of the unit-test step body. If a future author rewrites the steps as
+      an unnumbered bullet list, the parser returns an empty list and the death tests
+      FAIL LOUD (asserting steps is not None / index is not None) rather than passing
+      silently. If the unit-test step is reworded to no longer start with "Write/
+      Writing unit tests" (e.g. "Author the unit tests"), STEP_UNIT_TEST returns None
+      and the ordering test fails loud. Both are loud, not silent — recorded so a
+      future step rewrite knows to update STEP_* tokens in _contract_tokens.py.
+    deferred_to_feature_iteration: false
+
+assumptions_made:
+  - assumption: >
+      Touching the implement skill near the auto-mode wording does not introduce
+      gatekeeper naming drift (the file references `samsara:auto-gatekeeper`).
+    verified: true
+    note: >
+      VERIFIED. All my edits are confined to the digraph STEP 0 node, the per-task
+      execution order, the Yin-Side Constraints, the Red Flags list, and the Support
+      Files list — none adjacent to the Auto Mode Gate / auto-gatekeeper wording.
+      grep confirms `samsara:auto-gatekeeper` still appears exactly as before
+      (4 occurrences, unchanged) and no new/renamed gatekeeper token was introduced.
+    deferred_to_feature_iteration: false
+  - assumption: >
+      The four new concept groups must NOT be added to the REFERENCE_CONCEPTS
+      aggregate (it is reference-doc concepts only, per the DELIBERATELY EXCLUDED
+      comment) — they are SKILL-surface concepts.
+    verified: true
+    note: >
+      VERIFIED. New groups are defined standalone and imported directly by the task-3
+      evaluator; none are merged into REFERENCE_CONCEPTS. The task-1 reference
+      evaluator (test_test_contract_reference*.py) still passes, proving the aggregate
+      was not polluted.
+    deferred_to_feature_iteration: false
+  - assumption: >
+      The death-test-first ordering wording ("Death test before unit test") is
+      preserved after inserting the Test Contract Gate step.
+    verified: true
+    note: >
+      VERIFIED. The execution-order intro still reads "Death test before unit test",
+      the Yin-Side "Death test ordering" constraint ("This order cannot be swapped")
+      is untouched, and the digraph keeps step0 -> death_test -> contract_gate ->
+      unit_test. DEATH_TEST_FIRST tokens and test_death_test_first_ordering_preserved
+      go green.
+
+debt_registered: true
+debt_location: >
+  changes/2026-05-30_contract-bound-unit-tests/scar-reports/task-3-scar.yaml
+  (this file). All shortcuts are mitigated and pinned by death tests in
+  tests/test_contract_bound_tests/test_implement_skill_test_contract.py. The only
+  forward-looking item is the reference-path-rename coupling (silent_failure_conditions,
+  last item), which is accepted single-source coupling, not deferred work.
+
+resolved_items:
+  - original_section: assumptions_made
+    original_description: >
+      Touching implement skill near auto-mode wording does not introduce gatekeeper
+      naming drift.
+    resolution: >
+      Verified during self-iteration via grep for `samsara:auto-gatekeeper` and
+      `auto-gatekeeper` across SKILL.md before and after edits — count and exact
+      token unchanged. Edits confirmed non-adjacent to the Auto Mode Gate section.
+      Flag flipped verified:false -> verified:true.
+  - original_section: assumptions_made
+    original_description: >
+      New SKILL-surface groups must not pollute REFERENCE_CONCEPTS.
+    resolution: >
+      Verified by running the task-1 reference evaluator (test_test_contract_reference.py
+      and test_test_contract_reference_death.py) after adding the groups — both still
+      green, proving the aggregate is unchanged.
+  - original_section: known_shortcuts
+    original_description: >
+      Gate could be placed after unit-test writing.
+    resolution: >
+      Placed the gate as execution-order step 4 (before "Write unit tests" at step 5),
+      added the digraph edge death_test -> contract_gate -> unit_test, added a Yin-side
+      "Test Contract Gate before unit tests" constraint, and pinned the before-unit
+      ordering with GATE_BEFORE_UNIT directional tokens + test_gate_runs_before_unit_tests.
+
+  # --- Review-round 2 (dual review: yin FAIL, quality PASS_WITH_CONCERNS) ---
+  - original_section: review_finding_critical_1
+    original_description: >
+      Ordering was asserted by LABEL text ("Test Contract Gate (before unit tests)"),
+      not by POSITION. Moving the gate after the unit-test step while keeping the label
+      left every presence token green — the ordering invariant was not enforced. A
+      token proves presence, never order.
+    resolution: >
+      Added a STRUCTURAL ordering check to _contract_tokens.py: numbered_steps() parses
+      the numbered execution-order step list and step_index_of_concept() returns the
+      POSITIONAL index of the step whose BODY carries a concept (rewrap-robust: matches
+      the step body, not an exact label). New STEP_DEATH_TEST/STEP_CONTRACT_GATE/
+      STEP_UNIT_TEST identify the three steps; STEP_UNIT_TEST is anchored to the start of
+      the body ("^\**writ.* unit tests") so it does not also match the gate body's
+      "... writing unit tests". TestStructuralOrderingDeath now asserts
+      death_index < gate_index < unit_index on the real SKILL.md, and
+      test_structural_check_reddens_on_synthetic_misplaced_gate constructs a SYNTHETIC
+      gate-after-unit list (label preserved) and proves the structural check goes RED.
+      Verified by hand that mutating the REAL SKILL.md step order (gate moved after unit)
+      drives the invariant False while presence tokens stay green. The presence token is
+      kept only as a secondary signal; the load-bearing assertion is positional. The
+      parser fails LOUD (None + caller assert) when a step cannot be located.
+    deferred_to_feature_iteration: false
+  - original_section: review_finding_critical_2
+    original_description: >
+      TEST_CONTRACT_GATE's bare rx("contract\s+gate") matched any "contract gate" prose
+      ("deployment contract gate"), and its comment cited
+      test_unrelated_gate_mentions_are_missing_contract_gate — a test that did not exist
+      (a comment citing a nonexistent test is a lie).
+    resolution: >
+      Tightened the TEST_CONTRACT_GATE token: the bare "contract gate" alternative was
+      replaced by "contract gate ... before ... unit test" (and the reverse) so the gate
+      is bound to the test/unit-test context; the literal "test contract gate" and the
+      reference PATH remain. Rewrote the comment to reference a test that now EXISTS:
+      created test_unrelated_contract_gate_prose_is_missing_contract_gate (polarity/
+      decoy) which feeds deployment/data/billing "contract gate" prose and asserts the
+      concept is reported MISSING. Verified no token comment references a nonexistent
+      test (the two remaining test-name references — _missing_contract_source,
+      _missing_fix_concept — both exist in task-2's test_implementer_test_contract.py).
+    deferred_to_feature_iteration: false
+  - original_section: review_finding_important_3
+    original_description: >
+      SKILL.md step 4 re-pasted the full 6-source contract catalog verbatim from
+      references/test-contract.md AND said "do not duplicate the catalog" — a
+      self-contradicting duplication that will drift.
+    resolution: >
+      Removed the inline 6-source list from SKILL.md step 4; replaced with a lean
+      principle ("assert a behavioral contract, not implementation details") + pointer
+      ("see references/test-contract.md for the contract sources and the both-poles
+      rules ... do not restate the source list here"). Added a SKILL-surface
+      CONTRACT_PRINCIPLE_AND_POINTER group (principle + pointer only, NOT the source
+      list) and re-pointed the evaluator: test_states_contract_principle_and_points_to_reference
+      replaces the old test_states_unit_tests_assert_contracts_not_impl (which required
+      the implementer-surface CONTRACT_BOUND_UNIT source enumeration). The evaluator
+      still reddens if the skill drops the principle OR the pointer (both are required
+      concepts). CONTRACT_BOUND_UNIT remains in the shared module for task-2's
+      implementer evaluator.
+    deferred_to_feature_iteration: false
+  - original_section: review_finding_important_4
+    original_description: >
+      test_registers_reference_as_support_file checked the WHOLE document, not the
+      Support Files section, so its name over-promised (a passing mention anywhere
+      satisfied a name claiming registration in the support-files list).
+    resolution: >
+      Renamed to test_registers_reference_in_support_files_section and scoped it to the
+      '## Support Files' section via the shared support_files_section() helper —
+      consistent with the death test test_reference_registered_as_support_file.
+    deferred_to_feature_iteration: false
+  - original_section: review_finding_important_5
+    original_description: >
+      The Support Files section search hard-coded "## support files" and, on a heading
+      rename, failed with a misleading "section absent" message.
+    resolution: >
+      Introduced a declared/commented anchor SUPPORT_FILES_HEADING and a
+      support_files_section() helper that returns None when the heading is absent. The
+      death test now emits an HONEST message that distinguishes "no section matching the
+      declared anchor — heading may have been RENAMED" from "section EXISTS but does not
+      register the path". EXECUTION_ORDER_HEADING is likewise a declared anchor for the
+      structural ordering parser, with a "heading may have been renamed" message.
+    deferred_to_feature_iteration: false
+  - original_section: review_suggestions
+    original_description: >
+      Cheap suggestions: comment the SKILL path constant as an intentional anchor;
+      single-source the "test-contract.md" literal; note the location of
+      test_silent_green_decoy_separates_poles.
+    resolution: >
+      Done the cheap ones: added a comment marking the SKILL = ROOT/... constant as an
+      intentional load-bearing anchor (parallel to CONTRACT_REFERENCE_SUPPORT_FILE);
+      introduced module-level REFERENCE_PATH_RX = r"test-contract\.md" and routed
+      CONTRACT_BOUND_UNIT / TEST_CONTRACT_GATE / CONTRACT_REFERENCE_SUPPORT_FILE /
+      CONTRACT_PRINCIPLE_AND_POINTER through it so a reference rename is single-source.
+      test_silent_green_decoy_separates_poles is left in
+      TestNewConceptsAreNotGreenByConstructionDeath — it guards a SILENT_GREEN_GUARD
+      decoy invariant and reads naturally alongside the other new-concept decoy tests;
+      relocating it would split the decoy proofs across classes for no gain. Noted here
+      per the suggestion.
+    deferred_to_feature_iteration: false

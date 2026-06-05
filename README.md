@@ -54,6 +54,14 @@ fast-track (small changes) ───────┘
 debugging (production failures) ──┘
 ```
 
+## Auto Mode
+
+The selection happens before `samsara:research`: Samsara asks for an execution mode, either `human-in-the-loop` or `auto`. `human-in-the-loop` keeps the existing workflow gates. In `auto`, the same workflow still runs from `research -> pre-thinking -> planning -> implement -> iteration -> security-privacy-review -> validate-and-ship`, but former human questions and confirmations are routed to `samsara:auto-gatekeeper`.
+
+The gatekeeper answers as a reusable principle-level reviewer with project context, architecture judgment, and first-principles reasoning. Every auto decision is appended to `changes/<feature>/auto-decisions.md` as an append-only record that preserves the original `workflow_prompt`, the `gatekeeper_answer`, rationale, uncertainty, and consequences.
+
+First-cut scope is intentionally session-level: `samsara_config.yaml` is not supported. After an auto run starts, it does not reintroduce user gates during that run; uncertainty is recorded in `auto-decisions.md`, and security/privacy unknowns become high-uncertainty reject decisions.
+
 ### Skills
 
 | Skill | When to use | Key output |

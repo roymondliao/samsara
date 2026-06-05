@@ -93,6 +93,18 @@ Agent tool:
 
     ## Diff
     [MUST paste the unstaged diff of the implementer's changes]
+
+    ## Test-Quality Review (mandatory)
+    Review the TESTS before implementation correctness. For every test in the diff:
+    - Flag brittle / over-fit tests (redden on a behavior-preserving refactor —
+      pinned to implementation details, not an observable contract).
+    - Flag tautological / silent-green tests (can never go red — assert almost
+      nothing, stay green when behavior breaks).
+    - When a test is bound to the WRONG contract, say "fix the test, not the
+      implementation" — do not bend the implementation to a rotten test.
+    - Challenge any perfunctory contract label (Clean Scar): a named contract that
+      maps to no observable behavior, API/schema, artifact, or death/bug case does
+      NOT satisfy the gate.
 ```
 
 ### Code Quality reviewer
@@ -111,6 +123,16 @@ Agent tool:
 
     ## Diff
     [MUST paste the unstaged diff of the implementer's changes]
+
+    ## Test-Quality Review (mandatory — structural test coupling)
+    Review the TESTS for structural test coupling: tests coupled to the
+    implementation STRUCTURE (private internals, call sequence, member layout,
+    mock-call order) rather than to an observable contract. Report this as
+    structural evidence under the Coupling principle with file:line evidence.
+    Structural coupling is evidence for the yin reviewer's brittle-test review;
+    refer any brittle / wrong-contract / fix-the-test verdict, plus test
+    silent-rot / correctness concerns (tautological tests, wrong-contract tests),
+    to the yin code reviewer.
 ```
 
 Both reviewers must report back. If either reports FAIL or PASS_WITH_CONCERNS with Critical issues, the implementer must fix before proceeding.

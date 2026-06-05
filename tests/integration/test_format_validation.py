@@ -289,6 +289,19 @@ class TestTomlFormatValidity:
                 "Agent body was not transferred."
             )
 
+    def test_auto_gatekeeper_toml_contains_decision_protocol(
+        self, converted_output: Path
+    ) -> None:
+        agent_file = (
+            converted_output / ".codex" / "agents" / "samsara-auto-gatekeeper.toml"
+        )
+        assert agent_file.exists(), "samsara-auto-gatekeeper.toml missing"
+        parsed = tomllib.loads(agent_file.read_text(encoding="utf-8"))
+        instructions = parsed["developer_instructions"]
+        assert "auto-decisions.md" in instructions
+        assert "workflow_prompt" in instructions
+        assert "gatekeeper_answer" in instructions
+
 
 class TestJsonFormatValidity:
     """Output JSON files must be valid JSON with expected structure."""

@@ -22,6 +22,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from samsara_cli.converter.skill import ConversionError
+from conftest import FIXTURE_VERSION
 
 
 # ---------------------------------------------------------------------------
@@ -35,7 +36,7 @@ def make_source_structure(tmp_path: Path) -> Path:
     plugin_dir = source / ".claude-plugin"
     plugin_dir.mkdir(parents=True)
     (plugin_dir / "plugin.json").write_text(
-        json.dumps({"name": "samsara", "version": "0.8.0"})
+        json.dumps({"name": "samsara", "version": FIXTURE_VERSION})
     )
 
     skills_dir = source / "skills"

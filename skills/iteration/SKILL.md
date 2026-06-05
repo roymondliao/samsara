@@ -24,11 +24,11 @@ digraph iteration {
 
     entry [label="Entry\n讀取 scar-reports/\n+ index.yaml\n+ pre-thinking.md\n計算 signal_lost" shape=doublecircle];
     empty [label="有 actionable items？" shape=diamond];
-    triage [label="Triage（human gate）\n每個 remaining item:\nfix / accept / defer\nFocus: cross-task patterns"];
+    triage [label="Triage（execution-mode gate）\n每個 remaining item:\nfix / accept / defer\nFocus: cross-task patterns"];
     fix [label="Fix\nbudget-aware dispatch\nper-fix commit\nscar report per fix"];
     round_check [label="Round check\nsignal_lost 下降？\n還有 fix items？" shape=diamond];
     safety [label="Safety valve check\n(advisory)" shape=diamond];
-    gate [label="Human gate\n繼續？停止？\n(safety warnings shown)" shape=diamond];
+    gate [label="Execution-mode gate\n繼續？停止？\n(safety warnings shown)" shape=diamond];
     log [label="寫 iteration-log.yaml"];
     exit [label="Exit → security-privacy-review" shape=doublecircle];
 
@@ -41,8 +41,8 @@ digraph iteration {
     round_check -> gate [label="有更多 items"];
     round_check -> log [label="全部處理完"];
     gate -> safety;
-    safety -> triage [label="within limits\n+ user: 繼續"];
-    safety -> log [label="user: 停止\n(with or without\nsafety warning)"];
+    safety -> triage [label="within limits\n+ gate: 繼續"];
+    safety -> log [label="gate: 停止\n(with or without\nsafety warning)"];
     log -> exit;
 }
 ```
@@ -77,7 +77,7 @@ All three scar categories contribute. Only count items from the remaining set (e
 
 ## Step 2: Triage (Human Gate)
 
-Present all remaining items to the user, grouped by type:
+Use the same triage prompt for both execution modes:
 
 ```
 Feature-level scar items (K items, signal_lost = N):
@@ -97,7 +97,13 @@ Unaddressed:
   (D) Defer — 不在本次處理
 ```
 
-User triages each item. AI can suggest classifications but user decides.
+- If `Execution mode: human-in-the-loop`, present all remaining items to the
+  user, grouped by type. The user triages each item; AI can suggest
+  classifications but the user decides.
+- If `Execution mode: auto`, do not ask the user. Use the Auto Mode Gate below
+  to dispatch `samsara:auto-gatekeeper` for triage, append the decision to
+  `auto-decisions.md`, and follow the recorded fix / accept / defer
+  classification for each item.
 
 When a remaining item maps to the Evaluation Contract, prefer the documented Feedback loop as the first suggested fix path.
 
@@ -168,8 +174,13 @@ Both reviewers must PASS before the per-fix commit is allowed. Either reviewer r
 
 **Blocked fix handling:** If implementer reports BLOCKED or NEEDS_CONTEXT for a fix item:
 - Do NOT retry the same item automatically in the next round
-- Present to user: 「Fix item "[description]" 被 implementer 回報 BLOCKED: [reason]。(A) 提供更多 context 重試 (B) 重新分類為 defer」
-- User decides — do not auto-reclassify without human judgment
+- Use the blocked-fix prompt:
+  > 「Fix item "[description]" 被 implementer 回報 BLOCKED: [reason]。(A) 提供更多 context 重試 (B) 重新分類為 defer」
+- If `Execution mode: human-in-the-loop`, present the prompt to the user. The
+  user decides; do not auto-reclassify without human judgment.
+- If `Execution mode: auto`, do not ask the user. Use the Auto Mode Gate below
+  to dispatch `samsara:auto-gatekeeper`, append the decision to
+  `auto-decisions.md`, and follow the recorded retry or defer decision.
 - Log the outcome in iteration-log
 
 ### Fix Dispatch Guidance
@@ -209,11 +220,17 @@ After processing all fix items in this round:
 - **Net rot increase:** If this round's fixes produced more new scar items than they resolved → emit warning:
   > 「本輪 fix 產出 M 個新 scar items，修復了 K 個。淨 rot 增加。建議停止。」
 
-**Human gate (if within limits):**
+**Round continuation gate (if within limits):**
 > 「Round R 完成。signal_lost: N → N'。修復了 K 個 items，剩餘 J 個。
 >
 > (A) 繼續下一輪
 > (B) 停止，進入 Validation」
+
+- If `Execution mode: human-in-the-loop`, ask the user this question and follow
+  the selected next step.
+- If `Execution mode: auto`, do not ask the user. Use the Auto Mode Gate below
+  to dispatch `samsara:auto-gatekeeper`, append the decision to
+  `auto-decisions.md`, and follow the recorded continue or stop decision.
 
 ## Step 5: Write Iteration Log
 
@@ -223,17 +240,19 @@ Write `iteration-log.yaml` to the feature's `changes/` directory. Use template `
 
 - **No silent skip:** Non-conforming scar reports must be explicitly listed, never silently excluded
 - **Per-fix commit:** Each fix is an independent commit. No batching fixes into a single commit.
-- **Triage is human judgment:** AI suggests, human decides. Do not auto-triage.
-- **Safety valve is advisory:** Forced stop emits a warning and suggestion, but the human gate makes the final decision.
+- **Triage is a recorded gate decision:** human mode asks the user; auto mode
+  records the gatekeeper decision before classification is applied.
+- **Safety valve is advisory:** Forced stop emits a warning and suggestion, but
+  the active execution-mode gate makes the final decision.
 - **Accept requires expiry:** Every `accept` classification must include an `expiry_date` — risk acceptance is not permanent.
 
 ## Red Flags
 
 **Never:**
-- Skip triage and auto-fix all items (human gate is mandatory)
+- Skip triage and auto-fix all items (an execution-mode gate decision is mandatory)
 - Batch multiple fixes into one commit (per-fix commit is mandatory)
 - Silently exclude scar reports that don't parse (list parse failures explicitly)
-- Continue after safety valve triggers without human confirmation
+- Continue after safety valve triggers without the active execution-mode gate decision
 - Accept items without expiry dates
 - Skip `code-quality-reviewer` dispatch — both reviewers are required per fix; skipping one means the review is incomplete
 - Assume an absent review output means PASS — missing reviewer output is always a FAIL
@@ -254,3 +273,39 @@ Iteration complete (by human choice, all items processed, or safety valve). Then
 > 「Iteration 完成。R 輪執行，signal_lost: N₀ → N_final。K items fixed, J items accepted, D items deferred。進入 Security & Privacy Review。」
 
 Invoke `samsara:security-privacy-review` skill.
+
+## Auto Mode Gate
+
+When the session context contains `Execution mode: auto`, keep the iteration
+decision points but route them through `samsara:auto-gatekeeper` instead of
+pausing for input.
+Dispatch it with the Agent tool using `subagent_type: "samsara:auto-gatekeeper"`.
+
+The gatekeeper must append an append-only entry to
+`changes/<feature>/auto-decisions.md` before continuing. Use the canonical
+schema in `references/auto-mode.md`; this stage must provide `prompt_type`,
+`workflow_prompt`, and `gatekeeper_answer` for the entry.
+
+Use the iteration completion transition as `workflow_prompt`, including the
+current signal_lost, fixed item count, accepted item count, and deferred item
+count.
+
+The auto gate covers all iteration decision points, not only the final
+transition:
+
+- triage of remaining scar items into fix / accept / defer
+- blocked-fix handling when an implementer reports BLOCKED or NEEDS_CONTEXT
+- round continuation after signal_lost changes
+- safety valve decisions when round limits or stagnation warnings trigger
+
+Each decision point must append its own `auto-decisions.md` entry before the
+iteration flow follows the recorded decision.
+
+Then follow the recorded decision:
+
+- `proceed` — invoke `samsara:security-privacy-review`.
+- `revise` — revise iteration output or remaining scar classification, then
+  re-run this gate.
+- `reject` — stop the auto run and leave the rejection in `auto-decisions.md`.
+- `accept_gap` — invoke `samsara:security-privacy-review` with the recorded gap
+  visible in the review context.

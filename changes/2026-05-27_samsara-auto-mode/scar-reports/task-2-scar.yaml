@@ -1,0 +1,85 @@
+task_id: task-2
+completion_status: done_with_concerns
+
+known_shortcuts:
+  - description: >
+      Early-stage auto gates are specified as markdown protocol sections, not
+      executable runtime branching. The tests verify instruction presence and
+      required decision-log terms, but they do not execute a real autonomous
+      research -> pre-thinking -> planning run.
+    deferred_to_feature_iteration: true
+
+  - description: >
+      The bootstrap mode selection contract depends on the session agent recording
+      the chosen mode in conversation or change context. There is no structured
+      runtime variable yet.
+    deferred_to_feature_iteration: true
+
+silent_failure_conditions:
+  - description: >
+      A future edit could keep the `## Auto Mode Gate` heading while weakening the
+      transition behavior underneath. Current tests catch required terms and
+      obvious human-input phrases, but they do not parse full workflow semantics.
+    deferred_to_feature_iteration: true
+
+  - description: >
+      If an executing agent fails to carry the selected execution mode from
+      bootstrap into later skills, early-stage auto gates will not trigger even
+      though each skill contains the protocol.
+    deferred_to_feature_iteration: true
+
+assumptions_made:
+  - assumption: >
+      A session-level mode selection before `samsara:research` is sufficient for
+      the first implementation, and persistent config remains out of scope.
+    verified: true
+    note: >
+      Verified by tests that require bootstrap mode selection and persistent config
+      out-of-scope wording.
+    deferred_to_feature_iteration: false
+
+  - assumption: >
+      Existing transition wording in research, pre-thinking, and planning can be
+      preserved while adding an auto branch.
+    verified: true
+    note: >
+      Verified by adding `## Auto Mode Gate` sections without removing existing
+      human transition text and by passing auto-mode protocol tests.
+    deferred_to_feature_iteration: false
+
+  - assumption: >
+      The agent executing a skill will treat the `## Auto Mode Gate` section as the
+      authoritative branch when execution mode is `auto`.
+    verified: false
+    note: >
+      Not live-tested in this task. Task 4's primary evaluator should inspect every
+      stage, but live behavior remains a later validation concern.
+    deferred_to_feature_iteration: true
+
+debt_registered: true
+debt_location: >
+  skills/samsara-bootstrap/SKILL.md execution-mode protocol;
+  skills/research/SKILL.md, skills/pre-thinking/SKILL.md, and
+  skills/planning/SKILL.md markdown auto gate sections
+
+narrative: >
+  Task 2 adds the early-stage auto branch as an instruction-level contract. That is
+  consistent with the first implementation plan, but the true runtime guarantee
+  depends on agents preserving session mode across skill boundaries.
+
+resolved_items:
+  - original_section: silent_failure_conditions
+    original_description: >
+      Bootstrap could enter research without an explicit execution mode contract.
+    resolution: >
+      Added `## Execution Mode Selection` and tests that require `human-in-the-loop`
+      default mode, explicit `auto`, and persistent config marked out of scope.
+
+  - original_section: silent_failure_conditions
+    original_description: >
+      Early-stage skills could transition without appending the original workflow
+      prompt and gatekeeper answer to `auto-decisions.md`.
+    resolution: >
+      Added `## Auto Mode Gate` sections to research, pre-thinking, and planning,
+      and tests requiring append-only `auto-decisions.md`, `workflow_prompt`, and
+      `gatekeeper_answer`.

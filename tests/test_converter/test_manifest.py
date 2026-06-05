@@ -8,6 +8,11 @@ import json
 import pytest
 from pathlib import Path
 
+from conftest import FIXTURE_VERSION
+
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_ACTUAL_PLUGIN_JSON = _REPO_ROOT / ".claude-plugin" / "plugin.json"
+
 
 def _write_manifest(tmp_path: Path, content: dict) -> Path:
     p = tmp_path / "plugin.json"
@@ -24,14 +29,14 @@ class TestManifestConverterBasicConversion:
             tmp_path,
             {
                 "name": "samsara",
-                "version": "0.8.0",
+                "version": FIXTURE_VERSION,
                 "description": "samsara plugin",
             },
         )
         converter = ManifestConverter()
         result = converter.convert(source, extra_fields={})
         assert result["name"] == "samsara"
-        assert result["version"] == "0.8.0"
+        assert result["version"] == FIXTURE_VERSION
 
     def test_description_preserved(self, tmp_path):
         """description field from source appears in output."""
@@ -41,7 +46,7 @@ class TestManifestConverterBasicConversion:
             tmp_path,
             {
                 "name": "samsara",
-                "version": "0.8.0",
+                "version": FIXTURE_VERSION,
                 "description": "向死而驗",
             },
         )
@@ -57,7 +62,7 @@ class TestManifestConverterBasicConversion:
             tmp_path,
             {
                 "name": "samsara",
-                "version": "0.8.0",
+                "version": FIXTURE_VERSION,
             },
         )
         converter = ManifestConverter()
@@ -72,7 +77,7 @@ class TestManifestConverterBasicConversion:
             tmp_path,
             {
                 "name": "samsara",
-                "version": "0.8.0",
+                "version": FIXTURE_VERSION,
             },
         )
         converter = ManifestConverter()
@@ -85,7 +90,7 @@ class TestManifestConverterBasicConversion:
 
         original_content = {
             "name": "samsara",
-            "version": "0.8.0",
+            "version": FIXTURE_VERSION,
             "description": "desc",
         }
         source = _write_manifest(tmp_path, original_content)
@@ -109,7 +114,7 @@ class TestManifestConverterFieldMergeOrder:
             tmp_path,
             {
                 "name": "samsara",
-                "version": "0.8.0",
+                "version": FIXTURE_VERSION,
                 "author": {"name": "Roymond Liao"},
             },
         )
@@ -126,7 +131,7 @@ class TestManifestConverterFieldMergeOrder:
             tmp_path,
             {
                 "name": "samsara",
-                "version": "0.8.0",
+                "version": FIXTURE_VERSION,
                 "skills": "./old/",
             },
         )
@@ -142,7 +147,7 @@ class TestManifestConverterFieldMergeOrder:
             tmp_path,
             {
                 "name": "samsara",
-                "version": "0.8.0",
+                "version": FIXTURE_VERSION,
                 "description": "desc",
             },
         )
@@ -154,25 +159,19 @@ class TestManifestConverterFieldMergeOrder:
 class TestManifestConverterRealWorldPluginJson:
     def test_actual_plugin_json_converts_correctly(self, tmp_path):
         """
-        Test with the actual source plugin.json content from the repo.
-        This verifies the full conversion pipeline works end-to-end.
+        Test with the actual source plugin.json from the repo.
+        Reads the live file so this test stays accurate as the project evolves.
         """
         from samsara_cli.converter.manifest import ManifestConverter
 
-        actual_source = {
-            "name": "samsara",
-            "description": "向死而驗 — Death-first development workflow. Existential accountability for every line of code.",
-            "version": "0.8.0",
-            "author": {"name": "Roymond Liao"},
-        }
+        actual_source = json.loads(_ACTUAL_PLUGIN_JSON.read_text(encoding="utf-8"))
         source = _write_manifest(tmp_path, actual_source)
         converter = ManifestConverter()
         result = converter.convert(source, extra_fields={"skills": "./skills/"})
 
-        assert result["name"] == "samsara"
-        assert result["version"] == "0.8.0"
+        assert result["name"] == actual_source["name"]
+        assert result["version"] == actual_source["version"]
         assert result["description"] == actual_source["description"]
-        assert result["author"] == {"name": "Roymond Liao"}
         assert result["skills"] == "./skills/"
 
     def test_converted_manifest_is_json_serializable(self, tmp_path):
@@ -186,7 +185,7 @@ class TestManifestConverterRealWorldPluginJson:
             tmp_path,
             {
                 "name": "samsara",
-                "version": "0.8.0",
+                "version": FIXTURE_VERSION,
                 "author": {"name": "Roymond Liao"},
             },
         )

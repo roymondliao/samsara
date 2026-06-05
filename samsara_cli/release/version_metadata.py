@@ -15,6 +15,8 @@ _SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)
 _MARKETPLACE_PATH = Path(".claude-plugin/marketplace.json")
 _PLUGIN_PATH = Path(".claude-plugin/plugin.json")
 _PYPROJECT_PATH = Path("pyproject.toml")
+_UV_LOCK_PATH = Path("uv.lock")
+_PROJECT_NAME = "samsara"
 
 
 class VersionMetadataError(Exception):
@@ -58,7 +60,7 @@ class PartialSyncError(VersionMetadataError):
 
 @dataclass(frozen=True)
 class SyncResult:
-    """Result of syncing plugin/pyproject versions to marketplace version."""
+    """Result of syncing secondary version files to marketplace version."""
 
     version: str
     tag: str
@@ -74,6 +76,7 @@ class VersionMetadata:
     marketplace_version: str
     plugin_version: str
     pyproject_version: str
+    lock_version: str
     mismatches: list[VersionMismatch]
 
     @property
@@ -90,10 +93,12 @@ class VersionMetadata:
         marketplace_path = repo_root / _MARKETPLACE_PATH
         plugin_path = repo_root / _PLUGIN_PATH
         pyproject_path = repo_root / _PYPROJECT_PATH
+        uv_lock_path = repo_root / _UV_LOCK_PATH
 
         marketplace_data = _read_json(marketplace_path)
         plugin_data = _read_json(plugin_path)
         pyproject_data = _read_toml(pyproject_path)
+        uv_lock_data = _read_toml(uv_lock_path)
 
         marketplace_version = _validate_version(
             _read_nested_required(
@@ -113,6 +118,11 @@ class VersionMetadata:
             ),
             pyproject_path,
             "project.version",
+        )
+        lock_version = _validate_version(
+            _read_uv_lock_package_version(uv_lock_data, uv_lock_path, _PROJECT_NAME),
+            uv_lock_path,
+            f"package[{_PROJECT_NAME}].version",
         )
 
         mismatches: list[VersionMismatch] = []
@@ -134,12 +144,22 @@ class VersionMetadata:
                     actual=pyproject_version,
                 )
             )
+        if lock_version != marketplace_version:
+            mismatches.append(
+                VersionMismatch(
+                    path=uv_lock_path,
+                    field=f"package[{_PROJECT_NAME}].version",
+                    expected=marketplace_version,
+                    actual=lock_version,
+                )
+            )
 
         return cls(
             repo_root=repo_root,
             marketplace_version=marketplace_version,
             plugin_version=plugin_version,
             pyproject_version=pyproject_version,
+            lock_version=lock_version,
             mismatches=mismatches,
         )
 
@@ -178,6 +198,13 @@ class VersionMetadata:
                     metadata.repo_root / _PYPROJECT_PATH, metadata.marketplace_version
                 )
                 written_paths.append(metadata.repo_root / _PYPROJECT_PATH)
+            if any(
+                path == metadata.repo_root / _UV_LOCK_PATH for path in changed_paths
+            ):
+                _write_uv_lock_package_version(
+                    metadata.repo_root / _UV_LOCK_PATH, metadata.marketplace_version
+                )
+                written_paths.append(metadata.repo_root / _UV_LOCK_PATH)
         except Exception as exc:
             raise PartialSyncError(written_paths, exc) from exc
 
@@ -236,6 +263,22 @@ def _read_nested_required(data: dict, keys: list[str], path: Path) -> object:
     return current
 
 
+def _read_uv_lock_package_version(data: dict, path: Path, package_name: str) -> object:
+    packages = data.get("package")
+    if not isinstance(packages, list):
+        raise VersionMetadataError(f"Missing required field 'package' in {path}")
+
+    for package in packages:
+        if isinstance(package, dict) and package.get("name") == package_name:
+            if "version" not in package:
+                raise VersionMetadataError(
+                    f"Missing required field 'package[{package_name}].version' in {path}"
+                )
+            return package["version"]
+
+    raise VersionMetadataError(f"Missing required package {package_name!r} in {path}")
+
+
 def _validate_version(value: object, path: Path, field: str) -> str:
     if not isinstance(value, str):
         raise VersionMetadataError(f"Missing required field {field!r} in {path}")
@@ -261,3 +304,32 @@ def _write_pyproject_version(path: Path, version: str) -> None:
         raise VersionMetadataError(f"Missing required field 'project' in {path}")
     project["version"] = version
     path.write_text(tomli_w.dumps(data), encoding="utf-8")
+
+
+def _write_uv_lock_package_version(path: Path, version: str) -> None:
+    _read_uv_lock_package_version(_read_toml(path), path, _PROJECT_NAME)
+
+    lines = path.read_text(encoding="utf-8").splitlines(keepends=True)
+    in_target_package = False
+    replaced = False
+    output: list[str] = []
+
+    for line in lines:
+        stripped = line.strip()
+        if stripped == "[[package]]":
+            in_target_package = False
+        elif stripped == f'name = "{_PROJECT_NAME}"':
+            in_target_package = True
+        elif in_target_package and stripped.startswith("version = "):
+            newline = "\n" if line.endswith("\n") else ""
+            line = f'version = "{version}"{newline}'
+            replaced = True
+            in_target_package = False
+        output.append(line)
+
+    if not replaced:
+        raise VersionMetadataError(
+            f"Missing required field 'package[{_PROJECT_NAME}].version' in {path}"
+        )
+
+    path.write_text("".join(output), encoding="utf-8")

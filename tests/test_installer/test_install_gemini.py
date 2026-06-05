@@ -11,12 +11,14 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from conftest import FIXTURE_VERSION
+
 
 def make_source(tmp_path: Path) -> Path:
     source = tmp_path / "source"
     (source / ".claude-plugin").mkdir(parents=True)
     (source / ".claude-plugin" / "plugin.json").write_text(
-        json.dumps({"name": "samsara", "version": "0.8.0"})
+        json.dumps({"name": "samsara", "version": FIXTURE_VERSION})
     )
     (source / "skills" / "research").mkdir(parents=True)
     (source / "skills" / "research" / "SKILL.md").write_text(

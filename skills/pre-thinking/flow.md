@@ -16,6 +16,32 @@ Information gap examples:
 - Interface ownership is unclear ("Should this live in module A or B?")
 - Success definition is undefined ("How many is 'enough' for the north star metric?")
 - Location is ambiguous ("Does this new file go in `lib/` or `core/`?")
+- Runtime entrypoint is unverified ("Which command, API route, hook, or worker
+  actually enters this behavior?")
+- Config or environment source is unverified ("Which env var, config file, or
+  deployment setting controls this path?")
+- External interaction is untraced ("Which service, database, queue, filesystem
+  path, or network call owns this side effect?")
+- Current behavior source is unclear ("Which existing test, evaluator, public
+  interface, or artifact defines today's behavior?")
+- Codebase map is missing or stale and the needed boundary/environment facts
+  cannot be verified by targeted local inspection.
+
+Atomic context procedure:
+1. Check `.samsara/codebase-map.yaml`.
+2. If present and fresh, read it as derived context for module boundaries,
+   entrypoints, config sources, external services, data flow, hidden coupling, and
+   assumptions.
+3. If present but stale, use it only as a starting hypothesis. Verify any fact
+   needed for planning against live codebase artifacts; record stale or
+   unverifiable facts as information gaps.
+4. If missing, do not invent a map from memory. For a small, localized task, run
+   targeted local inspection of the affected files and their immediate
+   entrypoints/config/external interactions. For broad or unclear scope, record an
+   information gap recommending `samsara:codebase-map`.
+5. If the map and live codebase disagree, live codebase artifacts win. Surface the
+   drift as an information gap or update requirement; do not silently trust the
+   map.
 
 Design decision gap examples:
 - Boundary is unclear ("Is this a new chain skill, a planning responsibility, or a validate-and-ship check?")

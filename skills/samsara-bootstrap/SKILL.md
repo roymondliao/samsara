@@ -13,6 +13,14 @@ description: Injected at session start — establishes samsara axiom, agent cons
 
 任何存在於系統中的東西——function、module、service、agent 的一個決策——都必須能回答：「如果你消失了，什麼東西會感到痛？」回答不了的，不應該存在。
 
+## Truth Source Boundary
+
+Live codebase artifacts are authoritative for current platform behavior: source code, tests, configs, skills, agents, references, templates, and workflow
+artifacts that the platform reads or validates.
+
+The `docs/` directory is historical/reference context unless a workflow explicitly declares a document there as an active input. Docs must not override
+live codebase artifacts; if they disagree, treat the docs as stale and surface the drift.
+
 ## STEP 0 — 任何實作前的前置條件
 
 在執行任何開發任務之前，必須先完成以下四個問題。這不是建議，是前置條件。
@@ -36,6 +44,42 @@ description: Injected at session start — establishes samsara axiom, agent cons
 2. 每次提出設計方案時附：「這個設計假設了___永遠成立。若不再成立，最先腐爛的是___」
 3. 每次被要求優化時先問：「值得優化嗎？還是不應該存在？」
 4. 遇到模糊需求時，不選最合理解釋繼續——讓模糊本身可見
+
+## Execution Mode Selection
+
+before invoking `samsara:research` for new feature work, ask the user to choose
+the session-level execution mode:
+
+- `human-in-the-loop` — Default mode and default selection. Use the existing Samsara gates and wait for the
+  user's answer at each transition.
+- `auto` — Run the same workflow, but route each later workflow question or
+  confirmation through `samsara:auto-gatekeeper` and append the decision to
+  `changes/<feature>/auto-decisions.md`.
+  Source dispatch target: `subagent_type: "samsara:auto-gatekeeper"`.
+
+Use this prompt before research:
+
+> Execution mode? Choose `human-in-the-loop` or `auto`.
+
+Record the selected mode as an explicit session context line before research:
+
+```text
+Execution mode: human-in-the-loop
+```
+
+or:
+
+```text
+Execution mode: auto
+```
+
+Later skills read this explicit `Execution mode:` line as the active execution
+mode. If no mode is selected, record `Execution mode: human-in-the-loop`;
+unknown mode must not silently become `auto`.
+
+Persistent config, including `samsara_config.yaml`, is out of scope for the
+first auto-mode implementation. Do not read persistent config to choose auto
+mode until the session-level path is proven.
 
 ## Skill Matching（強制）
 

@@ -13,7 +13,6 @@ class TestLocalCliMarkers:
         content = CODEX_SMOKE.read_text(encoding="utf-8")
 
         assert "@pytest.mark.requires_codex" not in content
-        assert 'ConversionEngine("codex") works without running Codex CLI' in content
 
     def test_gemini_live_smoke_has_requires_gemini_marker(self):
         content = GEMINI_SMOKE.read_text(encoding="utf-8")

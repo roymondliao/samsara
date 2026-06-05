@@ -1,0 +1,70 @@
+feature: samsara-auto-mode
+coverage_type: verified
+
+scenarios:
+  - name: "Silent failure - auto mode transitions without decision record"
+    type: death_path
+    given: "execution_mode is auto and a workflow stage reaches its transition gate"
+    when: "the stage proceeds to the next Samsara phase"
+    then:
+      - "the stage must require a `samsara-auto-gatekeeper` decision"
+      - "the decision must be appended to `changes/<feature>/auto-decisions.md` before transition"
+      - "state must be exactly one of: success, failure, unknown"
+      - "unknown must fail the auto run, never silently pass through"
+
+  - name: "Silent failure - decision file has shape but no judgment"
+    type: death_path
+    given: "auto mode produces `auto-decisions.md`"
+    when: "a later audit inspects a gate decision"
+    then:
+      - "each entry must include question-specific answer, principles used, evidence checked, uncertainty, architecture considerations, and next step"
+      - "generic approval text must not satisfy the decision contract"
+      - "any future audit must reconstruct why the gate passed from the decision file alone"
+
+  - name: "Silent failure - auto mode asks human after start"
+    type: death_path
+    given: "the user selected auto before research"
+    when: "any later stage needs a gate decision"
+    then:
+      - "the stage must not ask the user for confirmation, accepted risk, or next action"
+      - "the stage must dispatch the auto gatekeeper instead"
+      - "if the gatekeeper cannot decide, uncertainty must be recorded in `auto-decisions.md`, not converted into human fallback"
+
+  - name: "Unknown outcome - security or privacy review cannot determine pass"
+    type: death_path
+    given: "auto mode reaches security/privacy review"
+    when: "review result is unavailable, unknown, or failing"
+    then:
+      - "the run must record a high-uncertainty `reject` decision with the review evidence"
+      - "the workflow must not mark risk accepted by a human"
+      - "the workflow must not transition to validate-and-ship as if review passed"
+
+  - name: "Degradation - persistent config support is requested before session mode works"
+    type: degradation
+    given: "the first implementation is not yet passing session-level auto workflow evaluation"
+    when: "implementation considers `samsara_config.yaml` support"
+    then:
+      - "persistent config work must be marked out of scope"
+      - "the session ask before `research` remains the only first-cut mode selector"
+      - "the plan must not introduce config schema, loader, or persistence changes"
+
+  - name: "Success - full auto workflow contract exists"
+    type: happy_path
+    given: "Samsara source skills and agents are installed or inspected from source"
+    when: "the evaluator checks the auto-mode workflow contract"
+    then:
+      - "bootstrap asks for execution mode before research"
+      - "every required workflow stage preserves human-in-the-loop behavior and adds an auto branch"
+      - "every auto branch dispatches `samsara-auto-gatekeeper`"
+      - "every auto branch requires `changes/<feature>/auto-decisions.md`"
+      - "the new agent converts to the target platform agent name"
+
+  - name: "Success - release metadata bumped to 0.11.0"
+    type: happy_path
+    given: "the auto-mode feature implementation and validation are complete"
+    when: "release metadata is prepared"
+    then:
+      - "`.claude-plugin/marketplace.json` metadata.version is `0.11.0`"
+      - "`.claude-plugin/plugin.json`, `pyproject.toml`, and `uv.lock` are synchronized to `0.11.0`"
+      - "`uv run samsara-cli release check-version` reports synchronized version metadata"
+      - "`uv run samsara-cli release print-tag` prints `v0.11.0`"
