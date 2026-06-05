@@ -18,6 +18,8 @@ tests/container-samples/
 .codex/
 !tests/fixtures/expected/codex/.agents/
 !tests/fixtures/expected/codex/.agents/**
+!tests/fixtures/expected/codex/.codex/
+!tests/fixtures/expected/codex/.codex/**
 
 # Gemini
 .gemini/

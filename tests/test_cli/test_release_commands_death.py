@@ -17,11 +17,13 @@ def make_repo(
     marketplace_version: str = "0.9.0",
     plugin_version: str | None = None,
     pyproject_version: str | None = None,
+    lock_version: str | None = None,
 ) -> Path:
     plugin_version = marketplace_version if plugin_version is None else plugin_version
     pyproject_version = (
         marketplace_version if pyproject_version is None else pyproject_version
     )
+    lock_version = marketplace_version if lock_version is None else lock_version
     repo = tmp_path / "repo"
     plugin_dir = repo / ".claude-plugin"
     plugin_dir.mkdir(parents=True)
@@ -42,6 +44,16 @@ def make_repo(
     )
     (repo / "pyproject.toml").write_text(
         (f'[project]\nname = "samsara"\nversion = "{pyproject_version}"\n'),
+        encoding="utf-8",
+    )
+    (repo / "uv.lock").write_text(
+        (
+            "version = 1\n\n"
+            "[[package]]\n"
+            'name = "samsara"\n'
+            f'version = "{lock_version}"\n'
+            'source = { editable = "." }\n'
+        ),
         encoding="utf-8",
     )
     return repo
