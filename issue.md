@@ -145,3 +145,7 @@ Discovered during continuous-learning implementation. 4 tasks were fully impleme
 **Note:** ISSUE-002, 003, 004 were originally recorded here but are NOT samsara issues.
 They belong to the continuous-learning feature (shared, kaleidoscope-tools root level).
 Moved to: `changes/2026-04-15_continuous-learning/issues.md`
+
+**Note:** The Loop Engineering Gap Analysis (originally ISSUE-005 ~ ISSUE-009, recorded 2026-06-10)
+was moved to `roadmap.md` (renumbered RM-001 ~ RM-005) — those entries are capability
+enhancements identified through analysis, not defects discovered during usage.
