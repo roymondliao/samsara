@@ -42,17 +42,35 @@ claude plugins add /path/to/samsara
 
 安裝後，Samsara 會透過 `SessionStart` hook 在每次對話開始時注入公理和約束。
 
+### 多平台支援
+
+Samsara 以 Claude Code 插件的形式撰寫，但 `samsara-cli` 可以把它轉換並安裝到其他 agent 平台（例如 Codex）：
+
+```bash
+source .venv/bin/activate
+uv run samsara-cli list-platforms              # 列出支援的目標平台
+uv run samsara-cli convert --platform codex    # 轉換輸出到 ./dist/codex/
+uv run samsara-cli install codex --scope project
+uv run samsara-cli validate --platform codex   # 驗證轉換結果
+```
+
+Converter 會把 skills、agents、hooks、references 轉換成目標平台的格式；`update` 可更新既有安裝。
+
 ## 工作流程
 
 Samsara 提供從研究到交付的結構化流程。每個階段產生特定的產出物，餵入下一階段。
 
 ```
-research  ──>  planning  ──>  implement  ──>  validate-and-ship
-                                  ^
-                                  │
-fast-track（小改動）───────────────┘
-debugging（production 故障）──────┘
+research ──> pre-thinking ──> planning ──> implement ──> iteration（可選）
+                                               │              │
+                                               v              v
+                                       security-privacy-review ──> validate-and-ship
+
+fast-track（小型低風險改動）──────> 完成
+debugging（production 故障）──> 小 fix 走 fast-track / 大 fix 走 implement
 ```
+
+每個階段轉換都是 human gate（auto mode 下則由 `auto-gatekeeper` 決策）。
 
 ## Auto Mode
 
@@ -67,9 +85,12 @@ debugging（production 故障）──────┘
 | Skill | 使用時機 | 關鍵產出 |
 |-------|---------|---------|
 | `samsara:research` | 開始新功能或調查問題 | Kickoff 文件 + 問題解剖報告 |
-| `samsara:planning` | 研究完成後 | Death-first 規格 + 帶驗收條件的任務 |
+| `samsara:pre-thinking` | 研究完成後、planning 前——恆被 invoke | User–LLM assumption gap 的 pre-thinking audit log |
+| `samsara:planning` | Pre-thinking commitment 後（Proceed / Accept gap） | Death-first 規格 + 帶驗收條件的任務 |
 | `samsara:implement` | Plan 與 tasks 就緒 | 帶 death test 的程式碼 + scar reports |
-| `samsara:validate-and-ship` | 所有任務完成 | 帶失敗預算的交付清單 |
+| `samsara:iteration` | Implement 完成後（可選）——feature-level scar resolution | Cross-task patterns + 系統級腐爛修復的 iteration log |
+| `samsara:security-privacy-review` | Implement/iteration 完成後、交付前 | Security & privacy review gate 結果 |
+| `samsara:validate-and-ship` | Security review 通過（或風險已被接受） | 帶失敗預算的交付清單 |
 | `samsara:fast-track` | 小型低風險改動（< 100 行） | 簡化流程，death test 仍先行 |
 | `samsara:debugging` | 既有程式碼的 production 故障 | 四階段陰面根因分析 |
 | `samsara:codebase-map` | 進入新專案或程式碼大幅變動後 | 結構地圖 + 靜默失敗面評估 |
@@ -83,9 +104,13 @@ Samsara 包含專門的 subagent，陰面約束寫死在 agent 定義中 — 不
 |-------|------|-------|
 | `samsara:implementer` | Death-test-first 實作，產出 scar reports | sonnet |
 | `samsara:code-reviewer` | 陰面 code review：先問能否刪除、命名是否誠實、靜默腐爛路徑 | sonnet |
+| `samsara:code-quality-reviewer` | 結構品質審查：九個陰面原則（S/O/L/I/D + 內聚、耦合、DRY、pattern），附 file:line 證據 | sonnet |
+| `samsara:auto-gatekeeper` | Auto mode 下回答 workflow gate 問題；記錄 append-only 決策 | sonnet |
 | `samsara:structure-explorer` | 掃描模組邊界、依賴關係、公開介面 | sonnet |
 | `samsara:infra-explorer` | 掃描建構系統、設定來源、外部依賴 | sonnet |
 | `samsara:yin-explorer` | 分析靜默失敗路徑、隱性耦合、未驗證假設 | sonnet |
+
+Review agents 會從 `references/` 載入 domain-specific checklists（code review、code quality、IaC review、test contracts），遇到不支援的 domain 會回傳 `UNKNOWN` 而不是猜測。
 
 ## 實作流程
 
@@ -145,9 +170,12 @@ Samsara 包含專門的 subagent，陰面約束寫死在 agent 定義中 — 不
 ```
 samsara/
 ├── .claude-plugin/
-│   └── plugin.json              # 插件定義（名稱、版本）
+│   ├── plugin.json              # 插件定義（名稱、版本）
+│   └── marketplace.json         # Release 版本的 source of truth
 ├── agents/
+│   ├── auto-gatekeeper.md       # Auto mode 的 gate 決策（append-only 記錄）
 │   ├── code-reviewer.md         # 陰面 code review
+│   ├── code-quality-reviewer.md # 結構品質審查（九個陰面原則）
 │   ├── implementer.md           # Death-test-first 實作
 │   ├── infra-explorer.md        # 基礎設施分析
 │   ├── structure-explorer.md    # 程式碼結構掃描
@@ -155,20 +183,27 @@ samsara/
 ├── hooks/
 │   ├── hooks.json               # SessionStart hook 註冊
 │   ├── session-start            # 注入 samsara-bootstrap
-│   └── check-codebase-map       # 提醒生成 codebase map
+│   └── check-codebase-map       # 提醒生成 / 更新過期的 codebase map
 ├── skills/
 │   ├── samsara-bootstrap/       # Session 初始化（公理 + 約束）
 │   ├── research/                # 問題調查 + kickoff
+│   ├── pre-thinking/            # User–LLM assumption gap 審計
 │   ├── planning/                # Death-first 規格 + 任務生成
 │   ├── implement/               # Subagent 協調 + scar reports
-│   │   ├── SKILL.md
-│   │   ├── dispatch-template.md # Subagent dispatch 的 prompt 模板
-│   │   └── scar-report.md      # Scar report 格式參考
+│   ├── iteration/               # Feature-level scar resolution
+│   ├── security-privacy-review/ # 交付前的 security & privacy gate
 │   ├── validate-and-ship/       # 驗證 + 交付清單
 │   ├── fast-track/              # 小改動的簡化流程
 │   ├── debugging/               # 四階段陰面 debugging
 │   ├── codebase-map/            # 專案結構 + 失敗面掃描
 │   └── writing-skills/          # Skill 開發的 TDD
+├── references/                  # Review agents 載入的 domain checklists
+├── samsara_cli/                 # Release 工具 + 多平台 converter/installer
+├── tests/                       # 插件測試（pytest）
+├── docs/                        # 設計、哲學、開發筆記
+├── changes/                     # 每個 feature 的 workflow 產出物（kickoff → ship manifest）
+├── issue.md                     # 實際使用中發現的框架缺陷
+├── roadmap.md                   # 規劃中的能力增強
 └── MEMORY.md                    # 插件記憶索引
 ```
 
@@ -180,12 +215,18 @@ Samsara 在工作流程中產出結構化的產出物：
 |------|--------|------|------|
 | Research | Kickoff | Markdown | 問題框定 + 範圍 |
 | Research | 問題解剖報告 | Markdown | Death cases + 靜默失敗分析 |
+| Pre-thinking | Pre-thinking audit log | Markdown | User–LLM assumption gaps + commitment 決定 |
 | Planning | Overview | Markdown | 給 subagent 的架構 context |
 | Planning | Tasks | Markdown | 個別任務規格，含 death test 需求 |
 | Planning | 驗收條件 | YAML | 成功 + 失敗條件 |
 | Planning | Index | YAML | 任務清單，含依賴關係 |
 | Implement | Scar report | YAML | 每個任務的傷疤：假設、靜默失敗、邊界條件 |
+| Iteration | Iteration log | YAML | Feature-level scar 分類 + 解決記錄 |
+| Auto mode | Auto decisions | Markdown | Append-only gate 決策，含 rationale 與 uncertainty |
+| Fast-track | Fast-track record | YAML | 小改動的簡化流程記錄 |
 | Validate | Ship manifest | YAML | 交付摘要，含失敗預算 |
+
+所有產出物都存放在 `changes/<feature>/` 之下——per-feature 目錄是 workflow 的 authoritative record。
 
 ## Release
 
@@ -202,6 +243,13 @@ uv run samsara-cli release check-version
 `sync-version` 會把 `.claude-plugin/plugin.json` 與 `pyproject.toml` 同步到 marketplace metadata；`check-version` 會在 CI 或 release workflow 建 tag 前擋下任何版本漂移。
 
 GitHub release workflow 會在 PR merge 進 `main`、並且 PR 被 closed 後執行。前提是假設 branch protection 已要求該 PR 的 CI 必須先通過才能 merge。
+
+## Issues 與 Roadmap
+
+Samsara 把自己的哲學套用在自己身上——傷口被記錄，而非隱藏：
+
+- **[issue.md](./issue.md)** — 實際使用中發現的框架缺陷，含 error chain 與根因分析（例如 ISSUE-001：planning 的 File Map 與 Key Decisions 矛盾）。
+- **[roadmap.md](./roadmap.md)** — 透過分析識別出的能力增強規劃。目前記錄 loop engineering 差距分析（RM-001 ~ RM-005）：排程心跳、auto-mode loop driver、worktree 平行化、全域 loop state、對外 connectors。
 
 ## 授權
 
