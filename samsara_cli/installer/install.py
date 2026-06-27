@@ -314,6 +314,15 @@ class Installer:
         # --- Step 3: Copy native output into the user's home directories ---
         self._install_native_tree(converted_dir=converted_dir, target_root=home)
 
+        # --- Step 3b: Rewrite samsara's relative hook commands to absolute ---
+        # The converter bakes a scope-agnostic RELATIVE command. Relative paths
+        # resolve correctly for project scope (script lives under <project>/),
+        # but for global scope the script lives under $HOME while Codex/Gemini
+        # resolve the command against the PROJECT cwd — so the hook silently
+        # never fires. Rewriting here (per scope) keeps that decision out of the
+        # scope-agnostic converter.
+        self._rewrite_global_hook_commands(install_root=home)
+
         if config_is_json:
             return self._global_install_instructions(
                 install_root=home,
@@ -366,6 +375,69 @@ class Installer:
             else:
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(item, dest)
+
+    def _rewrite_global_hook_commands(self, install_root: Path) -> None:
+        """Rewrite samsara's relative hook commands to absolute under install_root.
+
+        Only commands that point into our own plugin hooks dir (prefix
+        '<plugin_dir>/') are rewritten — a user's pre-existing foreign hook
+        command (e.g. 'my-own-tool.sh') is left untouched. If the rewrite scope
+        were broader it could mangle unrelated commands; if narrower it would
+        silently leave the global hook unresolvable.
+
+        No-op (not an error) when the platform has no plugin_dir/hooks_file or the
+        hook config file is absent — some platforms may not ship a hooks file.
+        """
+        paths = self._config.paths
+        if paths is None or not paths.plugin_dir or not paths.hooks_file:
+            return
+
+        hook_file = install_root / paths.plugin_dir / paths.hooks_file
+        if not hook_file.exists():
+            return
+
+        try:
+            data = json.loads(hook_file.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as e:
+            raise InstallerError(
+                f"Cannot rewrite hook commands because {hook_file} is not valid "
+                f"JSON: {e}. The hook file was written but its commands could not "
+                "be made absolute — the global hook would not fire."
+            ) from e
+
+        prefix = f"{paths.plugin_dir}/"
+        if self._rewrite_command_paths(data, prefix=prefix, install_root=install_root):
+            hook_file.write_text(
+                json.dumps(data, indent=2, ensure_ascii=False) + "\n",
+                encoding="utf-8",
+            )
+            logger.info("Rewrote samsara hook commands to absolute in: %s", hook_file)
+
+    def _rewrite_command_paths(
+        self, node: object, *, prefix: str, install_root: Path
+    ) -> bool:
+        """Recursively rewrite relative 'command' values that start with prefix.
+
+        Returns True if any command was rewritten. The recursion is structure-
+        agnostic so it works for both Codex hooks.json and Gemini settings.json,
+        which nest commands differently.
+        """
+        changed = False
+        if isinstance(node, dict):
+            command = node.get("command")
+            if isinstance(command, str) and command.startswith(prefix):
+                node["command"] = str(install_root / command)
+                changed = True
+            for value in node.values():
+                changed |= self._rewrite_command_paths(
+                    value, prefix=prefix, install_root=install_root
+                )
+        elif isinstance(node, list):
+            for item in node:
+                changed |= self._rewrite_command_paths(
+                    item, prefix=prefix, install_root=install_root
+                )
+        return changed
 
     def _copy_dir_merge(self, source_dir: Path, target_dir: Path) -> None:
         """Recursively merge source_dir into target_dir."""

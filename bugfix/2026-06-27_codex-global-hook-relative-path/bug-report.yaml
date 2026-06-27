@@ -1,0 +1,81 @@
+# Phase 1 — Interrogate the Failure
+# Codex global install: hook command path is relative, never resolves to ~/.codex
+
+bug:
+  title: "Global install bakes a relative hook command path that Codex resolves against the project cwd, not $HOME"
+  reported_by: "code review of Codex install support (user-supplied analysis)"
+  date: 2026-06-27
+
+failure_classification:
+  level: 3  # False success — install reports success, hook silently never fires
+  rationale: >
+    `samsara-cli install --scope global` completes without error and prints
+    "Restart codex to load the skills, agents, and hooks." But the SessionStart
+    hook command is a relative path (.codex/hooks/samsara-session-start.sh).
+    Codex launched from a project dir resolves this against <repo>/.codex/...,
+    where no script exists for a global install (the script is at ~/.codex/...).
+    No error is raised — the hook simply never runs. Samsara bootstrap context
+    is silently not injected. This is "false success" bordering on Level 4 silent
+    rot: the user believes samsara is active globally when it is not.
+
+impact:
+  scope: "All global-scope Codex installs."
+  project_scope: "Unaffected — script really is at <repo>/.codex/hooks/... so the relative path resolves correctly."
+  detection_delay: >
+    Potentially indefinite. There is no test asserting the rendered command path
+    resolves to an existing file under the global install root, so CI never catches it.
+
+root_cause_summary: >
+  The hook command path is decided at CONVERSION time, before install scope is known.
+  HookConverter.convert_hooks_json builds hooks_dir = f"{plugin_dir}/hooks" where
+  plugin_dir = ".codex" (relative, from codex.yaml paths.plugin_dir). The template
+  hooks.json.j2 emits "command": "{{ hooks_dir }}/samsara-session-start.sh". The
+  same converted artifact is then copied verbatim by the installer for BOTH scopes:
+  _install_global copies the native tree under $HOME but never rewrites the command
+  to an absolute / $HOME-relative path.
+
+evidence:
+  - file: samsara_cli/config/platform/codex.yaml
+    line: 11
+    note: "paths.plugin_dir = '.codex' (relative)"
+  - file: samsara_cli/converter/hook.py
+    line: 353
+    note: "hooks_dir = f'{plugin_dir}/hooks' -> '.codex/hooks' (relative, scope-agnostic)"
+  - file: samsara_cli/config/templates/codex/hooks.json.j2
+    line: 9
+    note: "command: '{{ hooks_dir }}/samsara-session-start.sh' -> '.codex/hooks/samsara-session-start.sh'"
+  - file: samsara_cli/installer/install.py
+    line: 315
+    note: "_install_global: _install_native_tree(converted_dir, target_root=home) — copies as-is, no command rewrite"
+  - file: samsara_cli/installer/install.py
+    lines: "122-140"
+    note: "install(): conversion (_run_convert) runs BEFORE scope branch — converter cannot know scope"
+  - file: tests/test_installer/test_install.py
+    lines: "194-253"
+    note: "Global install tests assert dirs + config flags only; never assert the hook command path resolves. Test gap."
+
+secondary_findings:
+  config_path_assumption:
+    severity: low
+    note: >
+      install.py docstring (lines 24-29) hardcodes the assumption ~/.codex/config.toml,
+      but the value actually comes from codex.yaml install.global.config_path (line 22),
+      so it is config-driven, not hardcoded in code. Lower risk than the report implies;
+      still a single point of drift if Codex changes config location.
+  feature_flag_hooks_true:
+    severity: none
+    note: >
+      codex.yaml permissions.feature_flags.hooks = true (line 55) is harmless. Codex
+      treats hooks as enabled by default; the canonical key is 'hooks' and the code
+      already migrates the deprecated 'codex_hooks' alias (DEPRECATED_FEATURE_FLAGS,
+      install.py:49). No action required.
+  readme_plugin_wording:
+    severity: low
+    note: "Docs describe Codex support as a 'plugin' but the implementation is a native file install, not the Codex plugin marketplace flow. Documentation accuracy only."
+
+verdict: CONFIRMED
+verdict_detail: >
+  Primary claim is correct: project scope works, global scope produces a hook that
+  Codex will not execute because the command path is relative and scope-agnostic.
+  The cleaner fix (installer post-processes the command path per scope) is sound —
+  the converter should not own the absolute hook location.

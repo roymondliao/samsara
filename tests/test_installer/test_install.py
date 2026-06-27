@@ -319,6 +319,182 @@ class TestInstallerGlobalScope:
         assert "restart" in instructions.lower() or "codex" in instructions.lower()
 
 
+def _write_realistic_codex_hooks_json(converted_dir: Path) -> str:
+    """Overwrite the converted hooks.json with a realistic session-start command.
+
+    The real converter bakes a scope-agnostic RELATIVE command
+    ('.codex/hooks/samsara-session-start.sh'). The make_converted_output helper
+    writes an empty SessionStart list, so it cannot exercise command-path rewriting.
+    """
+    relative_command = ".codex/hooks/samsara-session-start.sh"
+    (converted_dir / ".codex" / "hooks.json").write_text(
+        json.dumps(
+            {
+                "hooks": {
+                    "SessionStart": [
+                        {
+                            "matcher": "startup|resume",
+                            "hooks": [
+                                {
+                                    "type": "command",
+                                    "command": relative_command,
+                                    "statusMessage": "Injecting Samsara bootstrap context",
+                                }
+                            ],
+                        }
+                    ]
+                }
+            }
+        )
+    )
+    return relative_command
+
+
+def _session_start_commands(hooks_json_path: Path) -> list[str]:
+    data = json.loads(hooks_json_path.read_text(encoding="utf-8"))
+    return [
+        hook["command"]
+        for entry in data["hooks"]["SessionStart"]
+        for hook in entry["hooks"]
+    ]
+
+
+class TestInstallerGlobalHookCommandPath:
+    """Global install must make samsara hook commands resolvable from any cwd.
+
+    Codex/Gemini launched from a project dir resolve a relative hook command
+    against the PROJECT root. A global install places the script under $HOME, so
+    a relative command silently never resolves and the hook never fires.
+    """
+
+    def test_global_install_hook_command_is_absolute_and_exists(self, tmp_path):
+        """DEATH TEST: global hook command must be absolute and point to a real file.
+
+        Fails on pre-fix code because the command stays
+        '.codex/hooks/samsara-session-start.sh' (relative), which does not exist
+        relative to the process cwd and is not resolvable to the global script.
+        """
+        from samsara_cli.installer.install import Installer
+
+        fake_home = tmp_path / "home"
+        fake_home.mkdir()
+        project_dir = tmp_path / "project"
+        project_dir.mkdir()
+        source_dir = make_minimal_source(tmp_path)
+        converted_dir = make_converted_output(tmp_path)
+        _write_realistic_codex_hooks_json(converted_dir)
+
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="codex 1.2.3")
+            with patch.dict("os.environ", {"HOME": str(fake_home)}):
+                with patch(
+                    "samsara_cli.installer.install.Installer._run_convert",
+                    return_value=converted_dir,
+                ):
+                    installer = Installer(platform="codex")
+                    installer.install(
+                        source_dir=source_dir,
+                        scope="global",
+                        cwd=project_dir,
+                    )
+
+        commands = _session_start_commands(fake_home / ".codex" / "hooks.json")
+        assert commands, "global hooks.json has no SessionStart command"
+        for command in commands:
+            assert Path(command).is_absolute(), (
+                f"Global hook command {command!r} is not absolute — Codex would "
+                "resolve it against the project cwd, not $HOME, and never find it."
+            )
+            assert Path(command).exists(), (
+                f"Global hook command {command!r} does not point to an existing "
+                "script — the hook would silently never fire."
+            )
+            assert str(fake_home) in command, (
+                f"Global hook command {command!r} must resolve under the install "
+                f"root {fake_home}."
+            )
+
+    def test_project_install_hook_command_stays_relative(self, tmp_path):
+        """Project scope must NOT rewrite the command — relative resolves correctly there."""
+        from samsara_cli.installer.install import Installer
+
+        project_dir = tmp_path / "project"
+        project_dir.mkdir()
+        source_dir = make_minimal_source(tmp_path)
+        converted_dir = make_converted_output(tmp_path)
+        relative_command = _write_realistic_codex_hooks_json(converted_dir)
+
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="codex 1.2.3")
+            with patch(
+                "samsara_cli.installer.install.Installer._run_convert",
+                return_value=converted_dir,
+            ):
+                installer = Installer(platform="codex")
+                installer.install(
+                    source_dir=source_dir,
+                    scope="project",
+                    cwd=project_dir,
+                )
+
+        commands = _session_start_commands(project_dir / ".codex" / "hooks.json")
+        assert relative_command in commands, (
+            "Project install must keep the relative command — it resolves against "
+            "the project root where the script actually lives."
+        )
+
+    def test_global_install_leaves_foreign_hook_commands_untouched(self, tmp_path):
+        """A user's pre-existing non-samsara hook command must not be rewritten."""
+        from samsara_cli.installer.install import Installer
+
+        fake_home = tmp_path / "home"
+        codex_dir = fake_home / ".codex"
+        codex_dir.mkdir(parents=True)
+        # Pre-existing user hooks.json with a foreign command
+        (codex_dir / "hooks.json").write_text(
+            json.dumps(
+                {
+                    "hooks": {
+                        "SessionStart": [
+                            {
+                                "matcher": "startup",
+                                "hooks": [
+                                    {"type": "command", "command": "my-own-tool.sh"}
+                                ],
+                            }
+                        ]
+                    }
+                }
+            )
+        )
+
+        project_dir = tmp_path / "project"
+        project_dir.mkdir()
+        source_dir = make_minimal_source(tmp_path)
+        converted_dir = make_converted_output(tmp_path)
+        _write_realistic_codex_hooks_json(converted_dir)
+
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="codex 1.2.3")
+            with patch.dict("os.environ", {"HOME": str(fake_home)}):
+                with patch(
+                    "samsara_cli.installer.install.Installer._run_convert",
+                    return_value=converted_dir,
+                ):
+                    installer = Installer(platform="codex")
+                    installer.install(
+                        source_dir=source_dir,
+                        scope="global",
+                        cwd=project_dir,
+                    )
+
+        commands = _session_start_commands(fake_home / ".codex" / "hooks.json")
+        assert "my-own-tool.sh" in commands, (
+            "User's own relative hook command must be left untouched — only samsara's "
+            "plugin-dir-prefixed commands get rewritten."
+        )
+
+
 # ---------------------------------------------------------------------------
 # Update = re-convert + re-install
 # ---------------------------------------------------------------------------

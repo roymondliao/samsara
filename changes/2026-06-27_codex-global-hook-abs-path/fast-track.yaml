@@ -1,0 +1,46 @@
+type: fast_track
+description: "Global install rewrites samsara's relative hook command paths to absolute under $HOME so Codex/Gemini actually find the script."
+death_clause: "If a global-installed hook command is non-absolute OR points to a non-existent file, this change is failed."
+acceptance:
+  - "After global install, every samsara hook command in the installed hook config is an absolute path that exists on disk."
+  - "Project install keeps the relative command (it resolves against the project root where the script lives)."
+  - "A user's pre-existing non-samsara hook command is left untouched (only '<plugin_dir>/'-prefixed commands are rewritten)."
+
+root_cause: >
+  HookConverter bakes a scope-agnostic relative command
+  '.codex/hooks/samsara-session-start.sh' (hook.py:353 + hooks.json.j2:9). The
+  installer runs conversion before the scope branch, then _install_global copied
+  the tree to $HOME verbatim — Codex launched from a project dir resolved the
+  relative command against the PROJECT, not $HOME, so the global hook silently
+  never fired (Level 3 false success).
+
+fix: >
+  Added Installer._rewrite_global_hook_commands + _rewrite_command_paths,
+  called from _install_global after _install_native_tree. Recursively rewrites
+  only commands prefixed with '<plugin_dir>/' to absolute paths under the install
+  root ($HOME). Structure-agnostic recursion covers both Codex hooks.json and
+  Gemini settings.json.
+
+scar_tag: 2
+scar_items:
+  - "Rewrite correctness assumes the converter bakes hook commands relative to '<plugin_dir>/' under the install root. If the converter ever emits a command relative to a different base, the rewrite produces a wrong absolute path SILENTLY (no error — hook just points nowhere). Coupling between converter path convention and installer rewrite is implicit."
+  - "Gemini-cli global hook rewrite is exercised only indirectly via the structure-agnostic recursion — the death test is Codex-specific (hooks.json). No Gemini settings.json global death test was added. If Gemini nests commands in a shape the recursion misses, it would regress silently."
+
+files_changed:
+  - "samsara_cli/installer/install.py"
+  - "tests/test_installer/test_install.py"
+  - "bugfix/2026-06-27_codex-global-hook-relative-path/bug-report.yaml"
+
+quality_checklist:
+  - criterion: "C5 Reuse"
+    checked: true
+    note: "Considered reusing _hook_entry_identities/_merge_hooks_json, but those extract identities / merge maps with a fixed shape; this rewrites command strings in place and must be structure-agnostic for two platforms. Not the same home — a forced reuse would over-couple. New recursion justified."
+  - criterion: "C6 Clear Structure"
+    checked: true
+    note: "Both methods placed among the other hook-file helpers in Installer, directly above _copy_dir_merge; called once from _install_global where scope is known. Boundary is 'installer owns scope-specific path resolution', which is exactly where this belongs."
+  - criterion: "C7 Elegant Logic"
+    checked: true
+    note: "Single recursive walker with a 'changed' flag; the flag guards against rewriting a file we did not modify (protective, not decorative). No extra wrappers or abstractions."
+  - criterion: "C8 No Redundancy"
+    checked: true
+    note: "Prefix is derived from self._config.paths.plugin_dir — single source of truth. Hook file path derived from plugin_dir + hooks_file. No duplicated path literals."
