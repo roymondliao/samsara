@@ -11,7 +11,7 @@ paths:
   skills_dir: ".gemini/skills"
   agents_dir: ".gemini/agents"
   hooks_file: "settings.json"
-  references_dir: ".agents/references"
+  references_dir: ".gemini/references"
 
 install:
   project:

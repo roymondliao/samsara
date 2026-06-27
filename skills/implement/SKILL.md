@@ -130,6 +130,7 @@ After each subagent completes (status DONE or DONE_WITH_CONCERNS):
 2. **Aggregation rule** — main agent MUST receive BOTH review outputs before proceeding:
    - Both pass → proceed to index.yaml update
    - Either reviewer reports Critical issues → implementer fixes → re-review (dispatch both again)
+   - Either reviewer reports `UNKNOWN` → **blocking review failure**; fix the missing/unreadable reference or unsupported domain condition, then re-review (dispatch both again)
    - Only one review output received → **FAIL with "missing reviewer" error** — do NOT assume absent reviewer = PASS. Re-dispatch the missing reviewer before proceeding.
 
 3. Review passes (both) → main agent updates `index.yaml` (status, scar_count, unresolved_assumptions).
@@ -166,7 +167,7 @@ This order is mandatory. Death test before unit test. Scar report before self-it
 
 14. **Parallel dispatch both reviewers in the same message** — `samsara:code-reviewer` (yin) and `samsara:code-quality-reviewer` (quality). See `./dispatch-template.md` for both dispatch templates.
     - Both outputs must arrive. A reviewer output that did not arrive is **not** the same as PASS or PASS_WITH_CONCERNS — it is an absent output. If only one review output is received → **FAIL with "missing reviewer" error**. Re-dispatch the missing reviewer (max 2 retries); if it still does not arrive, escalate and do not proceed.
-15. If either reviewer reports Critical issues → implementer fixes → re-review (both reviewers again)
+15. If either reviewer reports `UNKNOWN` or Critical issues → implementer fixes the blocking reference/domain issue or review finding → re-review (both reviewers again)
 16. Update `index.yaml` — set status, scar_count, unresolved_assumptions + TaskUpdate the corresponding task to `completed`
 17. Proceed to next task
 
@@ -182,7 +183,9 @@ These are non-negotiable:
 - **Death test ordering:** Death tests must be written and run before unit tests. This order cannot be swapped.
 - **Test Contract Gate before unit tests:** Every unit-test assertion must pass the contract gate in `references/test-contract.md` BEFORE the unit test is written. A unit test asserts a behavioral contract, not implementation details. This gate runs before unit tests, never after — a gate run after the test is already on disk cannot stop a tautological test from landing.
 - **Review before index update:** `index.yaml` is updated only after code-reviewer passes. No pre-review status changes.
+- **UNKNOWN blocks review completion:** Reviewer `UNKNOWN` is not a partial pass. It means a required reference/domain condition could not be verified; do not proceed, update `index.yaml`, or mark review complete until the condition is fixed and both reviewers are re-run.
 - **Commit after all tasks:** Do not commit per-task. Commit once after all tasks complete and all reviews pass.
+- **Structural honesty applies at generation, not only at review:** The implementer's 結構誠實 constraints (`agents/implementer.md`) — justify every boundary/abstraction by what breaks if it is removed, and refuse speculative generalization built for a single consumer — apply whether the implementer runs as a subagent (modes A/B) **or inline (mode C)**. In inline mode the agent definition is not loaded, so the main agent owns these constraints directly; do not skip them just because no subagent was dispatched.
 
 ## Red Flags
 
@@ -192,6 +195,7 @@ These are non-negotiable:
 - Skip yin-side review (dispatch `samsara:code-reviewer`)
 - Skip `code-quality-reviewer` dispatch — both reviewers are required; skipping one means the review is incomplete
 - Proceed to next task while code-reviewer or code-quality-reviewer has open Critical issues
+- Proceed to next task when either reviewer returned `UNKNOWN` because a reference was missing/unreadable or the execution domain was unsupported
 - Dispatch multiple implementer subagents in parallel (file conflicts)
 - Ignore subagent NEEDS_CONTEXT or BLOCKED status — provide context or escalate
 - Accept a task as DONE without a scar report

@@ -1,0 +1,60 @@
+fix:
+  date: 2026-06-28
+  status: fixed
+  summary: >
+    Converted references are now platform-localized and converted agents no
+    longer depend on cwd-relative `references/*.md` paths. Agents receive a
+    platform-specific reference id resolver contract, while referenced skills get
+    skill-local copies of shared references.
+
+changes:
+  - file: samsara_cli/config/platform/gemini-cli.yaml
+    change: "Move Gemini shared references from `.agents/references` to `.gemini/references`."
+  - file: samsara_cli/converter/engine.py
+    change: >
+      Rewrite agent `references/*.md` paths into reference ids and append a
+      Codex/Gemini resolver contract with project-first, global-second lookup.
+  - file: samsara_cli/converter/engine.py
+    change: >
+      Copy converted shared references into skill-local `references/` directories
+      only for skills whose converted markdown explicitly references that file.
+      Existing skill-owned reference files are preserved and not overwritten by a
+      same-named shared reference.
+  - file: skills/implement/SKILL.md
+    change: "Treat reviewer `UNKNOWN` as a blocking review failure."
+  - file: skills/implement/dispatch-template.md
+    change: "Require both reviewers to be re-run after an `UNKNOWN` reference/domain failure is fixed."
+
+verification:
+  death_tests:
+    - "Codex conversion writes shared and skill-local references."
+    - "Gemini conversion writes `.gemini/references` and skill-local references."
+    - "Codex converted agents contain a resolver contract and no bare `references/*.md` path."
+    - "Gemini converted agents contain a resolver contract and no bare `references/*.md` path."
+    - "Skill-owned local references are not overwritten by same-named shared references."
+    - "Implement review aggregation explicitly blocks on reviewer `UNKNOWN`."
+  commands:
+    - "source .venv/bin/activate && uv run pytest tests/test_converter/test_engine.py -q"
+    - "source .venv/bin/activate && uv run pytest tests/test_converter -q"
+    - "source .venv/bin/activate && uv run pytest tests/test_contract_bound_tests/test_reviewer_test_contract.py -q"
+    - "source .venv/bin/activate && uv run pytest tests/test_converter tests/test_contract_bound_tests tests/test_installer tests/test_cli -q"
+
+silent_failure_conditions:
+  - condition: >
+      A skill or agent references a shared reference file using text that does not
+      match `references/<name>.md`.
+    mitigation: >
+      The current resolver rewrite is intentionally syntax-based. Add an explicit
+      dependency manifest if references begin using aliases or non-markdown paths.
+  - condition: >
+      A runtime changes subagent filesystem access so project/global reference
+      paths are not readable from subagents.
+    mitigation: >
+      Reviewer `UNKNOWN` is now blocking, so this degrades visibly instead of
+      silently bypassing review.
+  - condition: >
+      Multiple skill-local reference copies with the same id diverge and a
+      subagent chooses the wrong one.
+    mitigation: >
+      The resolver prioritizes shared platform references before skill-local
+      copies. Shared references remain the canonical converted runtime source.

@@ -1,0 +1,63 @@
+# Phase 1 — Interrogate the Failure
+# references/ is read by subagents via a bare relative path that only resolves
+# in the source repo, not in any converted/installed layout.
+
+bug:
+  title: "Subagent reviewers read `references/{domain}.md` by bare relative path; resolves only in the source repo, breaks after Codex/Gemini install"
+  reported_by: "code review of references/ portability (user-supplied analysis)"
+  date: 2026-06-27
+
+failure_classification:
+  reviewer_level: 1   # The reviewer is HONEST — it returns a visible UNKNOWN with a reason.
+  system_level: 3     # But the orchestrating flow has no UNKNOWN handling, so the
+                      # quality/yin gate silently becomes a no-op: review "ran", produced
+                      # UNKNOWN, flow proceeds as if reviewed. False success.
+  rationale: >
+    code-reviewer and code-quality-reviewer are instructed (in their own agent
+    definitions) to READ `references/{domain}-review.md` / `references/{domain}-quality.md`
+    themselves at Step 0/1. On an unreadable reference they hard-stop to UNKNOWN
+    (good yin design). The danger is two-fold: (1) in the installed layout the
+    reference is ALWAYS unreadable, so the gate is not an edge case — it never works;
+    (2) skills/implement/SKILL.md + dispatch-template.md have NO handling for an
+    UNKNOWN verdict — the aggregation rule only branches on "both pass" / "either
+    Critical". UNKNOWN falls through unhandled → silent gate bypass.
+
+impact:
+  source_repo: "WORKS — top-level references/ exists; agent reads `references/...` relative to repo root and resolves. This is why the defect never surfaces during framework development."
+  codex_install: "HIGH RISK — converter writes references to .agents/references/ (paths.references_dir), but agent body still says `references/...`. Read from project root → not found → UNKNOWN every time."
+  gemini_install: "HIGH RISK — same: .agents/references/ vs bare `references/...`."
+  claude_code_plugin: "MEDIUM-HIGH — plugin agents/references live in the plugin dir; subagent cwd is the user's project, not plugin root. Bare `references/...` not guaranteed to resolve."
+  detection_delay: >
+    Indefinite. No test dispatches a reviewer in a converted layout and asserts it
+    can read its reference. CI runs in the source repo where the path always resolves.
+
+evidence:
+  - file: samsara_cli/config/platform/codex.yaml
+    line: 16
+    note: "references_dir: '.agents/references' — converted references land here"
+  - file: samsara_cli/config/platform/gemini-cli.yaml
+    line: 14
+    note: "references_dir: '.agents/references' — same"
+  - file: samsara_cli/converter/engine.py
+    lines: "596-601"
+    note: "output_refs_dir = temp_dir / paths.references_dir ('.agents/references'); references written there"
+  - file: agents/code-quality-reviewer.md
+    lines: "67-83, 130-132"
+    note: "Reads `references/{domain}-quality.md` (bare relative); hard-stop UNKNOWN if unreadable; explicitly forbids fallback"
+  - file: agents/code-reviewer.md
+    lines: "33-37, 60, 204"
+    note: "Reads `references/{domain}-review.md` (bare relative); UNKNOWN if missing"
+  - file: skills/implement/dispatch-template.md
+    lines: "3, 59, 67, 80-136"
+    note: "Design principle 'Paste full text — never make the subagent read files', yet Review Dispatch templates paste the diff but NOT the reference file; the reviewer is left to read it by path. Self-inconsistent."
+  - finding: "No transformation in codex.yaml/gemini-cli.yaml rewrites the body string `references/` → `.agents/references/`. Verified by grep — none exists."
+  - finding: "No occurrence of 'UNKNOWN' in skills/implement/SKILL.md or dispatch-template.md. The flow does not treat UNKNOWN as blocking."
+
+verdict: CONFIRMED
+verdict_detail: >
+  The reported analysis is correct. references/ is not a portable layout: the agent
+  bodies assume a top-level references/ relative to cwd, which only holds in the
+  source repo. After conversion the file moves to .agents/references/ while the body
+  path is unchanged, so reviewers UNKNOWN-out, and the flow silently proceeds. The
+  user's recommended fix #3 (inject reference content at dispatch) is also the most
+  consistent with the codebase's own 'paste full text, not file paths' principle.
