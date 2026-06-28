@@ -1,12 +1,15 @@
 """Happy-path tests for `samsara-cli release` commands."""
 
 import json
+import re
 from pathlib import Path
 
 from typer.testing import CliRunner
 
 
 runner = CliRunner()
+
+_SEMVER = re.compile(r"^\d+\.\d+\.\d+$")
 
 
 def make_repo(
@@ -140,23 +143,45 @@ class TestReleaseCommands:
 
 
 class TestCurrentReleaseVersionContract:
-    def test_current_repo_print_tag_is_0_11_0(self):
+    """CLI version surfaces must track the source-of-truth, not a hardcoded literal.
+
+    marketplace.json `metadata.version` is the single source of truth. `print-tag`
+    derives its value from marketplace.json; `version` derives it independently from
+    the installed package metadata (pyproject). Both must agree with the source of
+    truth and emit a well-formed value — otherwise the release has drifted. The
+    expected version is read at test time, so a routine version bump never edits this
+    test; only an actual drift or format break makes it fail.
+    """
+
+    @staticmethod
+    def _source_of_truth_version() -> str:
+        repo_root = Path(__file__).resolve().parents[2]
+        marketplace = repo_root / ".claude-plugin" / "marketplace.json"
+        data = json.loads(marketplace.read_text(encoding="utf-8"))
+        version = data["metadata"]["version"]
+        assert _SEMVER.match(version), f"marketplace version is not semver: {version!r}"
+        return version
+
+    def test_print_tag_tracks_source_of_truth(self):
         from samsara_cli.main import app
 
         repo_root = Path(__file__).resolve().parents[2]
+        expected = self._source_of_truth_version()
 
         result = runner.invoke(app, ["release", "print-tag", "--root", str(repo_root)])
 
         assert result.exit_code == 0, result.output
-        assert result.output.strip() == "v0.11.0"
+        assert result.output.strip() == f"v{expected}"
 
-    def test_cli_version_outputs_0_11_0(self):
+    def test_cli_version_tracks_source_of_truth(self):
         from samsara_cli.main import app
+
+        expected = self._source_of_truth_version()
 
         result = runner.invoke(app, ["version"])
 
         assert result.exit_code == 0, result.output
-        assert result.output.strip() == "samsara-cli 0.11.0"
+        assert result.output.strip() == f"samsara-cli {expected}"
 
     def test_print_tag_outputs_exact_tag(self, tmp_path: Path):
         from samsara_cli.main import app

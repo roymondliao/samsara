@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[2]
 CODE_REVIEWER = ROOT / "agents" / "code-reviewer.md"
 CODE_QUALITY_REVIEWER = ROOT / "agents" / "code-quality-reviewer.md"
 DISPATCH_TEMPLATE = ROOT / "skills" / "implement" / "dispatch-template.md"
+IMPLEMENT_SKILL = ROOT / "skills" / "implement" / "SKILL.md"
 
 
 def read_code_reviewer() -> str:
@@ -22,6 +23,10 @@ def read_code_quality_reviewer() -> str:
 
 def read_dispatch_template() -> str:
     return DISPATCH_TEMPLATE.read_text(encoding="utf-8")
+
+
+def read_implement_skill() -> str:
+    return IMPLEMENT_SKILL.read_text(encoding="utf-8")
 
 
 def section(text: str, start_prefix: str, end_prefixes: tuple[str, ...]) -> str:
@@ -100,3 +105,15 @@ def test_quality_dispatch_refers_brittle_verdict_to_yin_reviewer():
     assert "structural evidence" in block
     assert "refer any brittle" in block
     assert "fix-the-test verdict" in block
+
+
+def test_reviewer_unknown_blocks_implementation_progress():
+    combined = (read_dispatch_template() + "\n" + read_implement_skill()).lower()
+
+    assert "unknown" in combined
+    assert re.search(r"unknown[^.\n]*(block|fail|stop|do not proceed)", combined), (
+        "reviewer UNKNOWN must be explicitly blocking, not allowed to fall through"
+    )
+    assert re.search(r"missing reference|unreadable reference|reference", combined), (
+        "UNKNOWN blocking rule must name reference availability as a gate condition"
+    )

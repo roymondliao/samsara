@@ -75,7 +75,7 @@ After the implementer reports back (status DONE or DONE_WITH_CONCERNS), dispatch
 
 **Dispatch both in the same message to enable parallel execution.** Two separate Agent calls in one message run concurrently; dispatching them in separate messages runs them sequentially and doubles wall-clock time.
 
-**Aggregation rule:** Main agent MUST receive BOTH review outputs before proceeding. If only one output arrives, that is a FAIL with "missing reviewer" error — never assume absent reviewer = PASS. Re-dispatch the missing reviewer.
+**Aggregation rule:** Main agent MUST receive BOTH review outputs before proceeding. If only one output arrives, that is a FAIL with "missing reviewer" error — never assume absent reviewer = PASS. Re-dispatch the missing reviewer. If either reviewer returns `UNKNOWN`, that is a blocking review failure, not PASS/PASS_WITH_CONCERNS; fix the missing or unreadable reference/domain condition and re-dispatch both reviewers before proceeding.
 
 ### Yin reviewer
 ```
@@ -135,6 +135,6 @@ Agent tool:
     to the yin code reviewer.
 ```
 
-Both reviewers must report back. If either reports FAIL or PASS_WITH_CONCERNS with Critical issues, the implementer must fix before proceeding.
+Both reviewers must report back. If either reports `UNKNOWN`, FAIL, or PASS_WITH_CONCERNS with Critical issues, the implementer must fix before proceeding. `UNKNOWN` usually means a required reference could not be resolved or the execution domain is unsupported; treat it as blocking until the reference/domain issue is fixed and both reviewers are re-run.
 
 After both reviews pass → update `index.yaml` → proceed to next task. Commit only after all tasks complete.

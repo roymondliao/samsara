@@ -61,6 +61,7 @@ Assumptions:
 
 import json
 import logging
+import re
 import shutil
 import tempfile
 import warnings
@@ -78,6 +79,8 @@ from samsara_cli.validators.source import SourceValidator
 from samsara_cli.validators.target import TargetValidator
 
 logger = logging.getLogger(__name__)
+
+_REFERENCE_PATH_PATTERN = re.compile(r"`?references/([A-Za-z0-9_.{}-]+\.md)`?")
 
 
 class EngineError(Exception):
@@ -401,6 +404,7 @@ class ConversionEngine:
         for agent_file in sorted(source_agents_dir.glob("*.md")):
             logger.info("Converting agent: %s", agent_file.name)
             source_text = agent_file.read_text(encoding="utf-8")
+            source_text = self._prepare_agent_reference_resolution(source_text)
             if agent_format_type == "markdown":
                 converted = converter.convert_markdown_from_text(
                     source_text=source_text,
@@ -438,6 +442,44 @@ class ConversionEngine:
 
             out_file = output_agents_dir / f"{converted.agent_name}{output_extension}"
             out_file.write_text(rendered_content, encoding="utf-8")
+
+    def _prepare_agent_reference_resolution(self, source_text: str) -> str:
+        """Replace cwd-relative reference paths with a platform resolver contract."""
+        rewritten = _REFERENCE_PATH_PATTERN.sub(r"reference id `\1`", source_text)
+        if rewritten == source_text:
+            return source_text
+
+        return rewritten.rstrip() + "\n\n" + self._reference_resolver_contract()
+
+    def _reference_resolver_contract(self) -> str:
+        """Return platform-specific reference lookup rules for converted agents."""
+        if self._platform == "gemini-cli":
+            shared_dir = ".gemini/references"
+            skill_refs_glob = ".gemini/skills/*/references"
+        else:
+            shared_dir = ".agents/references"
+            skill_refs_glob = ".agents/skills/*/references"
+
+        return (
+            "## Reference Resolution Protocol\n\n"
+            "When this agent is instructed to read a `reference id`, resolve it by "
+            "filename using this platform-specific order. Project references override "
+            "global references.\n\n"
+            "1. `<cwd>/"
+            f"{shared_dir}"
+            "/<reference-id>`\n"
+            "2. `<cwd>/"
+            f"{skill_refs_glob}"
+            "/<reference-id>`\n"
+            "3. `~/"
+            f"{shared_dir}"
+            "/<reference-id>`\n"
+            "4. `~/"
+            f"{skill_refs_glob}"
+            "/<reference-id>`\n\n"
+            "If the required reference id cannot be read, return UNKNOWN immediately. "
+            "Do not fall back to memory, source-repo `references/`, or guessed paths."
+        )
 
     def _convert_hooks(self, source_dir: Path, temp_dir: Path) -> None:
         """Convert hook artifacts (session-start script and hooks.json)."""
@@ -602,6 +644,7 @@ class ConversionEngine:
 
         rules = self._config.transformations
         converter = ReferenceConverter()
+        converted_refs: dict[str, str] = {}
 
         for ref_file in sorted(ref_files):
             logger.info("Converting reference: %s", ref_file.name)
@@ -609,6 +652,40 @@ class ConversionEngine:
                 source_ref=ref_file,
                 rules=rules,
             )
+            converted_refs[ref_file.name] = converted_content
             (output_refs_dir / ref_file.name).write_text(
                 converted_content, encoding="utf-8"
             )
+
+        self._copy_referenced_refs_to_skills(temp_dir, converted_refs)
+
+    def _copy_referenced_refs_to_skills(
+        self,
+        temp_dir: Path,
+        converted_refs: dict[str, str],
+    ) -> None:
+        """Copy shared refs into skills that explicitly reference them."""
+        output_skills_dir = self._get_output_skills_dir(temp_dir)
+        if not output_skills_dir.exists():
+            return
+
+        for skill_dir in sorted(p for p in output_skills_dir.iterdir() if p.is_dir()):
+            referenced_names: set[str] = set()
+            for file_path in sorted(skill_dir.rglob("*")):
+                if not file_path.is_file() or file_path.suffix != ".md":
+                    continue
+                content = file_path.read_text(encoding="utf-8")
+                referenced_names.update(_REFERENCE_PATH_PATTERN.findall(content))
+
+            if not referenced_names:
+                continue
+
+            skill_refs_dir = skill_dir / "references"
+            skill_refs_dir.mkdir(parents=True, exist_ok=True)
+            for ref_name in sorted(referenced_names):
+                if ref_name not in converted_refs:
+                    continue
+                skill_ref_path = skill_refs_dir / ref_name
+                if skill_ref_path.exists():
+                    continue
+                skill_ref_path.write_text(converted_refs[ref_name], encoding="utf-8")

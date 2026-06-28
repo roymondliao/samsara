@@ -1,0 +1,62 @@
+# Phase 2 — Root Cause Tracing
+
+root_cause:
+  one_line: >
+    A subagent resolves shared references by a bare relative path (`references/...`),
+    which couples correctness to one specific layout (top-level references/ at cwd) —
+    the only layout that exists in the source repo and in no installed target.
+
+why_it_hid_so_long:
+  accomplice: "Top-level references/ in the source repo."
+  mechanism: >
+    The framework is authored, tested, and CI-run inside this repo, where
+    references/code-quality.md sits at the repo root. Every reviewer dispatch during
+    development resolves `references/...` against the repo root and succeeds. The
+    path is never exercised in a converted layout, so the break is invisible until an
+    end-user installs to Codex/Gemini and dispatches a reviewer.
+
+rot_path:
+  - "Author writes agent body: read `references/{domain}-quality.md` (relative)."
+  - "Converter moves the file to .agents/references/{domain}-quality.md (paths.references_dir)."
+  - "Converter does NOT rewrite the body path (correctly — see hook-path lesson: converter should not own resolution). So body still says `references/...`."
+  - "Subagent dispatched; cwd = project root; reads `references/...` → looks at <root>/references/ → absent (file is at <root>/.agents/references/)."
+  - "Reviewer hard-stops UNKNOWN."
+  - "Flow (skills/implement) has no UNKNOWN branch → proceeds as if reviewed → silent gate bypass."
+
+deeper_structural_cause: >
+  The codebase already has the correct principle and applies it everywhere else:
+  'Paste full text — never make the subagent read files' (dispatch-template.md:3).
+  task-N.md, overview.md, scar-schema.yaml, AGENTS.md, the diff — all pasted, because
+  'the subagent has no context about file locations' (line 59). The reference file is
+  the SAME class of artifact but was left as a path-read. The root cause is not a
+  wrong path string — it is that one artifact escaped the project's own paste-not-path
+  rule. Fixing the path (multi-path fallback) treats the symptom; injecting the
+  content at dispatch removes the entire class of failure and restores consistency.
+
+last_confirmed_working_state: "Only ever 'working' in the source repo from repo root. Never working in any installed target."
+
+fix_options:
+  - id: inject_at_dispatch
+    desc: "Main agent reads the domain reference and pastes its full content into the review dispatch prompt; reviewer stops reading by path."
+    robustness: highest
+    consistency: "Matches dispatch-template.md's own paste-full-text principle."
+    cost: "Token-heavy (reference files are large); main agent must determine domain to pick the reference."
+    touches: ["skills/implement/dispatch-template.md", "agents/code-reviewer.md", "agents/code-quality-reviewer.md", "skills/implement/SKILL.md (UNKNOWN handling)"]
+  - id: multipath_fallback
+    desc: "Reviewer tries ./references, .agents/references, .agents/skills/<skill>/references, ~/.agents/references in order."
+    robustness: medium
+    consistency: "Still violates paste-not-path; keeps path-resolution in the subagent."
+    cost: "Cheapest, least invasive."
+    risk: "Subagent cwd is not guaranteed; fallback list can still miss; fragile."
+  - id: copy_skill_local
+    desc: "Converter also copies references into .agents/skills/<skill>/references/ (Codex-native shape)."
+    robustness: medium
+    consistency: "Aligns Codex layout, but Claude Code plugin + bare-path read still unresolved."
+    cost: "Converter change + duplication of reference files per skill."
+
+recommended: inject_at_dispatch
+recommended_rationale: >
+  It is the only option that removes path resolution from the subagent entirely, and
+  it is the option the codebase's existing design already mandates for every other
+  dispatched artifact. Pair it with an explicit UNKNOWN-is-blocking rule in the
+  implement flow so a future missing reference can never again be a silent no-op.

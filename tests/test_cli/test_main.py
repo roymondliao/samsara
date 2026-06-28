@@ -55,6 +55,8 @@ def make_converted_output(tmp_path: Path) -> Path:
     agents_dir.mkdir(parents=True)
     (agents_dir / "samsara-implementer.toml").write_text(
         'name = "samsara-implementer"\n'
+        'description = "samsara-implementer"\n'
+        'developer_instructions = "Body"\n'
     )
     (output / ".codex" / "hooks.json").write_text(json.dumps({"hooks": {}}))
     return output
@@ -262,6 +264,8 @@ class TestCLIInstall:
                         str(source_dir),
                         "--scope",
                         "project",
+                        "--project-dir",
+                        str(project_dir),
                     ],
                     env={"HOME": str(tmp_path / "home")},
                 )
@@ -313,6 +317,8 @@ class TestCLIInstall:
                         str(source_dir),
                         "--scope",
                         "project",
+                        "--project-dir",
+                        str(project_dir),
                     ],
                     env={"HOME": str(tmp_path / "home")},
                 )
@@ -396,6 +402,8 @@ class TestCLIUpdate:
                         str(source_dir),
                         "--scope",
                         "project",
+                        "--project-dir",
+                        str(project_dir),
                     ],
                     env={"HOME": str(tmp_path / "home")},
                 )
