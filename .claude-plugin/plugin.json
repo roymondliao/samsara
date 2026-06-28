@@ -1,7 +1,7 @@
 {
   "name": "samsara",
   "description": "\u5411\u6b7b\u800c\u9a57 \u2014 Death-first development workflow. Existential accountability for every line of code.",
-  "version": "0.11.1",
+  "version": "0.11.2",
   "author": {
     "name": "Roymond Liao"
   }
