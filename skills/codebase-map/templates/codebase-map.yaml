@@ -1,6 +1,6 @@
 project: "<project name>"
 last_updated: "YYYY-MM-DD"
-staleness_threshold_days: 7
+staleness_churn_threshold: 30  # changed source files since last_updated (exclude changes/ docs/ bugfix/)
 generated_by: "samsara:codebase-map"
 
 # --- Layer 1: Summary ---

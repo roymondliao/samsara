@@ -1,0 +1,25 @@
+feature: codebase-map-churn-autoregen
+status: pending  # pending | in_progress | done | blocked
+
+tasks:
+  - id: task-1
+    title: "Map schema: replace dead staleness_threshold_days with staleness_churn_threshold"
+    status: done_with_concerns
+    scar_count: 3  # 1 known_shortcut (live-map dogfood, intentional) + 1 silent_failure (grep misses dynamic refs) + 1 unverified assumption
+    unresolved_assumptions: 1  # field-name contract (staleness_churn_threshold) unverifiable until task-2 hook reads it; deferred_to_feature_iteration
+    depends_on: []
+    review: "both PASS (yin PASS, quality PASS_WITH_CONCERNS — suggestions only: agents/ marking [verified clean], 705/704 note typo, isinstance-vs-bool, yaml.safe_load dup)"
+  - id: task-2
+    title: "Bash hook churn detection + honest unknown fallback (Primary evaluator centerpiece)"
+    status: done
+    scar_count: 3  # accepted permanent-risk deferrals: shallow-clone false-fresh, external-3000ms-kill no-output, escape_for_json control-char gap
+    unresolved_assumptions: 0  # task-1's field-name contract now VERIFIED (hook reads staleness_churn_threshold)
+    depends_on: [task-1]
+    review: "round 3: yin PASS, quality PASS_WITH_CONCERNS — 0 Critical/Important. Deferred suggestions: 2 more additional_context() stdout guards (lines 293/524), today-boundary test TZ comment, cross-lang excluded-dirs DRY split (documented)"
+  - id: task-3
+    title: "Pre-thinking auto-regen at Atomic Context Boundary + codebase-map fail-honest contract"
+    status: done_with_concerns
+    scar_count: 2  # doc-presence != runtime obedience (validate-and-ship dogfood); stale_reason field not in task-1 template schema (CROSS-TASK)
+    unresolved_assumptions: 0  # regen-loop, field-name, churn-consistency all verified
+    depends_on: [task-1, task-2]
+    review: "round 2: yin PASS, quality PASS_WITH_CONCERNS — 0 Critical/Important (round-1 FAIL fully cleared: deadlock escape clause + churn-def divergence fixed). Deferred: 7 quality polish suggestions (regex proximity-window comments, skills/ dir note, inline-churn-text-vs-pointer)"

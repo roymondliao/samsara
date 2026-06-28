@@ -1,0 +1,194 @@
+task_id: task-3
+completion_status: done_with_concerns
+
+known_shortcuts:
+  - description: >
+      Doc-presence test cannot prove the agent actually obeys the auto-initiate
+      instruction at runtime. The test verifies the clause IS in the skill docs;
+      it cannot verify the agent FIRES regeneration instead of noting it and
+      continuing. The real proof is a live pre-thinking session on a stale map
+      (churn > 30) observing whether samsara:codebase-map is invoked before
+      Step A proceeds.
+    deferred_to_feature_iteration: true
+  - description: >
+      The Fail-Honest Write Contract introduces a stale_reason field to be
+      written to .samsara/codebase-map.yaml on failed/aborted regen. This field
+      is not defined in the Task 1 template (templates/codebase-map.yaml). An
+      agent following the contract will write a schema-undocumented field.
+      On a subsequent full regen that succeeds, this field may be silently
+      overwritten or absent. Fixing requires a template schema update (outside
+      task-3 scope).
+    deferred_to_feature_iteration: true
+
+silent_failure_conditions:
+  - description: >
+      "auto-initiate" silently degrades to "warn only" if an agent treats the
+      imperative as optional. The wording in both pre-thinking SKILL.md and
+      flow.md is imperative ("auto-initiate ... before proceeding"), not advisory
+      ("consider", "may"). This is the strongest guard available in doc space.
+      Only a live session run can confirm the agent fires regen rather than
+      noting it. Documented as a known_shortcut deferred to validate-and-ship.
+    deferred_to_feature_iteration: false
+  - description: >
+      The fail-honest contract instructs "do not advance last_updated" only as a
+      documented behavioral rule — no runtime enforcement exists. An agent that
+      ignores the contract can still bump last_updated even when the doc says not
+      to. There is no code-level gate preventing this. The only guard is the
+      DC-4 test confirming the clause is present in the doc; obedience depends
+      on agent instruction-following.
+    deferred_to_feature_iteration: false
+  - description: >
+      FIXED (see resolved_items): auto-initiated regen fails, aborts, or is
+      Phase-4-rejected — without an explicit escape clause, pre-thinking has no
+      documented exit. flow.md's "do not proceed until regen completes" combined
+      with codebase-map's "regen complete only when all phases + Phase 4 confirm"
+      created a deadlock: a failed regen has no exit, risking indefinite block or
+      dishonest "completed" claim. Fixed by adding the escape clause to both
+      pre-thinking/SKILL.md and pre-thinking/flow.md step 3; guarded by DC-5
+      death test.
+    deferred_to_feature_iteration: false
+
+assumptions_made:
+  - assumption: >
+      codebase-map regeneration workflow (3 explorers + synthesis + Phase 4 review
+      + write) does NOT re-invoke samsara:pre-thinking at any step, preventing a
+      regen loop (pre-thinking auto-initiates codebase-map → codebase-map
+      re-invokes pre-thinking → loop).
+    verified: true
+    note: >
+      Verified by reading skills/codebase-map/SKILL.md process in full. The
+      workflow contains: start → check → mode/explore_parallel → explore_yin →
+      synthesize → review → write → done. None of the 3 explorer agents,
+      synthesis, Phase 4 human review, or write step mention samsara:pre-thinking.
+      The explorers are subagents dispatched to analyze codebase structure, yin
+      risks, and infra — they have no reason to invoke pre-thinking. Loop risk is
+      structurally absent in the current workflow.
+    deferred_to_feature_iteration: false
+  - assumption: >
+      The staleness_churn_threshold field name documented in the skill doc edits
+      exactly matches the canonical field name from Task 1 (not the deprecated
+      staleness_threshold_days).
+    verified: true
+    note: >
+      Verified via tests/test_skills/test_codebase_map_schema.py
+      (test_death__template_threshold_keys_are_exactly_the_live_contract): the
+      template's threshold keys must be exactly {"staleness_churn_threshold"}.
+      That test is green. The field name used in all three skill doc edits is
+      "staleness_churn_threshold" — consistent with Task 1 and Task 2.
+    deferred_to_feature_iteration: false
+  - assumption: >
+      The churn definition documented in the skill edits (changed source files
+      since last_updated, excluding changes/, docs/, bugfix/, threshold default 30)
+      is consistent with Task 2's hook implementation.
+    verified: true
+    note: >
+      Verified by reading the task-3 task file ("same as Task 2"), the task-2
+      scar (awk exclusion filter '^(changes|docs|bugfix)\/'), and the task-3
+      dispatch ("exclude paths under changes/, docs/, bugfix/; threshold field
+      staleness_churn_threshold default 30"). All four skill doc edits now
+      include the exclusion list inline with a cross-reference to codebase-map
+      SKILL.md Triggers as the canonical definition.
+    deferred_to_feature_iteration: false
+
+debt_registered: true
+debt_location: >
+  skills/codebase-map/SKILL.md Fail-Honest Write Contract — stale_reason field
+  not in Task 1 template; doc-presence cannot prove runtime agent obedience
+  (both items deferred to feature iteration / validate-and-ship dogfood).
+
+narrative: |
+  This task is doc/behavior contract testing — skill doc edits + 7 presence/
+  death tests. No new abstractions were built. The test file uses plain file-reads
+  and regex/substring assertions.
+
+  Round 1 (initial implementation): 6 tests (DC-4 + 5 unit tests).
+
+  Round 2 (coordinator review): 3 Critical + 2 Important issues addressed.
+
+  Critical 1 (deadlock / dishonest-completion pressure): flow.md step 3 said
+  "do not proceed until regen completes" with no exit for a failed regen.
+  Combined with codebase-map's definition of "complete" (all phases + Phase 4
+  confirm), a failed regen left pre-thinking with no documented exit — risk of
+  indefinite block or dishonest "completed" claim. Fixed by adding explicit
+  escape clause to both pre-thinking SKILL.md Atomic Context Boundary and
+  flow.md step 3: "If auto-initiated regeneration fails, aborts, or is rejected
+  at Phase 4 review, do NOT treat it as completed and do NOT block indefinitely:
+  proceed with the map explicitly marked stale, record an information gap noting
+  the failed regeneration, and continue planning on that basis."
+
+  Critical 2 (scar omits deadlock scenario): silent_failure_conditions entry
+  added for the deadlock case; marked resolved via escape clause fix.
+
+  Critical 3 (DC-5 death test): guards the escape clause against silent
+  regression. Uses proximity regex: (fails|aborts|rejected).{0,600}proceed
+  .{0,300}(information gap|marked stale). Was RED before doc edits, GREEN after.
+
+  Important quality (churn definition diverged): pre-thinking SKILL.md and
+  flow.md previously omitted the exclusion list (changes/, docs/, bugfix/).
+  An agent reading only pre-thinking would compute different churn than the hook.
+  Fixed: both pre-thinking docs now include the full exclusion list inline with a
+  cross-reference "(canonical definition: codebase-map SKILL.md Triggers)".
+
+  Important yin — tests (context-blindness): auto-initiate assertions were
+  whole-file substring checks. Fixed: all three auto-initiate unit tests now use
+  proximity-based regex anchoring "auto-initiate" near "churn"/"threshold"/
+  "staleness_churn_threshold". A misplaced token in an unrelated section no
+  longer produces a false green.
+
+  Important yin — tests (mislabeled "both poles"): test_unit__codebase_map_skill_
+  documents_fail_honest_contract had an inaccurate "both poles" framing. Reframed
+  as "positive artifact assertion confirming the fail-honest clauses are present."
+
+  Optional improvements done: module-level compiled patterns (hoisted _NO_BUMP_RE,
+  _MARK_STALE_RE, _ESCAPE_CLAUSE_RE); parents[2] path-bet comment added.
+
+  Refused abstraction: no doc-parsing framework or helper class was built.
+  The _read_skill() helper is a 1-line file read. No other abstraction has a
+  concrete "what would hurt" answer.
+
+  Regen loop verified: codebase-map/SKILL.md process traverses
+  start → explorers → synthesize → review → write → done. No step invokes
+  samsara:pre-thinking. The loop concern is structurally absent.
+
+  The stale_reason field introduced by the Fail-Honest Write Contract is
+  schema-undocumented (not in templates/codebase-map.yaml). Deferred to feature
+  iteration — requires a Task 1 template update outside task-3 scope.
+
+  Final test count: 732 passed (17 test_skills + 715 other).
+
+resolved_items:
+  - original_section: assumptions_made
+    original_description: >
+      codebase-map regen workflow does NOT re-invoke samsara:pre-thinking.
+    resolution: >
+      Verified by reading skills/codebase-map/SKILL.md process in full. No step
+      in the 3-explorer workflow or Phase 4 review invokes pre-thinking. Loop
+      risk is structurally absent. Assumption verified: true.
+  - original_section: assumptions_made
+    original_description: >
+      staleness_churn_threshold field name matches canonical Task 1 contract.
+    resolution: >
+      Verified via test_codebase_map_schema.py green run (one-threshold-key
+      death test asserts exactly {"staleness_churn_threshold"}). Field name
+      used in all skill doc edits matches. Assumption verified: true.
+  - original_section: assumptions_made
+    original_description: >
+      Churn definition in skill doc edits is consistent with Task 2 hook.
+    resolution: >
+      Cross-checked task-3 task file, task-2 scar, and task-3 dispatch prompt.
+      All agree: exclude changes/, docs/, bugfix/; threshold staleness_churn_threshold
+      default 30. All four skill doc edits now include the full exclusion list
+      inline with canonical cross-reference.
+  - original_section: silent_failure_conditions
+    original_description: >
+      auto-initiated regen fails/aborts/Phase-4-rejected — without the escape
+      clause, pre-thinking has no documented exit; risk of indefinite block or
+      dishonest "completed".
+    resolution: >
+      Added explicit escape clause to both pre-thinking/SKILL.md (Atomic Context
+      Boundary) and pre-thinking/flow.md (step 3): "If auto-initiated regeneration
+      fails, aborts, or is rejected at Phase 4 review, do NOT treat it as
+      completed and do NOT block indefinitely: proceed with the map explicitly
+      marked stale, record an information gap noting the failed regeneration, and
+      continue planning on that basis." DC-5 death test guards this against silent
+      regression. Tests: DC-5 was RED before edit, GREEN after. 732 total passed.

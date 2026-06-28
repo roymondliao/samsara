@@ -1,49 +1,24 @@
 #!/usr/bin/env bash
-# Check codebase-map freshness and inject status into session context
-# Only injects when map is missing or stale — zero token cost when fresh
+# Check codebase-map freshness via git churn since last_updated.
+# Only injects context when map is missing, stale, or freshness is unknown.
+# Zero token cost (no output) when map is verifiably fresh.
+#
+# Three-state verdict:
+#   fresh   — map exists, churn < threshold → exit 0, no output
+#   stale   — map missing OR churn >= threshold → emit directive + count
+#   unknown — churn uncomputable (no git / malformed date / git error) → emit advisory
 
 set -euo pipefail
 
-codebase_map_status="not_applicable"
+# --- Not in a Claude Code project: no-op ---
+[ -n "${CLAUDE_PROJECT_DIR:-}" ] || exit 0
 
-if [ -n "${CLAUDE_PROJECT_DIR:-}" ]; then
-    map_file="${CLAUDE_PROJECT_DIR}/.samsara/codebase-map.yaml"
-    if [ ! -f "$map_file" ]; then
-        codebase_map_status="missing"
-    else
-        # macOS: stat -f %m, Linux: stat -c %Y
-        last_modified=$(stat -f %m "$map_file" 2>/dev/null || stat -c %Y "$map_file" 2>/dev/null || echo 0)
-        now=$(date +%s)
-        age_days=$(( (now - last_modified) / 86400 ))
-        if [ "$age_days" -gt 7 ]; then
-            codebase_map_status="stale_${age_days}_days"
-        else
-            codebase_map_status="fresh_${age_days}_days"
-        fi
-    fi
-fi
+map_file="${CLAUDE_PROJECT_DIR}/.samsara/codebase-map.yaml"
 
-# Build context message based on status
-case "$codebase_map_status" in
-    missing)
-        context_msg="Codebase Map Status: MISSING. 此專案尚無 codebase map，建議執行 /samsara:codebase-map 來生成。"
-        ;;
-    stale_*)
-        days="${codebase_map_status#stale_}"
-        days="${days%_days}"
-        context_msg="Codebase Map Status: STALE (${days} days). Codebase map 已 ${days} 天未更新，建議執行 /samsara:codebase-map 來更新。"
-        ;;
-    fresh_*)
-        # Fresh — no need to inject anything, zero token cost
-        exit 0
-        ;;
-    not_applicable)
-        # Not in a project directory — no need to inject
-        exit 0
-        ;;
-esac
+# ---------------------------------------------------------------------------
+# Output helpers — keep identical JSON contract to original hook
+# ---------------------------------------------------------------------------
 
-# Escape for JSON
 escape_for_json() {
     local s="$1"
     s="${s//\\/\\\\}"
@@ -54,8 +29,114 @@ escape_for_json() {
     printf '%s' "$s"
 }
 
-escaped_msg=$(escape_for_json "$context_msg")
+emit_context() {
+    local msg="$1"
+    local escaped
+    escaped=$(escape_for_json "$msg")
+    printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$escaped"
+}
 
-printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$escaped_msg"
+# ---------------------------------------------------------------------------
+# Map presence check
+# ---------------------------------------------------------------------------
 
+if [ ! -f "$map_file" ]; then
+    emit_context "Codebase Map Status: MISSING. 此專案尚無 codebase map，建議執行 /samsara:codebase-map 來生成。"
+    exit 0
+fi
+
+# ---------------------------------------------------------------------------
+# Read last_updated — accepted format: YYYY-MM-DD scalar
+# grep exits 1 when no match; || true prevents set -e from killing the script
+# ---------------------------------------------------------------------------
+
+last_updated=$(grep -E '^last_updated:' "$map_file" \
+    | sed 's/last_updated:[[:space:]]*//' \
+    | tr -d '"' | tr -d "'" | tr -d '[:space:]') || true
+
+if [ -z "$last_updated" ]; then
+    emit_context "Codebase Map Status: UNKNOWN — last_updated field is missing from the codebase map. Cannot verify freshness. Recommend regenerating: /samsara:codebase-map"
+    exit 0
+fi
+
+# Validate YYYY-MM-DD format — anything else maps to unknown
+if ! printf '%s' "$last_updated" | grep -qE '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'; then
+    emit_context "Codebase Map Status: UNKNOWN — last_updated value '${last_updated}' is not a valid YYYY-MM-DD date. Cannot verify freshness. Recommend regenerating: /samsara:codebase-map"
+    exit 0
+fi
+
+# Reject future dates: git log --since=<future> returns 0 commits → churn=0 proves
+# nothing. ISO YYYY-MM-DD is directly string-comparable (lexicographic = chronological).
+today=$(date +%Y-%m-%d)
+if [ "$last_updated" \> "$today" ]; then
+    emit_context "Codebase Map Status: UNKNOWN — last_updated '${last_updated}' is in the future. Cannot verify freshness (churn would be 0 for any future date). Recommend regenerating: /samsara:codebase-map"
+    exit 0
+fi
+
+# ---------------------------------------------------------------------------
+# Read staleness_churn_threshold — default 30 when absent or non-numeric
+# ---------------------------------------------------------------------------
+
+threshold_raw=$(grep -E '^staleness_churn_threshold:' "$map_file" \
+    | sed 's/staleness_churn_threshold:[[:space:]]*//' \
+    | tr -d '"' | tr -d "'" | tr -d '[:space:]') || true
+
+if [ -z "$threshold_raw" ] || ! printf '%s' "$threshold_raw" | grep -qE '^[0-9]+$'; then
+    churn_threshold=30
+else
+    churn_threshold="$threshold_raw"
+fi
+
+# ---------------------------------------------------------------------------
+# Check git availability
+# ---------------------------------------------------------------------------
+
+if ! git -C "$CLAUDE_PROJECT_DIR" rev-parse --git-dir > /dev/null 2>&1; then
+    emit_context "Codebase Map Status: UNKNOWN — cannot verify freshness (project is not a git repository). Recommend regenerating: /samsara:codebase-map"
+    exit 0
+fi
+
+# ---------------------------------------------------------------------------
+# Compute churn: distinct changed source files since last_updated
+# Excludes paths under changes/, docs/, bugfix/ (doc/task artifacts, not source)
+# Captures git failures explicitly: shallow clone, no commits, git error → unknown
+# awk 'NF && ...' filters empty lines + excluded paths without failing on zero matches
+# NOTE: --since uses local midnight as the boundary; edge load-bearing only at
+#       threshold 0 or 1 (commits made exactly on last_updated day may be included).
+# ---------------------------------------------------------------------------
+
+git_err_file=$(mktemp)
+trap 'rm -f "${git_err_file:-}"' EXIT
+if ! churn_raw=$(git -C "$CLAUDE_PROJECT_DIR" log \
+    --since="$last_updated" \
+    --name-only \
+    --pretty=format: \
+    2>"$git_err_file" | \
+    awk 'NF && $0 !~ /^(changes|docs|bugfix)\//' | \
+    sort -u | wc -l | tr -d ' '); then
+    git_err_snippet=$(head -1 "$git_err_file" 2>/dev/null || true)
+    rm -f "$git_err_file"
+    emit_context "Codebase Map Status: UNKNOWN — git churn computation failed (${git_err_snippet}). Cannot verify freshness. Recommend regenerating: /samsara:codebase-map"
+    exit 0
+fi
+rm -f "$git_err_file"
+
+# Defensive: ensure churn_raw is a non-negative integer
+if ! printf '%s' "$churn_raw" | grep -qE '^[0-9]+$'; then
+    emit_context "Codebase Map Status: UNKNOWN — unexpected churn output ('${churn_raw}'). Cannot verify freshness."
+    exit 0
+fi
+
+churn="$churn_raw"
+
+# ---------------------------------------------------------------------------
+# Verdict
+# ---------------------------------------------------------------------------
+
+if [ "$churn" -ge "$churn_threshold" ]; then
+    emit_context "Codebase Map Status: STALE — ${churn} source files changed since map was generated (threshold: ${churn_threshold}). Recommend regenerating: /samsara:codebase-map"
+    exit 0
+fi
+
+# Fresh — exit silently, zero token cost
 exit 0
