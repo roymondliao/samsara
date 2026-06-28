@@ -319,6 +319,347 @@ class TestInstallerGlobalScope:
         assert "restart" in instructions.lower() or "codex" in instructions.lower()
 
 
+def _write_realistic_codex_hooks_json(converted_dir: Path) -> str:
+    """Overwrite the converted hooks.json with a realistic session-start command.
+
+    The real converter bakes a scope-agnostic RELATIVE command
+    ('.codex/hooks/samsara-session-start.sh'). The make_converted_output helper
+    writes an empty SessionStart list, so it cannot exercise command-path rewriting.
+    """
+    relative_command = ".codex/hooks/samsara-session-start.sh"
+    (converted_dir / ".codex" / "hooks.json").write_text(
+        json.dumps(
+            {
+                "hooks": {
+                    "SessionStart": [
+                        {
+                            "matcher": "startup|resume",
+                            "hooks": [
+                                {
+                                    "type": "command",
+                                    "command": relative_command,
+                                    "statusMessage": "Injecting Samsara bootstrap context",
+                                }
+                            ],
+                        }
+                    ]
+                }
+            }
+        )
+    )
+    return relative_command
+
+
+def _session_start_commands(hooks_json_path: Path) -> list[str]:
+    data = json.loads(hooks_json_path.read_text(encoding="utf-8"))
+    return [
+        hook["command"]
+        for entry in data["hooks"]["SessionStart"]
+        for hook in entry["hooks"]
+    ]
+
+
+class TestInstallerGlobalHookCommandPath:
+    """Global install must make samsara hook commands resolvable from any cwd.
+
+    Codex/Gemini launched from a project dir resolve a relative hook command
+    against the PROJECT root. A global install places the script under $HOME, so
+    a relative command silently never resolves and the hook never fires.
+    """
+
+    def test_global_install_hook_command_is_absolute_and_exists(self, tmp_path):
+        """DEATH TEST: global hook command must be absolute and point to a real file.
+
+        Fails on pre-fix code because the command stays
+        '.codex/hooks/samsara-session-start.sh' (relative), which does not exist
+        relative to the process cwd and is not resolvable to the global script.
+        """
+        from samsara_cli.installer.install import Installer
+
+        fake_home = tmp_path / "home"
+        fake_home.mkdir()
+        project_dir = tmp_path / "project"
+        project_dir.mkdir()
+        source_dir = make_minimal_source(tmp_path)
+        converted_dir = make_converted_output(tmp_path)
+        _write_realistic_codex_hooks_json(converted_dir)
+
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="codex 1.2.3")
+            with patch.dict("os.environ", {"HOME": str(fake_home)}):
+                with patch(
+                    "samsara_cli.installer.install.Installer._run_convert",
+                    return_value=converted_dir,
+                ):
+                    installer = Installer(platform="codex")
+                    installer.install(
+                        source_dir=source_dir,
+                        scope="global",
+                        cwd=project_dir,
+                    )
+
+        commands = _session_start_commands(fake_home / ".codex" / "hooks.json")
+        assert commands, "global hooks.json has no SessionStart command"
+        for command in commands:
+            assert Path(command).is_absolute(), (
+                f"Global hook command {command!r} is not absolute — Codex would "
+                "resolve it against the project cwd, not $HOME, and never find it."
+            )
+            assert Path(command).exists(), (
+                f"Global hook command {command!r} does not point to an existing "
+                "script — the hook would silently never fire."
+            )
+            assert str(fake_home) in command, (
+                f"Global hook command {command!r} must resolve under the install "
+                f"root {fake_home}."
+            )
+
+    def test_project_install_hook_command_stays_relative(self, tmp_path):
+        """Project scope must NOT rewrite the command — relative resolves correctly there."""
+        from samsara_cli.installer.install import Installer
+
+        project_dir = tmp_path / "project"
+        project_dir.mkdir()
+        source_dir = make_minimal_source(tmp_path)
+        converted_dir = make_converted_output(tmp_path)
+        relative_command = _write_realistic_codex_hooks_json(converted_dir)
+
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="codex 1.2.3")
+            with patch(
+                "samsara_cli.installer.install.Installer._run_convert",
+                return_value=converted_dir,
+            ):
+                installer = Installer(platform="codex")
+                installer.install(
+                    source_dir=source_dir,
+                    scope="project",
+                    cwd=project_dir,
+                )
+
+        commands = _session_start_commands(project_dir / ".codex" / "hooks.json")
+        assert relative_command in commands, (
+            "Project install must keep the relative command — it resolves against "
+            "the project root where the script actually lives."
+        )
+
+    def test_global_install_leaves_foreign_hook_commands_untouched(self, tmp_path):
+        """A user's pre-existing non-samsara hook command must not be rewritten."""
+        from samsara_cli.installer.install import Installer
+
+        fake_home = tmp_path / "home"
+        codex_dir = fake_home / ".codex"
+        codex_dir.mkdir(parents=True)
+        # Pre-existing user hooks.json with a foreign command
+        (codex_dir / "hooks.json").write_text(
+            json.dumps(
+                {
+                    "hooks": {
+                        "SessionStart": [
+                            {
+                                "matcher": "startup",
+                                "hooks": [
+                                    {"type": "command", "command": "my-own-tool.sh"}
+                                ],
+                            }
+                        ]
+                    }
+                }
+            )
+        )
+
+        project_dir = tmp_path / "project"
+        project_dir.mkdir()
+        source_dir = make_minimal_source(tmp_path)
+        converted_dir = make_converted_output(tmp_path)
+        _write_realistic_codex_hooks_json(converted_dir)
+
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="codex 1.2.3")
+            with patch.dict("os.environ", {"HOME": str(fake_home)}):
+                with patch(
+                    "samsara_cli.installer.install.Installer._run_convert",
+                    return_value=converted_dir,
+                ):
+                    installer = Installer(platform="codex")
+                    installer.install(
+                        source_dir=source_dir,
+                        scope="global",
+                        cwd=project_dir,
+                    )
+
+        commands = _session_start_commands(fake_home / ".codex" / "hooks.json")
+        assert "my-own-tool.sh" in commands, (
+            "User's own relative hook command must be left untouched — only samsara's "
+            "plugin-dir-prefixed commands get rewritten."
+        )
+
+
+def make_gemini_converted_output(tmp_path: Path) -> Path:
+    """Create a minimal converted output directory for the gemini-cli platform.
+
+    Mirrors the real converter's .gemini tree, including the hook script itself,
+    so a global install can assert the rewritten command points to an existing
+    file. Gemini differs from Codex in one way that matters here: its hooks_file
+    (settings.json) is ALSO the global config_path, so the rewrite must be the
+    final write to that file — this fixture lets a test prove that end to end.
+    """
+    output = tmp_path / "dist" / "gemini"
+    skill_dir = output / ".agents" / "skills" / "samsara-research"
+    skill_dir.mkdir(parents=True)
+    (skill_dir / "SKILL.md").write_text("# research\n")
+    agents_dir = output / ".gemini" / "agents"
+    agents_dir.mkdir(parents=True)
+    (agents_dir / "samsara-implementer.md").write_text("# implementer\n")
+    hooks_dir = output / ".gemini" / "hooks"
+    hooks_dir.mkdir(parents=True)
+    (hooks_dir / "samsara-session-start.sh").write_text("#!/usr/bin/env bash\n")
+    return output
+
+
+def _write_realistic_gemini_settings_json(converted_dir: Path) -> str:
+    """Write a converted settings.json with a realistic RELATIVE hook command.
+
+    The real converter bakes '.gemini/hooks/samsara-session-start.sh' — scope
+    agnostic and relative, identical in shape to the Codex case but nested in
+    settings.json instead of hooks.json.
+    """
+    relative_command = ".gemini/hooks/samsara-session-start.sh"
+    (converted_dir / ".gemini" / "settings.json").write_text(
+        json.dumps(
+            {
+                "hooks": {
+                    "SessionStart": [
+                        {
+                            "matcher": "startup|resume",
+                            "hooks": [
+                                {
+                                    "type": "command",
+                                    "command": relative_command,
+                                }
+                            ],
+                        }
+                    ]
+                }
+            }
+        )
+    )
+    return relative_command
+
+
+class TestInstallerGeminiGlobalHookCommandPath:
+    """Same false-success failure mode as Codex, guarded for the gemini-cli path.
+
+    The commit that fixed the Codex relative-command bug claimed the structure-
+    agnostic rewrite also covers Gemini's settings.json — but only Codex was
+    tested. These tests turn that claim into a guarded fact. Gemini is the
+    riskier surface because settings.json doubles as the global config file, so
+    the rewrite must survive the settings-merge that runs before it.
+    """
+
+    def test_global_install_hook_command_is_absolute_and_exists(self, tmp_path):
+        """DEATH TEST: gemini global hook command must be absolute and point to a real file.
+
+        Fails on pre-fix code because the command stays
+        '.gemini/hooks/samsara-session-start.sh' (relative), which Gemini would
+        resolve against the project cwd rather than $HOME — the hook never fires.
+        """
+        from samsara_cli.installer.install import Installer
+
+        fake_home = tmp_path / "home"
+        fake_home.mkdir()
+        project_dir = tmp_path / "project"
+        project_dir.mkdir()
+        source_dir = make_minimal_source(tmp_path)
+        converted_dir = make_gemini_converted_output(tmp_path)
+        _write_realistic_gemini_settings_json(converted_dir)
+
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="gemini 1.2.3")
+            with patch.dict("os.environ", {"HOME": str(fake_home)}):
+                with patch(
+                    "samsara_cli.installer.install.Installer._run_convert",
+                    return_value=converted_dir,
+                ):
+                    installer = Installer(platform="gemini-cli")
+                    installer.install(
+                        source_dir=source_dir,
+                        scope="global",
+                        cwd=project_dir,
+                    )
+
+        commands = _session_start_commands(fake_home / ".gemini" / "settings.json")
+        assert commands, "global settings.json has no SessionStart command"
+        for command in commands:
+            assert Path(command).is_absolute(), (
+                f"Global hook command {command!r} is not absolute — Gemini would "
+                "resolve it against the project cwd, not $HOME, and never find it."
+            )
+            assert Path(command).exists(), (
+                f"Global hook command {command!r} does not point to an existing "
+                "script — the hook would silently never fire."
+            )
+            assert str(fake_home) in command, (
+                f"Global hook command {command!r} must resolve under the install "
+                f"root {fake_home}."
+            )
+
+    def test_global_install_leaves_foreign_hook_commands_untouched(self, tmp_path):
+        """A user's pre-existing non-samsara command in settings.json must survive.
+
+        settings.json carries user config beyond hooks, so over-broad rewriting
+        here is more dangerous than for Codex — this pins the prefix guard.
+        """
+        from samsara_cli.installer.install import Installer
+
+        fake_home = tmp_path / "home"
+        gemini_dir = fake_home / ".gemini"
+        gemini_dir.mkdir(parents=True)
+        # Pre-existing user settings.json with a foreign hook command.
+        (gemini_dir / "settings.json").write_text(
+            json.dumps(
+                {
+                    "hooks": {
+                        "SessionStart": [
+                            {
+                                "matcher": "startup",
+                                "hooks": [
+                                    {"type": "command", "command": "my-own-tool.sh"}
+                                ],
+                            }
+                        ]
+                    }
+                }
+            )
+        )
+
+        project_dir = tmp_path / "project"
+        project_dir.mkdir()
+        source_dir = make_minimal_source(tmp_path)
+        converted_dir = make_gemini_converted_output(tmp_path)
+        _write_realistic_gemini_settings_json(converted_dir)
+
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="gemini 1.2.3")
+            with patch.dict("os.environ", {"HOME": str(fake_home)}):
+                with patch(
+                    "samsara_cli.installer.install.Installer._run_convert",
+                    return_value=converted_dir,
+                ):
+                    installer = Installer(platform="gemini-cli")
+                    installer.install(
+                        source_dir=source_dir,
+                        scope="global",
+                        cwd=project_dir,
+                    )
+
+        commands = _session_start_commands(fake_home / ".gemini" / "settings.json")
+        assert "my-own-tool.sh" in commands, (
+            "User's own relative hook command must be left untouched — only samsara's "
+            "plugin-dir-prefixed commands get rewritten."
+        )
+
+
 # ---------------------------------------------------------------------------
 # Update = re-convert + re-install
 # ---------------------------------------------------------------------------
