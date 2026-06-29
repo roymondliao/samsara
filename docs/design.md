@@ -1,3 +1,15 @@
+> **HISTORICAL DESIGN NOTE — superseded where it diverges from the live skills.**
+> This is a point-in-time design document. Per Samsara's Truth Source Boundary, the
+> live `skills/` are authoritative for current behavior; where this doc disagrees,
+> the live skills win. Known drift (this doc is stale, the skills are NOT):
+> - `acceptance.feature` (Gherkin) → current: `acceptance.yaml` (death-first BDD)
+> - `index.md` → current: `index.yaml`
+> - "update index after each task / commit per task" → current: commit **once** after
+>   ALL tasks complete and all reviews pass (see `skills/implement/SKILL.md`).
+>
+> Do not rewrite the body below to current terms — it records the original design;
+> this banner is the honest pointer to where reality moved on.
+
 ####################
 kickoff 要有 folder structure 的設計
 implement
