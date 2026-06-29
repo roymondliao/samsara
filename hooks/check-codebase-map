@@ -3,10 +3,12 @@
 # Only injects context when map is missing, stale, or freshness is unknown.
 # Zero token cost (no output) when map is verifiably fresh.
 #
-# Three-state verdict:
-#   fresh   — map exists, churn < threshold → exit 0, no output
-#   stale   — map missing OR churn >= threshold → emit directive + count
-#   unknown — churn uncomputable (no git / malformed date / git error) → emit advisory
+# Four observable output states (the test suite asserts on these):
+#   fresh   — map exists, churn < threshold → exit 0, NO output (zero token cost)
+#   missing — no map file → emit MISSING message (no churn count; distinct from stale)
+#   stale   — map exists AND churn >= threshold → emit STALE directive + churn count
+#   unknown — churn uncomputable (no git / missing|malformed|future last_updated /
+#             git error / non-integer churn) → emit UNKNOWN advisory, never fresh
 
 set -euo pipefail
 

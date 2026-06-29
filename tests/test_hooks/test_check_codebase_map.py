@@ -6,7 +6,8 @@ File layout:
   - DEATH TESTS (DC-*) — must be RED against the current mtime hook
   - UNIT TESTS — assert (exit code, JSON additionalContext status) contract
 
-Death case taxonomy:
+Death case taxonomy (DC-N numbers are FILE-LOCAL to this hook test suite;
+the pre-thinking contract tests use their own independent DC-N namespace):
   DC-1: mtime gaming — map touched to now, last_updated old, ≥ threshold files changed
          → verdict MUST be stale (not fresh). Proves mtime dependency is killed.
   DC-2: not a git repo → verdict MUST be unknown; exit 0; no set -u crash.

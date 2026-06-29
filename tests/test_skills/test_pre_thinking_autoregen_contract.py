@@ -2,7 +2,9 @@
 Doc-contract guard and artifact-contract tests for Task 3:
 pre-thinking auto-regen + codebase-map fail-honest contract.
 
-Death tests:
+Death tests (DC-N numbers are FILE-LOCAL to this contract suite; the hook test
+suite tests/test_hooks/test_check_codebase_map.py uses its own independent DC-N
+namespace — DC-4/DC-5 here are unrelated to DC-4/DC-5 there):
   DC-4 (regen failure silent reuse): codebase-map/SKILL.md write/regen section
   MUST contain an explicit "do not advance last_updated on failure/abort" clause
   AND a "mark stale + reason" instruction. Absence means a failed regen silently
