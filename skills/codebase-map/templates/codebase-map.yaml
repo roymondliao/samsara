@@ -1,5 +1,10 @@
 project: "<project name>"
 last_updated: "YYYY-MM-DD"
+# stale_reason: "<reason>"  # OPTIONAL — present ONLY when regen failed/aborted; omitted on a successful run.
+#   Written by the Fail-Honest Write Contract (see SKILL.md) when a regeneration is
+#   abandoned, aborted, or Phase-4-rejected.  Examples: "regen aborted — Phase 4 review
+#   rejected", "regen failed — explorer agent error".  A later successful full regen
+#   overwrites this file and this field is not written, so its absence signals success.
 staleness_churn_threshold: 30  # changed source files since last_updated (exclude changes/ docs/ bugfix/)
 generated_by: "samsara:codebase-map"
 

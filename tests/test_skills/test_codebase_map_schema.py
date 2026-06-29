@@ -111,6 +111,45 @@ def test_death__template_threshold_keys_are_exactly_the_live_contract() -> None:
 # ---------------------------------------------------------------------------
 
 
+def test_death__stale_reason_is_documented_but_not_a_default_key() -> None:
+    """
+    Cross-task contract consistency guard.
+
+    The SKILL.md Fail-Honest Write Contract instructs: on a failed/aborted regen,
+    write a `stale_reason` field to .samsara/codebase-map.yaml.  Without template
+    documentation, an agent following that contract writes a schema-undocumented
+    (ghost) field, and a later successful full regen could silently drop it.
+
+    Two poles guarded simultaneously:
+      - DOCUMENTED pole: `stale_reason` must appear somewhere in the template TEXT
+        (as a comment / optional field marker), confirming the schema acknowledges it.
+      - NOT-FABRICATED pole: the parsed YAML dict must NOT contain `stale_reason`
+        as a populated key — it must be absent on a fresh/successful map.
+
+    This test is RED before the template edit (no `stale_reason` in text) and
+    GREEN after the commented-optional field is added.
+    """
+    template_text = TEMPLATE_PATH.read_text(encoding="utf-8")
+    parsed = yaml.safe_load(template_text)
+
+    # Pole 1: the field is documented (appears in the file text, even if commented)
+    assert "stale_reason" in template_text, (
+        "stale_reason is not documented in the template.  "
+        "SKILL.md Fail-Honest Write Contract requires agents to write this field "
+        "on a failed regen, but the template schema does not acknowledge it — "
+        "making every agent-written stale_reason a ghost field invisible to schema "
+        "consumers.  Add a commented-optional stale_reason to the template."
+    )
+
+    # Pole 2: the field is NOT a mandatory/default-present key in the parsed YAML
+    assert "stale_reason" not in parsed, (
+        "stale_reason is a populated key in the parsed template dict.  "
+        "Every generated map would carry a stale_reason it never had — a fabricated "
+        "failure marker on maps that succeeded.  stale_reason must be absent from "
+        "the parsed YAML (commented-only or optional) — written ONLY on actual regen failure."
+    )
+
+
 def test_unit__template_staleness_churn_threshold_is_int() -> None:
     """
     Contract source: the documented YAML schema (public artifact contract).
