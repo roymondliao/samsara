@@ -186,6 +186,7 @@ These are non-negotiable:
 - **UNKNOWN blocks review completion:** Reviewer `UNKNOWN` is not a partial pass. It means a required reference/domain condition could not be verified; do not proceed, update `index.yaml`, or mark review complete until the condition is fixed and both reviewers are re-run.
 - **Commit after all tasks:** Do not commit per-task. Commit once after all tasks complete and all reviews pass.
 - **Structural honesty applies at generation, not only at review:** The implementer's 結構誠實 constraints (`agents/implementer.md`) — justify every boundary/abstraction by what breaks if it is removed, and refuse speculative generalization built for a single consumer — apply whether the implementer runs as a subagent (modes A/B) **or inline (mode C)**. In inline mode the agent definition is not loaded, so the main agent owns these constraints directly; do not skip them just because no subagent was dispatched.
+- **Read-before-write and dependency hygiene apply inline too:** The implementer's `agents/implementer.md` constraints — **read before you write** (read the files you touch + neighbors, copy existing patterns instead of inventing) and **no silent dependency addition** (ask whether the standard library or an existing dependency already covers it before adding one; record why one earns its place) — apply in subagent modes A/B **and inline mode C**. In inline mode the agent definition is not loaded, so the main agent owns these directly.
 
 ## Red Flags
 
@@ -205,6 +206,8 @@ These are non-negotiable:
 - Let subagent commit — only the main agent commits, after all tasks complete
 - Update index.yaml before both code-reviewer and code-quality-reviewer pass
 - Assume an absent review output means PASS — missing reviewer output is always a FAIL
+- Add a dependency without recording in the scar why the standard library or an existing dependency cannot do it — an unjustified dependency is deletable by default
+- Write death tests before reading the files you are about to touch — a death test built on assumed (not read) conventions pins the wrong contract
 
 ## Support Files
 

@@ -1,0 +1,36 @@
+type: fast_track
+description: "Add two Karpathy-aligned implementer rules — Dependency Hygiene (VIII) as a Prohibited Behavior, and Read-Before-Write (I) as an Execution-Order step ordered before death tests — with inline-mode echoes and a doc-contract guard test."
+
+death_clause: "If agents/implementer.md can be trimmed or reordered (read-before-write moved after the death-test step, or the dependency-hygiene clause removed) without any test going red, this change has failed."
+
+acceptance:
+  - "agents/implementer.md Prohibited Behaviors contains 'No silent dependency addition' (ask stdlib / existing dep first; record why one earns its place)"
+  - "agents/implementer.md Execution Order contains a 'Read before you write' step ORDERED BEFORE the 'Write death tests' step"
+  - "skills/implement/SKILL.md Yin-Side Constraints echoes both rules for inline mode C; Red Flags lists the dependency + read-before-write violations"
+  - "tests/test_agents/test_implementer_contract.py guards all of the above (presence + ordering + inline echo); RED before the edits, GREEN after"
+  - "Full suite green with no regression (705 passed)"
+
+scar_tag: 1
+scar_items:
+  - "Doc-presence/ordering tests guard that the rules are WRITTEN and correctly ordered, but cannot prove an agent OBEYS read-before-write or dependency-hygiene at runtime — same limitation as the codebase-map Task 3 doc contracts. Real proof is a live implementer session. Accepted: doc space has no stronger guard; the guard test at least stops silent deletion (the Issue-001 rot)."
+  - "Watch: if the samsara_cli converter freezes expected fixtures for agents/implementer.md or skills/implement/SKILL.md, those may now be stale. Full suite is green (no frozen-snapshot test compared this content), so not breaking — but regenerate fixtures if a converter snapshot test is added later."
+
+files_changed:
+  - "agents/implementer.md"
+  - "skills/implement/SKILL.md"
+  - "tests/test_agents/test_implementer_contract.py"
+  - "tests/test_agents/__init__.py"
+
+quality_checklist:
+  - criterion: "C5 Reuse"
+    checked: true
+    note: "Inline-mode echo in implement SKILL.md mirrors the EXISTING structural-honesty inline constraint pattern (same shape, adjacent bullet) rather than inventing a new mechanism. The _execution_order_section test helper has a single home (the ordering test)."
+  - criterion: "C6 Clear Structure"
+    checked: true
+    note: "Each edit placed in its correct section: Prohibited Behaviors (#6), Execution Order (new step 2, renumbered 3-13), Self-Review (2 bullets), implement SKILL.md Yin-Side Constraints (inline echo) + Red Flags (2 lines)."
+  - criterion: "C7 Elegant Logic"
+    checked: true
+    note: "Section-scoped ordering check via _execution_order_section is the minimal correct structure — the naive whole-file find matched intro prose ('You write death tests...'), so scoping is protection, not decoration. No extra wrappers."
+  - criterion: "C8 No Redundancy"
+    checked: true
+    note: "Deleted the redundant whole-file read-before-write presence test (subsumed by the section-scoped ordering test). The dep-hygiene rule's appearance at canonical + enforcement points is the framework's established multi-point pattern (one rule referenced), not a split-truth."
