@@ -289,6 +289,10 @@ class TestDC3MissingOrMalformedLastUpdated:
         result = run_hook(tmp_path)
 
         assert result.returncode == 0
+        assert result.stdout.strip(), (
+            "Expected JSON output but hook exited silently (fresh). "
+            "UNKNOWN regression produced empty stdout."
+        )
         ctx = additional_context(result)
         assert "UNKNOWN" in ctx, (
             f"Expected UNKNOWN for numeric last_updated (no hyphens), got: {ctx!r}"
@@ -518,6 +522,10 @@ class TestContractStale:
         result = run_hook(tmp_path)
 
         assert result.returncode == 0
+        assert result.stdout.strip(), (
+            "Expected JSON output but hook exited silently (fresh). "
+            "STALE regression produced empty stdout."
+        )
         ctx = additional_context(result)
         assert "STALE" in ctx, f"Expected STALE, got: {ctx!r}"
         assert "10" in ctx, f"Expected churn count '10' in message, got: {ctx!r}"
