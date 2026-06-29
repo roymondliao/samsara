@@ -1,0 +1,26 @@
+# Phase 4 - Fix Summary
+
+fix:
+  summary: "Codex session-start hook now resolves bootstrap skills from the script's install root, independent of process cwd."
+  files_changed:
+    - "samsara_cli/config/templates/codex/hook.sh.j2"
+    - "tests/fixtures/expected/codex/.codex/hooks/samsara-session-start.sh"
+    - "tests/test_converter/test_hook.py"
+  death_tests:
+    - "Rendered project hook script reads bootstrap skill from the install root when executed from another cwd."
+    - "Rendered global hook script reads bootstrap skill from the fake home install root when executed from a project cwd."
+
+verification:
+  - command: "source .venv/bin/activate && uv run pytest tests/test_converter/test_hook.py -q"
+    result: "passed"
+  - command: "source .venv/bin/activate && uv run pytest tests/test_converter/test_hook.py tests/test_installer/test_install.py tests/integration/test_smoke_codex.py -q"
+    result: "passed"
+  - command: "source .venv/bin/activate && uv run samsara-cli install codex --scope global --source /Users/yuyu_liao/personal/samsara"
+    result: "passed; live global hook regenerated under /Users/yuyu_liao/.codex/hooks"
+  - command: "/Users/yuyu_liao/.codex/hooks/samsara-session-start.sh"
+    result: "passed from repo cwd; output includes bootstrap skill content and no .agents/skills read error"
+
+scar:
+  tag: 1
+  items:
+    - "The hook derives install root by assuming the script path remains `<install-root>/.codex/hooks/samsara-session-start.sh`. If Codex changes the native hook directory layout, the root calculation must change with the platform config."

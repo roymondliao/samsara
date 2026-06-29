@@ -1,0 +1,34 @@
+# Phase 1 - Interrogate the Failure
+# Codex global SessionStart hook runs but injects a bootstrap read error.
+
+bug:
+  title: "Global Codex SessionStart hook reads bootstrap skill from project-relative .agents path"
+  reported_by: "user observed SessionStart hook warning"
+  date: 2026-06-29
+
+failure_classification:
+  level: 2
+  rationale: >
+    The hook process exits 0 and Codex reports "SessionStart hook (completed)",
+    but the injected Samsara bootstrap context is degraded into a `cat:
+    .agents/skills/... No such file or directory` message. The session appears
+    to have a Samsara hook, while the actual bootstrap instructions are absent.
+
+impact:
+  scope: "Codex installs whose session-start script is executed from a cwd that does not contain .agents/skills."
+  global_scope: "Affected: the script lives under ~/.codex/hooks but Codex runs it while cwd is a project directory."
+  project_scope: "Potentially affected when a project hook is executed from any cwd other than the project root."
+  detection_delay: "Visible only after Codex surfaces the hook output; automated tests did not execute the rendered script from a foreign cwd."
+
+evidence:
+  - file: "/Users/yuyu_liao/.codex/hooks/samsara-session-start.sh"
+    line: 15
+    note: "Live global hook had SKILLS_DIR='.agents/skills'."
+  - file: "/Users/yuyu_liao/.codex/hooks/samsara-session-start.sh"
+    line: 25
+    note: "The script reads ${SKILLS_DIR}/samsara-samsara-bootstrap/SKILL.md and swallows failures into context."
+  - file: "samsara_cli/config/templates/codex/hook.sh.j2"
+    line: 15
+    note: "The generated template used a process-cwd-relative skills_dir."
+
+verdict: CONFIRMED

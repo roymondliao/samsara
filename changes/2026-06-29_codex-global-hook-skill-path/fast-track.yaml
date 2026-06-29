@@ -1,0 +1,31 @@
+type: fast_track
+description: "Make Codex session-start hook resolve Samsara skills from its install root so project and global installs work from any cwd."
+death_clause: "If a rendered global hook executed from a project cwd injects `cat: .agents/skills` or `Error reading samsara-bootstrap skill`, this change is failed."
+acceptance:
+  - "Project-installed hook reads `<project>/.agents/skills/samsara-samsara-bootstrap/SKILL.md` based on script location."
+  - "Global-installed hook reads `$HOME/.agents/skills/samsara-samsara-bootstrap/SKILL.md` based on script location."
+  - "Absolute `paths.skills_dir` values remain usable without install-root prefixing."
+  - "Existing Codex hook JSON contract remains unchanged."
+scar_tag: 1
+scar_items:
+  - "The script root calculation assumes `.codex/hooks` stays exactly two levels below the install root."
+files_changed:
+  - "samsara_cli/config/templates/codex/hook.sh.j2"
+  - "tests/fixtures/expected/codex/.codex/hooks/samsara-session-start.sh"
+  - "tests/test_converter/test_hook.py"
+  - "bugfix/2026-06-29_codex-global-hook-skill-path/bug-report.yaml"
+  - "bugfix/2026-06-29_codex-global-hook-skill-path/root-cause.yaml"
+  - "bugfix/2026-06-29_codex-global-hook-skill-path/fix-summary.yaml"
+quality_checklist:
+  - criterion: "C5 Reuse"
+    checked: true
+    note: "The fix reuses platform-configured `skills_dir`; it does not duplicate installer command rewrite logic."
+  - criterion: "C6 Clear Structure"
+    checked: true
+    note: "Path resolution lives in the hook template because the running script can reliably identify its own install root for both scopes."
+  - criterion: "C7 Elegant Logic"
+    checked: true
+    note: "The script adds one root calculation and one absolute-path guard, with no new helper layer."
+  - criterion: "C8 No Redundancy"
+    checked: true
+    note: "The install root is computed from the hook path; `skills_dir` remains sourced from codex.yaml."
