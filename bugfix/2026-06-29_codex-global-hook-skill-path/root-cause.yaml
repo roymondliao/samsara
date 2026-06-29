@@ -1,0 +1,28 @@
+# Phase 2 - Root Cause Tracing
+
+root_cause:
+  summary: >
+    The Codex hook command path was made absolute for global installs, so the
+    script now runs correctly. However, the script itself still resolved
+    `.agents/skills` relative to the process cwd instead of relative to the
+    install root that contains both `.codex/hooks` and `.agents/skills`.
+  mechanism:
+    - "Converter renders SKILLS_DIR from platform paths.skills_dir as `.agents/skills`."
+    - "Global installer copies `.codex/hooks/samsara-session-start.sh` to `$HOME/.codex/hooks` and `.agents/skills` to `$HOME/.agents/skills`."
+    - "Codex invokes the absolute script while cwd remains the active project."
+    - "The script reads `<project>/.agents/skills/...` instead of `$HOME/.agents/skills/...`."
+
+why_tests_missed_it:
+  - "Existing tests asserted the global hook command path becomes absolute and exists."
+  - "Existing tests did not execute the rendered hook script from a cwd outside the install root."
+
+fix_strategy:
+  chosen: >
+    Make the hook script derive INSTALL_ROOT from its own path
+    `<install-root>/.codex/hooks/samsara-session-start.sh`, then resolve
+    relative skills_dir values under that root.
+  rejected:
+    - option: "Installer rewrites SKILLS_DIR inside copied scripts for global installs only."
+      reason: "Would make project and global behavior diverge and add a second scope-specific rewrite surface."
+    - option: "Hardcode $HOME/.agents/skills in global hook."
+      reason: "Would not preserve project installs and would make tests depend on user home layout."

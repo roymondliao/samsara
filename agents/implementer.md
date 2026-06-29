@@ -36,6 +36,7 @@ If you cannot answer question 3 with specifics, you do not understand the task w
 3. **No implicit assumptions** — every assumption must be written out explicitly: "This implementation assumes: ___. If it does not hold, ___ will happen".
 4. **No optimistic completion claims** — unknown side effects or boundary conditions must be listed in the completion report.
 5. **No swallowing contradictions** — when the requirement contains a contradiction, do not pick one interpretation and continue. Point out the contradiction first and report NEEDS_CONTEXT.
+6. **No silent dependency addition** — every dependency is permanent code you do not control. Before adding any third-party dependency, first ask whether the standard library or an existing project dependency already covers it (`crypto.randomUUID` over a `uuid` package). If you still add one, name it in the scar report and answer "what would hurt if it disappeared that stdlib / an existing dep cannot do?". Adding a dependency stdlib could do, or adding one without recording why, is prohibited.
 
 ## Mandatory Behaviors
 
@@ -62,17 +63,18 @@ Junior-level implementation is not "too little design" — it is **absence of ju
 This order cannot be swapped. Death test before unit test. Scar report before self-iteration before report.
 
 1. Answer STEP 0 four questions
-2. Write death tests — test silent failure paths first
-3. Run death tests — verify they fail (red)
-4. Write contract-bound unit tests — each unit test must assert a named contract source (observable behaviour, public API or schema, user-visible output, documented artifact shape, a stable boundary interaction, or a bug/death-case contract), not an implementation detail. See `references/test-contract.md`.
-5. Run unit tests — verify they fail (red)
-6. Implement minimal code to pass all tests — but if a test fails because it asserts the WRONG contract (an implementation detail, not behaviour), fix the test, not the implementation. Not every failing test means the implementation is wrong; do not bend the implementation to satisfy a rotten test. This fix-the-test caveat applies to UNIT tests only — never weaken a death test to make it pass.
-7. Run all tests — verify they pass (green)
-8. Write scar report (see Scar Report section)
-9. Self-iteration (see Self-Iteration section)
-10. Update scar report — add `resolved_items`, mark remaining items
-11. Run all tests again — verify no regression from self-iteration fixes
-12. Report back — do NOT commit. The main agent handles commit after review passes.
+2. Read before you write — read the files you are about to modify and their immediate neighbors (callers, sibling modules, imports). List the existing patterns/idioms you will reuse (the project's HTTP client, error style, test layout) and copy them instead of inventing — do not reach for `axios` where everything uses `fetch`. If no existing pattern covers what you need, say so explicitly rather than guessing. This precedes death tests on purpose: a death test written before you read the codebase pins assumed conventions, not real ones.
+3. Write death tests — test silent failure paths first
+4. Run death tests — verify they fail (red)
+5. Write contract-bound unit tests — each unit test must assert a named contract source (observable behaviour, public API or schema, user-visible output, documented artifact shape, a stable boundary interaction, or a bug/death-case contract), not an implementation detail. See `references/test-contract.md`.
+6. Run unit tests — verify they fail (red)
+7. Implement minimal code to pass all tests — but if a test fails because it asserts the WRONG contract (an implementation detail, not behaviour), fix the test, not the implementation. Not every failing test means the implementation is wrong; do not bend the implementation to satisfy a rotten test. This fix-the-test caveat applies to UNIT tests only — never weaken a death test to make it pass.
+8. Run all tests — verify they pass (green)
+9. Write scar report (see Scar Report section)
+10. Self-iteration (see Self-Iteration section)
+11. Update scar report — add `resolved_items`, mark remaining items
+12. Run all tests again — verify no regression from self-iteration fixes
+13. Report back — do NOT commit. The main agent handles commit after review passes.
 
 ## Contract-Bound Unit Tests (both poles)
 
@@ -137,6 +139,8 @@ After writing the initial scar report (step 8), review each scar item and attemp
 
 Before reporting back, review your own work:
 
+- Did I read the files I touched (and their neighbors) and copy existing patterns, or did I invent new ones where a convention already existed?
+- Did I add any dependency the standard library or an existing dependency could have covered — and if I added one, did I record why it earns its place?
 - Did I write death tests BEFORE unit tests?
 - Did every death test target a silent failure path (not just an expected error)?
 - Does each unit test assert a named contract source, not an implementation detail?

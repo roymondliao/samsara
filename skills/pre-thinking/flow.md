@@ -32,9 +32,20 @@ Atomic context procedure:
 2. If present and fresh, read it as derived context for module boundaries,
    entrypoints, config sources, external services, data flow, hidden coupling, and
    assumptions.
-3. If present but stale, use it only as a starting hypothesis. Verify any fact
-   needed for planning against live codebase artifacts; record stale or
-   unverifiable facts as information gaps.
+3. If present but stale and churn (changed source files since `last_updated`,
+   excluding paths under `changes/`, `docs/`, `bugfix/`) exceeds
+   `staleness_churn_threshold` (canonical definition: codebase-map SKILL.md
+   Triggers): auto-initiate `samsara:codebase-map` regeneration before
+   continuing. In human-in-the-loop mode, retain Phase 4 human review. Do not
+   proceed past this step until regeneration completes. If auto-initiated
+   regeneration fails, aborts, or is rejected at Phase 4 review, do NOT treat
+   it as completed and do NOT block indefinitely: proceed with the map
+   explicitly marked stale, record an information gap noting the failed
+   regeneration, and continue planning on that basis.
+   If present but stale and churn is at or below `staleness_churn_threshold`:
+   use it only as a starting hypothesis. Verify any fact needed for planning
+   against live codebase artifacts; record stale or unverifiable facts as
+   information gaps.
 4. If missing, do not invent a map from memory. For a small, localized task, run
    targeted local inspection of the affected files and their immediate
    entrypoints/config/external interactions. For broad or unclear scope, record an

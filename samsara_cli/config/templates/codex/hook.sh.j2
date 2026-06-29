@@ -7,12 +7,17 @@ set -euo pipefail
 # Session start hook for samsara on Codex
 # Injects context into the session system message.
 
-# SKILLS_DIR is a relative path from the project root.
-# Assumption: Codex executes hooks from the project working directory.
-# If Codex executes from a different directory, SKILLS_DIR will resolve incorrectly
-# and SKILL.md will not be found — injecting "Error reading samsara-bootstrap skill"
-# as context instead of empty.
-SKILLS_DIR="{{ skills_dir }}"
+# Resolve the install root from this script's location:
+#   <install-root>/.codex/hooks/samsara-session-start.sh
+# This keeps project and global installs independent from the process cwd.
+HOOK_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+INSTALL_ROOT="$(cd "${HOOK_SCRIPT_DIR}/../.." && pwd)"
+CONFIGURED_SKILLS_DIR="{{ skills_dir }}"
+if [[ "${CONFIGURED_SKILLS_DIR}" = /* ]]; then
+  SKILLS_DIR="${CONFIGURED_SKILLS_DIR}"
+else
+  SKILLS_DIR="${INSTALL_ROOT}/${CONFIGURED_SKILLS_DIR}"
+fi
 
 # Source any skill-specific environment setup
 if [ -d "${SKILLS_DIR}" ]; then

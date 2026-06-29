@@ -9,6 +9,17 @@ Generate a map of the project that answers both "what is this system?" (yang) an
 
 > 一般的 codebase map 是陽面的 —「系統長什麼樣」。Samsara 的 codebase map 回答「系統在哪裡假裝健康」。
 
+## Triggers
+
+1. **User-invoked:** `samsara:codebase-map` is invoked directly by the user.
+2. **Auto-initiated:** `samsara:pre-thinking` auto-initiates regeneration when
+   the map is present but stale and churn (changed source files since
+   `last_updated`, excluding paths under `changes/`, `docs/`, `bugfix/`)
+   exceeds `staleness_churn_threshold`. The `staleness_churn_threshold` field
+   (default 30) in `.samsara/codebase-map.yaml` controls when pre-thinking
+   treats the map as too stale and triggers regeneration. In human-in-the-loop
+   mode, Phase 4 human review is retained for auto-initiated runs.
+
 ## Process
 
 ```dot
@@ -73,6 +84,27 @@ Present to user:
 - Ask: "Anything missing or wrong?"
 
 After user confirms → write files to `.samsara/`
+
+## Fail-Honest Write Contract
+
+`last_updated` must not be advanced unless new content was actually written and
+(in HITL) reviewed. If regeneration is abandoned, aborted, or fails partway
+through:
+
+1. **Do not advance `last_updated`.** The existing timestamp must be preserved.
+   The corruption signature this contract guards against is `last_updated`
+   bumped without a real content refresh — which makes a stale map appear fresh
+   to the next pre-thinking session.
+2. **Mark the map stale.** Write a `stale_reason` field to
+   `.samsara/codebase-map.yaml` recording why the regen did not complete
+   (e.g., `"regen aborted — Phase 4 review rejected"`,
+   `"regen failed — explorer agent error"`).
+3. **Do not bump `last_updated` on partial regen.** If the write step is
+   reached but the user rejects the content in Phase 4 review, leave
+   `last_updated` untouched and mark the map stale with the rejection reason.
+
+A regen run is complete only when all three phases finish AND (in HITL) Phase 4
+review confirms. Anything short of that must not advance `last_updated`.
 
 ## Update Modes
 

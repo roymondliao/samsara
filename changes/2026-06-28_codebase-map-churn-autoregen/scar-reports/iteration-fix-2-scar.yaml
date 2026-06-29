@@ -1,0 +1,62 @@
+task_id: iteration-fix-2
+completion_status: done
+
+known_shortcuts: []
+
+silent_failure_conditions:
+  - description: >
+      The two inserted guards only fire when result.stdout is empty. If the hook
+      emits non-JSON garbage (e.g. a bash error message without a newline) the guards
+      pass but additional_context() will raise json.JSONDecodeError with an opaque
+      traceback. This is pre-existing in the other 4 guards and accepted.
+    deferred_to_feature_iteration: false
+
+assumptions_made:
+  - assumption: >
+      The 4 existing guards in the file use a consistent indentation and message
+      pattern that can be mirrored for the 2 new insertions.
+    verified: true
+    note: >
+      Read the file before editing; confirmed 4 guards exist with the expected
+      pattern. The 2 new guards use the same 8-space indentation and the
+      parenthesised two-line string form specified in the dispatch prompt.
+    deferred_to_feature_iteration: false
+  - assumption: >
+      The fix is purely additive (2 assert lines, no behavioural change) and will
+      not alter any passing test result.
+    verified: true
+    note: >
+      Full suite ran after both insertions: 733 passed, 0 failures, 0 regressions.
+    deferred_to_feature_iteration: false
+
+debt_registered: false
+debt_location: ""
+
+resolved_items:
+  - original_section: "task-2 round-3 yin review, Suggestion"
+    original_description: >
+      test_map_with_numeric_last_updated_is_unknown and
+      test_stale_map_emits_stale_status_with_churn_count called additional_context()
+      without a prior assert result.stdout.strip() guard, producing an opaque
+      json.JSONDecodeError on silent-exit regression instead of a clear behavioural
+      assertion. Four other tests in the file already had this guard.
+    resolution: >
+      Inserted the guard before additional_context() in both named tests, mirroring
+      the wording and style of the 4 existing guards. Full suite confirmed green
+      (733 passed) after fix.
+
+narrative: >
+  Minimal 2-line fix for test parity. No abstraction, no refactor, no new test
+  classes — strictly the two missing guards. The silent_failure_condition noted
+  (non-JSON garbage bypassing the guard) is pre-existing across all 6 guarded
+  tests and is accepted risk rather than something this task should expand to fix.
+
+budget_spent:
+  validation_runs: 2
+  reviewer_retries_consumed: 0
+
+evidence_gained:
+  - "uv run pytest tests/test_hooks/test_check_codebase_map.py: 21 passed after insertion"
+  - "uv run pytest (full suite): 733 passed, 0 regressions"
+
+residual_risk: []

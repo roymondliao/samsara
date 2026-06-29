@@ -10,6 +10,8 @@ and content of output, not on the death cases (wrong format, wrong matchers).
 """
 
 import json
+import subprocess
+from pathlib import Path
 
 import pytest
 
@@ -138,6 +140,79 @@ class TestConvertScript:
         )
         assert isinstance(result, str)
         assert "check-codebase-map" in result
+
+    def test_script_reads_project_bootstrap_from_script_root(
+        self, tmp_path, converter, codex_config, codex_env
+    ):
+        """Project hook resolves skills from the install root, not process cwd."""
+        script_path = _write_rendered_session_start_script(
+            tmp_path / "project-install", converter, codex_config, codex_env
+        )
+        cwd = tmp_path / "caller-cwd"
+        cwd.mkdir()
+
+        result = subprocess.run(
+            [str(script_path)],
+            cwd=cwd,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
+        payload = json.loads(result.stdout)
+        assert "BOOTSTRAP_FROM_project-install" in payload["systemMessage"]
+        assert "Error reading samsara-bootstrap skill" not in payload["systemMessage"]
+
+    def test_script_reads_global_bootstrap_from_script_root(
+        self, tmp_path, converter, codex_config, codex_env
+    ):
+        """Global hook resolves skills from $HOME layout even when cwd is a project."""
+        script_path = _write_rendered_session_start_script(
+            tmp_path / "home", converter, codex_config, codex_env
+        )
+        project_cwd = tmp_path / "project-cwd"
+        project_cwd.mkdir()
+
+        result = subprocess.run(
+            [str(script_path)],
+            cwd=project_cwd,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
+        payload = json.loads(result.stdout)
+        assert "BOOTSTRAP_FROM_home" in payload["systemMessage"]
+        assert "cat: .agents/skills" not in payload["systemMessage"]
+        assert "Error reading samsara-bootstrap skill" not in payload["systemMessage"]
+
+
+def _write_rendered_session_start_script(
+    install_root: Path, converter: HookConverter, codex_config, codex_env
+) -> Path:
+    """Render a Codex hook into a project/global-shaped install root."""
+    skills_dir = install_root / ".agents" / "skills" / "samsara-samsara-bootstrap"
+    skills_dir.mkdir(parents=True)
+    skills_dir.joinpath("SKILL.md").write_text(
+        f"BOOTSTRAP_FROM_{install_root.name}\n",
+        encoding="utf-8",
+    )
+
+    script_dir = install_root / ".codex" / "hooks"
+    script_dir.mkdir(parents=True)
+    script_path = script_dir / "samsara-session-start.sh"
+    template = codex_env.get_template("hook.sh.j2")
+    script_path.write_text(
+        converter.convert_script(
+            hook_name="session-start",
+            event="session_start",
+            platform_config=codex_config,
+            template=template,
+        ),
+        encoding="utf-8",
+    )
+    script_path.chmod(0o755)
+    return script_path
 
 
 # ---------------------------------------------------------------------------
