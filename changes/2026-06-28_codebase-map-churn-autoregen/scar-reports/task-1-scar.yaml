@@ -1,0 +1,102 @@
+task_id: task-1
+completion_status: done_with_concerns
+known_shortcuts:
+  - description: >
+      The live .samsara/codebase-map.yaml (this repo's own map) still carries
+      staleness_threshold_days: 7. It was intentionally not updated — it is
+      dogfood for the later hook task which will read staleness_churn_threshold
+      and must handle the absent-field fallback path. Leaving the live map on
+      the old field exercises that fallback. This is not an oversight.
+    deferred_to_feature_iteration: false
+silent_failure_conditions:
+  - description: >
+      The grep death test uses subprocess grep over directory paths. If a
+      future consumer embeds staleness_threshold_days via an indirect reference
+      (env var expansion, dynamic key construction, heredoc that grep does not
+      traverse) the test would pass green while the field is still effectively
+      consumed. Grep-based detection cannot catch all dynamic patterns.
+    deferred_to_feature_iteration: false
+assumptions_made:
+  - assumption: >
+      No file in hooks/, skills/, or samsara_cli/ reads staleness_threshold_days
+      at runtime (direct string match only).
+    verified: true
+    note: >
+      Verified by grep death test test_death__dead_field_has_no_live_consumer.
+      Before template edit: grep found skills/codebase-map/templates/codebase-map.yaml
+      (the template itself). After edit: zero matches. No other consumer exists.
+    deferred_to_feature_iteration: false
+  - assumption: >
+      pyyaml is available as a test dependency (yaml.safe_load used in tests).
+    verified: true
+    note: >
+      Confirmed pyyaml>=6.0.3 in pyproject.toml dependencies. All 705 tests pass.
+    deferred_to_feature_iteration: false
+  - assumption: >
+      The field name staleness_churn_threshold and default value 30 are the exact
+      contract the later bash hook task will consume.
+    verified: false
+    note: >
+      The field name is specified as a contract in the task brief and is not
+      verifiable until the bash hook task is written. If the hook task uses a
+      different name, the hook will fall back to its hardcoded default silently.
+    deferred_to_feature_iteration: true
+debt_registered: true
+debt_location: >
+  .samsara/codebase-map.yaml:3 — live map still has staleness_threshold_days: 7.
+  The hook task that reads staleness_churn_threshold must implement the
+  absent-field fallback to handle this dogfood state.
+narrative: |
+  The dead field staleness_threshold_days was confirmed to have zero live
+  consumers (hooks, skills, samsara_cli) before removal — the death test
+  verified this explicitly. The template now declares staleness_churn_threshold: 30
+  with an inline comment documenting what "30" means (changed source files since
+  last_updated, excluding changes/ docs/ bugfix/). The live map is intentionally
+  left on the old field to exercise the fallback path that the later hook task
+  must implement.
+
+  Refused abstraction: no helper function, no schema class, no validator was
+  introduced. The template is a YAML file; the test parses it directly with
+  yaml.safe_load. There is one consumer of this schema (the future hook). No
+  force exists yet that would justify an abstraction layer.
+resolved_items:
+  - original_section: assumptions_made
+    original_description: >
+      No file in hooks/, skills/, or samsara_cli/ reads staleness_threshold_days.
+    resolution: >
+      Verified by running the grep death test before and after the template edit.
+      Before: template file found. After: zero matches. Assumption confirmed true.
+  - original_section: assumptions_made
+    original_description: pyyaml is available as a test dependency.
+    resolution: >
+      Confirmed by reading pyproject.toml (pyyaml>=6.0.3 listed) and by
+      all 704 tests passing (including the 3 final schema tests).
+  - original_section: silent_failure_conditions
+    original_description: >
+      grep loop checked result.stdout but not result.returncode — grep exits 2
+      when a directory is missing, producing empty stdout and a permanent
+      false-green guard.
+    resolution: >
+      Added returncode guard: assert result.returncode in (0, 1) per directory;
+      returncode 2 or higher fails the test loudly with directory path and stderr.
+      Verified: grep /nonexistent returns returncode 2 with empty stdout — new
+      guard fires, old code would have silently passed.
+  - original_section: known_shortcuts
+    original_description: >
+      test_death__template_has_exactly_one_threshold_field name was dishonest
+      (did not enforce "exactly one") and test_unit__template_has_no_staleness_threshold_days
+      was a strict subset of it (DRY split-lie).
+    resolution: >
+      Renamed to test_death__template_threshold_keys_are_exactly_the_live_contract.
+      Now enumerates all top-level keys containing "threshold" and asserts the set
+      equals exactly {"staleness_churn_threshold"}. This makes the name honest,
+      makes the assertion real (catches rogue future threshold keys), and subsumes
+      the dead-field-absent check. Deleted the redundant unit test.
+  - original_section: assumptions_made
+    original_description: >
+      LIVE_SOURCE_DIRS is the complete set of live-consumer directories.
+    resolution: >
+      Added an explicit INCLUSION BET comment to LIVE_SOURCE_DIRS in the test file
+      stating that a new top-level consumer directory must be added here or the
+      guard silently misses it. The returncode-2 fix covers vanished dirs;
+      the comment covers new dirs never listed.

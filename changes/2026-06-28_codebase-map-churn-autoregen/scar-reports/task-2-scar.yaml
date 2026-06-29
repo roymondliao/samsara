@@ -1,0 +1,228 @@
+task_id: task-2
+completion_status: done
+known_shortcuts:
+  - description: >
+      grep/sed/tr parsing of YAML scalars (last_updated, staleness_churn_threshold)
+      is fragile. Accepted format for last_updated: exactly one line matching
+      '^last_updated:' with a YYYY-MM-DD value (quoted or unquoted). Multi-line
+      values, YAML anchors, block scalars, or duplicate keys all collapse to
+      'unknown' via the validation regex. This is intentional conservative
+      behaviour, not a bug, but the accepted format must be documented.
+    deferred_to_feature_iteration: false
+  - description: >
+      No internal timeout is implemented for the git log command. macOS does not
+      ship a 'timeout' command built-in (requires brew coreutils), so portability
+      prevents adding one here. The hook relies on Claude Code's external 3000ms
+      budget to kill a hung process. If git hangs and is killed externally,
+      no output is produced — the user sees no context injection (equivalent to
+      'not_applicable', not 'unknown'). On every tested repo the git log completes
+      in well under 100ms. Pathological case: a repo with last_updated years ago
+      and many thousands of commits could approach the budget.
+    deferred_to_feature_iteration: false
+  - description: >
+      The awk exclusion filter uses a regex anchored to the start of the path:
+      '^(changes|docs|bugfix)\/'. A file at 'src/changes/foo.py' is NOT excluded
+      (correct — it does not live under the top-level changes/ dir). A future
+      requirement to exclude deeper or differently-named paths requires editing the
+      awk regex. This is acceptable for now with one consumer.
+    deferred_to_feature_iteration: false
+  - description: >
+      escape_for_json does not escape control characters U+0000–U+001F (only
+      backslash, double-quote, newline, carriage-return, tab). All interpolated
+      values are charset-restricted at the source: last_updated passes the
+      YYYY-MM-DD regex (digits + hyphens only); churn comes from wc -l (digits
+      only); git_err_snippet is the first line of git stderr, bounded and
+      escaped through escape_for_json which covers the most common control chars.
+      Near-zero risk in practice.
+    deferred_to_feature_iteration: false
+silent_failure_conditions:
+  - description: >
+      Shallow git clone: 'git rev-parse --git-dir' succeeds (it is a valid repo),
+      but 'git log --since=last_updated' may only see commits within the shallow
+      depth. If all commits since last_updated are outside the shallow window, the
+      command returns zero churn → fresh verdict when the map may actually be
+      stale. The hook has no way to detect whether a shallow clone is deep enough
+      to cover the last_updated date. ACCEPTED DEFERRAL: portable shallow
+      detection (git rev-parse --is-shallow-repository) is disproportionate for
+      this task; full clones are typical in the target environment.
+    deferred_to_feature_iteration: false
+  - description: >
+      Git error on 'git rev-parse --git-dir' that exits 0 with empty output
+      (hypothetically: corrupted git dir that doesn't error cleanly). The hook
+      checks exit code only; empty --git-dir output would fall through to the
+      churn computation step, which would then fail (git log fails with no valid
+      HEAD). The if ! churn_raw=$(git log ...) guard catches this → unknown.
+      No silent fresh path exists, but the signal is 'UNKNOWN' rather than
+      'not a git repo'. Acceptable — still honest.
+    deferred_to_feature_iteration: false
+  - description: >
+      External 3000ms kill by Claude Code produces no output (not 'unknown', just
+      nothing). The hook does not explicitly claim fresh. ACCEPTED DEFERRAL: no
+      portable bash timeout on macOS without brew coreutils.
+    deferred_to_feature_iteration: false
+assumptions_made:
+  - assumption: >
+      The git churn computation (git log --since=last_updated --name-only) completes
+      within the 3000ms Claude Code hook budget on all target repos.
+    verified: false
+    note: >
+      Verified informally on this repo (last_updated 2026-04-23, ~66 days of
+      history): hook completes in under 50ms. Not verified on a repo with
+      last_updated several years ago or with very high commit frequency.
+      On doubt, git failure maps to unknown — the budget kill by Claude Code
+      produces no output but does not claim fresh.
+    deferred_to_feature_iteration: false
+  - assumption: >
+      'git log --since=YYYY-MM-DD --name-only --pretty=format:' with set -o pipefail
+      exits non-zero when the git repo has no commits (exit 128), allowing the
+      if ! pattern to catch it.
+    verified: true
+    note: >
+      Verified by DC-7 death test: git init with no commits, run hook → UNKNOWN.
+      Test is GREEN. git exits 128 with 'branch has no commits yet' — pipefail
+      propagates the 128 exit code through the pipeline, if ! catches it.
+    deferred_to_feature_iteration: false
+  - assumption: >
+      GIT_AUTHOR_DATE and GIT_COMMITTER_DATE env vars set on the subprocess
+      control which date 'git log --since' uses to filter commits.
+    verified: true
+    note: >
+      Verified by all stale/fresh test fixtures: commits dated in the past are
+      not counted when last_updated is set after them; commits dated after
+      last_updated are counted. All 20 tests pass.
+    deferred_to_feature_iteration: false
+  - assumption: >
+      The field name read from the map is exactly 'staleness_churn_threshold'
+      (per Task 1 contract). This repo's live .samsara/codebase-map.yaml still
+      has 'staleness_threshold_days: 7' (intentional dogfood) — absent-field
+      fallback to 30 is exercised by test_default_threshold_30_when_field_absent.
+    verified: true
+    note: >
+      Verified by 'test_default_threshold_30_when_field_absent': map contains
+      'staleness_threshold_days: 7' (old field), hook reads nothing for
+      staleness_churn_threshold → defaults to 30. Test passes. Task 1 scar
+      confirmed this deferred assumption is now resolved.
+    deferred_to_feature_iteration: false
+  - assumption: >
+      ISO YYYY-MM-DD date strings are lexicographically ordered (string comparison
+      '>' is equivalent to chronological 'later than'). This holds for all valid
+      YYYY-MM-DD dates because the format pads month and day with leading zeros.
+    verified: true
+    note: >
+      Verified by DC-8 death test: last_updated='2099-01-01' (future) →
+      [ "$last_updated" \> "$today" ] is true → UNKNOWN emitted. Test GREEN.
+    deferred_to_feature_iteration: false
+debt_registered: true
+debt_location: >
+  hooks/check-codebase-map — no internal timeout (see known_shortcuts item 2);
+  shallow clone false-fresh path (see silent_failure_conditions item 1).
+narrative: |
+  The mtime-based staleness detection is fully replaced by git churn since
+  last_updated. Every uncomputable or unverifiable input collapses to 'unknown'
+  — not 'fresh'. The proof: DC-1 (mtime gaming), DC-2 (no git), DC-3 (bad date),
+  DC-7 (git log failure), and DC-8 (future date) all return UNKNOWN or STALE;
+  none return silent fresh.
+
+  The future-date fix (DC-8) was the must-fix from round-1 review: ISO YYYY-MM-DD
+  is directly string-comparable, so [ "$last_updated" \> "$today" ] is portable
+  across BSD/macOS and GNU date. No date arithmetic needed.
+
+  The today-boundary test (round-2 must-fix) pins the strict > (not >=) at the
+  future-date guard. last_updated=today() is a valid date (map regenerated today);
+  the hook must proceed to churn computation, not emit UNKNOWN. If regressed to >=,
+  auto-regen would loop (regen stamps today's date, hook immediately says UNKNOWN).
+  The test was GREEN immediately (correct boundary already in place); it serves as
+  a regression guard.
+
+  Git stderr is now captured to a tempfile with a trap for cleanup. The first line
+  of stderr is included in the UNKNOWN message when git fails, giving maintainers
+  a diagnostic signal to distinguish shallow clone vs permission error vs corrupt
+  repo. The dead churn_raw="" initializer was removed (if ! pattern assigns
+  unconditionally; dead init misled readers about intent).
+
+  The _EXCLUDED_DIRS constant in the test file eliminates the literal duplication
+  at the two exclusion-test git-add sites. The cross-boundary duplication with the
+  hook's awk regex is intentional and documented: bash/python cannot share a
+  definition across that boundary.
+
+  Four unit tests now guard additional_context() with assert result.stdout.strip()
+  before attempting JSON parse. A silent-fresh regression produces a clear
+  assertion error instead of a JSONDecodeError traceback pointing at the wrong line.
+
+  Refused abstraction: no timeout wrapper function was written. macOS lacks the
+  'timeout' binary without brew coreutils. Building a background-job timeout in
+  bash (subshell + sleep + kill) would add ~15 lines for an edge case that Claude
+  Code's own 3000ms kill already handles at the process level.
+
+  Test fixture root-cause of the N+1 churn bug (original task): 'git add .' in
+  commit_files also staged the untracked .samsara/codebase-map.yaml, inflating
+  counts by 1. Fixed by using 'git add $subdir'. The hook behaviour was correct
+  throughout — the test fixtures needed the fix.
+resolved_items:
+  - original_section: assumptions_made
+    original_description: >
+      'git log --since' exits non-zero on a repo with no commits.
+    resolution: >
+      Verified by DC-7 death test (green after implementation). git exits 128,
+      pipefail propagates through the awk/sort/wc/tr pipeline, if ! catches →
+      UNKNOWN emitted, exit 0.
+  - original_section: assumptions_made
+    original_description: >
+      GIT_AUTHOR_DATE / GIT_COMMITTER_DATE control which commits git log counts.
+    resolution: >
+      Verified by all stale/fresh fixture tests. Commits dated before last_updated
+      produce fresh verdict; commits dated after produce stale. 21 tests pass.
+  - original_section: assumptions_made
+    original_description: >
+      staleness_churn_threshold field name per Task 1 contract; absent-field
+      fallback to 30 works on this repo's live map.
+    resolution: >
+      test_default_threshold_30_when_field_absent uses a map with only
+      staleness_threshold_days: 7 (old field). Hook defaults to 30 and produces
+      fresh for 29 changed files. Test passes.
+  - original_section: silent_failure_conditions
+    original_description: >
+      Future last_updated: git log --since=<future> returns 0 commits → churn=0
+      → fresh verdict. 0 commits proves nothing about a future date.
+    resolution: >
+      Added future-date guard after YYYY-MM-DD format validation: compares
+      last_updated to today=$(date +%Y-%m-%d) using [ "$last_updated" \> "$today" ].
+      ISO string comparison is lexicographically equivalent to chronological.
+      DC-8 death test added: last_updated='2099-01-01' → UNKNOWN, not fresh.
+      Test was RED before fix, GREEN after.
+  - original_section: silent_failure_conditions
+    original_description: >
+      git error on churn computation must not be swallowed into silent fresh.
+    resolution: >
+      Explicit 'if ! churn_raw=$(git log ... | awk ... | sort | wc | tr); then'
+      pattern captures ALL failure modes in the pipeline. Tested via DC-7 (no
+      commits → git exits 128 → UNKNOWN). Git stderr is now captured to a
+      tempfile and the first line is included in the UNKNOWN message for
+      debuggability (e.g. 'fatal: your current branch has no commits').
+  - original_section: assumptions_made
+    original_description: >
+      ISO YYYY-MM-DD is lexicographically comparable; strict > (not >=) so today
+      is valid for churn computation.
+    resolution: >
+      test_last_updated_today_is_valid_not_unknown: last_updated=today (computed
+      via datetime.date.today().isoformat() at runtime), commits all dated 2025,
+      churn=0 < 30 → fresh (stdout empty). If regressed to >=, hook would emit
+      UNKNOWN → non-empty stdout → assertion fails. Test GREEN immediately
+      (boundary already correct); serves as regression guard.
+  - original_section: known_shortcuts
+    original_description: >
+      dead churn_raw="" initializer and tempfile not trap-cleaned on unexpected exit.
+    resolution: >
+      Removed dead churn_raw="" (if ! pattern assigns unconditionally).
+      Added 'trap rm -f "${git_err_file:-}" EXIT' immediately after mktemp so all
+      exit paths — including unexpected set -e kills — clean up the tempfile.
+      Explicit rm -f calls retained for clarity (harmless double-cleanup).
+  - original_section: known_shortcuts
+    original_description: >
+      Four unit tests called additional_context() without prior stdout guard,
+      producing JSONDecodeError traceback on silent-fresh regression.
+    resolution: >
+      Added 'assert result.stdout.strip(), <message>' before additional_context()
+      in test_churn_equal_to_threshold_is_stale, test_unknown_emits_unknown_status_
+      and_exits_zero, test_threshold_read_from_map, test_default_threshold_30_stale_
+      at_boundary. Silent-fresh regression now fails with a clear assertion message.

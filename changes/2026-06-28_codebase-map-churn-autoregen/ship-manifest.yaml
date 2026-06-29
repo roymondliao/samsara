@@ -1,0 +1,84 @@
+delivered_capability: >
+  Churn-based codebase-map freshness + self-maintaining regeneration. The
+  SessionStart hook (hooks/check-codebase-map) replaces mtime/wall-clock staleness
+  with git churn since the map's last_updated (changed source files excluding
+  changes/ docs/ bugfix/, threshold staleness_churn_threshold default 30), emitting
+  a four-state verdict (fresh/missing/stale/unknown) where every uncomputable input
+  collapses to UNKNOWN, never a false "fresh". pre-thinking auto-initiates
+  samsara:codebase-map regeneration when churn is over threshold (retaining Phase 4
+  human review in HITL), with a fail-honest contract (no last_updated advance on a
+  failed/aborted regen; write stale_reason) and an escape clause preventing deadlock
+  or dishonest completion when regen fails.
+
+primary_evaluator_result: >
+  PASS — pytest fixture-repo behavioral suite green (full suite 733 passed, 0 failures).
+  Pass-signal conditions verified at runtime: (1) mtime touch does not change verdict;
+  (2) churn over/under threshold → stale/fresh; (3) no-git / malformed / future
+  last_updated → unknown, never fresh. Condition (4) regen-failure honesty is verified
+  at doc-contract level; true runtime obedience is deferred to dogfood (see accepted_risks).
+
+known_failure_modes:
+  - mode: "Shallow git clone may undercount churn (commits outside shallow depth) → false fresh"
+    severity: silent_corruption
+    detection: "Manual — map appears fresh while actually stale. No automatic detection; full clones typical in target env."
+  - mode: "External 3000ms hook kill (huge git history) produces no output"
+    severity: degradation
+    detection: "No context injection at session start (NOT a false-fresh claim — the hook emits nothing rather than 'fresh')"
+  - mode: "Fail-honest contract has no code-level enforcement — an agent that ignores the doc can advance last_updated on a failed regen"
+    severity: silent_corruption
+    detection: "Doc-contract tests guard clause PRESENCE only; runtime obedience unobservable without a live session"
+  - mode: "escape_for_json omits control chars U+0000-U+001F beyond \\n\\r\\t"
+    severity: degradation
+    detection: "Near-zero in practice — all interpolated values are charset-restricted (validated date, integer churn, git-error first line)"
+  - mode: "git churn computation could exceed the 3000ms budget on pathological histories"
+    severity: degradation
+    detection: "Hook killed → no output; verified <50ms on this repo (~66 days history); on doubt maps to unknown, never fresh"
+
+accepted_risks:
+  - risk: "Shallow-clone false-fresh — portable shallow detection disproportionate; full clones typical"
+    accepted_by: "human"
+    expires: "2026-09-28"
+  - risk: "External 3000ms kill produces no output — no portable bash timeout on macOS"
+    accepted_by: "human"
+    expires: "2026-09-28"
+  - risk: "escape_for_json control-char gap — inputs charset-restricted, near-zero risk"
+    accepted_by: "human"
+    expires: "2026-09-28"
+  - risk: "grep/sed YAML scalar parsing fragile — collapses to honest unknown, never fresh"
+    accepted_by: "human"
+    expires: "2026-09-28"
+  - risk: "awk exclusion regex anchored to top-level changes|docs|bugfix; deeper paths need an edit"
+    accepted_by: "human"
+    expires: "2026-09-28"
+  - risk: "git churn 3000ms-budget assumption (verified informally, not on huge histories)"
+    accepted_by: "human"
+    expires: "2026-09-28"
+  - risk: "'auto-initiate' / 'do not advance last_updated' are imperative doc instructions with no runtime gate"
+    accepted_by: "human"
+    expires: "2026-09-28"
+  - risk: "grep dead-field guard cannot catch dynamically-constructed field references"
+    accepted_by: "human"
+    expires: "2026-09-28"
+
+deferred_to_dogfood:
+  - "doc-presence != runtime obedience: the real proof that pre-thinking auto-initiates regen + obeys the fail-honest contract is a LIVE pre-thinking session on a stale map (churn > threshold). Run when this repo's own map is regenerated."
+  - "This repo's own .samsara/codebase-map.yaml still carries the OLD field (staleness_threshold_days) and is stale (210+ files since 2026-04-23). The new hook's absent-field fallback (default 30) is exercised by tests; regenerating the live map is the natural first dogfood."
+
+ship_review_findings_fixed:
+  - "Holistic code-review Important #1: hook header claimed 'three-state' but emits four (fresh/missing/stale/unknown) — header corrected to match the test-asserted contract (commit d25fb3b)"
+  - "Holistic code-review Important #2: DC-N numbering collided across two test suites — both docstrings now declare file-local numbering (commit d25fb3b)"
+
+ship_review_suggestions_deferred:
+  - "escape_for_json scope comment at the function body; dead set_mtime_days_ago calls outside DC-1 (documented scaffolding); codebase-map SKILL.md Process diagram start-node missing the new auto-initiated trigger (Triggers section above it is canonical)"
+
+silent_failure_surface: low
+
+monitoring_hooks:
+  - "SessionStart hook injects STALE/UNKNOWN/MISSING status into agent context — the agent (and user) sees the verdict every session when not fresh"
+  - "stale_reason field in .samsara/codebase-map.yaml records why a regen failed (when the fail-honest contract is obeyed)"
+
+kill_switch: >
+  Remove or disable the check-codebase-map entry in hooks/hooks.json (SessionStart),
+  or set staleness_churn_threshold very high in .samsara/codebase-map.yaml to suppress
+  stale/regen triggering. The hook is detection-only and emits no output when fresh, so
+  disabling it has no destructive effect — it only removes the freshness signal.

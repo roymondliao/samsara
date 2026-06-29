@@ -59,9 +59,27 @@ Before declaring Step A complete, derive the useful system facts from live codeb
 
 Check `.samsara/codebase-map.yaml` first when it exists. Use it as derived
 context, not as truth over the live codebase: if the map and live artifacts
-disagree, live artifacts win and the drift must be surfaced. If the map is
-missing or stale, either run targeted local inspection for the task scope or
-record an information gap recommending `samsara:codebase-map`.
+disagree, live artifacts win and the drift must be surfaced.
+
+If the map is present but stale and churn (changed source files since
+`last_updated`, excluding paths under `changes/`, `docs/`, `bugfix/`) exceeds
+`staleness_churn_threshold` (canonical definition: codebase-map SKILL.md
+Triggers), auto-initiate `samsara:codebase-map` regeneration before
+proceeding. In human-in-the-loop mode, Phase 4 human review is retained. Do
+not continue with a stale map when churn is over threshold; auto-initiate so
+planning is not built on outdated context. If auto-initiated regeneration
+fails, aborts, or is rejected at Phase 4 review, do NOT treat it as completed
+and do NOT block indefinitely: proceed with the map explicitly marked stale,
+record an information gap noting the failed regeneration, and continue
+planning on that basis.
+
+If the map is present but stale and churn is at or below
+`staleness_churn_threshold`, use it only as a starting hypothesis: verify
+facts needed for planning against live codebase artifacts and record stale or
+unverifiable facts as information gaps.
+
+If the map is missing, either run targeted local inspection for the task scope
+or record an information gap recommending `samsara:codebase-map`.
 
 If any of these facts are needed for planning and cannot be verified from the
 live codebase, record an information gap. Do not let yin/yang framing substitute

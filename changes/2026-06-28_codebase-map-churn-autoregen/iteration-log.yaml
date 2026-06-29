@@ -1,0 +1,74 @@
+# Iteration Log — codebase-map-churn-autoregen (Level-2 feature iteration)
+
+feature: "codebase-map-churn-autoregen"
+signal_lost_initial: 14  # aggregated remaining items across task-1/2/3 scars (task1=2, task2=8, task3=4)
+
+budget:
+  max_rounds: 3
+  reviewer_retry_limit: 2
+
+rounds:
+  - round: 1
+    signal_lost_before: 14
+    budget_context:
+      remaining_rounds_at_start: 2
+      stagnation_count_at_start: 0
+      net_rot_previous_round: 0
+      strategy_hint: minimal_fix
+    items_triaged: 15
+    triage_result:
+      fix:
+        - "CROSS-TASK: stale_reason written by task-3 Fail-Honest Write Contract but undocumented in task-1 template schema"
+        - "test-2 parity: 2 additional_context() calls missing the assert result.stdout.strip() guard (4 siblings had it)"
+      accept:
+        - description: "Shallow git clone can undercount churn -> false fresh; portable shallow detection disproportionate"
+          expiry_date: "2026-09-28"
+          rationale: "Full clones typical in target env; revisit if shallow CI clones adopted"
+        - description: "External 3000ms hook kill produces no output (does not claim fresh); no portable bash timeout on macOS"
+          expiry_date: "2026-09-28"
+          rationale: "Claude Code's own budget kill handles it at process level; not a false-fresh path"
+        - description: "escape_for_json omits control chars U+0000-U+001F beyond \\n\\r\\t"
+          expiry_date: "2026-09-28"
+          rationale: "All interpolated values charset-restricted (validated date, wc -l integer); near-zero risk"
+        - description: "grep/sed YAML scalar parsing is fragile (multi-line/anchors/dup keys -> unknown)"
+          expiry_date: "2026-09-28"
+          rationale: "Intentional conservative behavior — collapses to honest unknown, never fresh"
+        - description: "awk exclusion regex anchored to top-level changes|docs|bugfix; deeper/renamed paths need an edit"
+          expiry_date: "2026-09-28"
+          rationale: "Correct for one consumer; revisit if exclusion taxonomy grows"
+        - description: "git-dir present-but-empty edge falls through to churn step then maps to unknown (signal 'unknown' not 'no git')"
+          expiry_date: "2026-09-28"
+          rationale: "Still honest — no silent fresh path; signal precision is cosmetic"
+        - description: "Assumption: git churn completes within 3000ms budget on all repos (verified informally <50ms, not on huge histories)"
+          expiry_date: "2026-09-28"
+          rationale: "On doubt git failure/kill maps to unknown, never fresh"
+        - description: "'auto-initiate' could degrade to warn-only if an agent treats the imperative as optional"
+          expiry_date: "2026-09-28"
+          rationale: "Wording is imperative; strongest guard available in doc space; runtime proof deferred to dogfood"
+        - description: "Fail-honest 'do not advance last_updated' has no code-level enforcement (doc instruction only)"
+          expiry_date: "2026-09-28"
+          rationale: "Doc space has no stronger guard; DC-4/DC-5 tests guard clause presence"
+        - description: "grep dead-field death test cannot catch dynamically-constructed field references"
+          expiry_date: "2026-09-28"
+          rationale: "No practical alternative for bash; direct-reference coverage is the achievable contract"
+      defer:
+        - "doc-presence != runtime obedience: real proof is a live pre-thinking session on a stale map -> validate-and-ship dogfood"
+        - "this repo's live .samsara/codebase-map.yaml still on old field + stale -> resolves when regenerated (validate-and-ship dogfood)"
+        - "7 quality polish suggestions (regex proximity-window comments, skills/ dir note, inline-churn-text-vs-pointer, DRY example values, test section placement, additional_context precondition hoist)"
+    fixes_applied: 2
+    fixes_scar_count: 0  # both fixes produced clean scar reports with zero new unresolved items
+    budget_spent:
+      implementer_dispatches: 2
+      reviewer_dispatches: 4
+      reviewer_retries: 0
+      validation_runs: 3
+    evidence_gained:
+      - "Fix 1: both-poles death test (stale_reason documented in text AND absent from parsed YAML) red->green; commit 89149f5"
+      - "Fix 2: 2 parity stdout guards added; commit b46f7e3"
+      - "Full suite verified 733 passed, 0 failures after each fix"
+    residual_risk:
+      - "10 accepted items carried forward to failure budget (expiry 2026-09-28)"
+      - "3 deferred items to validate-and-ship dogfood (esp. runtime obedience of auto-regen + fail-honest contract)"
+    signal_lost_after: 13  # Fix 1 resolved 1 cross-task item; Fix 2 was test-quality (no signal_lost item)
+    decision: stop
+    decision_reason: "All user-triaged fix items resolved (2/2). Remaining 13 are accepted permanent risks (expiry 2026-09-28) or deferred to validate-and-ship dogfood — no further fixable items. signal_lost decreased, zero net rot, safety valve clean."

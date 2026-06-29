@@ -1,0 +1,84 @@
+feature: codebase-map-churn-autoregen
+coverage_type: verified
+
+scenarios:
+  # --- Death paths first (silent failure) ---
+  - name: "Silent failure - mtime gamed (DC-1)"
+    type: death_path
+    given: "a git repo whose map has last_updated 90 days ago with 50 changed source files since, but the map file was just touched (mtime = now)"
+    when: "check-codebase-map runs"
+    then:
+      - "verdict must be exactly one of: fresh, stale, unknown"
+      - "verdict must be stale (driven by last_updated + churn, NOT file mtime)"
+      - "emitted message must include the churn count"
+
+  - name: "Silent failure - regen failure reuses old map (DC-4)"
+    type: death_path
+    given: "pre-thinking auto-initiates codebase-map regeneration and the regeneration fails or is aborted at Phase 4 review"
+    when: "the workflow handles the failed regeneration"
+    then:
+      - "the map must be marked stale with a recorded failure reason"
+      - "last_updated must NOT be advanced (no timestamp bump without real content refresh)"
+      - "the old map must never be presented as freshly regenerated"
+
+  # --- Unknown-outcome paths ---
+  - name: "Unknown - not a git repo (DC-2)"
+    type: death_path
+    given: "a project directory that is not a git repo (or a shallow clone with no usable history)"
+    when: "check-codebase-map runs"
+    then:
+      - "verdict must be unknown, never fresh"
+      - "the hook must exit 0 without crashing under set -u"
+      - "emitted message must state freshness cannot be verified"
+
+  - name: "Unknown - last_updated missing or malformed (DC-3)"
+    type: death_path
+    given: "a map file that exists but has no last_updated line, or a last_updated value git cannot parse as a date"
+    when: "check-codebase-map runs"
+    then:
+      - "verdict must be unknown, never fresh"
+      - "emitted message must recommend regeneration"
+
+  - name: "Unknown - churn computation exceeds the 3000ms budget (DC-7)"
+    type: death_path
+    given: "a repo where the bounded git churn invocation does not complete in budget"
+    when: "check-codebase-map runs"
+    then:
+      - "the hook must not be silently killed leaving no output"
+      - "verdict on non-completion must be unknown, never silent fresh"
+
+  # --- Degradation paths ---
+  - name: "Degradation - converted codex/gemini hook stays an honest no-op (DC-6)"
+    type: degradation
+    given: "the check-codebase-map hook converted for codex/gemini, run without CLAUDE_PROJECT_DIR"
+    when: "the converted hook runs"
+    then:
+      - "the converted hook must exit 0 with no false fresh claim"
+      - "it must not crash under set -u"
+      - "existing tests/test_converter/ suite must stay green"
+
+  # --- Happy paths with evidence ---
+  - name: "Success - fresh map exits silently (zero token cost)"
+    type: happy_path
+    given: "a git repo whose changed source files since last_updated (excluding changes/ docs/ bugfix/) are below the threshold"
+    when: "check-codebase-map runs"
+    then:
+      - "the hook exits 0 with no output"
+      - "evidence: no additionalContext is injected"
+
+  - name: "Success - over-threshold map flagged with churn evidence (DC-5)"
+    type: happy_path
+    given: "a git repo whose changed source files since last_updated exceed the staleness_churn_threshold"
+    when: "check-codebase-map runs"
+    then:
+      - "verdict is stale"
+      - "evidence: emitted message includes the actual changed-file count and the threshold it exceeded"
+
+  - name: "Success - threshold read from map, default when absent"
+    type: happy_path
+    given: "two maps: one with staleness_churn_threshold: 5, one with no threshold field"
+    when: "check-codebase-map runs against each at identical churn = 10 files"
+    then:
+      - "the map with threshold 5 yields stale"
+      - "the map with no field falls back to the default (30) and yields fresh"
+      - "evidence: behavior differs only by the configured field, proving the field is read"
