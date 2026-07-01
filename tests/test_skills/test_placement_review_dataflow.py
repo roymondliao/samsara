@@ -56,7 +56,7 @@ def _yin_dispatch(dispatch_template: str) -> str:
     Key Decisions belong in the yin dispatch (placement = plan-compliance = yin
     scope); asserting on the yin block guards against wiring the wrong reviewer."""
     return _section(
-        dispatch_template, "### Yin reviewer", ends=("### Code Quality reviewer",)
+        dispatch_template, "### Yin reviewer", ends=("\n### Code Quality reviewer",)
     )
 
 
