@@ -1,0 +1,48 @@
+feature: "placement-consistency-gate"
+signal_lost_initial: 6
+
+budget:
+  max_rounds: 3
+  reviewer_retry_limit: 2
+
+rounds:
+  - round: 1
+    signal_lost_before: 6
+    budget_context:
+      remaining_rounds_at_start: 2
+      stagnation_count_at_start: 0
+      net_rot_previous_round: 0
+      strategy_hint: minimal_fix
+    items_triaged: 6
+    triage_result:
+      fix:
+        - "DRY: three-state placement model duplicated in planning Gate 1 + reviewer Gate 2 with diverged third-state label, no anchor"
+      accept:
+        - description: "Key-Decisions curation correctness — the curator must paste the RIGHT placement/ownership Key Decisions into the yin dispatch; mis-curation still passes. Mitigated by the reviewer-side 'absent Key Decisions = finding' guard."
+          expiry_date: "2026-09-29"
+          rationale: "Inherent to human curation; not fixable in doc scope. Reviewer-side guard bounds the blind-pass case. Revisit if a structured curation aid is added."
+        - description: "iteration-test _iteration_fix_section anchors on '## Step 3: Fix' / '## Step 4' (step-number coupling); a renumber could silently widen the scoped section."
+          expiry_date: "2026-09-29"
+          rationale: "Coupling is declared at the helper; low value to fix now. Revisit if iteration steps are renumbered."
+      defer:
+        - "doc-presence != runtime obedience (planning STOP) — dogfood only (Evaluation Contract out-of-scope)"
+        - "doc-presence != runtime judgement (reviewer placement) — dogfood only (Evaluation Contract out-of-scope)"
+        - "File-Map-drafted-before-Step-3 assumption (verified:false) — dogfood only"
+    fixes_applied: 1
+    fixes_scar_count: 1  # one accepted residual: descriptive prose of the two gates can still diverge without reddening the parity test
+    budget_spent:
+      implementer_dispatches: 0   # inline fix (main agent held full context; independent reviewer dispatch preserved)
+      reviewer_dispatches: 2
+      reviewer_retries: 0
+      validation_runs: 4
+    evidence_gained:
+      - "RED→GREEN: both parity tests failed before the fix (reviewer bullet led with 'not a placement decision'; no cross-reference)"
+      - "Mutation: reverting the reviewer third-state label to the synonym reddens test_three_state_labels_consistent_across_both_gates"
+      - "Both reviewers PASS on the fix; yin confirmed _has_out_of_scope_bullet isolates the bullet label (not silent-green)"
+      - "Full suite 750 green"
+    residual_risk:
+      - "Descriptive prose of the two gates can diverge without reddening the parity test (accepted: full-prose parity would over-couple two intentionally-independent gates)"
+      - "3 deferred items require the validate-and-ship dogfood (runtime obedience/judgement, File-Map assumption) — pre-declared out-of-scope by the Evaluation Contract"
+    signal_lost_after: 3
+    decision: stop
+    decision_reason: "all triaged items processed (1 fixed, 2 accepted, 3 deferred); no remaining fix items; signal_lost 6→3 with no stagnation or net-rot increase"
