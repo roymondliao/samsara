@@ -123,9 +123,13 @@ exactly one of three states:
 - **contradicts** — at least one file's location violates the decision. This is a finding:
   Important by default, Critical when it corrupts an ownership boundary (per Mother Rule 2,
   it makes every future maintainer inherit a false assumption about where things live)
-- **not a placement decision** — the Key Decision does not constrain file location; it is
-  **out of scope** for this dimension. Do not force a non-placement decision (e.g. "use
-  churn not mtime") into matches/contradicts
+- **out of scope** — the Key Decision does not constrain file location (it is not a
+  placement decision). Do not force a non-placement decision (e.g. "use churn not mtime")
+  into matches/contradicts
+
+This is the review-side mirror of the planning skill's **File Map Consistency Check** —
+the same three-state placement protocol, applied to the changed files' locations instead
+of the plan's File Map. Keep the two aligned.
 
 **If your dispatch contains no Key Decisions, you cannot perform this check.** Say so
 explicitly — an absent Key Decisions payload is itself a finding (you were dispatched blind

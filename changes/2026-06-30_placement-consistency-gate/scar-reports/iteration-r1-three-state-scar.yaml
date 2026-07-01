@@ -1,0 +1,55 @@
+task_id: iteration-r1-three-state-dry
+completion_status: done
+
+known_shortcuts:
+  - description: >-
+      The fix normalizes the third-state LABEL ("out of scope") across both gates
+      and adds a cross-reference, but the two gates' full prose remains
+      independent (by design — they act on different objects: File Map paths vs
+      changed-file locations). The parity test guards the three state tokens +
+      the third-state bullet label + the cross-reference — not full prose
+      identity. A future edit could still diverge the descriptive clauses without
+      reddening the test. Accepted: full-prose parity would over-couple two
+      intentionally-independent gates.
+
+silent_failure_conditions: []
+
+assumptions_made:
+  - assumption: >-
+      "out of scope" as the shared third-state bullet label is the right canonical
+      choice (vs "not a placement decision"), because it matches what the planning
+      Gate 1 already used and reads as a state, not a description.
+    verified: true
+    note: >-
+      Both gates now lead the third bullet with **out of scope**; the descriptive
+      "(not a placement decision)" is kept as a parenthetical. Parity test green,
+      mutation-verified (reverting the reviewer label to the synonym reddens it).
+
+debt_registered: true
+debt_location: "agents/code-reviewer.md Step 2 + skills/planning/SKILL.md Step 3 — three-state protocol kept aligned by cross-reference + parity test, not a shared source file"
+
+resolved_items:
+  - original_section: "known_shortcuts"
+    original_description: >-
+      DRY / two-sources-of-truth: three-state model duplicated in planning and
+      reviewer with diverged wording ("out of scope" vs "not a placement decision
+      — out of scope"), no canonical anchor (both reviewers, Suggestion).
+    resolution: >-
+      Normalized the reviewer's third-state bullet label to **out of scope**
+      (matching planning Gate 1), added a cross-reference naming the planning
+      File Map Consistency Check as the same three-state protocol ("keep the two
+      aligned"), and added two doc-contract parity tests: (1) both gates use the
+      same three state labels incl. the third-state bullet label, (2) the reviewer
+      dimension cross-references the planning gate. Minimal-fix over a shared
+      references/ file — a shared file would add a new doc-rot surface, the exact
+      problem this feature guards. Mutation-verified.
+
+budget_spent:
+  validation_runs: 3
+  reviewer_retries_consumed: 0
+evidence_gained:
+  - "RED→GREEN: both parity tests failed before the fix (reviewer bullet led with 'not a placement decision'; no cross-reference)"
+  - "Mutation: reverting the reviewer third-state label to the synonym reddens test_three_state_labels_consistent_across_both_gates"
+  - "Full suite 750 green after the fix"
+residual_risk:
+  - "Descriptive prose of the two gates can still diverge without reddening the parity test (accepted: full-prose parity would over-couple two intentionally-independent gates)"

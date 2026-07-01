@@ -13,6 +13,13 @@ Assertions target behavioral tokens (architectural placement, key decisions,
 placement/ownership), not exact prose. Doc-presence != runtime judgement: these
 guard that the wiring is WRITTEN, not that the reviewer judges placement correctly
 at runtime (deferred to dogfood).
+
+A second concern lives here too (added in Level-2 iteration): the three-state
+placement protocol (matches/contradicts/out-of-scope) is stated by TWO independent
+gates — the planning File Map Consistency Check and this reviewer dimension. The
+parity tests below guard that the two gates do not drift apart in their state labels
+or lose the cross-reference that keeps them aligned. This reads skills/planning
+(PLANNING) in addition to the reviewer-dispatch files.
 """
 
 from pathlib import Path
@@ -23,6 +30,7 @@ ROOT = Path(__file__).resolve().parents[2]
 CODE_REVIEWER = "agents/code-reviewer.md"
 IMPLEMENT_DISPATCH = "skills/implement/dispatch-template.md"
 ITERATION = "skills/iteration/SKILL.md"
+PLANNING = "skills/planning/SKILL.md"
 
 
 def read(path: str) -> str:
@@ -121,3 +129,48 @@ def test_placement_dimension_documents_three_state_out_of_scope() -> None:
     # and the reviewer must not silently pass when the dispatch carried no Key
     # Decisions — absence is itself a finding, not a pass
     assert "no key decisions" in lowered or "absent" in lowered
+
+
+# --- Iteration fix: three-state DRY (Gate 1 / Gate 2 parity) ---
+
+
+def _has_out_of_scope_bullet(section: str) -> bool:
+    # Marked bet: both gates format the third-state label as a bold markdown
+    # bullet (`- **out of scope**`). A format migration (italics, no emphasis)
+    # would make this return False — read a failure as "label format changed OR
+    # label drifted", not strictly a semantic drift.
+    return any(
+        ln.strip().lower().startswith("- **out of scope**")
+        for ln in section.splitlines()
+    )
+
+
+def test_three_state_labels_consistent_across_both_gates() -> None:
+    """Iteration fix (three-state DRY): the planning Gate 1 and reviewer Gate 2
+    both classify placement into the SAME three states. The two gates are
+    independent (defense-in-depth) but must not drift apart in the state labels,
+    or a maintainer reading one gate mislearns the protocol. Guards the third
+    state's bullet LABEL specifically — 'out of scope' already appears mid-sentence
+    in both, so only the leading bullet label distinguishes drift."""
+    planning_sec = _section(read(PLANNING), "File Map Consistency Check — STOP Gate")
+    reviewer_sec = _section(read(CODE_REVIEWER), "Architectural Placement")
+
+    for token in ("matches", "contradicts", "out of scope"):
+        assert token in planning_sec.lower(), f"planning gate missing state: {token}"
+        assert token in reviewer_sec.lower(), f"reviewer gate missing state: {token}"
+
+    # third-state bullet label parity: both lead the third bullet with the same
+    # label ("out of scope"), not a divergent synonym ("not a placement decision")
+    assert _has_out_of_scope_bullet(planning_sec), "planning third-state label drifted"
+    assert _has_out_of_scope_bullet(reviewer_sec), "reviewer third-state label drifted"
+
+
+def test_reviewer_gate_cross_references_planning_gate() -> None:
+    """The reviewer placement dimension must name the planning consistency check as
+    the same protocol, so a maintainer changing one gate knows to align the other
+    (the anti-drift anchor the DRY concern asked for, without a shared file)."""
+    reviewer_sec = _section(read(CODE_REVIEWER), "Architectural Placement")
+    assert "file map consistency check" in reviewer_sec.lower(), (
+        "reviewer Architectural Placement section missing cross-reference to the "
+        "planning File Map Consistency Check — the two gates can silently drift"
+    )
