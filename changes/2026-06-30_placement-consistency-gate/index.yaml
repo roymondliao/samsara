@@ -1,5 +1,5 @@
 feature: placement-consistency-gate
-status: in_progress  # pending | in_progress | done | blocked
+status: done  # pending | in_progress | done | blocked  — shipped as branch (kept, unmerged); ship-manifest.yaml written
 
 tasks:
   - id: task-1
