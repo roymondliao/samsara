@@ -1,0 +1,74 @@
+task_id: task-2
+completion_status: done_with_concerns
+
+known_shortcuts:
+  - description: >-
+      The doc-contract tests guard that Key Decisions are WIRED into the yin
+      dispatch text (both implement and iteration) and that the placement
+      dimension exists — not that the reviewer at runtime actually judges file
+      placement correctly. Doc-presence != runtime judgement; real placement
+      review needs a live dispatch with a plan that has placement/ownership Key
+      Decisions (dogfood).
+    deferred_to_feature_iteration: true
+  - description: >-
+      DRY / two-sources-of-truth (both reviewers, Suggestion): the three-state
+      classification model (matches/contradicts/out-of-scope) is stated
+      independently in skills/planning/SKILL.md (Gate 1) and agents/code-reviewer.md
+      (Gate 2), with already-minor wording divergence ("out of scope" vs "not a
+      placement decision — out of scope"). Justified defense-in-depth (two
+      independent gates, different objects/agents/stages) — but no canonical
+      reference to anchor if the protocol changes. Accepted for now; candidate for
+      a shared references/ entry in Level 2 iteration.
+    deferred_to_feature_iteration: true
+  - description: >-
+      Structural step-number coupling (both reviewers, Suggestion): the iteration
+      test helper _iteration_fix_section anchors on "## Step 3: Fix" / "## Step 4",
+      encoding step numbers; a renumber of iteration steps could silently widen the
+      scoped section. Coupling is declared (marker strings at the top of the helper)
+      and the planning test's equivalent coupling was already removed via the
+      step-agnostic anchor. Accepted; revisit if iteration steps are renumbered.
+    deferred_to_feature_iteration: true
+
+silent_failure_conditions:
+  - description: >-
+      The corruption signature (placement dimension present but a dispatch path
+      blind to Key Decisions) is guarded by test_dc1_data_flow_present_in_both_paths.
+      A residual silent path remains: the human/main-agent curating Key Decisions
+      into the dispatch must SELECT the placement/ownership ones. If they paste
+      non-placement decisions or omit the placement ones, the reviewer checks the
+      wrong thing or nothing. Mitigated (not eliminated) by the reviewer-side guard
+      "absent Key Decisions = finding, not a silent pass" — but mis-curation (wrong
+      decisions present) still passes as if valid.
+    deferred_to_feature_iteration: true  # inherent to human curation; observe in dogfood
+
+assumptions_made:
+  - assumption: >-
+      Key Decisions belong in the YIN (samsara:code-reviewer) dispatch, not the
+      code-quality-reviewer dispatch — placement is plan-compliance, the yin
+      reviewer's scope (KD1).
+    verified: true
+    note: >-
+      Added only to the ### Yin reviewer block in dispatch-template.md (test scopes
+      to that block via _yin_dispatch), to the yin line in implement/SKILL.md, and
+      to iteration Step 3 item 4 naming samsara:code-reviewer specifically. The
+      code-quality-reviewer dispatch was left unchanged. Verified by construction +
+      section-scoped tests.
+  - assumption: >-
+      tests/fixtures/{source,expected}/.../dispatch-template.md are independent
+      build-transform fixtures, not live mirrors that must track the real skill.
+    verified: true
+    note: >-
+      Full suite (748) passes after editing the real skill without touching the
+      fixtures; the transform tests read the fixture inputs, not skills/. Confirmed
+      independent.
+
+debt_registered: true
+debt_location: "agents/code-reviewer.md Step 2 + skills/{implement,iteration} yin dispatch — runtime judgement + Key-Decisions curation correctness"
+
+narrative: |
+  The load-bearing deliverable is the data flow, not the reviewer prose. The DC-1
+  test asserts Key Decisions reach BOTH the implement yin dispatch and the iteration
+  yin dispatch independently, so adding the placement dimension while forgetting
+  either dispatch path reddens the suite. The reviewer itself carries a second-line
+  defense: an absent Key Decisions payload is an explicit finding, never a silent
+  pass — so even a mis-wired dispatch surfaces rather than green-washing placement.

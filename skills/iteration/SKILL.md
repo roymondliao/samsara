@@ -114,7 +114,7 @@ For each item triaged as `fix`, ordered by signal_lost contribution (highest fir
 1. Build `iteration_budget_context` for this fix (see Iteration Budget Context below)
 2. Dispatch `samsara:implementer` with fix context + `iteration_budget_context` (see Fix Dispatch Guidance below)
 3. Implementer writes death test for the specific scar item → implements fix → scar report
-4. Main agent: parallel dispatch `samsara:code-reviewer` AND `samsara:code-quality-reviewer` with the same `iteration_budget_context` (single message, two Agent calls, no shared state)
+4. Main agent: parallel dispatch `samsara:code-reviewer` AND `samsara:code-quality-reviewer` with the same `iteration_budget_context` (single message, two Agent calls, no shared state). The `samsara:code-reviewer` (yin) dispatch MUST also include the plan's placement/ownership **Key Decisions** (curated from `overview.md`), so the reviewer's Architectural Placement dimension can check whether the fix put files in the right place — otherwise iteration-phase fixes are reviewed blind to placement (the same corruption signature the implement dispatch guards).
 5. Await both review outputs — **aggregation rule applies** (see below)
 6. If both reviewers PASS → **per-fix commit** (commit message references original scar item)
 7. Recalculate signal_lost after each fix

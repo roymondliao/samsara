@@ -1,0 +1,16 @@
+feature: placement-consistency-gate
+status: done  # pending | in_progress | done | blocked  — shipped as branch (kept, unmerged); ship-manifest.yaml written
+
+tasks:
+  - id: task-1
+    title: "Planning-side gate: File-Map↔Key-Decisions STOP consistency check + anti-bias prompt"
+    status: done_with_concerns
+    scar_count: 3   # 1 runtime-obedience shortcut, 1 misclassification silent-failure (mitigated), 1 unverified File-Map-drafted assumption
+    unresolved_assumptions: 1
+    depends_on: []
+  - id: task-2
+    title: "Review-side gate + data flow: code-reviewer placement dimension + Key Decisions into implement & iteration yin-reviewer dispatch"
+    status: done_with_concerns
+    scar_count: 4   # 3 known_shortcuts (runtime-judgement, DRY three-state, step-coupling), 1 curation silent-failure
+    unresolved_assumptions: 0
+    depends_on: []

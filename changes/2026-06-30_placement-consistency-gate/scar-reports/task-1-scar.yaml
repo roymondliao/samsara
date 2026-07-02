@@ -1,0 +1,76 @@
+task_id: task-1
+completion_status: done_with_concerns
+
+known_shortcuts:
+  - description: >-
+      The doc-contract test guards that the STOP step is WRITTEN, enforcing, and
+      scoped to placement/ownership — not that the planning agent actually STOPs
+      at runtime. Doc-presence != runtime obedience. Verifying real STOP
+      behaviour needs a live planning session (dogfood).
+    deferred_to_feature_iteration: true  # requires a live pre-thinking/planning run to observe
+
+silent_failure_conditions:
+  - description: >-
+      The gate depends on the planner correctly CLASSIFYING each Key Decision as
+      placement/ownership vs not. If a genuine placement decision is misclassified
+      as "out of scope", the STOP never fires and the contradiction ships silently
+      — the same Issue-001 failure mode the gate exists to prevent. The doc cannot
+      force correct classification.
+    # fixed in self-iteration (default-to-in-scope-when-unsure rule) — see resolved_items
+    deferred_to_feature_iteration: false
+
+assumptions_made:
+  - assumption: >-
+      The insertion point (Step 3, before Step 4 Task Decomposition) is where the
+      File Map exists and decomposition has not yet happened, so the STOP actually
+      prevents wrong paths from being baked into task files.
+    verified: true
+    note: >-
+      test_stop_gate_precedes_task_decomposition_step asserts the ordering
+      (check_pos < Step 4 pos). Ordering is guaranteed by the doc structure.
+  - assumption: >-
+      At runtime the planner drafts the File Map (destined for overview.md) before
+      reaching this step, so there is something to cross-check. The canonical
+      Output list names overview.md after decomposition, but the graph and Step 3
+      prose direct the planner to draft/verify the File Map at plan time.
+    verified: false
+    note: >-
+      Doc-flow intent, not a runtime-observed fact. If a planner defers all File
+      Map authoring to the very end, the Step 3 check runs against an empty map.
+      Observe in dogfood.
+    deferred_to_feature_iteration: true
+
+debt_registered: true
+debt_location: "skills/planning/SKILL.md — Step 3 File Map Consistency Check (runtime obedience + classification correctness)"
+
+resolved_items:
+  - original_section: "silent_failure_conditions"
+    original_description: >-
+      Misclassifying a placement decision as out-of-scope silently disarms the STOP.
+    resolution: >-
+      Added a default-to-in-scope-when-unsure rule to Step 3: "If you are unsure
+      whether a Key Decision constrains placement, treat it as in scope — a false
+      STOP costs one re-check, but a missed STOP ships the contradiction." This
+      biases the classification toward firing the gate rather than skipping it.
+  - original_section: "known_shortcuts"
+    original_description: >-
+      test_dc4 assertion `find("Anti-bias") != find("File Map Consistency Check")`
+      was tautological (silent-green) — two distinct present strings always differ
+      in offset, so it could never redden. Flagged Important by the yin reviewer.
+    resolution: >-
+      Replaced with a real structural-distinctness check: assert both a bolded
+      **STOP on** directive and a bolded **Anti-bias:** directive exist inside the
+      step and live on different lines. Mutation-verified: removing the anti-bias
+      marker now reddens the test.
+  - original_section: "known_shortcuts"
+    original_description: >-
+      test_dc4 asserted `"key decisions" in planning.lower()` (whole-file) — the
+      whole-file-find trap the module docstring itself warns against. Flagged
+      Important by the yin reviewer.
+    resolution: >-
+      Scoped the assertion to the anti-bias directive LINE (derive + key decisions
+      on the line itself), not the whole file. Mutation-verified: moving the Key
+      Decisions reference off the anti-bias line now reddens the test. Also swapped
+      the section anchor to the step-agnostic, heading-unique "File Map Consistency
+      Check — STOP Gate" (fixes the graph-node-vs-heading anchor and drops
+      step-number coupling — satisfies both reviewers' anchoring suggestions).

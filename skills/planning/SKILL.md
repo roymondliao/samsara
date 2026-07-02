@@ -30,6 +30,7 @@ digraph planning {
     spec [label="Tech Spec\n- I/O + unknown_output\n- death cases（非 edge cases）"];
     acceptance [label="Acceptance\n- 死路先行 BDD\n- silent failure scenarios first\n- then happy path"];
     plan [label="產出 2-plan.md\n+ acceptance.yaml"];
+    consistency [label="File Map Consistency Check\n(placement/ownership)\nSTOP on contradicts" shape=diamond];
     decompose [label="Task Decompose\n- self-contained tasks\n- 每個 task 附 death test 要求\n- 每個 task 命名 unit-test contract source"];
     output [label="產出 overview.md\n+ index.yaml\n+ tasks/task-N.md"];
     gate [label="Execution-mode gate\nhuman: confirm\nauto: gatekeeper" shape=diamond];
@@ -40,7 +41,9 @@ digraph planning {
     guard -> blocked [label="no"];
     spec -> acceptance;
     acceptance -> plan;
-    plan -> decompose;
+    plan -> consistency;
+    consistency -> decompose [label="matches /\nout of scope"];
+    consistency -> plan [label="contradicts\n(STOP)"];
     decompose -> output;
     output -> gate;
     gate -> next [label="proceed"];
@@ -92,7 +95,24 @@ Order:
 
 A test plan with only success cases has `coverage_type: prayer`. Not accepted.
 
-## Step 3: Task Decomposition
+## Step 3: File Map Consistency Check — STOP Gate
+
+Before decomposing tasks, cross-check the File Map paths against the Key Decisions you drafted for `overview.md`. Task files bake in File Map paths, so a contradiction that survives this step propagates into every task (ISSUE-001: four tasks were built in the wrong location before a human caught it).
+
+**Scope: placement/ownership decisions only.** A Key Decision that fixes *where code lives* or *who owns it* (e.g. "X is shared, not samsara-exclusive"; "this is a framework change, not plugin-specific") is in scope. Do NOT force every Key Decision to correspond to a path — a non-placement decision (e.g. "use churn not mtime") is **out of scope** for this check; classify it as such rather than straining it against the paths.
+
+For each placement/ownership Key Decision, classify the File Map against it as exactly one of three states:
+- **matches** — every relevant path is consistent with the decision
+- **contradicts** — at least one path violates the decision
+- **out of scope** — the decision does not constrain any path
+
+If you are unsure whether a Key Decision constrains placement, treat it as **in scope**: a false STOP costs one re-check, but a missed STOP ships the contradiction into every task.
+
+**STOP on `contradicts`:** if any placement/ownership decision is contradicted by the File Map, **do not proceed to task decomposition**. Resolve it first — correct the File Map paths or revise the Key Decision — then re-run this check. A contradiction is a hard block, not an advisory note.
+
+**Anti-bias:** when drafting the File Map, **derive** each path from the Key Decisions, not from the path of least resistance. Do not default to existing infrastructure locations just because they already exist — that default is exactly how a plan drifts away from a placement decision it already made.
+
+## Step 4: Task Decomposition
 
 Break the plan into self-contained tasks. Each task:
 - Can be executed by an agent with zero context beyond the task file + overview.md

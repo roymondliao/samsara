@@ -1,0 +1,67 @@
+feature: placement-consistency-gate
+coverage_type: verified
+
+scenarios:
+  # --- Death paths first (silent failure) ---
+  - name: "Silent failure - corruption signature: placement dimension checks nothing (DC-1)"
+    type: death_path
+    given: "agents/code-reviewer.md has an architectural-placement review dimension"
+    when: "the implement and iteration yin-reviewer dispatch payloads are inspected"
+    then:
+      - "both skills/implement (dispatch-template + SKILL) AND skills/iteration must include the plan's Key Decisions in the yin code-reviewer dispatch"
+      - "a placement dimension WITHOUT Key Decisions in the dispatch is the corruption signature — the reviewer checks against nothing and silently passes"
+      - "state must be exactly one of: data-flow-present, data-flow-absent — absent in either path is a FAIL"
+
+  - name: "Silent failure - anti-bias prose without the STOP gate (DC-4)"
+    type: death_path
+    given: "skills/planning/SKILL.md mentions deriving paths from Key Decisions"
+    when: "the planning skill is inspected for the consistency gate"
+    then:
+      - "a File-Map↔Key-Decisions consistency CHECK step must exist, separate from the anti-bias prose"
+      - "the anti-bias line alone (no STOP check) does not satisfy the gate"
+
+  # --- Degradation paths ---
+  - name: "Degradation - soft/advisory check instead of STOP (DC-2)"
+    type: degradation
+    given: "skills/planning/SKILL.md has a consistency-check step"
+    when: "the step's enforcement language is inspected"
+    then:
+      - "the step must STOP / block proceeding to task decomposition on a genuine contradiction"
+      - "advisory wording ('consider', 'may want to') without a STOP must not satisfy the gate"
+      - "fallback to advisory must not silently impersonate a hard gate"
+
+  - name: "Degradation - over-broad scope that becomes noise (DC-3)"
+    type: degradation
+    given: "the planning consistency check"
+    when: "its scope is inspected"
+    then:
+      - "the check must be scoped to placement/ownership decisions (the words placement/ownership present)"
+      - "it must NOT require every Key Decision to map to a path (that fires on path-irrelevant decisions → noise → skipped)"
+
+  # --- Unknown-outcome path ---
+  - name: "Unknown - iteration dispatch forgotten (DC-5)"
+    type: death_path
+    given: "Key Decisions are added to the implement reviewer dispatch"
+    when: "the iteration (skills/iteration) per-fix reviewer dispatch is inspected"
+    then:
+      - "iteration's yin code-reviewer dispatch must ALSO carry Key Decisions"
+      - "covering only implement leaves iteration-phase fixes reviewed blind to placement"
+
+  # --- Happy paths with evidence ---
+  - name: "Success - both gates present and the data flow is live"
+    type: happy_path
+    given: "the feature is implemented"
+    when: "the doc-contract suite runs"
+    then:
+      - "skills/planning/SKILL.md has a placement-scoped File-Map↔Key-Decisions STOP consistency step + anti-bias line"
+      - "agents/code-reviewer.md has an architectural-placement dimension"
+      - "Key Decisions appear in BOTH implement and iteration yin-reviewer dispatch"
+      - "evidence: the Primary evaluator (pytest doc-contract suite) is green"
+
+  - name: "Success - placement check leaves non-placement decisions out of scope"
+    type: happy_path
+    given: "a plan with a non-placement Key Decision (e.g. 'use churn not mtime')"
+    when: "the placement check is applied (documented behavior)"
+    then:
+      - "the non-placement decision is classified not-a-placement-decision (out of scope), not forced into matches/contradicts"
+      - "evidence: code-reviewer.md + planning SKILL.md document the three-state (matches/contradicts/out-of-scope) handling"

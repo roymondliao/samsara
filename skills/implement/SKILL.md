@@ -122,7 +122,7 @@ The prompt provides per-task context. Follow the template in `./dispatch-templat
 After each subagent completes (status DONE or DONE_WITH_CONCERNS):
 
 1. **Parallel code review** — dispatch BOTH reviewers in the **same message** to enable parallel execution:
-   - `samsara:code-reviewer` (yin) — spec compliance, deletion analysis, naming honesty, silent rot paths, correctness
+   - `samsara:code-reviewer` (yin) — spec compliance, deletion analysis, architectural placement (against the plan's placement/ownership Key Decisions — the yin dispatch includes them; see `./dispatch-template.md`), naming honesty, silent rot paths, correctness
    - `samsara:code-quality-reviewer` (quality) — structural truth-telling: S/O/L/I/D + Cohesion/Coupling/DRY/Pattern
 
    See `./dispatch-template.md` for both dispatch templates.

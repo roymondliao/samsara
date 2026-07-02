@@ -94,6 +94,18 @@ Agent tool:
     ## Diff
     [MUST paste the unstaged diff of the implementer's changes]
 
+    ## Plan Key Decisions
+    [MUST paste the placement/ownership Key Decisions from overview.md — the
+     decisions that fix WHERE code lives and WHO owns it. These feed the
+     Architectural Placement review dimension. If the plan has no placement/
+     ownership Key Decisions, say so explicitly — do not leave this blank.]
+
+    ## Architectural Placement Review (mandatory)
+    Using the Plan Key Decisions above, check whether the placement/ownership of
+    the changed files matches the plan. Classify each placement/ownership decision
+    as matches / contradicts / out-of-scope. A contradiction is a finding. If no
+    Key Decisions were provided, say so — absence is a finding, not a silent pass.
+
     ## Test-Quality Review (mandatory)
     Review the TESTS before implementation correctness. For every test in the diff:
     - Flag brittle / over-fit tests (redden on a behavior-preserving refactor —

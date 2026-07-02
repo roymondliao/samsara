@@ -107,7 +107,35 @@ The reference file illustrates what deletion candidates look like in this domain
 dead code shapes, uncalled functions, abstractions serving no purpose. Use these as
 recognition aids, not as an exhaustive checklist.
 
-### 2. Naming Honesty
+### 2. Architectural Placement
+
+**Mother Rule 2: Any boundary must label its assumptions.** Where a file lives and who
+owns it is a boundary assumption. A file placed in the wrong module — `samsara`-exclusive
+code sitting under a shared path, or a shared utility buried in a plugin-specific subtree —
+is an unlabeled, false assumption about ownership that misleads every future maintainer.
+
+Using the **plan's Key Decisions** provided in your dispatch, check whether the
+placement/ownership of the changed files matches the placement/ownership decisions the
+plan committed to. For each placement/ownership Key Decision, classify the diff as
+exactly one of three states:
+
+- **matches** — the changed files sit where the decision says they belong
+- **contradicts** — at least one file's location violates the decision. This is a finding:
+  Important by default, Critical when it corrupts an ownership boundary (per Mother Rule 2,
+  it makes every future maintainer inherit a false assumption about where things live)
+- **out of scope** — the Key Decision does not constrain file location (it is not a
+  placement decision). Do not force a non-placement decision (e.g. "use churn not mtime")
+  into matches/contradicts
+
+This is the review-side mirror of the planning skill's **File Map Consistency Check** —
+the same three-state placement protocol, applied to the changed files' locations instead
+of the plan's File Map. Keep the two aligned.
+
+**If your dispatch contains no Key Decisions, you cannot perform this check.** Say so
+explicitly — an absent Key Decisions payload is itself a finding (you were dispatched blind
+to placement), never a silent pass. Do not treat "nothing to check" as "placement is fine."
+
+### 3. Naming Honesty
 
 **Mother Rule 2: Any boundary must label its assumptions.** An unlabeled assumption is
 fraud against the next person who inherits this code. An unlabeled assumption in a name
@@ -120,7 +148,7 @@ The reference file illustrates what dishonest names look like in this domain —
 names with non-boolean outcomes, success names with ambiguous outcomes, error handler
 names that don't handle. Use these as recognition aids, not as an exhaustive checklist.
 
-### 3. Silent Rot Paths
+### 4. Silent Rot Paths
 
 **Mother Rule 3: Any abstraction must make errors easier to see, not harder.** An
 abstraction that makes errors harder to see — no matter how elegant — is protecting rot.
@@ -132,11 +160,11 @@ The reference file illustrates what silent rot looks like in this domain — swa
 exceptions, fallbacks without degraded state, default values turning unknown into known,
 retry without idempotency. Use these as recognition aids, not as an exhaustive checklist.
 
-### 4. Test Quality (tests reviewed first)
+### 5. Test Quality (tests reviewed first)
 
 **Mother Rule 3: Any abstraction must make errors easier to see, not harder.** A test
 is an abstraction over the contract it guards. Review the test quality as a
-first-class subject **before** the implementation-correctness step (Step 6) — a
+first-class subject **before** the implementation-correctness step (Step 7) — a
 rotten test reviewed after the implementation has already forced a wrong
 implementation change. Review each test for brittle, over-fit, tautological, or
 silent-green assertions before trusting it.
@@ -166,17 +194,17 @@ artifact, or death-case — does NOT satisfy the gate. Reject the perfunctory co
 declaration; a tautological contract label that maps to no observable behavior is a
 Clean Scar and is Critical.
 
-### 5. Scar Report Integrity
+### 6. Scar Report Integrity
 
 If the review includes a scar report (`changes/<feature>/scar-reports/task-N-scar.yaml`), check:
 - **Schema compliance:** Does the scar report follow `scar-schema.yaml`? Are items using the structured format (`{description, deferred_to_feature_iteration}`) rather than plain strings?
 - **Self-iteration honesty:** If `resolved_items` is empty and all items have `deferred_to_feature_iteration: true`, flag as Important — why were zero task-scope items fixable? Each deferred item should have a rationale.
 - **Resolved items validity:** Do `resolved_items` accurately describe what was fixed? Does the resolution match the diff?
 
-### 6. Correctness (last)
+### 7. Correctness (last)
 
-Only after completing steps 1-5, review for conventional correctness.
-Steps 1-4 asked structural and test-quality questions driven by the Mother Rules.
+Only after completing steps 1-6, review for conventional correctness.
+Steps 1-5 asked structural, placement, and test-quality questions driven by the Mother Rules.
 This step asks: does the code behave correctly?
 
 The reference file illustrates what correctness concerns look like in this domain —
@@ -187,8 +215,8 @@ recognition aids, not as an exhaustive checklist.
 
 ## Issue Classification
 
-- **Critical** (must fix): Silent failure paths, dishonest naming, deletable dead code, unmarked degradation, security issues, brittle/over-fit tests, tautological/silent-green tests, perfunctory contract labels (Clean Scar)
-- **Important** (should fix): Missing death case test coverage, unrecorded assumptions, unclear error classification (transient vs permanent vs unknown), tests bound to the wrong contract (fix the test, not the implementation)
+- **Critical** (must fix): Silent failure paths, dishonest naming, deletable dead code, unmarked degradation, security issues, brittle/over-fit tests, tautological/silent-green tests, perfunctory contract labels (Clean Scar), architectural placement that corrupts an ownership boundary
+- **Important** (should fix): Missing death case test coverage, unrecorded assumptions, unclear error classification (transient vs permanent vs unknown), tests bound to the wrong contract (fix the test, not the implementation), architectural placement contradicting the plan's placement/ownership Key Decisions
 - **Suggestion** (nice to have): Readability improvements, structural improvements, documentation
 
 ---
@@ -214,6 +242,7 @@ recognition aids, not as an exhaustive checklist.
 
 ### Summary
 - Deletable code found: yes/no
+- Placement vs plan Key Decisions: matches / contradicts / out-of-scope / no-key-decisions-provided
 - Dishonest names found: yes/no
 - Silent rot paths found: yes/no
 - Overall: PASS / PASS_WITH_CONCERNS / FAIL

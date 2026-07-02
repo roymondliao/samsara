@@ -1,0 +1,78 @@
+delivered_capability: >-
+  Placement-consistency gate (A4 / ISSUE-001): two independent gates that stop a
+  plan from silently contradicting its own placement/ownership decisions. Gate 1
+  (planning) — a hard-STOP File-Map↔Key-Decisions consistency step in
+  skills/planning/SKILL.md, scoped to placement/ownership, plus an anti-bias
+  prompt. Gate 2 (review) — an Architectural Placement dimension in the yin
+  agents/code-reviewer.md, fed the plan's Key Decisions via the yin-reviewer
+  dispatch in BOTH skills/implement/dispatch-template.md and skills/iteration.
+  Both gates share one three-state protocol (matches/contradicts/out-of-scope),
+  kept aligned by a cross-reference + parity test. Guarded by two doc-contract
+  test suites (11 tests).
+
+known_failure_modes:
+  - mode: >-
+      doc-presence != runtime obedience: the tests prove the STOP step and the
+      Key-Decisions data flow are WRITTEN and wired, not that the planning agent
+      actually STOPs or the reviewer actually judges placement at runtime.
+    severity: silent_corruption
+    detection: >-
+      Only a live dogfood — run planning on a deliberately contradictory plan and
+      observe whether Gate 1 STOPs and Gate 2 flags it. Pre-declared out-of-scope
+      by the Evaluation Contract; not covered by the doc-contract suite.
+  - mode: >-
+      Key-Decisions curation error: the curator must paste the RIGHT placement/
+      ownership Key Decisions into the yin dispatch. Mis-curation (wrong or missing
+      decisions) makes Gate 2 check the wrong thing.
+    severity: degradation
+    detection: >-
+      Partially self-detecting — the reviewer treats an ABSENT Key Decisions
+      payload as a finding (not a silent pass). Wrong-but-present decisions are not
+      detectable; observe in dogfood.
+  - mode: >-
+      Gate misclassification: a real placement/ownership Key Decision labelled
+      "out of scope" disarms the STOP silently.
+    severity: silent_corruption
+    detection: >-
+      Mitigated by the default-to-in-scope-when-unsure rule in planning Step 3
+      (biases toward firing the gate). Residual risk observed in dogfood.
+  - mode: >-
+      Cross-gate prose drift: the two gates' descriptive prose can diverge without
+      reddening the parity test (only the state labels + cross-reference are
+      guarded, not full prose).
+    severity: degradation
+    detection: >-
+      Parity test catches label/cross-reference drift; full-prose divergence is an
+      accepted residual (full-prose parity would over-couple two intentionally
+      independent gates).
+
+accepted_risks:
+  - risk: >-
+      Key-Decisions curation correctness — mis-curation of the yin dispatch payload
+      passes as valid (mitigated by the reviewer-side absent-payload guard).
+    accepted_by: "human"
+    expires: "2026-09-29"
+  - risk: >-
+      iteration-test _iteration_fix_section step-number coupling ("## Step 3: Fix" /
+      "## Step 4") — a renumber of iteration steps could widen the scoped section.
+    accepted_by: "human"
+    expires: "2026-09-29"
+
+silent_failure_surface: low  # doc/test-only; no runtime code, no I/O beyond read_text; the residual silent paths are runtime-agent-behaviour, deferred to dogfood
+
+monitoring_hooks:
+  - >-
+    Primary evaluator: `uv run pytest tests/test_skills/test_planning_placement_check.py
+    tests/test_skills/test_placement_review_dataflow.py` — 11 tests; the load-bearing
+    one is the Key-Decisions-reach-BOTH-dispatch data-flow assertion (corruption
+    signature guard).
+  - >-
+    Full suite `uv run pytest` (750 green) catches regression in the renumbered
+    code-reviewer.md steps and the dispatch templates.
+
+kill_switch: >-
+  Revert commits 0b8fc1e, 9bad7d8, b4ee483, de38cf0 (or drop branch
+  feature/placement-consistency-gate). The gates are additive doc rules + tests;
+  reverting removes the STOP step, the placement dimension, and the Key-Decisions
+  dispatch wiring, restoring prior planning/review behaviour with no runtime
+  dependency to unwind.
