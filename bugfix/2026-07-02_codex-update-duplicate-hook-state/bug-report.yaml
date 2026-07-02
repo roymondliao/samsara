@@ -1,0 +1,28 @@
+bug:
+  title: "Codex global update duplicates Samsara SessionStart hook state"
+  reported_by: "user report after inspecting ~/.codex/config.toml"
+  detected_at: "2026-07-02"
+  failure_level: 4
+  failure_level_reason: >
+    Repeated samsara-cli updates appear successful, but duplicate hook entries
+    accumulate silently. Codex then records multiple trusted hook-state entries
+    for the same Samsara command in ~/.codex/config.toml.
+  impact_scope: "Codex global installs/updates of Samsara on a machine with an existing ~/.codex/hooks.json."
+  duration: "Unknown; reproducible on the current local config."
+  detection_delay: "Detected only by manual inspection of ~/.codex/config.toml."
+
+observed_evidence:
+  live_config:
+    path: "/Users/yuyu_liao/.codex/config.toml"
+    symptom: >
+      hooks.state contains repeated ~/.codex/hooks.json session_start state keys
+      with the same Samsara trusted hash at different list indexes.
+  live_hooks:
+    path: "/Users/yuyu_liao/.codex/hooks.json"
+    symptom: >
+      hooks.SessionStart contains three entries invoking
+      /Users/yuyu_liao/.codex/hooks/samsara-session-start.sh.
+
+first_confirmed_reproduction:
+  command: "source .venv/bin/activate && uv run pytest tests/test_installer/test_install_death.py::TestInstallerGlobalIdempotent::test_repeated_global_install_does_not_duplicate_samsara_hook -q"
+  result: "failed before fix; repeated global install produced two identical absolute Samsara hook commands."

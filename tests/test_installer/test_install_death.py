@@ -78,6 +78,41 @@ def make_converted_output(tmp_path: Path) -> Path:
     return output
 
 
+def write_realistic_codex_hooks_json(converted_dir: Path) -> str:
+    """Write the converted hook entry that global install rewrites to absolute."""
+    relative_command = ".codex/hooks/samsara-session-start.sh"
+    (converted_dir / ".codex" / "hooks.json").write_text(
+        json.dumps(
+            {
+                "hooks": {
+                    "SessionStart": [
+                        {
+                            "matcher": "startup|resume",
+                            "hooks": [
+                                {
+                                    "type": "command",
+                                    "command": relative_command,
+                                    "statusMessage": "Injecting Samsara bootstrap context",
+                                }
+                            ],
+                        }
+                    ]
+                }
+            }
+        )
+    )
+    return relative_command
+
+
+def session_start_commands(hooks_json_path: Path) -> list[str]:
+    data = json.loads(hooks_json_path.read_text(encoding="utf-8"))
+    return [
+        hook["command"]
+        for entry in data["hooks"]["SessionStart"]
+        for hook in entry["hooks"]
+    ]
+
+
 # ---------------------------------------------------------------------------
 # DC-8-1: CLI not installed must abort — NOT write files silently
 # ---------------------------------------------------------------------------
@@ -475,6 +510,115 @@ class TestInstallerGlobalIdempotent:
             pytest.fail(
                 f"DC-8-4: config.toml is invalid TOML after repeated installs: {e}"
             )
+
+    def test_repeated_global_install_does_not_duplicate_samsara_hook(self, tmp_path):
+        """DC-8-4: global hook merge must stay idempotent after command rewrite.
+
+        Silent failure: the first global install rewrites Samsara's converted
+        relative command to an absolute command under $HOME. A second install sees
+        the source relative command as different, appends it, then rewrites it to
+        the same absolute command. Codex then records duplicate trusted hook state
+        entries in config.toml and the hook can run multiple times.
+        """
+        from samsara_cli.installer.install import Installer
+
+        fake_home = tmp_path / "home"
+        codex_config_dir = fake_home / ".codex"
+        codex_config_dir.mkdir(parents=True)
+
+        project_dir = tmp_path / "project"
+        project_dir.mkdir()
+        source_dir = make_minimal_source(tmp_path)
+        converted_dir = make_converted_output(tmp_path)
+        write_realistic_codex_hooks_json(converted_dir)
+
+        def run_install():
+            with patch("subprocess.run") as mock_run:
+                mock_run.return_value = MagicMock(returncode=0, stdout="codex 1.2.3")
+                with patch.dict("os.environ", {"HOME": str(fake_home)}):
+                    with patch(
+                        "samsara_cli.installer.install.Installer._run_convert",
+                        return_value=converted_dir,
+                    ):
+                        installer = Installer(platform="codex")
+                        installer.install(
+                            source_dir=source_dir,
+                            scope="global",
+                            cwd=project_dir,
+                        )
+
+        run_install()
+        run_install()
+
+        commands = session_start_commands(fake_home / ".codex" / "hooks.json")
+        samsara_commands = [
+            command
+            for command in commands
+            if command == str(fake_home / ".codex/hooks/samsara-session-start.sh")
+        ]
+        assert len(samsara_commands) == 1, (
+            "DC-8-4 violated: repeated global install duplicated the Samsara "
+            f"SessionStart command. Commands: {commands}"
+        )
+
+    def test_global_install_removes_stale_codex_hook_state_entries(self, tmp_path):
+        """DC-8-4: stale Codex trust state for removed hook indexes must be pruned.
+
+        Silent failure: after duplicate hooks are removed from hooks.json, Codex's
+        config.toml can still contain trusted state for old list indexes. The
+        visible symptom is duplicated-looking [hooks.state] config even though the
+        hook list has been repaired.
+        """
+        import tomllib
+        from samsara_cli.installer.install import Installer
+
+        fake_home = tmp_path / "home"
+        codex_config_dir = fake_home / ".codex"
+        codex_config_dir.mkdir(parents=True)
+        hooks_json_path = codex_config_dir / "hooks.json"
+        config_path = codex_config_dir / "config.toml"
+        config_path.write_text(
+            "\n".join(
+                [
+                    f'[hooks.state."{hooks_json_path}:session_start:0:0"]',
+                    'trusted_hash = "sha256:valid"',
+                    "enabled = true",
+                    "",
+                    f'[hooks.state."{hooks_json_path}:session_start:1:0"]',
+                    'trusted_hash = "sha256:stale"',
+                    "enabled = true",
+                    "",
+                ]
+            )
+        )
+
+        project_dir = tmp_path / "project"
+        project_dir.mkdir()
+        source_dir = make_minimal_source(tmp_path)
+        converted_dir = make_converted_output(tmp_path)
+        write_realistic_codex_hooks_json(converted_dir)
+
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="codex 1.2.3")
+            with patch.dict("os.environ", {"HOME": str(fake_home)}):
+                with patch(
+                    "samsara_cli.installer.install.Installer._run_convert",
+                    return_value=converted_dir,
+                ):
+                    installer = Installer(platform="codex")
+                    installer.install(
+                        source_dir=source_dir,
+                        scope="global",
+                        cwd=project_dir,
+                    )
+
+        config = tomllib.loads(config_path.read_text())
+        state = config["hooks"]["state"]
+        assert f"{hooks_json_path}:session_start:0:0" in state
+        assert f"{hooks_json_path}:session_start:1:0" not in state, (
+            "DC-8-4 violated: stale Codex hook state for a removed SessionStart "
+            "index survived global install."
+        )
 
 
 # ---------------------------------------------------------------------------

@@ -1,0 +1,36 @@
+root_cause:
+  summary: >
+    Global install merges converted hooks before rewriting Samsara hook commands
+    from relative to absolute paths. The second update compares the converted
+    relative source command against the previously-installed absolute command,
+    treats it as new, appends it, then rewrites it to the same absolute command.
+  entry_point: "samsara_cli/installer/install.py::_merge_hooks_json"
+  detection_point: "~/.codex/config.toml hooks.state entries created by Codex for duplicated hooks.json indexes."
+
+rot_path:
+  - layer: "Converted output"
+    behavior: "hooks.json contains .codex/hooks/samsara-session-start.sh for scope-agnostic conversion."
+    failed_guard: "No global-scope semantic identity exists before merge."
+  - layer: "Global install merge"
+    behavior: "Exact dict comparison sees relative source entry != absolute installed entry."
+    failed_guard: "Idempotency only checked literal JSON equality."
+  - layer: "Global command rewrite"
+    behavior: "New relative entry is rewritten to the same absolute command as the existing entry."
+    failed_guard: "No post-rewrite dedupe pass."
+  - layer: "Codex runtime state"
+    behavior: "Codex records trusted hook state by hooks.json list index."
+    failed_guard: "Installer did not prune stale hooks.state indexes after repairing hooks.json."
+
+why_it_hid:
+  - "The update command completes successfully and all files remain syntactically valid."
+  - "The duplicate only becomes visible by inspecting ~/.codex/hooks.json or Codex's derived hooks.state table."
+  - "Existing idempotency tests covered feature flags but not hook identity after global command rewrite."
+
+hypothesis:
+  statement: >
+    If global install dedupes owned hook commands after rewrite and prunes Codex
+    hook-state keys whose indexes no longer exist, repeated updates will not
+    accumulate duplicate Samsara config.
+  verified_by:
+    - "tests/test_installer/test_install_death.py::TestInstallerGlobalIdempotent::test_repeated_global_install_does_not_duplicate_samsara_hook"
+    - "tests/test_installer/test_install_death.py::TestInstallerGlobalIdempotent::test_global_install_removes_stale_codex_hook_state_entries"
