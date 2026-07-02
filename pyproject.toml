@@ -6,7 +6,7 @@ build-backend = "uv_build"
 
 [project]
 name = "samsara"
-version = "0.12.1"
+version = "0.12.2"
 description = "Samsara (向死而驗) — a death-first verification workflow of skills, agents, and hooks for Claude Code and other agent platforms"
 readme = "README.md"
 requires-python = ">=3.14"
