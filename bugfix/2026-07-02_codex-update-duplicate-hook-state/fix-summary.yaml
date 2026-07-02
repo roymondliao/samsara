@@ -1,0 +1,20 @@
+fix:
+  summary: >
+    Global installs now dedupe hook entries for commands owned by the install
+    root after relative commands are rewritten to absolute paths, and config.toml
+    updates prune stale Codex hooks.state keys for removed hook indexes.
+  changed_files:
+    - "samsara_cli/installer/install.py"
+    - "tests/test_installer/test_install_death.py"
+  scar_condition: >
+    This can silently fail again if Codex changes the hooks.state key format away
+    from '<hooks-file>:<event>:<entry-index>:<hook-index>' or stores hook trust
+    state somewhere other than config.toml.
+
+validation:
+  - command: "source .venv/bin/activate && uv run pytest tests/test_installer/test_install_death.py::TestInstallerGlobalIdempotent::test_repeated_global_install_does_not_duplicate_samsara_hook tests/test_installer/test_install_death.py::TestInstallerGlobalIdempotent::test_global_install_removes_stale_codex_hook_state_entries -q"
+    result: "passed"
+  - command: "source .venv/bin/activate && uv run pytest tests/test_installer/test_install.py tests/test_installer/test_install_death.py tests/test_installer/test_install_gemini.py -q"
+    result: "passed"
+  - command: "source .venv/bin/activate && uv run pre-commit run --all-files"
+    result: "passed"

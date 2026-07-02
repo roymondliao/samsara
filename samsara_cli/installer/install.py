@@ -31,6 +31,7 @@ Assumptions:
 import json
 import logging
 import os
+import re
 import shutil
 import tomllib
 from pathlib import Path
@@ -343,6 +344,7 @@ class Installer:
 
             modified = self._update_config_toml(
                 config=current_toml,
+                install_root=home,
             )
 
             config_path.write_bytes(tomli_w.dumps(modified).encode())
@@ -406,7 +408,17 @@ class Installer:
             ) from e
 
         prefix = f"{paths.plugin_dir}/"
-        if self._rewrite_command_paths(data, prefix=prefix, install_root=install_root):
+        changed = self._rewrite_command_paths(
+            data, prefix=prefix, install_root=install_root
+        )
+
+        command_prefix = str(install_root / paths.plugin_dir / "hooks")
+        changed |= self._dedupe_hook_entries_for_command_prefix(
+            data,
+            command_prefix=command_prefix,
+        )
+
+        if changed:
             hook_file.write_text(
                 json.dumps(data, indent=2, ensure_ascii=False) + "\n",
                 encoding="utf-8",
@@ -437,6 +449,59 @@ class Installer:
                 changed |= self._rewrite_command_paths(
                     item, prefix=prefix, install_root=install_root
                 )
+        return changed
+
+    def _dedupe_hook_entries_for_command_prefix(
+        self,
+        data: object,
+        *,
+        command_prefix: str,
+    ) -> bool:
+        """Remove duplicate hook entries for commands owned by this install.
+
+        Global installs first merge converted hooks, then rewrite relative
+        commands to absolute paths under the install root. Without this pass,
+        repeated installs can append a relative source command that later becomes
+        identical to the already-installed absolute command.
+        """
+        if not isinstance(data, dict):
+            return False
+
+        hooks_by_event = data.get("hooks")
+        if not isinstance(hooks_by_event, dict):
+            return False
+
+        changed = False
+        for event_name, entries in hooks_by_event.items():
+            if not isinstance(entries, list):
+                continue
+
+            seen_owned_identities: set[tuple[str, str]] = set()
+            deduped_entries = []
+            for entry in entries:
+                identities = self._hook_entry_identities([entry])
+                owned_identities = {
+                    identity
+                    for identity in identities
+                    if identity[1].startswith(command_prefix)
+                }
+                if owned_identities and owned_identities.issubset(
+                    seen_owned_identities
+                ):
+                    changed = True
+                    logger.info(
+                        "Removed duplicate %s hook entry for commands: %s",
+                        event_name,
+                        sorted(command for _, command in owned_identities),
+                    )
+                    continue
+
+                deduped_entries.append(entry)
+                seen_owned_identities.update(owned_identities)
+
+            if len(deduped_entries) != len(entries):
+                hooks_by_event[event_name] = deduped_entries
+
         return changed
 
     def _copy_dir_merge(self, source_dir: Path, target_dir: Path) -> None:
@@ -612,6 +677,7 @@ class Installer:
     def _update_config_toml(
         self,
         config: dict,
+        install_root: Path | None = None,
     ) -> dict:
         """DC-8-4: Update config dict with required feature flags (idempotent).
 
@@ -650,7 +716,75 @@ class Installer:
             self._remove_deprecated_feature_flags(features_section, desired_features)
             result["features"] = features_section
 
+        if install_root is not None:
+            self._remove_stale_hook_state_entries(result, install_root=install_root)
+
         return result
+
+    def _remove_stale_hook_state_entries(
+        self,
+        config: dict,
+        *,
+        install_root: Path,
+    ) -> None:
+        """Remove Codex hook trust state entries for hook indexes that no longer exist."""
+        paths = self._config.paths
+        if paths is None or not paths.plugin_dir or not paths.hooks_file:
+            return
+
+        hook_file = install_root / paths.plugin_dir / paths.hooks_file
+        if not hook_file.exists():
+            return
+
+        hooks_section = config.get("hooks")
+        if not isinstance(hooks_section, dict):
+            return
+
+        state_section = hooks_section.get("state")
+        if not isinstance(state_section, dict):
+            return
+
+        valid_keys = self._current_hook_state_keys(hook_file)
+        hook_file_prefix = f"{hook_file}:"
+
+        for key in list(state_section):
+            if key.startswith(hook_file_prefix) and key not in valid_keys:
+                del state_section[key]
+                logger.info("Removed stale hook state entry: %s", key)
+
+    def _current_hook_state_keys(self, hook_file: Path) -> set[str]:
+        """Return Codex hook state keys that correspond to the current hooks file."""
+        try:
+            data = json.loads(hook_file.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as e:
+            raise InstallerError(
+                f"Cannot prune hook state because {hook_file} is not valid JSON: {e}"
+            ) from e
+
+        hooks_by_event = data.get("hooks") if isinstance(data, dict) else None
+        if not isinstance(hooks_by_event, dict):
+            return set()
+
+        valid_keys: set[str] = set()
+        for event_name, entries in hooks_by_event.items():
+            if not isinstance(event_name, str) or not isinstance(entries, list):
+                continue
+            state_event_name = self._codex_hook_state_event_name(event_name)
+            for entry_index, entry in enumerate(entries):
+                if not isinstance(entry, dict):
+                    continue
+                hooks = entry.get("hooks")
+                if not isinstance(hooks, list):
+                    continue
+                for hook_index, _hook in enumerate(hooks):
+                    valid_keys.add(
+                        f"{hook_file}:{state_event_name}:{entry_index}:{hook_index}"
+                    )
+        return valid_keys
+
+    def _codex_hook_state_event_name(self, event_name: str) -> str:
+        """Convert Codex hook event names to config.toml hook-state key names."""
+        return re.sub(r"(?<!^)(?=[A-Z])", "_", event_name).lower()
 
     def _global_install_instructions(
         self,

@@ -1,0 +1,38 @@
+type: fast_track
+description: "Bump Samsara release metadata from 0.12.1 to 0.12.2."
+death_clause: "If release check-version does not report `Versions synchronized: 0.12.2 (v0.12.2)`, this change is failed."
+acceptance:
+  - ".claude-plugin/marketplace.json metadata.version is 0.12.2."
+  - ".claude-plugin/plugin.json version is 0.12.2."
+  - "pyproject.toml project.version is 0.12.2."
+  - "uv.lock package[samsara].version is 0.12.2."
+  - "`samsara-cli version` reports samsara-cli 0.12.2."
+scar_tag: none
+scar_items: []
+files_changed:
+  - ".claude-plugin/marketplace.json"
+  - ".claude-plugin/plugin.json"
+  - "pyproject.toml"
+  - "uv.lock"
+quality_checklist:
+  - criterion: "C5 Reuse"
+    checked: true
+    note: "Used the existing release sync-version command after changing marketplace metadata as the source of truth."
+  - criterion: "C6 Clear Structure"
+    checked: true
+    note: "Kept version metadata in the existing release-owned files; no new version source was introduced."
+  - criterion: "C7 Elegant Logic"
+    checked: true
+    note: "No code path or helper was added; this is a metadata-only bump."
+  - criterion: "C8 No Redundancy"
+    checked: true
+    note: "All four release version fields carry the same 0.12.2 value and are verified by release check-version."
+validation:
+  - command: "source .venv/bin/activate && uv run samsara-cli release check-version"
+    result: "passed; Versions synchronized: 0.12.2 (v0.12.2)"
+  - command: "source .venv/bin/activate && uv run samsara-cli version"
+    result: "passed; samsara-cli 0.12.2"
+  - command: "source .venv/bin/activate && uv run pytest tests/test_cli/test_release_commands.py tests/test_release/test_version_metadata.py tests/test_release/test_version_metadata_death.py -q"
+    result: "passed"
+  - command: "source .venv/bin/activate && uv run pre-commit run --all-files"
+    result: "passed"
