@@ -121,14 +121,8 @@ assumptions_made:
       dist/codex's stale samsara-security-privacy-review skill directory is
       removed by a future `uv run samsara-cli convert --platform codex`
       regenerate run, rather than persisting because convert is additive-only.
-    verified: false
-    note: >
-      Confirmed dist/codex/.agents/skills/samsara-security-privacy-review
-      still exists (gitignored, untouched by this task per the task's
-      explicit "本 task 不動 dist/"). Did not run the converter to check
-      whether it deletes stale output directories or only adds new ones —
-      if additive-only, this stale dist/ copy would survive a regen too and
-      needs a separate cleanup step.
+    verified: true
+    note: "task-8 實測翻正：regen 後 dist/codex/.agents/skills/ 無 security 目錄（task-8-scar assumptions_made[1]；Level-2 iteration 記帳修正）"
 
   - assumption: >
       agents/auto-gatekeeper.md's `stage` enum (edited for consistency, see

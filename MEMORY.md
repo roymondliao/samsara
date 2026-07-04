@@ -191,6 +191,11 @@ Both reviewer agents now route by file domain (code/iac/container/pipeline/orche
 - **2026-07-24**：LLM compliance, scar report domain-agnostic, DRY exclusion breadth, DRY coverage transfer, applicability section default
 - **2026-10-24**：I coverage transfer, ignore_changes severity distinction
 
+> 註（2026-07-04）：expiry-date 制度已由 workflow-subtraction-optimization feature 廢除
+> （全 repo 從無任何機制檢查過期——永不響的鬧鐘）。上列日期為歷史記錄、不會有東西在
+> 到期日觸發；這批 accepted risks 的重審條件依新制改為訊號驅動：任何人再次修改
+> references/iac-*.md 或 code-quality reviewer 的對應原則時，順帶重審該批項目。
+
 ### Phase 7: Multi-Platform Support — DONE (2026-04-28, Codex-first)
 
 Codex 平台的完整 conversion + installation pipeline，以 Python CLI 實作（非原計劃的 bash scripts）。
@@ -204,6 +209,20 @@ Codex 平台的完整 conversion + installation pipeline，以 Python CLI 實作
 - Typer CLI：`convert`, `install`, `update`, `validate`, `version` 命令
 
 **測試規模**：512 tests，169 death tests，10 scar reports，35 known silent failure conditions。
+
+### Phase 8: Workflow Subtraction Optimization — DONE (2026-07-04)
+
+對框架自身的減法工程（changes/2026-07-02_workflow-subtraction-optimization/）：
+
+- **Scar 去噪**：schema Rules 9–14——systemic_ref 登記（`.samsara/systemic-scars.yaml`）、verified:true 單行證據指標、就地 `status: resolved`、narrative 禁 review 流水帳、write filter
+- **expiry → 訊號驅動重審**：accept 必附 `re_review_signal` + `owner`（expiry 從無消費者——永不響的鬧鐘；見上方 Phase 6 註記）
+- **security-privacy-review 折入 validate-and-ship Step 0 STOP gate**（7 條語義無損，淨減 208 行）
+- **Auto Mode Gate 去重**：Stage Gate Protocol canonical 於 references/auto-mode.md，6 skills 留預算鎖定的指針
+- **iteration 進入資料驅動**：cross-task pattern 或 signal_lost≥5 才建議進入；解析失敗→unknown 不准 skip；index.yaml 唯一 truth
+- **fast-track 只記違規**＋reviewed_criteria 聲明
+- **0-design-direction.md 六項修訂定案**（交棒唯一來源、刪輕想層、刪少數意見網、健康指標 owner/trigger、K3b 沿用、刪成熟度分類）
+
+**成果**：856 tests（+124，含 permanent wrong-direction decoy 死測模式）；核心指令面 6,356→6,188 行；ISSUE-002 登記（validate 無 CI 消費者）。review 過程實證 test-contract.md 兩極：over-fit → weakest-OR-token → presence-not-polarity 的逐輪收斂，decoy 永久化為根治法。
 
 **Ship manifest**：`changes/2026-04-24_multi-platform-support/ship-manifest.yaml`
 
