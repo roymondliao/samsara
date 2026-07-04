@@ -72,7 +72,7 @@ This order cannot be swapped. Death test before unit test. Scar report before se
 8. Run all tests — verify they pass (green)
 9. Write scar report (see Scar Report section)
 10. Self-iteration (see Self-Iteration section)
-11. Update scar report — add `resolved_items`, mark remaining items
+11. Update scar report — mark fixed items in place with `status: resolved` + one-line `resolution` (schema Rule 11), mark remaining items
 12. Run all tests again — verify no regression from self-iteration fixes
 13. Report back — do NOT commit. The main agent handles commit after review passes.
 
@@ -129,11 +129,11 @@ After writing the initial scar report (step 8), review each scar item and attemp
 - Items that are genuinely accepted risks — leave as-is (no deferred flag needed)
 
 **After fixing:**
-- Add each fixed item to `resolved_items` in the scar report (reference original section + description + what was done)
+- Mark each fixed item in place with `status: resolved` + a one-line `resolution` (schema Rule 11 — do not re-copy the item into a separate `resolved_items` list; that older form stays readable per Rule 14 but is retired for new writes)
 - Re-run all tests to verify no regression
 - Update `completion_status` if fixes changed the assessment
 
-**Anti-pattern: defer everything.** If all scar items are marked `deferred_to_feature_iteration` with zero `resolved_items`, the code reviewer will flag this. Every task should resolve at least its own directly fixable items. If genuinely nothing can be fixed within task scope, explain why in each item's rationale.
+**Anti-pattern: defer everything.** If all scar items are marked `deferred_to_feature_iteration` with zero resolved items (no in-place `status: resolved`, no legacy `resolved_items`), the code reviewer will flag this. Every task should resolve at least its own directly fixable items. If genuinely nothing can be fixed within task scope, explain why in each item's rationale.
 
 ## Self-Review
 

@@ -162,7 +162,7 @@ This order is mandatory. Death test before unit test. Scar report before self-it
 8. Run all tests — verify they pass (green)
 9. Write scar report → `changes/<feature>/scar-reports/task-N-scar.yaml` (read `templates/scar-schema.yaml` for the exact format; `<feature>` = the feature directory name from `changes/`)
 10. Self-iteration (Level 1) — review scar items, fix task-scope actionable items
-11. Update scar report — add `resolved_items` for fixed items, mark remaining items with `deferred_to_feature_iteration` flags where applicable
+11. Update scar report — mark fixed items in place with `status: resolved` + a one-line `resolution` (`scar-schema.yaml` Rule 11; the older separate `resolved_items` list remains readable per Rule 14 but is retired for new writes), mark remaining items with `deferred_to_feature_iteration` flags where applicable
 12. Run all tests — verify no regression from self-iteration fixes
 13. Report back (do NOT commit)
 
