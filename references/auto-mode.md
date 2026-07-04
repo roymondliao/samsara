@@ -68,7 +68,10 @@ Output states:
 ## Decision 001 - <stage>.<gate-id>
 - decision_id: decision-001
 - timestamp: <ISO timestamp>
-- stage: <research | pre-thinking | planning | implementation | iteration | security-privacy-review | validation>
+- stage: <research | pre-thinking | planning | implementation | iteration | validation>
+  # security-privacy-review is folded into validation's Step 0 STOP gate —
+  # Step 0 decision points use `stage: validation` (see the "Security And
+  # Privacy Unknowns" section below).
 - prompt_type: <question | confirmation>
 - workflow_prompt: "<original workflow prompt>"
 - gatekeeper_answer: "<principle-level subagent answer>"
@@ -98,9 +101,38 @@ Output states:
 - A valid entry must make the next workflow consequence explicit.
 - A correction must append a new decision and reference the superseded decision.
 
+## Stage Gate Protocol
+
+Every workflow skill enforces its human-input points the same way in auto
+mode. A skill's own "Auto Mode Gate" section names only: its
+`workflow_prompt` source(s), the decision points it covers, and any
+stage-specific narrowing (e.g. validate-and-ship's Step 0 forbidding
+`accept_gap`). Everything below is canonical — do not restate it per skill.
+
+**Dispatch:** when `Execution mode: auto`, route the prompt through the
+gatekeeper instead of a human. Dispatch with the Agent tool using
+`subagent_type: "samsara:auto-gatekeeper"`.
+
+**Append-before-continue:** the gatekeeper appends one append-only entry to
+`changes/<feature>/auto-decisions.md` *before* the workflow proceeds past
+that decision point — see Decision Log Contract / Required Fields / Entry
+Template above for the entry's fields; never a generic "approved".
+
+**Decision values → workflow action** (the values are defined in Required
+Fields above; this is what each means for the calling stage):
+
+- `proceed` — continue to whatever comes next, as a human confirmation would.
+- `revise` — the artifact must be revised, then the same gate re-runs on it;
+  the stage does not continue until that re-run records another decision.
+- `reject` — the auto run stops; recorded in `auto-decisions.md`; no later
+  gate may treat a `reject` as `proceed`.
+- `accept_gap` — continue, but the gap must stay visible downstream (next
+  skill's context or this stage's artifact) so it is never silently dropped.
+
 ## Security And Privacy Unknowns
 
-Auto mode cannot treat security/privacy unknown as accepted risk. If the
-gatekeeper cannot establish review pass evidence, it records a high-uncertainty
-`reject` decision with the evidence gap and the workflow does not continue as if
-security/privacy passed.
+Auto mode cannot treat security/privacy unknown as accepted risk — this is a
+cross-stage policy axiom. The exact decision procedure lives with the gate that
+owns it: `skills/validate-and-ship/SKILL.md` Step 0 and its Auto Mode Gate
+"Step 0 auto overrides" (folded from the former standalone
+security-privacy-review skill).

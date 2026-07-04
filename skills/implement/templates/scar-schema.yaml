@@ -64,6 +64,56 @@ resolved_items:  # OPTIONAL — items fixed during task-level self-iteration (Le
 #    When aggregating (e.g., Level 2 iteration), treat plain strings as:
 #      {description: "the string", deferred_to_feature_iteration: false}
 #    Do not reject or silently skip plain string format items.
+#
+# 9. systemic_ref item form: instead of restating a cross-feature structural fact
+#    (a fact that keeps recurring across unrelated tasks/features), reference it
+#    by id instead of copying its description:
+#      known_shortcuts:
+#        - systemic_ref: doc-vs-runtime-obedience
+#          note: "this task's concrete landing point in one line, e.g. file:line"
+#    The registry lives at .samsara/systemic-scars.yaml. Do NOT copy the
+#    registry's `description` text into the item — reference the id only, plus
+#    one line naming where it concretely lands in THIS task. A dangling id
+#    (not present in the registry) is a PARSE FAILURE at aggregation time —
+#    never silently skipped. The full resolution procedure (dangling id,
+#    missing registry file) is canonical in skills/iteration/SKILL.md Step 1:
+#    Aggregate Remaining Scars — not restated here.
+#
+# 10. verified: true assumptions must be compressed to a single line:
+#     `assumption` states what was assumed, `note` holds ONLY an evidence
+#     pointer — a file:line reference or a test name — not a paragraph of
+#     narrative. If the evidence cannot be named as a pointer, the assumption
+#     is not actually verified; mark verified: false instead.
+#
+# 11. resolved_items re-copy is retired going forward. Instead of duplicating
+#     the original item's full description into a separate resolved_items
+#     list, mark the ORIGINAL item in place with `status: resolved` and a
+#     one-line `resolution`:
+#       silent_failure_conditions:
+#         - description: "original description, unchanged"
+#           status: resolved
+#           resolution: "one line describing what was done"
+#     Backward compatibility: scar reports written before this rule that used
+#     the separate resolved_items list remain valid and must still be read as
+#     resolved by any aggregator (see skills/iteration/SKILL.md Step 1).
+#
+# 12. narrative anti-pattern — the review-round diary: a round-by-round review
+#     log ("Round 1 修了 X，Round 2 修了 Y...") is REVIEW PROCESS HISTORY, not
+#     a scar on the code — do not write it into narrative. narrative exists
+#     only for scar context that the structured fields above cannot express.
+#
+# 13. Write filter — before adding ANY item to known_shortcuts,
+#     silent_failure_conditions, assumptions_made, or narrative, ask: "would a
+#     future reader of this scar change their action because they read this
+#     line?" If the honest answer is no, do not write the item.
+#
+# 14. Backward-compat extension: rules 7 and 8 continue to apply unchanged to
+#     every pre-existing scar report on disk. The systemic_ref, verified:true
+#     single-line, and status:resolved forms introduced by rules 9-11 are
+#     ADDITIVE — they do not invalidate and do not require migration of
+#     plain-string, missing-flag, or resolved_items-list scar reports that
+#     were already written. An aggregator must accept both the old and new
+#     forms side by side in the same feature.
 
 # --- Verbatim Example (with self-iteration) ---
 #

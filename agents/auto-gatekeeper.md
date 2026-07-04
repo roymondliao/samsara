@@ -62,7 +62,7 @@ Append to `changes/<feature>/auto-decisions.md` before continuing:
 ## Decision 001 - <stage>.<gate-id>
 - decision_id: decision-001
 - timestamp: <ISO timestamp>
-- stage: <research | pre-thinking | planning | implementation | iteration | security-privacy-review | validation>
+- stage: <research | pre-thinking | planning | implementation | iteration | validation>
 - prompt_type: <question | confirmation>
 - workflow_prompt: "<original workflow prompt>"
 - gatekeeper_answer: "<your answer>"

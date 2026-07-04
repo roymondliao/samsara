@@ -84,6 +84,8 @@ Inline review — main agent self-checks both yin and quality. No subagent dispa
 
 Selection rationale: For typical small changes (bug fix, config, dep update, small refactor under 100 lines), the quality risks most likely to be introduced silently are: duplicating logic that already exists (C5), placing code in the wrong boundary (C6), adding unnecessary abstraction (C7), and restating facts already encoded elsewhere (C8). C1 Readability is ambient and covered by the naming yin question. C2 Maintainability and C3 Extensibility are architectural concerns unlikely to surface in <100 lines. C4 Debuggability overlaps with the yin reviewer's silent-rot scope.
 
+**Recording the review — `quality_review` (canonical field shape: `templates/fast-track.yaml`)**: write `reviewed_criteria` naming which of C5/C6/C7/C8 were actually checked — this line is required, always, even when nothing was found wrong. Write `violations` listing only what was found wrong; an empty `violations` list means "reviewed and clean". 缺 `reviewed_criteria` 的空 `violations` 清單視為未檢查，不得 commit — an empty `violations` list with no `reviewed_criteria` line is indistinguishable from "never reviewed" and must not ship.
+
 - Write `fast-track.yaml` to `changes/` directory
 - Commit with `[scar:none]` or `[scar:N items]` tag
 
@@ -92,7 +94,7 @@ Selection rationale: For typical small changes (bug fix, config, dep update, sma
 - **Death test first** — even for fast track, this order cannot be skipped
 - **Gate defaults to full workflow** — positive evidence required to enter Fast Track
 - **Every commit tagged** — `[scar:none]` or `[scar:N items]`
-- **Quality symmetry** — fast-track's Step 4 review must check both yin (deletion, naming) and quality (C5/C6/C7/C8) faces; checking only one face is an incomplete review
+- **Quality symmetry** — fast-track's Step 4 review must check both yin (deletion, naming) and quality (C5/C6/C7/C8) faces, recording the quality face as `quality_review` (`reviewed_criteria` + `violations`); checking only one face, or an empty `violations` list with no `reviewed_criteria` line, is an incomplete review
 
 ## Output
 
@@ -111,17 +113,7 @@ scar_items:
   - "<scar item if any>"
 files_changed:
   - "<file path>"
-quality_checklist:
-  - criterion: "C5 Reuse"
-    checked: false  # fill true only after active review — a specific observation is required in note
-    note: "<what was observed — must be specific, not a template copy>"
-  - criterion: "C6 Clear Structure"
-    checked: false
-    note: "<what was observed — must be specific, not a template copy>"
-  - criterion: "C7 Elegant Logic"
-    checked: false
-    note: "<what was observed — must be specific, not a template copy>"
-  - criterion: "C8 No Redundancy"
-    checked: false
-    note: "<what was observed — must be specific, not a template copy>"
+quality_review:  # canonical field shape: templates/fast-track.yaml
+  reviewed_criteria: [C5, C6, C7, C8]
+  violations: []
 ```

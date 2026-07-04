@@ -43,8 +43,9 @@ digraph implement {
     update [label="主 agent: 更新 index.yaml\n+ TaskUpdate completed"];
     more [label="還有 task？" shape=diamond];
     commit [label="主 agent: Commit\n（全部 task 完成後）"];
-    gate [label="Completion gate\nhuman: ask\nauto: gatekeeper" shape=diamond];
-    next [label="invoke samsara:security-privacy-review\nor samsara:iteration" shape=doublecircle];
+    criteria [label="Iteration-entry criteria\ncross-task pattern OR\nsignal_lost>=5 ?\n(parse failure -> unknown)" shape=diamond];
+    gate [label="判準成立 / unknown\nhuman: ask\nauto: gatekeeper" shape=diamond];
+    next [label="invoke samsara:validate-and-ship\nor samsara:iteration" shape=doublecircle];
 
     start -> mode;
     mode -> step0 [label="A/B: dispatch\n(paste full text)" lhead=cluster_implementer];
@@ -64,14 +65,16 @@ digraph implement {
     update -> more;
     more -> step0 [label="yes" lhead=cluster_implementer];
     more -> commit [label="no"];
-    commit -> gate;
+    commit -> criteria;
+    criteria -> gate [label="成立 / 解析失敗(unknown)"];
+    criteria -> next [label="不成立 + 全部可解析\n預設 skip + 可推翻紀錄"];
     gate -> next [label="confirmed"];
 }
 ```
 
 ## Progress Tracking
 
-On entry, after reading `index.yaml`, create a TaskCreate item for each task to provide real-time UI progress. `index.yaml` remains the source of truth — TaskCreate is its UI projection.
+On entry, after reading `index.yaml`, create a TaskCreate item for each task to provide real-time UI progress.
 
 ```
 Read index.yaml
@@ -82,7 +85,7 @@ After each task's review passes:
   → TaskUpdate({ status: "completed" }) for the corresponding task
 ```
 
-Always update both together. Never update one without the other.
+index.yaml 是唯一真實狀態（source of truth）；TaskCreate/TaskUpdate 是盡力而為的 UI 投影，投影未更新不構成流程錯誤，但 index.yaml 未更新是。
 
 ## Execution Mode Selection
 
@@ -217,51 +220,66 @@ These are non-negotiable:
 
 ## Transition
 
-All tasks complete. Calculate remaining scar items:
-- Count items across all `changes/<feature>/scar-reports/` where `deferred_to_feature_iteration: true` or items without `resolved_items` coverage
-- These are the **feature-level items** that Level 1 self-iteration could not resolve
+All tasks complete. Calculate the iteration-entry criteria:
 
-Then use the implementation completion prompt to decide the next workflow path:
+1. Read every `changes/<feature>/scar-reports/task-N-scar.yaml`.
+2. Compute `signal_lost` and identify parse failures using the SAME
+   definition and parse-failure semantics as iteration SKILL.md's Step 1:
+   Aggregate Remaining Scars (the signal_lost formula, and `systemic_ref`
+   dangling = parse failure) — canonical there, not restated here.
+3. Check for a **cross-task pattern**: the same item (by description or
+   `systemic_ref` id) appears in ≥2 different task scar reports.
+   已知限制：這是**字面比對**（description 全同或 id 相同）——兩個 task 用
+   不同措辭描述同一 rot 時會漏判而落入預設 skip；可推翻紀錄的存在就是這個
+   限制的補償措施。
 
-> 「Implementation 完成。N 個 tasks 已執行，共 M 個 scar report items（Level 1 self-iteration 已處理 R 個，剩餘 K 個 feature-level items）。
->
-> (A) 進入 Iteration — 審視 feature-level scar items（cross-task patterns, system-level rot）
-> (B) Skip — 直接進入 Security & Privacy Review（剩餘 items 由 validate-and-ship 的 failure budget review 處理）」
+Branch into exactly one of three states:
 
-- If `Execution mode: human-in-the-loop`, ask the user this question.
-  - User chooses A → invoke `samsara:iteration`
-  - User chooses B → invoke `samsara:security-privacy-review`
-- If `Execution mode: auto`, do not ask the user. Use the Auto Mode Gate below
-  to dispatch `samsara:auto-gatekeeper`, record the decision, and invoke the
-  next skill named by the recorded decision.
+- **判準成立**（cross-task pattern found, OR `signal_lost >= 5` — this
+  threshold is a rough estimate from historical iteration-log data, not a
+  calibrated constant; adjust only by citing newer iteration-log evidence in
+  the scar report） AND every scar report parsed → 依 execution mode 過
+  gate（human: ask the user；auto: dispatch `samsara:auto-gatekeeper`，見下方
+  Auto Mode Gate）建議進入 iteration，並列出找到的 cross-task patterns 與
+  signal_lost 數值。
+- **判準不成立，且全部 scar 可解析** → 預設 skip：不經過 gate
+  （deterministic），但一律先印出這行可推翻紀錄，才能繼續：
+  > 「signal_lost=N、無 cross-task pattern，已 skip iteration（回覆可推翻）」
+
+  同一行紀錄必須同時寫入 feature 的 `index.yaml`（durable——auto mode 沒有人
+  在讀對話輸出，只印不寫等於沒有紀錄）。然後直接進入
+  `samsara:validate-and-ship`（其 Step 0 為 security/privacy gate；剩餘 items
+  由 failure budget review 處理）。
+- **任何 scar report 解析失敗** → 結果為 unknown，**不准 skip**（解析失敗代表
+  signal_lost 可能被少算，unknown 不等於「不需要 iteration」）。列出每個 parse
+  failure（file，以及懸空 `systemic_ref` 的 id），再依 execution mode 過
+  gate（human: 連同 parse failures 詢問使用者；auto: dispatch
+  `samsara:auto-gatekeeper`）決定 `samsara:iteration` 或
+  `samsara:validate-and-ship` — 絕不落回上面的預設 skip 路徑。
+
+- If `Execution mode: human-in-the-loop` and the gate above is invoked, the
+  user's answer selects `samsara:iteration` or `samsara:validate-and-ship`.
+- If `Execution mode: auto` and the gate above is invoked, do not ask the user. Use the Auto Mode Gate below to dispatch `samsara:auto-gatekeeper`,
+  record the decision, and invoke the next skill named by the recorded
+  decision.
 
 ## Auto Mode Gate
 
-When the session context contains `Execution mode: auto`, keep the implementation
-execution decisions but route them through `samsara:auto-gatekeeper` instead of
-pausing for input.
-Dispatch it with the Agent tool using `subagent_type: "samsara:auto-gatekeeper"`.
+Canonical protocol: `references/auto-mode.md` Stage Gate Protocol —
+dispatch, the append-only decision log, and what `proceed`/`revise`/
+`reject`/`accept_gap` mean all live there; this section only names what
+Implement adds.
 
-The gatekeeper must append an append-only entry to
-`changes/<feature>/auto-decisions.md` before continuing. Use the canonical
-schema in `references/auto-mode.md`; this stage must provide `prompt_type`,
-`workflow_prompt`, and `gatekeeper_answer` for the entry.
-
-Use the implementation completion choice as `workflow_prompt`: choose whether to
-enter iteration for feature-level scar review or continue to security/privacy
-review.
-
-Also route the implementation execution-mode selection through the gatekeeper.
-Use the original `(A) Subagent parallel / (B) Subagent sequential / (C) Inline sequential`
-prompt as `workflow_prompt`; the gatekeeper answer chooses the
-execution strategy and records why that strategy fits the task dependencies.
-
-Then follow the recorded decision:
-
-- `proceed` — invoke the next skill named by the gatekeeper answer:
-  `samsara:iteration` or `samsara:security-privacy-review`.
-- `revise` — revise implementation artifacts or scar reports, then re-run this
-  gate.
-- `reject` — stop the auto run and leave the rejection in `auto-decisions.md`.
-- `accept_gap` — continue to the recorded next skill with the accepted gap visible
-  in the next-stage context.
+- `workflow_prompt` sources: (1) the implementation completion gate — only
+  invoked when the Transition iteration-entry criteria are met (canonical in
+  Transition above) or scar parse failures make it unknown (deterministic
+  default-skip never invokes this gate); (2) the implementation execution-mode selection — the original
+  `(A) Subagent parallel / (B) Subagent sequential / (C) Inline sequential`
+  prompt.
+- Decision points this gate covers: the completion transition (when
+  triggered) and the execution-mode selection.
+- `proceed` invokes the next skill named by the gatekeeper answer
+  (`samsara:iteration` or `samsara:validate-and-ship`) and/or applies the
+  chosen execution strategy; `revise` revises implementation artifacts or
+  scar reports then re-runs this gate; `accept_gap` continues to the
+  recorded next skill with the accepted gap visible.

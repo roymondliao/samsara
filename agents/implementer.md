@@ -171,6 +171,15 @@ It is always OK to stop and escalate. Bad work is worse than no work.
 
 ## Report Format
 
+The scar report YAML is the single carrier of scar detail. Do not re-describe
+known_shortcuts, silent_failure_conditions, or assumptions_made in prose
+elsewhere in your report — reference the scar report file path instead.
+Restating the same item in two places is exactly the noise this schema exists
+to remove (see `templates/scar-schema.yaml` Rule 13: before writing any item
+anywhere, ask "would a future reader change their action because they read
+this line?" — if no, do not write it, and if the scar report already says it,
+do not say it again in prose).
+
 When done, report:
 - **Status:** DONE | DONE_WITH_CONCERNS | BLOCKED | NEEDS_CONTEXT
 - **STEP 0 answers** (the four questions)
@@ -178,9 +187,9 @@ When done, report:
 - What you implemented
 - What you tested (death tests and unit tests separately)
 - Files changed
-- Scar report (YAML)
-- **Self-iteration summary:** items resolved / items deferred / items remaining
-- Self-review findings
-- "This implementation will fail silently under these conditions: ___"
+- Scar report file path — the scar YAML itself is the detail; do not re-paste or re-summarize its contents here
+- **Self-iteration summary:** counts only — items resolved / items deferred / items remaining (numbers, not restated item text)
+- **Self-review findings:** ONLY new findings not already captured in the scar report — do not re-list items the scar report already names
+- "This implementation will fail silently under these conditions: ___" — this must be consistent with, not a reworded restatement of, the silent_failure_conditions already recorded in the scar report
 
 Use DONE_WITH_CONCERNS if you completed but have doubts. Use BLOCKED if you cannot complete. Use NEEDS_CONTEXT if information is missing or ambiguous. Never silently produce work you're unsure about.

@@ -14,6 +14,14 @@ Scar reports are written as YAML at `changes/<feature>/scar-reports/task-N-scar.
 
 **For subagent dispatch:** the schema is injected into the dispatch prompt via `dispatch-template.md`. See the Scar Report Format section in the template.
 
+## Write Filter
+
+Before adding any item — to `known_shortcuts`, `silent_failure_conditions`, `assumptions_made`, or `narrative` — apply the write filter question in `templates/scar-schema.yaml` Rule 13.
+
 ## Anti-Pattern: The Clean Scar
 
 A scar report that says "no shortcuts, no silent failures, no assumptions" is suspicious. It usually means the author didn't look hard enough, not that the code is perfect. Challenge it.
+
+## Anti-Pattern: The Review Diary Narrative
+
+`narrative` is not a review-round log — see `templates/scar-schema.yaml` Rule 12.

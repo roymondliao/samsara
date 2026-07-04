@@ -1,0 +1,82 @@
+task_id: task-1
+completion_status: done_with_concerns
+
+known_shortcuts:
+  - systemic_ref: doc-vs-runtime-obedience
+    note: "agents/implementer.md Report Format + skills/iteration/SKILL.md Step 1 systemic_ref rules are doc-only; nothing in this task enforces a future dispatched agent actually follows them."
+
+  - description: "skills/implement/SKILL.md (inline mode, steps 9/11 and Transition section) still only mentions the old resolved_items list form, not the new in-place status:resolved form. Not in this task's Files scope — correctness unaffected because Rule 14 keeps resolved_items valid, but inline-mode guidance is not migrated to prefer the new form."
+    deferred_to_feature_iteration: true
+
+  - description: "dispatch-template.md and the rest of skills/implement/SKILL.md were deliberately left unmodified after verifying neither restates scar-schema rules (dispatch-template.md pastes scar-schema.yaml in full at dispatch time, per dispatch-template.md:19) — refusal made visible per Structural Honesty rather than touched speculatively."
+
+  - description: "Concept-token unit tests (test_scar_schema_noise_rules.py) pinned exact phrases ('single carrier', 'only new findings') with no synonym tolerance, violating the file's own docstring-declared concept-token design (self-exemplar rule, references/test-contract.md). Two rounds of fix attempts had gaps caught by yin mutation testing: (1) bare-word AND fallbacks were a weakest-token-in-an-OR anti-pattern; (2) the follow-up adjacency-only regex (single|sole|only)\\s+carrier fixed adjacency but had no polarity check — yin's mutation 'the scar report yaml is NOT the single carrier of scar detail' still matched and stayed green, a presence-not-polarity gap (test-contract.md rule 2). Round-1/round-2 resolutions for this item OVERSTATED verification (claimed bidirectional testing but never tried a wrong-direction decoy)."
+    status: resolved
+    resolution: "Extracted the assertion into _report_format_declares_single_carrier(section), which additionally checks the 40 characters preceding the matched phrase for a negation marker (not/never/no longer) and rejects the match if found. Baked yin's exact wrong-direction mutation into the suite permanently as _CARRIER_POLARITY_DECOY plus test_death__carrier_polarity_decoy_is_detected_as_missing (asserts the SAME function reports the decoy's claim as missing) — this replaces one-off temp-swap verification with a permanent regression guard. Also re-verified against the real file via temp-swap (not committed): production test went RED on yin's exact mutation applied to agents/implementer.md, GREEN after revert."
+
+  - description: "Dangling-ref/missing-registry resolution contract was restated in full 3x: scar-schema.yaml Rule 9 (canonical), .samsara/systemic-scars.yaml header (near-verbatim copy), skills/iteration/SKILL.md Step 1 (operational steps) — a DRY violation caught by yin/quality review."
+    status: resolved
+    resolution: "Trimmed .samsara/systemic-scars.yaml:24-34 from two full contract paragraphs to a one-line pointer at scar-schema.yaml Rule 9 canonical text + skills/iteration/SKILL.md Step 1 operational steps."
+
+  - description: "Follow-up quality finding: after the registry-header trim, Rule 9 (scar-schema.yaml) and iteration/SKILL.md Step 1 remained two FULL restatements of the same 3-branch resolution procedure (present/dangling/missing-registry, near-identical wording) — my inline comment framing them as 'canonical contract vs operational procedure' did not hold up on inspection; it was descriptive labeling, not an actual size/scope difference. Explicit two-way decision required by review, not mandatory to fix."
+    status: resolved
+    resolution: "Chose to FIX rather than accept: shrank Rule 9 (scar-schema.yaml:68-84) to a lean statement (systemic_ref form + 'dangling id = parse failure, never silently skipped') and removed the missing-registry branch entirely from Rule 9, pointing to skills/iteration/SKILL.md Step 1 as the sole home for the full 3-branch procedure. Rejected the alternative (keep Rule 9 self-contained because dispatch-template.md only pastes scar-schema.yaml into a task implementer's context, never iteration/SKILL.md) because a task implementer writing a systemic_ref item only needs the one-line deterrent ('a bad id is a parse failure'), not the missing-registry-file operational branch, which is exclusively an aggregation-time (Level 2) concern the implementer never executes. Re-ran the full death/unit test file after the trim (13/13 passed) — all existing token assertions on Rule 9 (systemic_ref, parse failure, dangling, never silently skip) still matched the leaner text without requiring a test rewrite."
+
+  - description: "scar-report.md's 'Anti-Pattern: The Review Diary Narrative' section restated Rule 12's content near-verbatim with no pointer, inconsistent with the Write Filter section directly above it (which correctly points to 'Rule 13' instead of restating it) — caught by quality review."
+    status: resolved
+    resolution: "Replaced the restated paragraph with a one-line pointer: 'narrative is not a review-round log — see templates/scar-schema.yaml Rule 12', matching the Write Filter section's style."
+
+  - description: "Round-4 quality: .samsara/systemic-scars.yaml:24-27 still said 'Resolution contract ... is canonical in scar-schema.yaml Rule 9' after Rule 9's canonical content had already moved to iteration/SKILL.md Step 1 in the prior round's Rule-9 trim — the two files disagreed on where the contract lives."
+    status: resolved
+    resolution: "Rewrote the registry header pointer: 'systemic_ref syntax and the dangling-id=parse-failure rule: see scar-schema.yaml Rule 9. The full resolution procedure ... is canonical in skills/iteration/SKILL.md Step 1' — matches Rule 9's actual current (post-trim) scope."
+
+  - description: "Round-4 quality suggestion: scar-report.md's Write Filter section quoted Rule 13's question text verbatim, the same restatement pattern already fixed in the Review Diary section right below it (which points to 'Rule 12' instead of quoting it) — style inconsistency within the same file."
+    status: resolved
+    resolution: "Trimmed the Write Filter section to a one-line pointer to Rule 13, matching the Review Diary section's style. Verified no test asserts the removed quoted question text (test only checks the 'write filter' heading substring)."
+
+silent_failure_conditions:
+  - description: ".samsara/systemic-scars.yaml was git-ignored by the pre-existing blanket '.samsara' rule ('kept locally, not shipped') — every git add/commit and every fresh clone would silently have NO registry file, degrading all systemic_ref items to the 'registry missing -> unknown' path project-wide with no error."
+    status: resolved
+    resolution: "Rewrote .gitignore: '.samsara' -> '.samsara/*' plus an explicit '!.samsara/systemic-scars.yaml' negation (a bare directory-ignore cannot be undone by negation; the entry rule had to change shape first). Added test_death__systemic_scars_registry_is_not_gitignored, verified red-before/green-after via git stash on .gitignore alone."
+
+  - description: "When a feature's Level 2 `iteration` is skipped (Transition option B: skip straight to Security & Privacy Review), a dangling systemic_ref in any task's scar report is never resolved or reported by anything — validate-and-ship / ship-manifest.md do not run systemic_ref resolution. The dangling ref silently persists uncaught for that feature."
+    deferred_to_feature_iteration: true
+
+  - description: "skills/iteration/SKILL.md:79 (Parse failure handling, a sentence I appended to in this task) listed 'old plain-string format' as an example of a non-conforming scar report to treat as a parse failure — directly contradicting Rule 8 (plain string known_shortcuts/silent_failure_conditions is a VALID format that must be counted normally, never treated as a parse failure). Had this shipped, an agent following the literal instruction would silently exclude valid old-format items from signal_lost — the exact DC3 failure mode this task exists to prevent."
+    status: resolved
+    resolution: "Reworded skills/iteration/SKILL.md:79 to remove 'old plain-string format' from the parse-failure example list and added an inline note pointing to Rule 8's requirement to count it normally. 'markdown format instead of YAML' is now the sole non-conforming example. Added test_death__iteration_parse_failure_example_does_not_contradict_rule_8 as a regression guard (verified red on the pre-fix sentence, green after)."
+
+  - description: "The regression guard added for the item above (test_death__iteration_parse_failure_example_does_not_contradict_rule_8) gated its assertion behind 'if plain-string in sentence:' — a keyword-triggered check that vacuously passes if a future edit reintroduces the same contradiction under different wording (e.g. 'legacy string format') that does not contain the trigger substring. Caught by quality review, referred to yin. The follow-up fix (unconditional re.search(r'not\\b.{0,60}plain[- ]string.{0,100}rule 8', ...)) had a SECOND gap caught by yin mutation testing: (a) presence-not-polarity — an unrelated 'does NOT conform' earlier in the sentence satisfied the loose 'not' trigger; (b) boundary bleed — the 100-char DOTALL window crossed clause boundaries, so a decoy citing '... per Rule 8' to justify treating plain-string AS a parse failure ('(treat old plain-string format as a parse failure per Rule 8)') still matched and stayed green. The round-2/round-3 resolutions for this item OVERSTATED verification (claimed the check was fixed but never tried a wrong-direction decoy that reintroduces the bug under the SAME keywords)."
+    status: resolved
+    resolution: "Extracted the assertion into _step1_declares_plain_string_exclusion(sentence), requiring BOTH: (a) the verbatim adjacent anchor 'not the old plain-string' (rejects a distant unrelated 'not'), AND (b) 'rule 8' followed, within a clause-bounded gap ([^.!?\\n]{0,40}, not DOTALL) by an actual claim (count/normally/never treat...parse failure) — rejects a decoy that cites Rule 8 to justify the opposite claim. Baked yin's exact reintroduction mutation into the suite permanently as _PLAIN_STRING_REINTRODUCTION_DECOY plus test_death__plain_string_reintroduction_decoy_is_detected (asserts the SAME function reports the decoy's claim as missing). Also re-verified against the real file via temp-swap (not committed): production test went RED on yin's exact mutation applied to skills/iteration/SKILL.md, GREEN after revert."
+
+debt_registered: true
+debt_location: "skills/implement/SKILL.md:161-162,221 (stale resolved_items-only wording); skills/validate-and-ship/ship-manifest.md (no systemic_ref resolution on the Level-2-skip path)"
+
+assumptions_made:
+  - assumption: "No existing test asserts the old resolved_items wording, so adding rules 9-14 to scar-schema.yaml would not break any pre-existing test."
+    verified: true
+    note: "grep -rn resolved_items tests/ -> 0 matches"
+
+  - assumption: "dispatch-template.md's schema injection is a full paste (not a path pointer), so the new scar-schema.yaml rules propagate to subagent dispatch automatically without editing dispatch-template.md."
+    verified: true
+    note: "dispatch-template.md:19"
+
+  - assumption: "A dangling systemic_ref item should be EXCLUDED from signal_lost (parallel to other non-conforming/parse-failure items), not counted."
+    verified: true
+    note: "acceptance.yaml:40 (silent on counting) + skills/iteration/SKILL.md:63 (existing exclusion pattern for non-conforming items, item 3)"
+
+narrative: |
+  Execution-order deviation: I implemented all four modified doc files
+  (scar-schema.yaml, iteration/SKILL.md, implementer.md, scar-report.md)
+  before writing the death test file, breaking death-test-first ordering by
+  mistake (doc edits and test-writing should have swapped). I did not
+  re-order retroactively; instead I verified genuine red-before-green for
+  every death/unit test by `git stash push -- <the 4 modified doc files>` (and
+  separately `.gitignore`), running the new test file against the pre-edit
+  content (7 of 12 went red as expected; the 3 implementer.md regression
+  guards and the registry-shape unit test stayed green because they guard
+  content this task never touched), then `git stash pop` to restore. This is
+  recorded because a reviewer re-deriving "was this really red first" from the
+  diff alone cannot see it — the git-stash step is not visible in the final
+  file state.

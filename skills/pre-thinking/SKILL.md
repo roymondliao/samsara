@@ -135,25 +135,19 @@ stops. See `flow.md` for exact formats.
 
 ## Auto Mode Gate
 
-When the session context contains `Execution mode: auto`, every Step B question
-group, Evaluation Contract question, and Step C commitment question is answered
-by `samsara:auto-gatekeeper` rather than pausing for human input.
-Dispatch it with the Agent tool using `subagent_type: "samsara:auto-gatekeeper"`.
+Canonical protocol: `references/auto-mode.md` Stage Gate Protocol —
+dispatch, the append-only decision log, and what `proceed`/`revise`/
+`reject`/`accept_gap` mean all live there; this section only names what
+Pre-thinking adds.
 
-For each workflow question or confirmation, the gatekeeper must append an
-append-only entry to `changes/<feature>/auto-decisions.md` before continuing.
-Use the canonical schema in `references/auto-mode.md`; this stage must provide
-`prompt_type`, `workflow_prompt`, and `gatekeeper_answer` for each entry.
-
-Use the exact Step B/Evaluation/Step C prompt as `workflow_prompt`. The
-gatekeeper's answer must be written back to `pre-thinking.md` exactly as a
-human answer would be written, while preserving the auto decision record.
-
-Then follow the recorded decision:
-
-- `proceed` — continue the pre-thinking flow or invoke `samsara:planning` when
-  Step C is `Decision: Proceed`.
-- `revise` — revise `pre-thinking.md`, then re-run the relevant gate.
-- `reject` — stop the auto run and leave the rejection in `auto-decisions.md`.
-- `accept_gap` — invoke `samsara:planning` only if Step C records
-  `Decision: Accept gap`.
+- `workflow_prompt` source: the exact Step B question group, Evaluation
+  Contract question, or Step C commitment prompt being answered.
+- Decision points this gate covers: every Step B question group, every
+  Evaluation Contract question, and the Step C commitment question.
+- Stage-specific: the gatekeeper's answer must be written back into
+  `pre-thinking.md` exactly as a human answer would be written, in addition
+  to the append-only decision record.
+- `proceed` continues the pre-thinking flow, or invokes `samsara:planning`
+  when Step C is `Decision: Proceed`; `revise` revises `pre-thinking.md`
+  then re-runs the relevant gate; `accept_gap` invokes `samsara:planning`
+  only if Step C records `Decision: Accept gap`.

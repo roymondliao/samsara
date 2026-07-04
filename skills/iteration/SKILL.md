@@ -16,6 +16,19 @@ Read from the feature's `changes/` directory:
 - `pre-thinking.md` — Evaluation Contract with Primary evaluator and Feedback loop
 - `scar-reports/task-N-scar.yaml` — all scar reports (post Level 1 self-iteration)
 
+## Iteration-Entry Criteria (Reference)
+
+Whether to even enter this skill is decided BEFORE this skill runs. The
+canonical entry criteria (cross-task pattern OR a `signal_lost` threshold,
+the threshold's historical-estimate rationale, and the three-state
+gate/default-skip/unknown branch) live in `skills/implement/SKILL.md`'s
+**Transition** section — not restated here, so the criteria has exactly one
+place to evolve. This file's Step 1 below remains the canonical home for the
+`signal_lost` computation formula and parse-failure semantics that BOTH
+places use. Do not redefine the entry threshold here. (If implement's
+Transition section is renamed or restructured, update this pointer in the
+same change — a stale pointer here silently breaks the single-owner claim.)
+
 ## Process
 
 ```dot
@@ -30,7 +43,7 @@ digraph iteration {
     safety [label="Safety valve check\n(advisory)" shape=diamond];
     gate [label="Execution-mode gate\n繼續？停止？\n(safety warnings shown)" shape=diamond];
     log [label="寫 iteration-log.yaml"];
-    exit [label="Exit → security-privacy-review" shape=doublecircle];
+    exit [label="Exit → validate-and-ship\n(Step 0 security gate)" shape=doublecircle];
 
     entry -> empty;
     empty -> triage [label="yes"];
@@ -59,8 +72,13 @@ If implementation appears complete but the Primary evaluator fails, add that eva
 Read all `scar-reports/task-N-scar.yaml` files. Collect remaining items:
 
 1. Items with `deferred_to_feature_iteration: true` — explicitly deferred by Level 1
-2. Items without `resolved_items` coverage — not addressed by Level 1
+2. Items without `resolved_items` coverage AND without an in-place `status: resolved` marker — not addressed by Level 1. Both forms count as resolved: the newer in-place `status: resolved` + `resolution` form (`scar-schema.yaml` Rule 11), and the older separate `resolved_items` list, which remains valid per Rule 14 backward-compat extension.
 3. Items in non-conforming scar reports — **list as parse failures, do not skip silently**
+
+**systemic_ref resolution:** For each item written as `systemic_ref: <id>` (see `scar-schema.yaml` Rule 9), resolve `<id>` against `.samsara/systemic-scars.yaml`:
+- Registry exists and `<id>` is present → treat the item using the registry entry's `description` for triage context.
+- Registry exists and `<id>` is NOT present (dangling reference) → **list as a parse failure**, naming the scar report file and the dangling id explicitly. Never silently skip a dangling systemic_ref.
+- Registry file is missing or unreadable → every `systemic_ref` item is marked `unknown` and **passes through the gate** — it is still counted in `signal_lost` like any other item, it is not dropped, and it is not itself treated as a parse failure. A missing registry file must never cause systemic_ref items to silently disappear from aggregation.
 
 Calculate initial `signal_lost`:
 ```
@@ -69,11 +87,12 @@ signal_lost = count(known_shortcuts)
             + count(assumptions_made where verified == false)
 ```
 
-All three scar categories contribute. Only count items from the remaining set (exclude Level 1 resolved items).
+All three scar categories contribute. Only count items from the remaining set (exclude Level 1 resolved items — both the `resolved_items`-list form and the in-place `status: resolved` form).
 
-**Parse failure handling:** If a scar report does not conform to `scar-schema.yaml` (e.g., markdown format, old plain-string format), list the file explicitly:
+**Parse failure handling:** If a scar report does not conform to `scar-schema.yaml` (e.g., markdown format instead of YAML — NOT the old plain-string `known_shortcuts`/`silent_failure_conditions` format, which Rule 8 requires counting normally, never treating as a parse failure) OR contains a dangling `systemic_ref`, list the file (and, for dangling refs, the id) explicitly:
 
 > 「以下 scar reports 無法解析：[files]。這些 files 的 items 未被計入 signal_lost。」
+> 「以下 systemic_ref 懸空：[file: id, ...]。這些 items 未被計入 signal_lost，比照非 conforming items 處理。」
 
 ## Step 2: Triage (Human Gate)
 
@@ -93,7 +112,7 @@ Unaddressed:
 
 每個 item 需要分類：
   (F) Fix — 有 actionable code change
-  (A) Accept — 已知風險，接受（必須附 expiry date + rationale）
+  (A) Accept — 已知風險，接受（必須附 re-review signal：什麼可觀測訊號出現時重審 + 誰負責（owner）+ rationale）
   (D) Defer — 不在本次處理
 ```
 
@@ -244,7 +263,8 @@ Write `iteration-log.yaml` to the feature's `changes/` directory. Use template `
   records the gatekeeper decision before classification is applied.
 - **Safety valve is advisory:** Forced stop emits a warning and suggestion, but
   the active execution-mode gate makes the final decision.
-- **Accept requires expiry:** Every `accept` classification must include an `expiry_date` — risk acceptance is not permanent.
+- **Accept requires a re-review signal, not an expiry date:** Every `accept` classification must include a `re_review_signal` (the observable condition that should trigger re-review) and an `owner` (who is responsible for noticing it) — risk acceptance is not permanent, but no mechanism in this repo has ever read or acted on an `expiry_date`; a time-driven re-review promise is an alarm clock that never rings.
+- **Legacy `expiry_date` is tolerated on read:** Historical `iteration-log.yaml` entries or scar reports carrying the old `expiry_date` field are read without error and without requiring backfill to `re_review_signal`/`owner` — this is a read-time compatibility guarantee only; new `accept` entries must use `re_review_signal` + `owner`.
 
 ## Red Flags
 
@@ -253,7 +273,7 @@ Write `iteration-log.yaml` to the feature's `changes/` directory. Use template `
 - Batch multiple fixes into one commit (per-fix commit is mandatory)
 - Silently exclude scar reports that don't parse (list parse failures explicitly)
 - Continue after safety valve triggers without the active execution-mode gate decision
-- Accept items without expiry dates
+- Accept items without a re-review signal and an owner
 - Skip `code-quality-reviewer` dispatch — both reviewers are required per fix; skipping one means the review is incomplete
 - Assume an absent review output means PASS — missing reviewer output is always a FAIL
 
@@ -270,42 +290,28 @@ Write `iteration-log.yaml` to the feature's `changes/` directory. Use template `
 
 Iteration complete (by human choice, all items processed, or safety valve). Then:
 
-> 「Iteration 完成。R 輪執行，signal_lost: N₀ → N_final。K items fixed, J items accepted, D items deferred。進入 Security & Privacy Review。」
+> 「Iteration 完成。R 輪執行，signal_lost: N₀ → N_final。K items fixed, J items accepted, D items deferred。進入 Validate & Ship（Step 0 security gate）。」
 
-Invoke `samsara:security-privacy-review` skill.
+Invoke `samsara:validate-and-ship` skill.
 
 ## Auto Mode Gate
 
-When the session context contains `Execution mode: auto`, keep the iteration
-decision points but route them through `samsara:auto-gatekeeper` instead of
-pausing for input.
-Dispatch it with the Agent tool using `subagent_type: "samsara:auto-gatekeeper"`.
+Canonical protocol: `references/auto-mode.md` Stage Gate Protocol —
+dispatch, the append-only decision log, and what `proceed`/`revise`/
+`reject`/`accept_gap` mean all live there; this section only names what
+Iteration adds.
 
-The gatekeeper must append an append-only entry to
-`changes/<feature>/auto-decisions.md` before continuing. Use the canonical
-schema in `references/auto-mode.md`; this stage must provide `prompt_type`,
-`workflow_prompt`, and `gatekeeper_answer` for the entry.
-
-Use the iteration completion transition as `workflow_prompt`, including the
-current signal_lost, fixed item count, accepted item count, and deferred item
-count.
-
-The auto gate covers all iteration decision points, not only the final
-transition:
-
-- triage of remaining scar items into fix / accept / defer
-- blocked-fix handling when an implementer reports BLOCKED or NEEDS_CONTEXT
-- round continuation after signal_lost changes
-- safety valve decisions when round limits or stagnation warnings trigger
-
-Each decision point must append its own `auto-decisions.md` entry before the
-iteration flow follows the recorded decision.
-
-Then follow the recorded decision:
-
-- `proceed` — invoke `samsara:security-privacy-review`.
-- `revise` — revise iteration output or remaining scar classification, then
-  re-run this gate.
-- `reject` — stop the auto run and leave the rejection in `auto-decisions.md`.
-- `accept_gap` — invoke `samsara:security-privacy-review` with the recorded gap
+- `workflow_prompt` source: the iteration completion transition, including
+  the current signal_lost, fixed item count, accepted item count, and
+  deferred item count.
+- Decision points this gate covers — not only the final transition; each
+  point appends its own `auto-decisions.md` entry before the iteration flow
+  follows the recorded decision:
+  - triage of remaining scar items into fix / accept / defer
+  - blocked-fix handling when an implementer reports BLOCKED or NEEDS_CONTEXT
+  - round continuation after signal_lost changes
+  - safety valve decisions when round limits or stagnation warnings trigger
+- `proceed` — invoke `samsara:validate-and-ship`; `revise` revises iteration
+  output or remaining scar classification then re-runs this gate;
+  `accept_gap` invokes `samsara:validate-and-ship` with the recorded gap
   visible in the review context.

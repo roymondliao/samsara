@@ -86,23 +86,17 @@ Format details: read support file `problem-autopsy.md`
 
 ## Auto Mode Gate
 
-When the session context contains `Execution mode: auto`, keep the same
-transition question but route it through `samsara:auto-gatekeeper` instead of
-pausing for human input.
-Dispatch it with the Agent tool using `subagent_type: "samsara:auto-gatekeeper"`.
+Canonical protocol: `references/auto-mode.md` Stage Gate Protocol —
+dispatch, the append-only decision log, and what `proceed`/`revise`/
+`reject`/`accept_gap` mean all live there; this section only names what
+Research adds.
 
-The gatekeeper must append an append-only entry to
-`changes/<feature>/auto-decisions.md` before continuing. Use the canonical
-schema in `references/auto-mode.md`; this stage must provide `prompt_type`,
-`workflow_prompt`, and `gatekeeper_answer` for the entry.
+- `workflow_prompt` source: the transition prompt below.
 
-Use the original transition prompt as `workflow_prompt`:
+  > 「Research 完成。1-kickoff.md 和 problem-autopsy.md 已寫入 `changes/<feature>/`。確認後進入 Pre-thinking？」
 
-> 「Research 完成。1-kickoff.md 和 problem-autopsy.md 已寫入 `changes/<feature>/`。確認後進入 Pre-thinking？」
-
-Then follow the recorded decision:
-
-- `proceed` — invoke `samsara:pre-thinking`.
-- `revise` — revise the research artifacts, then re-run this gate.
-- `reject` — stop the auto run and leave the rejection in `auto-decisions.md`.
-- `accept_gap` — invoke `samsara:pre-thinking` with the recorded gap visible.
+- Decision points this gate covers: the research → pre-thinking transition
+  (one decision point).
+- `proceed` invokes `samsara:pre-thinking`; `revise` revises the research
+  artifacts (1-kickoff.md, problem-autopsy.md) then re-runs this gate;
+  `accept_gap` invokes `samsara:pre-thinking` with the gap visible.

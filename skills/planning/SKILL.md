@@ -147,24 +147,17 @@ next workflow path:
 
 ## Auto Mode Gate
 
-When the session context contains `Execution mode: auto`, keep the planning
-completion question but route it through `samsara:auto-gatekeeper` rather than
-pausing for human input.
-Dispatch it with the Agent tool using `subagent_type: "samsara:auto-gatekeeper"`.
+Canonical protocol: `references/auto-mode.md` Stage Gate Protocol —
+dispatch, the append-only decision log, and what `proceed`/`revise`/
+`reject`/`accept_gap` mean all live there; this section only names what
+Planning adds.
 
-The gatekeeper must append an append-only entry to
-`changes/<feature>/auto-decisions.md` before continuing. Use the canonical
-schema in `references/auto-mode.md`; this stage must provide `prompt_type`,
-`workflow_prompt`, and `gatekeeper_answer` for the entry.
+- `workflow_prompt` source: the transition prompt below.
 
-Use the original transition prompt as `workflow_prompt`:
+  > 「Planning 完成。2-plan.md、acceptance.yaml、index.yaml 和 N 個 tasks 已就緒。確認後進入 Implementation？」
 
-> 「Planning 完成。2-plan.md、acceptance.yaml、index.yaml 和 N 個 tasks 已就緒。確認後進入 Implementation？」
-
-Then follow the recorded decision:
-
-- `proceed` — invoke `samsara:implement`.
-- `revise` — revise the plan artifacts, then re-run this gate.
-- `reject` — stop the auto run and leave the rejection in `auto-decisions.md`.
-- `accept_gap` — invoke `samsara:implement` with the recorded gap visible in the
-  implementation context.
+- Decision points this gate covers: the planning completion transition (one
+  decision point).
+- `proceed` invokes `samsara:implement`; `revise` revises the plan artifacts
+  then re-runs this gate; `accept_gap` invokes `samsara:implement` with the
+  gap visible in the implementation context.

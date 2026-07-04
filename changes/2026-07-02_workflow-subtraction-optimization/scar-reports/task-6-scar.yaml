@@ -1,0 +1,146 @@
+task_id: task-6
+completion_status: done
+
+known_shortcuts:
+  - systemic_ref: doc-vs-runtime-obedience
+    note: >
+      skills/fast-track/SKILL.md Step 4's "Recording the review" clause and
+      templates/fast-track.yaml's `quality_review.reviewed_criteria` field
+      cannot, at the doc layer, prove the main agent actually reviewed the
+      criteria it declares in `reviewed_criteria` — an agent could write
+      `reviewed_criteria: [C5, C6, C7, C8]` with `violations: []` without
+      having actually looked. Kickoff-defined death condition for reverting
+      to explicit per-criterion checkboxes (recorded in
+      changes/2026-07-02_workflow-subtraction-optimization/tasks/task-6.md
+      and this task's Key Decision): violation-record rate stays at zero
+      long-term AND a C5-C8 regression is later found in a fast-tracked
+      change — that combination is the signal this violations-only format
+      failed to catch what the old checked+note format would have surfaced.
+    deferred_to_feature_iteration: false
+
+silent_failure_conditions:
+  - description: >
+      Nothing in this repo enforces at write time that `reviewed_criteria`
+      lists the criteria that were ACTUALLY checked rather than a copy-pasted
+      full list ([C5, C6, C7, C8]) written reflexively regardless of what was
+      reviewed. The DC7 death case this task targets (empty violations list
+      indistinguishable from "never reviewed") is closed by the forbidding
+      clause added to SKILL.md; a DIFFERENT, narrower gap — reviewed_criteria
+      present but inaccurate — is not closed and is not in this task's scope
+      (see known_shortcuts systemic_ref above; the two are the same
+      underlying doc-vs-runtime-obedience fact, not a separate shortcut).
+    deferred_to_feature_iteration: true
+    # Fixing this requires either code-level audit tooling (e.g. a script
+    # that samples changes/*/fast-track.yaml over time for a
+    # near-100%-empty-violations pattern) or reverting to explicit
+    # per-criterion checkboxes — both are architectural decisions and/or new
+    # files outside this task's scope ("只動 skills/fast-track/ 下的兩個檔＋
+    # 新測試檔"). The kickoff-recorded death condition (known_shortcuts above)
+    # already names when to revisit this.
+
+  - description: >
+      review disposition（main agent 記錄）：(a) quality Important——兩個
+      predicate 的字元距離窗耦合（善意改寫可能誤紅）與 yin 的 mutation 實證
+      （窗寬是攔截反義 decoy 的必要長度）構成已知兩極取捨，依 task-2 scar 的
+      「固定寬度窗是不可消除的啟發式殘差」先例 accept；re_review_signal:
+      「該 predicate 對應的 SKILL.md 句子被善意改寫導致誤紅時，同步調整窗參數
+      而非刪斷言」，owner: 該次改寫者。(b) yin Important——section 抽取錨定
+      heading 字串，屬全 repo doc-contract 測試的既有慣例（heading 即文件結構
+      schema），accept 同前例。(c) quality Suggestion——template 註解重述
+      「不得 commit」規則已修剪為指標（enforcement rule: SKILL.md Step 4）。
+    status: resolved
+    resolution: "template 註解修剪完成；兩項 accept 附 re-review signal；856 tests 綠"
+
+assumptions_made:
+  - assumption: >
+      Historical changes/*/fast-track.yaml files (13 found via grep across
+      prior features, e.g. 2026-05-09_version-0.9.0,
+      2026-06-29_codex-global-hook-skill-path) that still use the retired
+      `quality_checklist:` shape do not need to be backfilled to the new
+      `quality_review:` shape, because nothing in this repo programmatically
+      parses changes/*/fast-track.yaml at read time — the only consumer is a
+      human reader.
+    verified: true
+    note: "grep -rln 'fast-track.yaml|fast_track' --include='*.py' -> only tests/test_skills/test_fast_track_quality_review.py (this task) and tests/test_converter/test_skill.py (synthetic fixture using a generic body, asserts no quality_checklist/quality_review shape)"
+
+  - assumption: >
+      No pre-existing test (outside this task's new file) asserts the old
+      `quality_checklist` structure, so replacing it does not require
+      synchronized re-assertion of a rotting old contract elsewhere (per
+      Architecture Context's "existing tests asserting the old structure
+      must be synced, not deleted" rule — there were none to sync).
+    verified: true
+    note: "grep -rn 'quality_checklist' --include='*.py' repo-wide -> zero matches outside this task's new test file before it was written"
+
+debt_registered: true
+debt_location: >
+  skills/fast-track/SKILL.md Step 4 "Recording the review" clause +
+  Yin-Side Constraints "Quality symmetry" bullet; templates/fast-track.yaml
+  quality_review field — doc-layer-only enforcement (systemic_ref
+  doc-vs-runtime-obedience), kickoff death condition recorded in
+  changes/2026-07-02_workflow-subtraction-optimization/tasks/task-6.md
+
+resolved_items:
+  - original_section: "assumptions_made"
+    original_description: >
+      Historical changes/*/fast-track.yaml files using the retired
+      quality_checklist shape do not need backfilling to quality_review.
+    resolution: >
+      Ran `grep -rln 'fast-track.yaml|fast_track' --include='*.py'`
+      repo-wide during self-iteration; confirmed zero programmatic readers
+      of changes/*/fast-track.yaml exist (only this task's own test file and
+      an unrelated synthetic converter fixture) — assumption promoted from
+      draft (verified: false) to verified: true with a file:command
+      evidence pointer.
+  - original_section: "assumptions_made"
+    original_description: >
+      No pre-existing test asserts the old quality_checklist structure.
+    resolution: >
+      Ran `grep -rn 'quality_checklist' --include='*.py'` repo-wide during
+      self-iteration; confirmed zero matches outside this task's new test
+      file — assumption promoted from draft (verified: false) to verified:
+      true with a command evidence pointer.
+
+narrative: |
+  Design choice not built (Structural Honesty — say the refusal out loud):
+  SKILL.md's Output section example for `quality_review` was reduced to a
+  2-line minimal shape (`reviewed_criteria: [C5, C6, C7, C8]` /
+  `violations: []`) with a comment pointing to templates/fast-track.yaml as
+  the canonical field shape, rather than fully re-stating the field's
+  comments/rationale a second time. templates/fast-track.yaml is the
+  canonical source (it is the file actually written by an implementer each
+  fast-track run); SKILL.md's Output section only needs to show the reader
+  the SHAPE, not re-explain every field's semantics a second time — this
+  feature has already caught the "same contract fully restated in two
+  places" trap five times per the Additional Context, and this task
+  deliberately avoids adding a sixth instance for the quality_review field
+  specifically (the OTHER fields in that same Output example — type,
+  description, death_clause, acceptance, scar_tag, scar_items,
+  files_changed — remain duplicated between SKILL.md and the template as
+  they were before this task; fixing that pre-existing duplication is out of
+  this task's scope, which is limited to the quality_checklist ->
+  quality_review swap).
+
+  Two facts intentionally kept in two different places, not one fact
+  duplicated: SKILL.md Step 4's "Recording the review" paragraph documents
+  HOW to fill the field (mechanics, for a reader following Step 4 prose
+  without opening the template); the Yin-Side Constraints "Quality symmetry"
+  bullet documents WHY it is mandatory (the guard against an incomplete
+  review). Both mention `reviewed_criteria`/`violations` by name because
+  each needs to reference the field to state its own distinct fact, not
+  because the same fact is restated twice.
+
+  Test suite: 843 passed (baseline, unchanged going in) -> 856 passed (843 +
+  13 new tests in tests/test_skills/test_fast_track_quality_review.py), 0
+  failed, 0 errors. Zero regressions in any pre-existing test. Death tests
+  were verified red by reverting skills/fast-track/SKILL.md and
+  templates/fast-track.yaml to their pre-task-6 content via `git stash` (5 of
+  13 tests went red against the reverted files: 2 of the 3 real-file death
+  tests — forbidding clause absent, `quality_review` structure not yet
+  present in either the template or the Output example — plus all 3
+  real-file unit tests asserting that same absent structure; the 3rd death
+  test, guarding the pre-existing "Quality symmetry" bullet, correctly
+  stayed green against the reverted file since that bullet already existed
+  pre-task-6 and this task only extends its wording, it does not introduce
+  it), then restoring via `git stash pop` and re-running to confirm all 13
+  green with the implementation in place.

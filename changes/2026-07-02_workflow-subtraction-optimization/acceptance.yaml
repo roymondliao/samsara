@@ -1,0 +1,87 @@
+feature: workflow-subtraction-optimization
+coverage_type: verified
+
+# stage-2 條件已定案（user：「先減少為主」）：淨量必須為負；~300 行為參考值非硬性驗收；搬家假減法檢查為硬性。見 2-plan.md Contract Amendment
+
+scenarios:
+  # --- Death paths first ---
+  - name: "Silent failure - 搬家假減法"
+    type: death_path
+    given: "所有任務完成，行數目標表面達成"
+    when: "執行三段檢核第二段"
+    then:
+      - "比較對象是『單一 session 會載入的總行數』淨值（skills 非 template md + agents + references + 新增檔），不是單一目錄"
+      - "references/ 或新檔案膨脹抵銷 skill 減量時，第二段判 fail"
+      - "基線（6,356 行）量測不可重現時判 unknown（blocked_by_evaluator），不得當 pass"
+
+  - name: "Silent failure - Gate 去重抹掉階段特異語義"
+    type: death_path
+    given: "6 個 skill 的 Auto Mode Gate 已縮為指針"
+    when: "檢查 validate-and-ship 的階段特異行為"
+    then:
+      - "雙重 decision-trace 檢查條款仍 inline 存在於 validate-and-ship"
+      - "security unknown/absent/partial → 高不確定 reject 的條款仍存在（inline 或 canonical，且被 death test 釘住）"
+      - "tests/test_auto_mode 含反重複 death test：任一 skill 指針段重新內嵌四個 decision 值的完整定義時轉紅"
+
+  - name: "Silent failure - 舊格式 scar 聚合靜默歸零"
+    type: death_path
+    given: "歷史 feature 的 scar 用 plain-string 或含 expiry_date"
+    when: "新版聚合規則讀取舊 scar"
+    then:
+      - "舊 items 被計入 signal_lost 或明列為 parse failure，二者其一"
+      - "聚合結果不得因格式差異靜默回報 0"
+      - "schema 的 backward-compat 條款（rule 8 精神）保留且擴及本次新規則"
+
+  - name: "Silent failure - systemic_ref 懸空"
+    type: death_path
+    given: "scar report 引用 .samsara/systemic-scars.yaml 中不存在的 id"
+    when: "iteration 聚合讀取該 scar"
+    then:
+      - "懸空 ref 列為 parse failure，明列檔名與 id"
+      - "registry 檔整個缺失時，所有 systemic_ref 標 unknown 並過 gate，不得靜默略過"
+
+  - name: "Silent failure - security gate 折入後可跳過或 unknown 當 pass"
+    type: death_path
+    given: "security review 已成為 validate-and-ship Step 0"
+    when: "review 結果為 unknown / 平台無能力 / diff 為空"
+    then:
+      - "Step 0 位於 failure budget review 之前（順序被 death test 釘住）"
+      - "unknown ≠ pass 條款存在；三態（pass/fail/unknown）保留"
+      - "auto mode：unknown/absent/failing → 高不確定 reject，不得 transition"
+      - "bootstrap 路由圖無 samsara:security-privacy-review 節點；implement/iteration 轉場指向 validate-and-ship"
+
+  - name: "Silent failure - scar 解析失敗誤觸 iteration 預設 skip"
+    type: death_path
+    given: "某 scar 檔無法解析，signal_lost 低估"
+    when: "implement 轉場計算進入判準"
+    then:
+      - "存在 parse failure 時判準結果為 unknown，不准 skip"
+      - "skip 只在全部 scar 可解析且判準不成立時發生，並輸出一行可推翻紀錄（含 signal_lost 值與 cross-task 檢查結果）"
+
+  - name: "Silent failure - fast-track 空違規清單無法區分「查過」與「沒查」"
+    type: death_path
+    given: "fast-track 改為只記違規"
+    when: "quality review 產出空違規清單"
+    then:
+      - "空清單必須伴隨 reviewed 聲明（列出被檢查的 C5-C8）"
+      - "缺聲明的空清單 = 未檢查，doc 條款明文禁止"
+
+  - name: "Degradation - 設計文件修訂與既有章節衝突"
+    type: degradation
+    given: "0-design-direction.md 六項修訂完成"
+    when: "交叉核對第 3/7/8 節"
+    then:
+      - "第 8 節「已解」清單與六項修訂一致（輕想條目更新、成熟度條目移除或標記）"
+      - "第 7 節否決清單無與修訂矛盾的殘留"
+      - "發現衝突時修訂該節並記錄，不得留兩處各說各話"
+
+  # --- Happy path with evidence ---
+  - name: "Success - 三段檢核全過"
+    type: happy_path
+    given: "8 個 task 完成並通過 review"
+    when: "執行 Primary evaluator（三段式檢核）"
+    then:
+      - "uv run pytest 全綠；git diff 顯示既有 death tests 無刪除、斷言無弱化（僅允許同步措辭且仍可轉紅）"
+      - "指令面積淨量為負（必須真的減少；~300 行為參考值非硬性），附量測命令與前後數字"
+      - "逐項可觀測條件全數成立：6 skill Gate 段 <=8 行；systemic-scars.yaml 存在且 schema 支援 systemic_ref；verified:true 單行與 resolved 就地標記規則落地；expiry 移除且 rule 2 改訊號驅動；設計文件六項各有決定文字；iteration 判準落地；fast-track 只記違規；security 折入完成"
+      - "證據鏈寫入 changes/<feature>/evaluation-result.md：命令、輸出、行數對照表"

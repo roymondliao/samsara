@@ -7,3 +7,10 @@ scar_tag: none  # none | N (item count)
 scar_items: []
 files_changed:
   - "<file path>"
+quality_review:
+  reviewed_criteria: [C5, C6, C7, C8]  # required — declares the review happened (enforcement rule: SKILL.md Step 4)
+  violations: []  # only record violations; empty = reviewed and clean
+  # when violations exist, replace the empty list above with entries, e.g.:
+  # violations:
+  #   - criterion: C5
+  #     finding: "<concrete observation>"
