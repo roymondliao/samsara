@@ -149,3 +149,45 @@ Moved to: `changes/2026-04-15_continuous-learning/issues.md`
 **Note:** The Loop Engineering Gap Analysis (originally ISSUE-005 ~ ISSUE-009, recorded 2026-06-10)
 was moved to `roadmap.md` (renumbered RM-001 ~ RM-005) — those entries are capability
 enhancements identified through analysis, not defects discovered during usage.
+
+---
+
+## ISSUE-002: `samsara-cli validate` has no CI consumer — an alarm clock that never rings
+
+**Discovered:** 2026-07-04
+**Context:** workflow-subtraction-optimization feature, task-8 final reconciliation
+**Severity:** Medium — a whole guard mechanism silently inert
+
+### What Happened
+
+During the feature's final reconciliation, `uv run samsara-cli validate --platform codex`
+reported 36 issues on the feature branch. A HEAD-worktree comparison showed **main was
+already at 42 issues** — the validator has been failing continuously, and nothing consumes
+its exit code: CI gates on pytest only, no release step runs validate, and no human ritual
+checks it. Tests green + validate red is the standing steady state.
+
+### Why It Matters
+
+This is the exact failure shape the same feature removed elsewhere (`expiry_date` — a
+re-review promise no mechanism ever read). A validator that always fails and blocks nothing
+is worse than no validator: it trains everyone to ignore it, and a real conversion
+regression would land invisibly among the 36 pre-existing issues.
+
+### Root Cause (initial read)
+
+The validator scans workflow artifacts (`changes/`, `docs/`) for platform-specific patterns
+alongside the live instruction surface — historical artifacts can never be "fixed" (they are
+records), so the issue count can never reach zero, so the exit code can never be consumed
+as a gate. Scope design makes the tool ungateable.
+
+### Candidate Fixes (for a future feature — not attempted here)
+
+1. Scope validate to the live instruction surface (skills/, agents/, references/, hooks/),
+   excluding `changes/` and `docs/` historical artifacts — makes zero reachable, then wire
+   the exit code into CI.
+2. Or split: `validate --strict` (live surface, CI-gated) vs `validate --all` (informational).
+3. Or delete the validator if conversion tests already cover its guarantees — per the axiom,
+   a guard nobody consumes should not exist.
+
+**Re-review signal:** next release or next converter change touches validate behavior;
+**owner:** repo maintainer.
