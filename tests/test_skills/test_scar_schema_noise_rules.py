@@ -635,3 +635,46 @@ def test_unit__scar_report_md_documents_write_filter_and_review_diary_antipatter
         "'narrative' alone is a green-by-construction word that proves nothing about "
         "the anti-pattern)"
     )
+
+
+# ---------------------------------------------------------------------------
+# Iteration-fix 1 (feature workflow-subtraction-optimization, Level 2):
+# when Level 2 iteration is default-skipped, validate-and-ship's Failure
+# Budget Review is the ONLY remaining place a dangling systemic_ref can be
+# caught before ship. This guard pins that clause.
+# ---------------------------------------------------------------------------
+
+VALIDATE_AND_SHIP = ROOT / "skills" / "validate-and-ship" / "SKILL.md"
+
+
+def _failure_budget_section(text: str) -> str:
+    start = text.find(
+        "# 1. Failure Budget Review"
+    )  # heading, not Step 0's mention of it
+    assert start != -1, (
+        "validate-and-ship SKILL.md has no Failure Budget Review heading"
+    )
+    rest = text[start:]
+    end = rest.find("\n### ")
+    return rest if end == -1 else rest[:end]
+
+
+def test_death__validate_and_ship_failure_budget_resolves_systemic_refs() -> None:
+    """DEATH: if the Failure Budget Review loses its systemic_ref resolution
+    clause, a feature that default-skips Level 2 iteration ships with dangling
+    systemic_refs and nothing ever resolves them (task-1 scar, deferred item)."""
+    section = _failure_budget_section(read(VALIDATE_AND_SHIP)).lower()
+    assert "systemic_ref" in section, (
+        "SILENT FAILURE: Failure Budget Review no longer mentions systemic_ref "
+        "resolution — the iteration-skip path ships dangling refs unchecked."
+    )
+    # Polarity: dangling id must be treated as a parse failure, never skipped.
+    m = re.search(r"dangling[^.!?\n]{0,60}parse failure", section)
+    assert m, (
+        "SILENT FAILURE: the clause no longer binds 'dangling id' to 'parse "
+        "failure' within one clause — presence without that polarity lets a "
+        "reworded clause drop the actual guarantee."
+    )
+    assert re.search(r"never\s+silently\s+skip", section), (
+        "SILENT FAILURE: the never-silently-skip prohibition is gone."
+    )

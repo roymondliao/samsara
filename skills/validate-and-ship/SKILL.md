@@ -121,6 +121,14 @@ Aggregate all scar reports. Answer:
 - Are these within acceptable limits for shipping?
 - Any new silent failure paths discovered during implementation that weren't in the original death cases?
 
+**systemic_ref resolution (mandatory when Level 2 iteration was skipped):**
+resolve every `systemic_ref: <id>` against `.samsara/systemic-scars.yaml` using
+the same three-branch procedure as iteration SKILL.md Step 1 (canonical there).
+A dangling id is a parse failure — list the scar file + id explicitly, never
+silently skip it. Without this check, a feature that default-skips iteration
+would carry dangling systemic_refs all the way to ship with nothing resolving
+them.
+
 ### 2. Acceptance Validation
 
 Run acceptance criteria from `acceptance.yaml`:
