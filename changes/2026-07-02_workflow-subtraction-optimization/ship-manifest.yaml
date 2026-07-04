@@ -1,0 +1,70 @@
+# Ship Manifest — workflow-subtraction-optimization
+# 第一份使用新 accepted_risks 格式（re_review_signal + owner，非 expiry date）的 manifest——本 feature 自己引入的規則，dogfood。
+#
+# Validation 執行摘要（2026-07-04）：
+#   Step 0 Security & Privacy Gate（本 feature 折入的 gate 首次實戰）：PASS，零發現
+#     —— 掃描：yaml.safe_load 全查核、subprocess 唯一呼叫為 list-form hardcoded git、
+#        gitignore 負向規則屬窄化例外、secrets 零匹配。工具錯誤（origin/HEAD 未設）
+#        依 unknown≠pass 走 retry 路徑修復後重跑，未當 pass。
+#   1. Failure budget：signal_lost 30（19 accepts 全附 signal+owner、3 defers 有去處、
+#      1 unverified assumption）；systemic_ref 解析 0 懸空（新 mandatory 條款照跑）
+#   2. Acceptance：9 scenarios 全覆蓋（8 death/degradation 由 mutation-verified 死測
+#      ＋實測守護；happy path 由 evaluation-result.md 證據鏈）
+#   3. Primary evaluator（三段式檢核）：PASS（857 tests；核心指令面 −168 行淨減無搬家；
+#      8/8 可觀測條件）——完整證據 evaluation-result.md
+#   4. E2E：tests/integration/ 含於 857 綠；samsara-cli validate 36 issues（main 基線 42，
+#      淨改善；既有 rot 已登記 ISSUE-002）
+#   5. Reconciliation：4 個記錄在案的偏離（行數目標 amendment 由 user 拍板、≤8 行改
+#      預算制、task-8 與 iteration fixes inline 執行、iteration fix 觸及 validate-and-ship）
+#      ——全部有 scar/index 記錄，無未記錄漂移
+#   6. Code review：每 task 單輪雙 review（yin+quality）已執行；iteration fixes 以
+#      mutation 驗證替代（user 最小 review 指令，deviation 記於 iteration-log）
+
+delivered_capability: >
+  Samsara 框架減法工程：scar 產出去噪（schema Rules 9-14 + systemic-scar registry）、
+  expiry 改訊號驅動重審、security-privacy-review 折入 validate-and-ship Step 0、
+  Auto Mode Gate canonical 化（6 skills 指針）、iteration 進入資料驅動（unknown 不准
+  skip）、fast-track 只記違規、pre-thinking 重設計文件六項定案。
+  857 tests（+125 vs 基線 732），核心指令面 6,356→6,188 行。
+
+known_failure_modes:
+  - mode: "任何新 doc 規則被未來 agent session 無視（doc-vs-runtime-obedience，systemic registry 首兩條）"
+    severity: silent_corruption
+    detection: "doc-contract 死測守護規則文字存在；runtime 服從只能由下一個真實 feature 的 dogfood 觀測（scar 平均行數 ≤70 為 proxy）"
+  - mode: "cross-task pattern 字面比對漏判語意相同的 rot → iteration 誤走預設 skip"
+    severity: degradation
+    detection: "skip 必留可推翻紀錄（對話＋index.yaml durable）；kickoff 死亡條件：連兩 feature 出現漏網 rot 即恢復詢問"
+  - mode: "samsara-cli validate 持續紅但無人消費（既有 rot，非本次引入；本次淨改善 42→36）"
+    severity: degradation
+    detection: "issue.md ISSUE-002 已登記候選修法與 signal"
+
+accepted_risks:
+  - risk: "doc 層規則無 code-level enforcement（系統性類別 7 項 scar items）"
+    accepted_by: "human"
+    re_review_signal: "samsara 引入任何 code-level enforcement 機制（hook 驗證、schema 強制、CI gate）時重審全類"
+    owner: "repo maintainer"
+  - risk: "unknown≠pass 三重述（Step 0 本文/Red Flags/Auto Gate overrides）需同步維護"
+    accepted_by: "human"
+    re_review_signal: "三處任一措辭被修改時同步核對另外兩處（test-guarded：label-only decoy 在案）"
+    owner: "該次修改的作者"
+  - risk: "iteration 進入閾值 5 未經校準；fast-track reviewed_criteria 可填而不真查；negation window 固定寬度殘差"
+    accepted_by: "human"
+    re_review_signal: "各項沿用 scar 內已記 signal（漏網 rot 連兩 feature→恢復詢問；違規率零且 C5-C8 回歸→回退勾選；善意改寫誤紅→調窗不刪斷言）"
+    owner: "repo maintainer（觸發事件的處理者）"
+  - risk: "舊 expiry_date accept 條目遷移依賴 ship-manifest rule 2 fallback，無 cross-file 測試"
+    accepted_by: "human"
+    re_review_signal: "第一次從含 expiry_date 的舊 feature 產出 ship manifest 時人工核對 fallback 執行"
+    owner: "該次 validate-and-ship 執行者"
+
+silent_failure_surface: medium  # doc-obedience 類風險為框架固有；本次以 registry 顯式化並集中追蹤，未新增 runtime 面
+
+monitoring_hooks:
+  - "doc-contract 測試套件（857，含 permanent wrong-direction decoys）——任何規則文字被刪/反轉即紅"
+  - "0-design-direction.md §5 健康指標：owner=repo maintainer，trigger=每次 release 前或對自身跑 validate-and-ship"
+  - "下一個真實 feature 的 scar 平均行數（目標 ≤70）與 systemic_ref 使用率——去噪機制的 runtime 驗證"
+
+kill_switch: >
+  全部變更為 git-tracked 指令面：revert feature branch 的 7 個 commits 即完全回退。
+  個別機制可獨立回退：scar Rules 9-14 為 additive（刪規則不壞舊資料）；security gate
+  可拆回獨立 skill（原文在 git history）；iteration 判準可回復無條件詢問（kickoff
+  死亡條件已載明條件與做法）。
