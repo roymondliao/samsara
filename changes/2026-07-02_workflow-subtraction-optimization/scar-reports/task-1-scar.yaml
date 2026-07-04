@@ -6,6 +6,8 @@ known_shortcuts:
     note: "agents/implementer.md Report Format + skills/iteration/SKILL.md Step 1 systemic_ref rules are doc-only; nothing in this task enforces a future dispatched agent actually follows them."
 
   - description: "skills/implement/SKILL.md (inline mode, steps 9/11 and Transition section) still only mentions the old resolved_items list form, not the new in-place status:resolved form. Not in this task's Files scope — correctness unaffected because Rule 14 keeps resolved_items valid, but inline-mode guidance is not migrated to prefer the new form."
+    status: resolved
+    resolution: "Level-2 iteration fix 9c605ba：implement SKILL step 11 與 implementer.md 同步至 Rule 11 就地標記形式"
     deferred_to_feature_iteration: true
 
   - description: "dispatch-template.md and the rest of skills/implement/SKILL.md were deliberately left unmodified after verifying neither restates scar-schema rules (dispatch-template.md pastes scar-schema.yaml in full at dispatch time, per dispatch-template.md:19) — refusal made visible per Structural Honesty rather than touched speculatively."
@@ -40,6 +42,8 @@ silent_failure_conditions:
     resolution: "Rewrote .gitignore: '.samsara' -> '.samsara/*' plus an explicit '!.samsara/systemic-scars.yaml' negation (a bare directory-ignore cannot be undone by negation; the entry rule had to change shape first). Added test_death__systemic_scars_registry_is_not_gitignored, verified red-before/green-after via git stash on .gitignore alone."
 
   - description: "When a feature's Level 2 `iteration` is skipped (Transition option B: skip straight to Security & Privacy Review), a dangling systemic_ref in any task's scar report is never resolved or reported by anything — validate-and-ship / ship-manifest.md do not run systemic_ref resolution. The dangling ref silently persists uncaught for that feature."
+    status: resolved
+    resolution: "Level-2 iteration fix 894152d：validate-and-ship Failure Budget Review 補 systemic_ref 三分支解析＋death test"
     deferred_to_feature_iteration: true
 
   - description: "skills/iteration/SKILL.md:79 (Parse failure handling, a sentence I appended to in this task) listed 'old plain-string format' as an example of a non-conforming scar report to treat as a parse failure — directly contradicting Rule 8 (plain string known_shortcuts/silent_failure_conditions is a VALID format that must be counted normally, never treated as a parse failure). Had this shipped, an agent following the literal instruction would silently exclude valid old-format items from signal_lost — the exact DC3 failure mode this task exists to prevent."

@@ -11,6 +11,8 @@ silent_failure_conditions:
     note: "evaluation-result.md 第三段的 8 項條件多數由 doc-contract 測試守護——doc 存在不等於未來 session 服從；真正的 runtime 驗證是下一個真實 feature 的 dogfood（scar 平均行數 ≤70 的 proxy 亦屬之）。"
 
   - description: "samsara-cli validate --platform codex 在 main 基線即有 42 issues（本分支 36）——validate 的守護目前對 CI 無效力（測試綠但 validate 紅是常態）。這是本 feature 範圍外的既有 rot，validate 若無人消費將重演 expiry 的『永不響的鬧鐘』。"
+    status: resolved
+    resolution: "Level-2 iteration fix 0f8a35c：登記為 issue.md ISSUE-002（含候選修法＋re-review signal）；修 validate 本身屬未來 feature"
     deferred_to_feature_iteration: true
 
 assumptions_made:
