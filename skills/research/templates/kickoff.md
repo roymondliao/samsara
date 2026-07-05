@@ -21,6 +21,10 @@
 ### Explicitly Out of Scope
 - <item>
 
+### POC Death Date (optional)
+<!-- Only set this if the feature is a genuine throwaway POC exempt from the structure-spec path; planning re-checks this date every pass — an expired date forces the full spec path, it does not extend the exemption. -->
+poc_death_date: "<YYYY-MM-DD, optional>"
+
 ## North Star
 
 ```yaml

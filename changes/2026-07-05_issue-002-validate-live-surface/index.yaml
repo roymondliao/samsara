@@ -1,0 +1,11 @@
+feature: issue-002-validate-live-surface
+status: in_progress
+
+tasks:
+  - id: task-1
+    title: "TargetValidator live-surface 預設排除（單一常數）+ 死法/契約測試"
+    status: done
+    scar_count: 4  # 1 shortcut（symlink 語法比對，accepted）+ 1 silent_failure（SD-1 常數共用結構性開門，accepted）+ 2 assumptions（均 verified）
+    unresolved_assumptions: 0
+    depends_on: []
+    review: "yin PASS_WITH_CONCERNS（0C/1I: scar Rule 10 note 形式）+ quality spec-mode PASS_WITH_CONCERNS（0C/3I: 未來防護披露）；Spec Entries: SS-1/SD-1 均 Satisfied；drift_items: []；36→11 殘餘歸類經 yin 逐行重現"

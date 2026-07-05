@@ -1,0 +1,49 @@
+task_id: task-5
+completion_status: done_with_concerns
+
+known_shortcuts:
+  - description: "KD-5 儀式淨增量實測 217 行（git diff --numstat 於 skills/*.md + skills/*/templates/*.yaml + agents/*.md，未含 tests/、changes/、dist/，加上新檔 structure-spec.yaml 的 60 行），超過 ≤200 行預算 17 行。明細：agents/code-quality-reviewer.md +60/-0；skills/planning/SKILL.md +33/-15（淨18）；skills/implement/dispatch-template.md +14/-0；skills/iteration/SKILL.md +13/-2（淨11）；skills/validate-and-ship/SKILL.md +27/-0；skills/implement/SKILL.md +12/-0；skills/planning/task-format.md +9/-0；skills/research/templates/kickoff.md +4/-0；skills/iteration/templates/iteration-log.yaml +2/-0；新檔 structure-spec.yaml 60 行。修正需編輯 task-5 檔案範圍外的檔案（agents/code-quality-reviewer.md、skills/planning/SKILL.md 等，屬 task-1/3/4 territory），未在本 task 內縮減——依指示不得為達標而刪守護內容，如實記錄超標值與明細。"
+    deferred_to_feature_iteration: true
+  - description: "tests/integration/test_template_supply_chain.py 的輸出路徑（'.agents/skills/samsara-implement/templates/structure-spec.yaml' 等）是硬編碼字串，耦合到 fixtures/source/skills/implement/SKILL.md 的 frontmatter `name: implement` 與 codex/gemini-cli 平台設定檔的 naming convention（見該檔案 docstring）。這是刻意選擇：斷言『emitted output』契約時直接寫死已知路徑，比重新實作 converter 的路徑推導邏輯更貼近『不斷言 converter 內部實作』的 Unit Test Contract；若命名慣例或 fixture frontmatter 改變，測試會在明確斷言處失敗（non-silent），不需修正。"
+
+silent_failure_conditions:
+  - description: "`uv run samsara-cli validate --platform codex`（task-5.md 與 overview.md 指定的字面指令，不帶 --source）預設掃描 repo 根目錄（Path.cwd()），不是 dist/codex/ 轉換輸出目錄——36 個 issue 混雜『repo 原始檔案本身含未轉換樣式』（docs/、changes/、tests/fixtures/source/ 的示範文字、skills/ 原始碼本身合法保留的 `invoke samsara:X`）與『真正轉換輸出的缺陷』兩類。本 task 額外用 `--source dist/codex` 與 `--source dist/gemini-cli` 重跑驗證，確認兩個平台的實際轉換輸出皆為 0 error（見本項 resolution）；此為 ISSUE-002 已登記的既有 CLI 行為，非本 task 引入，如實記錄避免未來讀者把『36』誤讀為 dist/ 本身的品質分數。"
+    status: resolved
+    resolution: "額外執行 `samsara-cli validate --platform codex --source dist/codex` 與 `--platform gemini-cli --source dist/gemini-cli`，兩者皆回報 'Validation passed — no errors found.'，取得比 repo 根目錄掃描更準確的訊號並記入本報告。"
+
+assumptions_made:
+  - assumption: "KD-5 儀式淨增量（skills/*.md + skills/*/templates/*.yaml + agents/*.md 淨增，含新檔）≤200 行"
+    verified: false
+    note: "實測 217 行，超標 17 行；明細見 known_shortcuts 第一項。"
+    deferred_to_feature_iteration: true
+  - assumption: "task-5.md 引用的 validate 基線『42』在本 feature branch（已套用 task 1-4 變更）上仍準確"
+    verified: true
+    note: "實測 36（regen 前後位元組完全相同的 diff，見 changes/.../scar-reports/task-5-scar.yaml 本身之外的實測記錄）——與 issue.md ISSUE-002 已記載的『feature branch 36』一致；42 是該 issue 記載的『main 分支』數字，不是本 branch 的比較基準。task-5 的『不新增』判準以 36 為準，36==36 已滿足。"
+  - assumption: "gemini-cli 平台的驗證會因本機未裝對應 CLI 而被 requires_gemini marker 跳過，需如實記錄未執行的驗證"
+    verified: true
+    note: "`which codex && which gemini` 皆存在；`uv run pytest`（無 marker 過濾）917 passed, 0 skipped——requires_codex/requires_gemini 測試確實執行且通過，非 skip；本機環境具備完整雙平台驗證能力，無未執行的驗證需要記錄。"
+
+debt_registered: true
+debt_location: "agents/code-quality-reviewer.md, skills/planning/SKILL.md — KD-5 淨增量超標明細（task-1/3/4 territory，task-5 範圍外）；tests/integration/test_template_supply_chain.py:32-40 — 硬編碼輸出路徑耦合說明。"
+
+narrative: |
+  Refusal recorded (Structural Honesty mandate): tests/fixtures/source/ 沒有
+  新增整個 skills/planning 目錄鏡像，只在既有 fixtures/source/skills/implement/
+  下新增單一檔案 templates/structure-spec.yaml。理由：fixture source 樹本身是
+  刻意精簡的「轉換機制」測試集（4 個 skill，涵蓋 SKILL.md-only 與
+  SKILL.md+companion.md 兩種形狀），本 task 需要驗證的死法（I2：新 template
+  在 nested templates/ 目錄下被靜默丟棄）是一個可泛化的機制性問題，不需要
+  逐一鏡像 planning skill 的全部內容才能驗證——那會是為單一消費者
+  （這一個死法測試）建一整套平行的 fixture skill，屬 speculative
+  generality。若未來出現第二個明確理由（例如需要驗證 planning skill
+  本身的轉換輸出內容，而不只是「nested yaml companion 存活」這個機制），
+  屆時再擴充 fixture source 的 planning skill 鏡像。
+
+  真實供應鏈（非 fixture）驗證結果：`samsara-cli convert --platform codex`
+  與 `--platform gemini-cli` 對真實 skills/ 樹跑一次，確認
+  `skills/planning/templates/structure-spec.yaml` 與
+  `skills/iteration/templates/iteration-log.yaml`（task 1/4 的實際新增/修改
+  template）都出現在 dist/codex 與 dist/gemini-cli 的對應輸出路徑，內容與
+  來源一致。`samsara-cli validate --platform codex --source dist/codex` 與
+  `--platform gemini-cli --source dist/gemini-cli` 均回報 0 error——真實
+  轉換輸出本身是乾淨的，I2 的死法在真實供應鏈上沒有發生。

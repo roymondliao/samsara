@@ -30,6 +30,14 @@ Read: overview.md
 - Contract source: <observable behaviour / public API / artifact shape — name it>
 - A unit test must assert this named contract source, not implementation details.
 
+## Structure Refs
+<!-- Required, even when empty. List the structure-spec.yaml module/pattern/
+     dependency_rule ids this task touches. An empty array confirms the task
+     was checked against structure-spec.yaml and touches no structural
+     boundary — that is a different fact from the section being MISSING,
+     which means the task was never checked (a schema violation). -->
+- structure_refs: [<spec-entry-id>, ...]  <!-- or [] to confirm no structural touch -->
+
 ## Implementation Steps
 - [ ] Step 1: Write death tests
 - [ ] Step 2: Run death tests — verify they fail
@@ -57,3 +65,4 @@ Read: overview.md
 3. **Death tests listed explicitly** — not "add appropriate death tests."
 4. **Unit Test Contract names an observable contract source** — not "appropriate tests." The Unit Test Contract section must name an observable contract source (public API/return value, documented artifact shape, emitted output, or a source from `references/test-contract.md`). Generic "write appropriate tests" / "appropriate unit tests" wording names no contract and is forbidden — a unit test must assert the named observable contract source, not implementation details.
 5. **Expected scar items** — helps the agent know what to watch for during implementation.
+6. **Structure Refs is mandatory, even when empty** — 欄位缺失與空陣列必須可區分：`structure_refs: []`（空陣列）代表任務已對照 `structure-spec.yaml` 確認無結構觸及；`## Structure Refs` 整段**欄位缺失**（漏標）則是 schema violation. Enforcement is owned by implement's dispatch check (a missing section blocks dispatch); a present-but-empty array is a valid, confirmed absence.

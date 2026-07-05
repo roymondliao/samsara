@@ -94,12 +94,23 @@ All three scar categories contribute. Only count items from the remaining set (e
 > 「以下 scar reports 無法解析：[files]。這些 files 的 items 未被計入 signal_lost。」
 > 「以下 systemic_ref 懸空：[file: id, ...]。這些 items 未被計入 signal_lost，比照非 conforming items 處理。」
 
+**structural_drift aggregation:** For each task, read its spec-mode
+`code-quality-reviewer` output's `drift_items` (three categories — canonical
+owner: `agents/code-quality-reviewer.md` Spec Mode Additions, not restated
+here). Sum every entry across all tasks into `structural_drift`.
+**`structural_drift` 與 `signal_lost` 並列不混計** — report both counts
+independently; never fold `structural_drift` into the `signal_lost` formula
+above. **`drift_items` 欄位缺失 → parse failure**（不是零漂移，DC-5）: a task
+that ran spec mode but returned no `drift_items` field at all (distinct from
+an explicit `drift_items: []`) is listed as a parse failure, same
+no-silent-skip rule as a non-conforming scar report above.
+
 ## Step 2: Triage (Human Gate)
 
 Use the same triage prompt for both execution modes:
 
 ```
-Feature-level scar items (K items, signal_lost = N):
+Feature-level scar items (K items, signal_lost = N, structural_drift = M):
 
 Cross-task patterns:
   - [items that appear in multiple task scars]
@@ -290,7 +301,7 @@ Write `iteration-log.yaml` to the feature's `changes/` directory. Use template `
 
 Iteration complete (by human choice, all items processed, or safety valve). Then:
 
-> 「Iteration 完成。R 輪執行，signal_lost: N₀ → N_final。K items fixed, J items accepted, D items deferred。進入 Validate & Ship（Step 0 security gate）。」
+> 「Iteration 完成。R 輪執行，signal_lost: N₀ → N_final，structural_drift: M（並列回報，未併入 signal_lost）。K items fixed, J items accepted, D items deferred。進入 Validate & Ship（Step 0 security gate）。」
 
 Invoke `samsara:validate-and-ship` skill.
 

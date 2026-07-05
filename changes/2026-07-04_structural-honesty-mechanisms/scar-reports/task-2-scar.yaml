@@ -1,0 +1,34 @@
+task_id: task-2
+completion_status: done
+
+known_shortcuts:
+  - systemic_ref: doc-vs-runtime-obedience
+    note: "the entire Structure Refs dispatch check + directed-injection + 50% signal (skills/implement/SKILL.md Subagent Context, Yin-Side Constraints; dispatch-template.md Structure Spec Fragments) is prose-only; nothing code-level forces a dispatching agent to actually run it before pasting a dispatch prompt."
+
+silent_failure_conditions:
+  - description: "The 50% directed-injection-failure signal has no computation enforcement — it depends entirely on the dispatching agent manually counting injected fragment lines vs. structure-spec.yaml total lines, then choosing to write the result into the task's scar report. A dispatching agent that skips this arithmetic silently loses the DC-2 measurement evidence with no other detection layer (same doc-vs-runtime-obedience shortcut as above; not further fixable without samsara_cli code, which KD-2 forbids). deferred_to_feature_iteration intentionally OMITTED (not false): this is a permanent limitation under KD-2, not a cross-task-fixable gap — marking it deferred would falsely imply a future task in this feature could close it."
+  - description: "Dispatch-record durability (task-2's Expected Scar Item #3): injected structure_refs ids (or `structure_spec: absent`) are recorded only if the implementer chooses to echo them into its own scar report per dispatch-template.md's Durability note. No dedicated, code-enforced dispatch log exists. If the implementer omits the echo, the injection checkpoint (task-6 evidence-chain checkpoint 2, per pre-thinking.md) is indistinguishable from 'no injection happened'."
+    deferred_to_feature_iteration: true
+
+assumptions_made:
+  - assumption: "the 50% signal needs exactly one computation basis (line count) or agents will interpret it differently (task-2's Expected Scar Item)"
+    verified: true
+    note: "dispatch-template.md Structure Spec Fragments '50% signal' paragraph; test_unit__structure_spec_fragments_defines_single_50_percent_basis"
+  - assumption: "stating mode-C applicability inline within the Structure Refs check paragraph (Subagent Context), plus a pointer bullet in Yin-Side Constraints (not a restated third bullet), gives a mode-C-only reader enough discoverability without creating a second source of truth for the same rule"
+    verified: true
+    note: "test_unit__yin_side_constraints_points_to_structure_refs_check_not_restated"
+
+debt_registered: true
+debt_location: "skills/implement/SKILL.md Subagent Context (Structure Refs dispatch check, prose-only enforcement); skills/implement/dispatch-template.md Structure Spec Fragments (50% signal computation + dispatch-record durability, both prose-only)"
+
+narrative: |
+  Refusal recorded per Structural Honesty: this task does not build a
+  dedicated dispatch-record log file or an index.yaml field for persisting
+  injected structure_refs ids. Task-2's Files scope names exactly three files
+  (SKILL.md, dispatch-template.md, the test file); a new persistence artifact
+  would be a boundary built for a single, not-yet-confirmed consumer. task-6's
+  mini-feature dry run (already planned, evidence-chain "checkpoint 2: 注入")
+  is the explicit place that will discover whether the lightweight mitigation
+  added here (implementer echoes injected ids into its own scar report)
+  suffices, or whether a durable dispatch log must be built — build that only
+  if task-6 actually hits the gap, not speculatively now.

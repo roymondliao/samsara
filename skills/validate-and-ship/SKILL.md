@@ -16,6 +16,7 @@ Read from the feature's `changes/` directory:
 - `pre-thinking.md` — Evaluation Contract and Primary evaluator
 - `acceptance.yaml` — acceptance criteria to validate against
 - `scar-reports/` — all scar reports from implementation
+- `structure-spec.yaml` and `tasks/task-N.md` `## Structure Refs` sections — only needed for the 0-dangling terminal audit (Step 1) and structural reconciliation (Step 5) below
 
 The feature branch must have committed changes ahead of the base branch (typically `main`) — Step 0's diff gate depends on committed changes existing.
 
@@ -129,6 +130,22 @@ silently skip it. Without this check, a feature that default-skips iteration
 would carry dangling systemic_refs all the way to ship with nothing resolving
 them.
 
+**0-dangling terminal audit (mandatory, DC-1 terminal defense line; checks
+referential integrity only — whether shipped code honored each boundary is
+Step 5's Structural dimension below, not this audit):** If
+`changes/<feature>/structure-spec.yaml` exists with `spec_path: default`,
+resolve EVERY evidence ref in it in full (not sampled — entry counts are
+small) using the resolved/failure/unknown vocabulary owned by
+`skills/planning/templates/structure-spec.yaml`'s Evidence resolution
+comment, not restated here. Any `failure` (dangling ref) is a **blocking
+finding** — list it explicitly, never silently pass; `unknown` (parse basis
+itself unreadable) passes through the gate like any other unknown. If
+`spec_path: exempt_poc`, or no spec exists and no task's `structure_refs`
+names an entry, record `structure_spec: absent/exempt` — same token as
+dispatch-template.md's per-task `structure_spec: absent`, scoped here to a
+feature-level audit skip, not a dispatch note — and skip this audit. A missing spec
+some task's `structure_refs` DOES reference is a **finding**, not a skip.
+
 ### 2. Acceptance Validation
 
 Run acceptance criteria from `acceptance.yaml`:
@@ -156,6 +173,16 @@ Compare the actual implementation against the spec (`2-plan.md`):
 - Did any behavior drift from what was specified?
 - Is the drift within acceptable tolerance?
 - Document any intentional deviations and their rationale
+- **Structural dimension** (spec-vs-shipped compliance — not Step 1's
+  referential-integrity audit above): if `spec_path: default`, compare
+  `structure-spec.yaml`'s committed modules/patterns/dependency_rules
+  against the shipped implementation's final state (boundary_rationale vs.
+  what actually landed). This output field MUST exist: explicit empty
+  (`structural_drift_final: []`) means compared, no drift found — a MISSING
+  field means the comparison never ran, reconciliation is incomplete, not
+  clean (DC-5). Separate from iteration's per-task `structural_drift` tally
+  (Step 1 there aggregates per task; this is the one-time terminal
+  comparison, not a duplicate of it).
 
 ### 6. Code Review
 

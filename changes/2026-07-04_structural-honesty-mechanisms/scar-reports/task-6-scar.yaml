@@ -1,0 +1,28 @@
+task_id: task-6
+completion_status: done
+
+known_shortcuts:
+  - description: "演練者與四環節檢查者同為主 agent（inline mode C —— samsara:implementer 無 Agent tool 無法派 reviewer，環節 2/3 的真實 dispatch 記錄只有主 agent 能產生）。自評偏誤緩解：證據全部引用 artifact 位置、環節 3 核心證據由獨立 reviewer subagent 產生 —— 但『檢查者獨立於執行者』的完整分離要等未來 feature 由不同 session 消費這些 artifacts 時才成立。"
+  - description: "task-6 演練期間整理的 cross-task 觀察一：domain router gap 的現身 1/2（task-3 兩位 reviewer 的 caveat/觀察）僅存 session-memory、無 repo 錨點 —— 詳見 iteration-input.md 候選 1（本條目使其進入 iteration Step 1 的機械聚合，不依賴偶然發現）。"
+    deferred_to_feature_iteration: true
+  - description: "task-6 演練期間整理的 cross-task 觀察二：自我回報數字失準模式（implementer 側三例 session-memory + coordinator 側一例 durable 於 review-record.md 轉錄註記）—— 詳見 iteration-input.md 候選 2。"
+    deferred_to_feature_iteration: true
+  - description: "Mini-feature 的 research/pre-thinking 精簡（task-6.md 授權）：未跑 pre-thinking gate 鏈 —— 證據鏈演練聚焦 planning 起的四環節；spec path 的 research 端整合（greenfield PRD 等 N1）本來就在本 feature scope 外。"
+
+silent_failure_conditions:
+  - description: "環節 2 的 dispatch 記錄本體（implementer prompt 中的 Structure Spec Fragments 段）只持久化於 session transcript —— scar 的 structure_refs_received echo 是 durable 替代品，但 echo 只證明 implementer 聲稱收到，不證明片段內容正確。與 task-2 scar 已記錄的 dispatch-record durability 缺口同源（deferred to iteration）。"
+    deferred_to_feature_iteration: true
+  - description: "環節 3 的 reviewer verdict 原文同樣只活在 session transcript —— evaluation-result.md 初版的 ring-3 敘事引用了 durable 記錄（index.yaml 壓縮行）不含的細節（target.py:117、grep 證據），且未對 ring 3 做 ring 2 已做的 durability 披露（yin review 抓出，Critical）。"
+    status: resolved
+    resolution: "verdict 原文摘錄 durable 化至 changes/2026-07-05_issue-002-validate-live-surface/review-record.md；evaluation-result.md 與 reconciliation.md 的引用改指該檔。"
+
+assumptions_made:
+  - assumption: "mini-feature（ISSUE-002 scoped fix）的 structure_refs 非空、足以實測環節 2/3（不會空轉形式 pass）"
+    verified: true
+    note: "structure_refs: [SS-1, SD-1]；spec-mode reviewer 對兩條目均產出引用 id 的實質判定（見 evaluation-result.md 環節 3）"
+  - assumption: "反向驗證的兩個壞例涵蓋檢查器最可能的盲區（dangling ref、section 缺失）"
+    verified: true
+    note: "壞例 A/B 均確認檢查輸出 FAILURE/FAIL（見 evaluation-result.md 反向驗證節）"
+
+debt_registered: true
+debt_location: "evaluation-result.md 精簡聲明節（自評偏誤、pre-thinking 精簡）；dispatch-record durability 缺口與 task-2 scar 同源"

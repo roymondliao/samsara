@@ -69,6 +69,20 @@ Agent tool:
 - **Never** skip Additional Context for tasks with dependencies — prior scars propagate
 - **Never** omit the working directory — the subagent needs to know where to create/edit files
 
+## Structure Spec Fragments
+
+Check `changes/<feature>/structure-spec.yaml`'s existence/readability FIRST, independent of the task's `structure_refs` value — this is resolved before structure_refs is even consulted.
+
+When it exists and is readable and `structure_refs` is non-empty, inject ONLY the entries matching those ids into the implementer prompt's Additional Context and into both reviewer prompts — never the whole spec file. For each id, paste its `id`, `boundary_rationale` (or `serves_change_reason` for patterns), and `evidence` block verbatim.
+
+**50% signal** — one basis only, by line count: `injected fragment lines / structure-spec.yaml total lines`. If a single task's injection exceeds 50%, that is a directed-injection-failure signal (DC-2); record it as a `known_shortcut` in that task's scar report — not a hard block.
+
+**`structure_spec: absent`** — when `structure-spec.yaml` does not exist for this feature (exempt_poc / pre-existing feature), skip injection and write `structure_spec: absent` in the Additional Context instead of a fragment list — distinct from a non-empty `structure_refs` whose matching entries were never pasted in.
+
+**Unreadable ≠ absent** — a spec file that exists but cannot be parsed is never written as `structure_spec: absent`; that would disguise a parse failure as a legitimate exemption. Write `structure_spec: unreadable` and treat dispatch as FAIL (reviewer-side UNKNOWN handling belongs to task-3; here it is only about not lying at dispatch time).
+
+Durability: this list otherwise lives only in the dispatch conversation. Until a dedicated dispatch log exists, have the implementer echo the injected ids (or `structure_spec: absent`/`unreadable`) into its own scar report so later audits have a durable artifact.
+
 ## Review Dispatch
 
 After the implementer reports back (status DONE or DONE_WITH_CONCERNS), dispatch BOTH reviewers in parallel.

@@ -1,0 +1,20 @@
+task_id: task-1
+completion_status: done
+
+known_shortcuts:
+  - systemic_ref: doc-vs-runtime-obedience
+    note: "Spec-Path Guard's 過期/unknown date-comparison branches in SKILL.md are prose only; nothing code-level forces a future planning pass to actually run the comparison."
+
+silent_failure_conditions:
+  - description: "structure-spec.yaml instances written by a real planning pass are not machine-checked by this task for evidence.type=domain_boundary carrying machine_verifiable: true (the death test only guards the TEMPLATE's own example). Per this feature's KD-3/KD-4 division of labor, that per-instance check belongs to task-3 (reviewer) and task-4 (validate-and-ship 0-dangling); task-1 only builds the schema + generation step."
+    deferred_to_feature_iteration: true
+  - description: "A planned_task evidence ref written at Step 2.75 is necessarily a forward reference — index.yaml does not exist until Step 4 completes. SKILL.md documents that a ref still missing after Step 4 is dangling, but this task builds no mechanism that actually re-checks it post-Step-4; that resolution lands in task-3/task-4."
+    deferred_to_feature_iteration: true
+
+assumptions_made:
+  - assumption: "The `scope-anchor` ref-format placeholder in 2-plan.md's schema draft (line 34) is not a required fourth evidence-ref format; the finalized D2 decision (pre-thinking.md, overview.md) defines exactly three evidence types (git_history/planned_task/domain_boundary), and domain_boundary explicitly omits ref."
+    verified: true
+    note: "grep -rn 'scope-anchor' changes/2026-07-04_structural-honesty-mechanisms/ — only hit is 2-plan.md:34; no task-2..6 file or overview.md references it."
+
+debt_registered: true
+debt_location: "skills/planning/SKILL.md Spec-Path Guard (prose-only enforcement); skills/planning/templates/structure-spec.yaml (per-instance domain_boundary / forward planned_task ref checks deferred to task-3/task-4)"

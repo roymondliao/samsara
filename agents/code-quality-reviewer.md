@@ -76,11 +76,30 @@ of the file(s) under review.
 ## Code Quality Review — UNKNOWN
 
 Status: UNKNOWN
+Mode: [spec / principles / UNKNOWN]
 Reason: no reference file for execution model: {domain} — references/{domain}-quality.md could not be read.
 Action required: verify reference file exists at the expected path before re-dispatching.
 ```
 
 The UNKNOWN-on-unreadable-reference rule is a hard stop, not a fallback. The review cannot proceed without the reference.
+
+---
+
+## Structure Spec Mode (determine before Step 0)
+
+Every review runs in exactly one of three modes, read from the dispatch's
+Additional Context for `changes/<feature>/structure-spec.yaml` (see
+`skills/implement/dispatch-template.md` Structure Spec Fragments):
+
+- **Spec mode** — spec entry fragments were pasted and parse cleanly. Apply
+  Spec Mode Additions below, on top of the 9 principles.
+- **Principles mode** — `structure_spec: absent`, or no structure_spec
+  notation at all (pre-spec-path caller; `skills/implement/SKILL.md`'s
+  Structure Refs check guarantees this, not dispatch-template.md). Apply the 9 principles unchanged.
+- **UNKNOWN (blocking)** — `structure_spec: unreadable`, or pasted fragments
+  do not parse. Same as Step 0 Case 2: return the compressed UNKNOWN output
+  immediately (own `Mode:` line). Never apply the 9 principles alone as if
+  nothing were wrong — every verdict must state which mode was used; omitting `Mode: spec / principles / UNKNOWN` is malformed output.
 
 ---
 
@@ -108,6 +127,7 @@ Return immediately with:
 ## Code Quality Review — UNKNOWN
 
 Status: UNKNOWN
+Mode: [spec / principles / UNKNOWN]
 Reason: unable to determine execution model for this file.
 Action required: ensure the file path and content are correct, or add domain routing for this file type.
 ```
@@ -119,6 +139,7 @@ Attempt to read the reference file. If the read fails for any reason (not found,
 ## Code Quality Review — UNKNOWN
 
 Status: UNKNOWN
+Mode: [spec / principles / UNKNOWN]
 Reason: no reference file for execution model: {domain} — references/{domain}-quality.md could not be read.
 Action required: verify reference file exists at the expected path before re-dispatching.
 ```
@@ -235,6 +256,32 @@ When citing concerns, include the relevant outcome criteria name (e.g., `C6 Clea
 
 ---
 
+## Spec Mode Additions (spec mode only — additive to the 9 principles)
+
+Judge each entry's diff against `boundary_rationale`/`serves_change_reason` — Pass/Concern cited by entry id (home: Output Format's Spec Entries).
+Resolve each evidence ref yourself (Read/Glob/Grep/Bash) — any `failure`/
+`unknown` below is a **finding**, never silent (first defense line against
+cargo-cult evidence). For git_history/planned_task, resolved/failure/unknown
+is owned by `skills/planning/templates/structure-spec.yaml`'s Evidence
+resolution comment — only execution differs here:
+- `git_history` → confirm the `ref` path exists in the repo.
+- `planned_task` → feature from a `changes/<feature>/...` path in Changed
+  Files/diff (>1 distinct feature path = ambiguous), else Glob
+  `changes/*/index.yaml` + Grep the `ref` id: found+present = resolved,
+  found+absent = `failure` (dangling), no/ambiguous = `unknown`.
+- `domain_boundary` → no ref, no external target; judgment owned HERE, binary
+  not three-state: `boundary_rationale` non-empty AND `machine_verifiable: false` present = pass, either missing = `failure`.
+
+**Emit `drift_items`** (three categories; this section is their canonical
+owner, never restate elsewhere): `undeclared_boundary` (new boundary, no
+entry names it, cite file path), `violated_boundary` (committed boundary
+crossed, cite entry id), `abandoned_commitment` (entry never fulfilled,
+cite entry id). **`drift_items: []`** means checked, none found. **MISSING
+`drift_items`** is NOT equivalent to an empty array — downstream reads
+missing as a parse failure, never as zero drift.
+
+---
+
 ## Output Format
 
 ```markdown
@@ -244,6 +291,12 @@ When citing concerns, include the relevant outcome criteria name (e.g., `C6 Clea
 - Domain: [code / iac / container / pipeline / orchestration / UNKNOWN]
 - Read: references/{domain}-quality.md [confirm: yes / UNAVAILABLE]
 - Applicability: [all 9 principles applicable / N principles excluded: list them]
+
+### Mode
+- Mode: [spec / principles / UNKNOWN]
+
+### Spec Entries (spec mode only — one line per injected entry id)
+- [id]: Pass/Concern — resolved/failure/unknown — [file:line or reasoning]
 
 ### Principle Verdicts
 
@@ -274,6 +327,12 @@ When citing concerns, include the relevant outcome criteria name (e.g., `C6 Clea
 (Issues encountered that belong to samsara:code-reviewer scope)
 - → Refer to samsara:code-reviewer at <file:line>: [brief description]
 
+### Drift Items (spec mode only — always include, even if empty)
+drift_items:
+  - category: undeclared_boundary | violated_boundary | abandoned_commitment
+    ref: <entry id, or file path for undeclared_boundary>
+    description: <one line>
+
 ### Summary
 - Critical concerns: [count]
 - Important concerns: [count]
@@ -288,6 +347,7 @@ When citing concerns, include the relevant outcome criteria name (e.g., `C6 Clea
 ## Code Quality Review — UNKNOWN
 
 Status: UNKNOWN
+Mode: [spec / principles / UNKNOWN]
 Reason: [specific reason — reference unavailable / diff contains no reviewable code structures / ...]
 Action required: [what needs to happen before review can proceed]
 ```
