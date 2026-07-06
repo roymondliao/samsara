@@ -27,6 +27,8 @@ assumptions_made:
   - assumption: "A completed task's spec-mode code-quality-reviewer output (containing `drift_items`) is discoverable by iteration at the point iteration runs — e.g. because the main agent copies it into the task's scar report narrative, or holds it in the same conversation/run context that later invokes iteration."
     verified: false
     note: "No artifact in this feature's file map actually names a persisted location for drift_items. iteration's own Prerequisites (index.yaml, pre-thinking.md, scar-reports/) do not carry it, and neither implement/SKILL.md's per-task index.yaml update step (status/scar_count/unresolved_assumptions) nor scar-schema.yaml's field set has a slot for it. Task-3's scar (silent_failure_conditions item 1) deferred exactly this gap to task-4; task-4's own Files scope (skills/iteration/SKILL.md, skills/validate-and-ship/SKILL.md only) cannot add a field to index.yaml or scar-schema.yaml (owned by task-1/implement territory) without exceeding this task's scope. If a feature runs iteration and no task's reviewer output is actually retrievable, every task should be listed as a structural_drift parse failure per the new clause — but nothing forces the aggregating agent to notice the source is empty rather than assuming zero tasks ran spec mode."
+    status: resolved
+    resolution: "Level-2 iteration fix 9ee97e9：drift_items 的持久化位置落定為 changes/<feature>/review-record.md（dispatch-template.md Review Record Durability——verdict 摘錄必含 drift_items，顯式 [] 亦記錄）；「來源空 vs 零漂移」由 DC-5 條款覆蓋（absent entry = never recorded = finding）。aggregation 消費端接線歸 ISSUE-003。"
     deferred_to_feature_iteration: true
 
 debt_registered: true

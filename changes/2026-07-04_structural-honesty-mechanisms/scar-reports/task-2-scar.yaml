@@ -8,6 +8,8 @@ known_shortcuts:
 silent_failure_conditions:
   - description: "The 50% directed-injection-failure signal has no computation enforcement — it depends entirely on the dispatching agent manually counting injected fragment lines vs. structure-spec.yaml total lines, then choosing to write the result into the task's scar report. A dispatching agent that skips this arithmetic silently loses the DC-2 measurement evidence with no other detection layer (same doc-vs-runtime-obedience shortcut as above; not further fixable without samsara_cli code, which KD-2 forbids). deferred_to_feature_iteration intentionally OMITTED (not false): this is a permanent limitation under KD-2, not a cross-task-fixable gap — marking it deferred would falsely imply a future task in this feature could close it."
   - description: "Dispatch-record durability (task-2's Expected Scar Item #3): injected structure_refs ids (or `structure_spec: absent`) are recorded only if the implementer chooses to echo them into its own scar report per dispatch-template.md's Durability note. No dedicated, code-enforced dispatch log exists. If the implementer omits the echo, the injection checkpoint (task-6 evidence-chain checkpoint 2, per pre-thinking.md) is indistinguishable from 'no injection happened'."
+    status: resolved
+    resolution: "Level-2 iteration fix 9ee97e9：dispatch-template.md Review Record Durability 慣例——dispatcher 端注入記錄（ids + 50% 計算）落 changes/<feature>/review-record.md，與 implementer echo 互為獨立來源交叉核對；code-enforced 部分歸 ISSUE-003。"
     deferred_to_feature_iteration: true
 
 assumptions_made:

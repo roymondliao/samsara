@@ -13,6 +13,8 @@ known_shortcuts:
 
 silent_failure_conditions:
   - description: "環節 2 的 dispatch 記錄本體（implementer prompt 中的 Structure Spec Fragments 段）只持久化於 session transcript —— scar 的 structure_refs_received echo 是 durable 替代品，但 echo 只證明 implementer 聲稱收到，不證明片段內容正確。與 task-2 scar 已記錄的 dispatch-record durability 缺口同源（deferred to iteration）。"
+    status: resolved
+    resolution: "Level-2 iteration fix 9ee97e9：同源缺口與 task-2 條目一併關閉——dispatcher 端注入記錄落 review-record.md，與 implementer echo 交叉核對（echo-only 的『聲稱收到 ≠ 內容正確』缺口由雙獨立來源補上）。"
     deferred_to_feature_iteration: true
   - description: "環節 3 的 reviewer verdict 原文同樣只活在 session transcript —— evaluation-result.md 初版的 ring-3 敘事引用了 durable 記錄（index.yaml 壓縮行）不含的細節（target.py:117、grep 證據），且未對 ring 3 做 ring 2 已做的 durability 披露（yin review 抓出，Critical）。"
     status: resolved
