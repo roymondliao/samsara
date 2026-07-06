@@ -11,6 +11,8 @@ silent_failure_conditions:
     resolution: "Level-2 iteration 簿記：deferral 目標已落地 — task-3 的 per-entry evidence resolution 含 domain_boundary binary judgment（agents/code-quality-reviewer.md:272）＋ task-4 的 0-dangling terminal audit（skills/validate-and-ship/SKILL.md:133）。首次實跑證據：mini-feature spec-mode review 對 SS-1/SD-1 逐條判定（changes/2026-07-05_issue-002-validate-live-surface/review-record.md）。"
     deferred_to_feature_iteration: true
   - description: "A planned_task evidence ref written at Step 2.75 is necessarily a forward reference — index.yaml does not exist until Step 4 completes. SKILL.md documents that a ref still missing after Step 4 is dangling, but this task builds no mechanism that actually re-checks it post-Step-4; that resolution lands in task-3/task-4."
+    status: resolved
+    resolution: "Level-2 iteration 簿記：deferral 目標已落地 — task-3 的 planned_task ref resolution（agents/code-quality-reviewer.md Spec Mode Additions，path-derivation-first + Glob/Grep fallback）＋ task-4 的 0-dangling terminal audit 全量掃描含 planned_task refs（skills/validate-and-ship/SKILL.md:133）。首次實跑：mini-feature SD-1（planned_task→task-1）resolution=resolved（reconciliation.md 0-dangling 2/2）。"
     deferred_to_feature_iteration: true
 
 assumptions_made:
