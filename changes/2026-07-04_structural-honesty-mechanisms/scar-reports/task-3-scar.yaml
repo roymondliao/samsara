@@ -8,6 +8,8 @@ known_shortcuts:
 
 silent_failure_conditions:
   - description: "A missing `drift_items` field in a real spec-mode review output is only distinguished from an explicit `drift_items: []` by the DOCUMENTED semantics this task writes (DC-5). No code in this feature yet enforces that distinction at consumption time — that is task-4's iteration-aggregation responsibility per this feature's KD-4 division of labor (overview.md File Map: `skills/iteration/SKILL.md` — structural_drift aggregation). Until task-4 lands, a reviewer output that silently drops `drift_items` is indistinguishable, AT THE CODE LEVEL, from a principles-mode review that never had drift_items to begin with."
+    status: resolved
+    resolution: "Level-2 iteration 簿記：deferral 目標（task-4）已落地 — skills/iteration/SKILL.md:103「drift_items 欄位缺失 → parse failure（不是零漂移，DC-5）」為消費端的 prose 執法；code-level 執法缺口歸 systemic doc-instruction-no-code-enforcement（本 feature iteration 轉 Defer，見 issue.md ISSUE-003）。"
     deferred_to_feature_iteration: true
   - description: "A dispatched code-quality-reviewer that receives spec entry fragments but is NOT told the originating feature name/path (dispatch-template.md's Code Quality reviewer prompt, owned by task-2, names no feature field) cannot directly compute `changes/<feature>/index.yaml` to resolve a `planned_task` ref."
     status: resolved
