@@ -36,6 +36,8 @@ Determine the execution model of the file under review. Known domains and their 
 - `pipeline` → `references/pipeline-review.md` — CI/CD pipelines (GitHub Actions, Jenkins, GitLab CI, Airflow)
 - `orchestration` → `references/orchestration-review.md` — orchestration manifests (Kubernetes, Helm)
 
+**Instruction-surface markdown** — skill definitions (`skills/**/*.md`, including templates), agent definitions (`agents/*.md`), and reference docs (`references/*.md`) — routes to the `code` domain (`references/code-review.md`): in this framework these files ARE the executable surface (agents execute them at runtime); where a doc-contract test guards the file, that is its observable contract (coverage is partial, not universal). This route does not widen into a catch-all: markdown files outside that surface (e.g. arbitrary prose docs with no contract) still fall to UNKNOWN.
+
 If the file does not belong to any known domain, or you cannot confidently determine its execution model, set domain = UNKNOWN.
 
 **Three outcomes — only one allows the review to proceed:**
