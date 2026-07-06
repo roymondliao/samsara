@@ -46,12 +46,11 @@
 是 **format**——機械、無歧義；「這條接縫對不對、該不該存在」是 **judgment**——留
 pre-thinking/reviewer。同一個守則，format 那半機器守、judgment 那半人/agent 判。
 
-**但「機器守」≠「samsara-cli 守」（2026-07-06 修正）**：samsara-cli 的職責是驗**框架自己的
-安裝/轉換輸出**（轉到不同平台的機械形狀），它**不驗一個進行中 feature 的 `changes/` 工作
-產物**。seam-id 解析是 **workflow 內、feature 產物層**的 format 檢查——它的**執行家園是開放
-問題**（見第 8 節 Q3），可能是交棒時強制跑的實測程序、hook 等，**但不預設是 samsara-cli**。
-format 檢查至少有兩種家園：框架發行物 format → samsara-cli；feature 工作產物 format →
-workflow 內機械檢查（家園待定）。此區分交由之後的 format/judgment 清單處理。
+**但「機器守」≠「samsara-cli 守」**：feature 產物層的 format 檢查（seam-id 解析等）的家園
+是 **per-skill 的 format-validate 腳本**（`4-format-vs-judgment.md` §4 定案）；**samsara-cli
+只是把 Samsara 整合進不同 coding agent service 的整合層，不是 format 檢查的家園——沒有
+「兩個家園」這回事**。此處只需知道 seam-id 解析屬 format（機械可判），由 planning 自帶的
+validate 腳本在寫完 index.yaml 後跑；完整分類與 teeth 政策見筆記 4。
 
 ---
 

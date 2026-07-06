@@ -50,7 +50,10 @@
    affects 早該預測卻漏掉的（筆記 1 §9 under-projection 死訊號）。affects 有預測到的擴充，
    下游接得上、不拆。
 3. **（可觀測）零投機抽象出貨**：每個出貨的抽象，`forced_by` 都指得到**當下已存在的 force**；
-   指不到的（為想像預留）＝投機，不該出貨（review O—marked bet 應攔下）。
+   指不到的（為想像預留）＝投機，不該出貨。review 的 O—marked bet 是**攔截機制**，但
+   **硬零量的是「評估時最終有沒有投機出貨」這個可觀測結果，不是 review 中途的 deterministic
+   保證**——block 經仲裁（human／auto-gatekeeper，筆記 6 §3.3）仍可能放行，放行了就在這裡
+   現形。（「O—marked bet」＝既有九原則的 Open-closed 落點：封閉邊界＝對未來下的賭注。）
 4. **（F-G 判官）獨立讀者能追鏈**：一個**獨立 agent**（對抗式，非執行者——F-G 稽核模式）能對
    ≥N 個結構決定，從核心身分→seam→選擇→forced_by **讀通並複述為什麼**。讀不通＝推理不可見。
 

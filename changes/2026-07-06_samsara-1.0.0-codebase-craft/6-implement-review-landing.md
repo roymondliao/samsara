@@ -83,6 +83,20 @@ reviewer 現在也拿得到 seam＋affects（經 dispatch 的 `## Feature`／注
 附可見、可反駁的推理），正是 judgment 的 teeth。code gate 是 deterministic 機械擋（枷鎖）；
 reviewer 擋是被論證、可爭辯的判斷（健康）。兩者的差別是「可不可以爭辯」。
 
+**「可爭辯」的實體仲裁路徑（F6，2026-07-06 user）**：光說「可爭辯」不夠——要有仲裁者，
+否則 auto 模式下「可反駁卻無人反駁」的 block 就退化成 de-facto 硬 gate。仲裁者：
+- **human 模式**：human 仲裁。
+- **auto 模式**：`samsara:auto-gatekeeper` 仲裁——它就是 auto 模式裡的 human 替身
+  （human as auto-gatekeeper、auto-gatekeeper as human，對稱同一角色）。
+- 流程：implementer 不服 reviewer 的 Critical，**附證據 refute** → 仲裁者裁決（**非 reviewer
+  自動獲勝、非 implementer 自我豁免**），auto 模式決定寫入 `auto-decisions.md`。
+- **有第三方仲裁＝可爭辯（健康）；無仲裁的 deterministic 擋＝code gate（枷鎖）**——這才是
+  兩者真正的分界，不只「可不可爭辯」一詞。
+
+> 對筆記 7 的校正：因為 block 經仲裁後**仍可能放行**，所以筆記 7 §3 的「投機出貨硬零」不是
+> review 中途的 deterministic 保證，而是**評估時的可觀測結果**（最終有沒有投機出貨）——
+> review 是攔截機制，放行了就會在評估時現形。
+
 ---
 
 ## 4. yin（`agents/code-reviewer.md`）補一個維度

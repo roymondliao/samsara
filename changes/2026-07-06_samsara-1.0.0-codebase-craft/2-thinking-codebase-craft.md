@@ -98,9 +98,11 @@ codebase-craft 橫跨兩步（呼應 user：好實作先從深度理解問題開
 
 ---
 
-## 7. 怎麼流到 implement（接筆記 1）＋ 證據逐階累積
+## 7. 怎麼流到 implement（接筆記 1）＋ 證據沿 pipeline 逐步累積
 
-責任沿 pipeline 分明，證據逐階累積：
+責任沿 pipeline 分明，證據**沿 pipeline stage 逐步累積**（注意：這裡的「逐步」指
+research→pre-thinking→planning 的**流程階段**，不是證據 rank「已發生>已計畫>domain>想像」的
+高低——且累積非按 rank 單調：planning 補的「已計畫」正是 rank 的中間層，見 §4.2）：
 
 - **research**：問題本質、scope（哪些做/不做）。
 - **pre-thinking**：核心身分 ＋ 真接縫（標 **已發生 / domain 本質** 階）。核心身分＋接縫是

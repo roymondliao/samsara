@@ -36,7 +36,7 @@ teeth 政策就自動確定**：
 
 | 類別 | teeth 政策 | 為什麼 |
 |---|---|---|
-| **FORMAT** | **儘量給硬 teeth**——per-skill validate 腳本（機器守），安全 | format 檢查**不約束作者的判斷**——它只抓機械錯誤。給它硬 gate 不是枷鎖（枷鎖只發生在 enforce judgment 時）。 |
+| **FORMAT** | **儘量給最硬的可得 teeth**——per-skill validate 腳本；**腳本內容 deterministic**（結果唬不了），**是否被跑**基線靠 skill 指令＋visible-missing、平台有 hook 可升為自動觸發（見 §4） | format 檢查**不約束作者的判斷**——它只抓機械錯誤。給它硬 gate 不是枷鎖（枷鎖只發生在 enforce judgment 時）。 |
 | **JUDGMENT** | **永遠不給 code gate**；teeth ＝ 證據可見 ＋ 對抗式 review ＋ consumption 紀律 | code-enforce 判斷＝把判斷變儀式、訓練服從、殺死學習（3.6、`0-design-direction` 全篇核心）。 |
 | **judgment 假裝 format** | **拆開重分類**：format 核心給 teeth，judgment 殘餘移交 reviewer | 不拆就兩頭皆輸——既有 gate 的僵硬、又扼殺判斷。 |
 

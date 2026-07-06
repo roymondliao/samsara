@@ -73,14 +73,18 @@ consumption。本筆記定：**結構決定的推理，寫在哪、寫成什麼�
 
 - **write-filter**（沿用 scar Rule 13）：「未來讀者會因為讀了這條而改變行動嗎？」否＝不寫。
   只有**結構賭注**（pattern 選擇、邊界、refusal）值得留痕，不是每一行。
-- **consumption 紀律**（筆記 1 第 9 節）：`forced_by` 必須引用真的 L1/L2 證據；引用不到
-  證據的「理由」＝空話＝噪音，該被 review 抓。**指不出 seam/affects 的結構決定，不該有
-  這條記錄**（要嘛它其實不是結構賭注、要嘛它在憑感覺）。
+- **consumption 紀律**（筆記 1 第 9 節）：`forced_by` 必須引用真的證據（seam〔L1〕/
+  affects〔L2〕/git-history〔已發生〕之一）；引用不到任何證據的「理由」＝空話＝噪音，該被
+  review 抓。**指不出任何可查證證據的結構決定，不該有這條記錄**（要嘛它其實不是結構賭注、
+  要嘛它在憑感覺）。
 
-`★ 同一 artifact 雙用`：這條「結構決定」記錄，正是筆記 1 第 9 節的 **L2 consumption 記錄**
-——implementer 引用「affects task-7」來 justify 留柔軟接縫，同時就完成了「這條 L2 投影被
-消費」的追溯。**證據可見（給人看懂）與 consumption 追溯（防投影灌水）是同一份東西**，
-不是兩套。
+`★ 同一 artifact 部分雙用`（修正原稿的全稱宣稱）：**當一條結構決定的 `forced_by` 引用了
+affects 時**，這條記錄同時就是筆記 1 第 9 節的 **L2 consumption 追溯**（implementer 引用
+「affects task-7」justify 留柔軟接縫＝該投影被消費）。但**不是每條結構決定都消費 affects**
+——純由 git-history（已發生）或 domain 本質驅動的決定，讓證據可見卻不貢獻 consumption
+資訊。所以精確講：**結構決定記錄 ⊋ affects-consumption 追溯**——是「affects-linked 的那部分
+雙用」，不是全稱恆等。（反過來，被 affects 塑形卻只引 git 的決定，review 別誤判成
+over-projection。）
 
 ---
 

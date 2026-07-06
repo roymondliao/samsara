@@ -84,9 +84,16 @@ unit test，存在即責任 ≠ 覆蓋率）。
 | 判準 | 存在即責任（施於 system 組件） | 存在即責任（施於 function/module/abstraction）＋結構誠實 |
 | 手段 | 可含 format enforce | **純判斷＋證據可見**，不可 code enforce |
 
-**粒度地板**：codebase 層下探到「函式/模組/抽象邊界」為止，不再往下（行文/命名/控制流
+**粒度地板**：codebase 層下探到「函式/模組/抽象**邊界**」為止，不再往下（行文/命名/控制流
 不是要治的病，也非要傳遞的東西）——這一層仍需對整體專案的理解與高維 system design 思考，
 是判斷的最低層。
+
+> **釐清「拷問範圍」vs「留痕門檻」是兩件事**（F2）：粒度地板指的是 **yin 拷問/review 看得
+> 到的最低層**——reviewer 可以看到函式**邊界**是否誠實。但**值得留痕（寫進 scar 結構決定
+> 條目）的門檻更窄**：只有**結構賭注**（pattern 選擇／邊界·接縫的建立或偏離／明確 refusal）
+> 才留痕；一般的函式切分、命名雖在拷問範圍內，但不構成結構賭注、不留痕（筆記 5 §9、
+> 筆記 6 §2.3）。所以「函式」在**邊界**意義上屬地板（被看），在**一般切分**意義上不留痕
+> ——兩處講的是不同動作，不衝突。
 
 ### 3.3 design pattern 的正確定義（codebase-craft 的核心）
 
@@ -194,6 +201,7 @@ human 在場時靠讀證據學——**同一份證據兩用**。
 | design | `skills/planning/` | task 依賴圖成為一等產物（供 implementer 選 pattern）；Key Decisions 唯一來源沿用；把 structure 決策從閘門改成證據錨定的判斷 |
 | develop | `skills/implement/` + `dispatch-template.md` | **全局思考通道**：dispatch 傳全局架構意圖＋task 依賴圖＋當前 project 結構，不只 task 切片 |
 | develop | `agents/implementer.md` | codebase-craft 判斷（依當前 project＋已計畫 tasks 選 pattern）成為下筆紀律；證據可見（結構決定附推理鏈） |
+| review | `agents/code-reviewer.md`（yin）| 補 seam 擺放維度：檔案是否坐落在 index.yaml 宣告的 seam 上（Architectural Placement 的延伸）（筆記 6 §4）|
 | review | `agents/code-quality-reviewer.md` | 九原則沿用；從 verdict 導向調整為證據可見（推理，非只判決）；format vs judgment 分界對齊 |
 | format | `skills/*/`（各 skill 自帶 format-validate 腳本）| feature 產物機械形狀驗證的家園（seam-id 解析、affects、數字實測…）；寫完 artifact 跑、回 feedback（筆記 4） |
 | 整合 | `samsara_cli/` | **只是**跨 coding agent service 整合層（讓 Samsara＋各 skill 腳本在各服務跑起來）；**非 format 家園**、不碰判斷 |
@@ -220,7 +228,7 @@ human 在場時靠讀證據學——**同一份證據兩用**。
 
 > 進度：以下數項已由設計筆記 1-4 收斂（標 ✅），落地細節留正式化；其餘仍開放。
 
-- ✅ **全局思考通道的傳遞形式** → `1-global-thinking-channel.md`（三層 context、廣覺察×窄內容、
+- ✅ **全局思考通道的傳遞形式** → `1-global-thinking-channel.md`（四層 context（三推一拉）、廣覺察×窄內容、
   consumption 軟上限）。
 - ✅ **thinking 如何延伸 codebase-craft** → `2-thinking-codebase-craft.md`（L1 升為六步具名輸出、
   證據逐階累積）。
@@ -267,7 +275,7 @@ human 在場時靠讀證據學——**同一份證據兩用**。
 - **2026-07-06（設計筆記細化，逐點 user 確認）**：
   11. 3.6 回修：format＝**per-skill validate 腳本**（非 samsara-cli）；samsara-cli 只是
       跨 coding agent service 整合層、非 format 家園（見 `4-format-vs-judgment.md`）。
-  12. 設計筆記 1-4 封版：全局思考通道（三層 context）、thinking codebase-craft（L1 具名
+  12. 設計筆記 1-4 封版：全局思考通道（四層 context（三推一拉））、thinking codebase-craft（L1 具名
       輸出、證據逐階累積）、planning 產物（index.yaml `seam`＋`affects`）、format vs judgment
       （分類即 teeth 政策）。
   13. structural-honesty feature 的「judgment 假裝 format」重分類：**回頭再清理**（user 定）。
