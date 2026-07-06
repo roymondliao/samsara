@@ -81,7 +81,7 @@ When it exists and is readable and `structure_refs` is non-empty, inject ONLY th
 
 **Unreadable ≠ absent** — a spec file that exists but cannot be parsed is never written as `structure_spec: absent`; that would disguise a parse failure as a legitimate exemption. Write `structure_spec: unreadable` and treat dispatch as FAIL (reviewer-side UNKNOWN handling belongs to task-3; here it is only about not lying at dispatch time).
 
-Durability: this list otherwise lives only in the dispatch conversation. Until a dedicated dispatch log exists, have the implementer echo the injected ids (or `structure_spec: absent`/`unreadable`) into its own scar report so later audits have a durable artifact.
+Durability: recorded in `changes/<feature>/review-record.md` (dispatcher-side record: this injection list + the 50% arithmetic) — see Review Record Durability below, the single owner of the full durability statement, not the dispatch conversation alone.
 
 ## Review Dispatch
 
@@ -98,6 +98,12 @@ Agent tool:
   description: "Yin review Task N: [task title]"
   prompt: |
     Review the following changes for Task N: [task title]
+
+    ## Feature
+    [MUST name the feature directory: changes/<feature>/ — yin uses this to
+     locate feature artifacts (scar reports, review-record.md if present) for
+     cross-checks — not for planned_task/index.yaml resolution, which is the
+     quality reviewer's concern]
 
     ## Task Requirements
     [MUST paste acceptance criteria from task-N.md]
@@ -141,6 +147,10 @@ Agent tool:
   prompt: |
     Review the following changes for Task N: [task title]
 
+    ## Feature
+    [MUST name the feature directory: changes/<feature>/ — reviewers resolve
+     planned_task evidence refs against this feature's index.yaml]
+
     ## Task Requirements
     [MUST paste acceptance criteria from task-N.md]
 
@@ -164,3 +174,13 @@ Agent tool:
 Both reviewers must report back. If either reports `UNKNOWN`, FAIL, or PASS_WITH_CONCERNS with Critical issues, the implementer must fix before proceeding. `UNKNOWN` usually means a required reference could not be resolved or the execution domain is unsupported; treat it as blocking until the reference/domain issue is fixed and both reviewers are re-run.
 
 After both reviews pass → update `index.yaml` → proceed to next task. Commit only after all tasks complete.
+
+## Review Record Durability
+
+After a task's review rounds conclude, the MAIN AGENT excerpts each verdict's key sections VERBATIM (not summarized) into `changes/<feature>/review-record.md`: the mode declaration, per-entry spec judgments, `drift_items` (explicit `[]` included — this is drift_items' named persistence location), and the summary verdict line. Excerpts must be verbatim; if a source number in the verdict is known-wrong, keep the original text and add a transcription annotation next to it (precedent: the "30 lines vs 25" annotation in `changes/2026-07-05_issue-002-validate-live-surface/review-record.md`).
+
+The same file also carries the DISPATCHER-SIDE injection record: which `structure_refs` ids were injected (or `structure_spec: absent`/`unreadable`) plus the 50% line-count arithmetic. This dispatcher-side record and the implementer's scar-report echo are two INDEPENDENT sources that later audits cross-check — the echo alone only proves claimed receipt, never content correctness.
+
+DC-5 discipline: an absent review-record entry for a task that ran spec mode means "never recorded" (a finding at aggregation time), never "nothing to record" — a missing entry is not evidence that nothing happened.
+
+**Honest marker:** this convention is prose-enforced only — no aggregation-time consumer reads `review-record.md` yet to check the DC-5 discipline above actually holds (see `issue.md` ISSUE-003: the structure-spec evidence chain has no code-level enforcement).

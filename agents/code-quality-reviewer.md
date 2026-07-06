@@ -265,8 +265,9 @@ cargo-cult evidence). For git_history/planned_task, resolved/failure/unknown
 is owned by `skills/planning/templates/structure-spec.yaml`'s Evidence
 resolution comment — only execution differs here:
 - `git_history` → confirm the `ref` path exists in the repo.
-- `planned_task` → feature from a `changes/<feature>/...` path in Changed
-  Files/diff (>1 distinct feature path = ambiguous), else Glob
+- `planned_task` → feature source order: (1) the dispatch's `## Feature`
+  field if named, (2) else derive from a `changes/<feature>/...` path in
+  Changed Files/diff (>1 distinct feature path = ambiguous), (3) else Glob
   `changes/*/index.yaml` + Grep the `ref` id: found+present = resolved,
   found+absent = `failure` (dangling), no/ambiguous = `unknown`.
 - `domain_boundary` → no ref, no external target; judgment owned HERE, binary

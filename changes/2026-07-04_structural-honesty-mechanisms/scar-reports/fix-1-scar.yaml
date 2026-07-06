@@ -1,0 +1,54 @@
+task_id: fix-1
+completion_status: done
+
+known_shortcuts:
+  - description: "The Review Record Durability convention (dispatcher-side injection record + verbatim verdict excerpts, DC-5 never-recorded-vs-nothing-to-record discipline) is written into skills/implement/dispatch-template.md only. No aggregation step in skills/iteration/SKILL.md or skills/validate-and-ship/SKILL.md actually reads changes/<feature>/review-record.md to enforce the DC-5 discipline at aggregation/terminal-audit time — this fix creates the persistence location and semantics, it does not wire a consumer. Fixing this requires touching iteration/SKILL.md and validate-and-ship/SKILL.md, both outside this fix's converge-scoped file list (dispatch-template.md + test file only). A one-sentence 'Honest marker' disclosing this gap (cross-ref issue.md ISSUE-003) was added directly to dispatch-template.md's Review Record Durability section during round-1 review, so a future editor learns the bet without reading this scar report."
+    deferred_to_feature_iteration: true
+  - description: "Round-1 quality review (Coupling, substantive): the dispatch's `## Feature` field (change B) was emitted by dispatch-template.md but agents/code-quality-reviewer.md's own planned_task Evidence Resolution procedure never named it as an input — it still derived the feature exclusively from a changes/<feature>/... path in Changed Files/diff, falling to the repo-wide Glob otherwise (a dispatch like this very fix, whose Changed Files are all outside changes/, would still hit the Glob branch)."
+    status: resolved
+    resolution: "Edited agents/code-quality-reviewer.md's planned_task bullet to state the 3-source order explicitly: (1) the dispatch's `## Feature` field if named, (2) else path-derivation from Changed Files/diff, (3) else Glob+Grep fallback. Net diff +3/-2 (measured via git diff --numstat). Added an order-sensitive death test (test_death__code_quality_reviewer_names_feature_field_as_first_planned_task_source) asserting index(Feature) < index(path) < index(Glob), not just presence."
+  - description: "Round-1 quality review (Important, ghost promise): the yin reviewer's `## Feature` field text was copy-identical to quality's, claiming 'resolve planned_task evidence refs against index.yaml' — but agents/code-reviewer.md has no planned_task/index.yaml concept at all (grep: zero matches), so the claim was false for the yin dispatch."
+    status: resolved
+    resolution: "Differentiated yin's Feature field wording to what yin actually uses the path for (locating feature artifacts — scar reports, review-record.md — for cross-checks) and added an explicit disclaim ('not for planned_task/index.yaml resolution'). Kept quality's wording unchanged. Updated test_unit__both_reviewer_dispatch_blocks_have_feature_field to assert the CLAIM SENTENCE (not bare tokens — the disclaim sentence itself contains the tokens 'planned_task'/'index.yaml', which would make a bare-token-absence check polarity-blind) is present only in quality's block."
+  - description: "Round-1 quality review (DRY within file): dispatch-template.md's Structure Spec Fragments Durability paragraph said 'per Review Record Durability below' but then restated the full content (ids + 50% arithmetic + echo cross-check + claimed-receipt caveat) that section already owns."
+    status: resolved
+    resolution: "Trimmed the paragraph to a pointer plus only the dispatch-time-specific content (what gets recorded); removed the restated echo-cross-check/claimed-receipt sentences, which remain solely in Review Record Durability (single owner). Updated test_unit__structure_spec_fragments_durability_points_to_review_record_not_echo_only to assert the pointer + absence of the stale claim, not the duplicated content."
+  - systemic_ref: doc-vs-runtime-obedience
+    note: "This fix's changes (Review Record Durability section, Feature field x2, Durability paragraph rewrite, code-quality-reviewer.md source-order edit) are all prose; nothing forces the dispatching main agent to actually write changes/<feature>/review-record.md, fill in the Feature field with the correct path, or excerpt verdicts verbatim rather than paraphrased. The doc-contract tests in tests/test_skills/test_structure_spec_contract.py prove the rule EXISTS, not that any future dispatch OBEYS it."
+  - systemic_ref: doc-instruction-no-code-enforcement
+    note: "Same landing point as above — no code path validates review-record.md's existence, the Feature field's correctness, or verbatim-ness of an excerpt. Compliance depends entirely on the main agent choosing to follow the convention each time review rounds conclude."
+  - description: "agents/code-quality-reviewer.md's task-3 net-add budget (60/60, already at ceiling per task-3's own scar) is exceeded by this fix's +1 net line (measured: +3/-2 via git diff --numstat), required to wire the `## Feature` field as the first planned_task resolution source. Per this feature's KD-5 ruling precedent (adjust budget with evidence, never trim guards to hit numbers), this overage is disclosed here rather than offset by deleting an existing guard."
+
+silent_failure_conditions:
+  - description: "If a future edit to dispatch-template.md drops the Review Record Durability section, or a main agent simply never creates changes/<feature>/review-record.md for a task, there is no test or runtime check that fires — the four source scar items this fix closes at the doc layer (echo-only durability, missing Feature field, undocumented drift_items persistence, echo-proves-receipt-only) would silently reopen with only a doc-contract test (which checks the instruction text, not whether any given dispatch followed it) as a backstop."
+    deferred_to_feature_iteration: true
+
+assumptions_made:
+  - assumption: "The Review Record Durability convention's reviewer-verdict-excerpt half is validated by a real working precedent (changes/2026-07-05_issue-002-validate-live-surface/review-record.md, including its transcription-annotation pattern); the dispatcher-side injection-record half (structure_refs ids + 50% arithmetic recorded in the same file) has no working precedent yet — no feature has dogfooded that specific half of the format."
+    verified: false
+    note: "If the injection-record shape proves awkward on first real use (e.g. a feature that actually exercises structure_refs injection through this convention), the format documented here may need adjustment — this is new prose, not yet dogfooded, unlike the verdict-excerpt half."
+    deferred_to_feature_iteration: true
+  - assumption: "changes/2026-07-05_issue-002-validate-live-surface/review-record.md exists and its cited transcription-annotation pattern ('30 lines vs 25') is present verbatim, as the precedent this fix's Review Record Durability section cites."
+    verified: true
+    note: "changes/2026-07-05_issue-002-validate-live-surface/review-record.md:10"
+  - assumption: "skills/implement/SKILL.md does not duplicate the reviewer dispatch prompt templates (Yin/Code Quality blocks) inline for mode C — it only points to dispatch-template.md as the single source — so adding the Feature field only in dispatch-template.md is sufficient and does not need mirroring into SKILL.md."
+    verified: true
+    note: "skills/implement/SKILL.md:118,140,180,229"
+
+debt_registered: true
+debt_location: "skills/implement/dispatch-template.md — Review Record Durability section (prose-only, no code-level enforcement); Yin/Code Quality reviewer prompt blocks' Feature field (prose-only); agents/code-quality-reviewer.md planned_task bullet's 3-source order (prose-only)."
+
+narrative: |
+  Net addition measured via `git diff --numstat` (final, after round-1 corrections):
+  skills/implement/dispatch-template.md +21/-1 (net +20); agents/code-quality-reviewer.md
+  +3/-2 (net +1); tests/test_skills/test_structure_spec_contract.py +244/-0 (test-only,
+  not loaded-context). The dispatch-template.md +20 net lines add to this feature's
+  already-accepted loaded-context overage (200 budget / already at 217 per Architecture
+  Context); the code-quality-reviewer.md +1 net line exceeds its own task-3 budget
+  (60/60, already at ceiling) — both recorded honestly here per instruction, not
+  re-litigated against either budget ruling (out of this fix's scope to re-adjudicate).
+
+  Full suite: `uv run pytest tests/ -v` — 934 passed, 0 failed (the `-q` flag's final
+  summary line was not visible in this environment's piped output for the full-suite
+  run; `-v` reproducibly showed the summary, confirmed by grep for FAIL/ERROR finding
+  none).

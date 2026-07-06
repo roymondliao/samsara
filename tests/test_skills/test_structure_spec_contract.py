@@ -1655,3 +1655,247 @@ def test_unit__task4_net_addition_within_subtraction_budget() -> None:
         f"combined new clauses total {total_lines} lines, budget is 40 — "
         "the subtraction discipline (KD-5) was silently exceeded."
     )
+
+
+# ---------------------------------------------------------------------------
+# Fix-1 (Level-2 iteration) — Dispatch-record durability: dispatcher-side
+# review-record convention + reviewer Feature field
+# (skills/implement/dispatch-template.md)
+#
+# Closes four source scar items: task-2 silent_failure #2 (echo-only
+# durability, indistinguishable from "no injection happened"), task-3's
+# verified:false assumption (no Feature field named in reviewer dispatch —
+# planned_task ref resolution falls straight to the repo-wide Glob+Grep
+# fallback), task-4's verified:false assumption (no persisted location named
+# for drift_items), and task-6 silent_failure #1 (echo proves claimed
+# receipt only, never content correctness).
+# ---------------------------------------------------------------------------
+
+
+def _yin_reviewer_block(dispatch: str) -> str:
+    return _section(dispatch, "### Yin reviewer", ["\n### Code Quality reviewer"])
+
+
+def _code_quality_reviewer_block(dispatch: str) -> str:
+    # Tightened end marker (round-1 coordinator fix): the old marker
+    # ("\n## Review Record Durability") swallowed the two trailing Review
+    # Dispatch paragraphs ("Both reviewers must report back...", "After both
+    # reviews pass..."), which are not part of the Code Quality reviewer
+    # PROMPT BLOCK the helper's name promises. Bounding on the next prose
+    # line keeps the span to exactly the dispatch code fence.
+    return _section(
+        dispatch, "### Code Quality reviewer", ["\nBoth reviewers must report back"]
+    )
+
+
+def _review_record_durability_section(dispatch: str) -> str:
+    # No end marker: this is intentionally the LAST section in the file. If
+    # a future edit appends further sections after it without updating this
+    # helper, the span silently grows to swallow that new content too.
+    return _section(dispatch, "## Review Record Durability", [])
+
+
+def test_death__dispatch_template_has_review_record_durability_section() -> None:
+    """Closes task-2 silent_failure #2 / task-6 silent_failure #1: the
+    dispatcher-side review-record convention must exist as a named section,
+    requiring VERBATIM (not summarized) excerpts of the verdict's key
+    sections into `changes/<feature>/review-record.md`, including the
+    mode declaration and `drift_items` (this is drift_items' named
+    persistence location, closing task-4's assumption). If this section
+    disappears, or the verbatim requirement is dropped, this goes RED — the
+    convention proven by precedent
+    (changes/2026-07-05_issue-002-validate-live-surface/review-record.md)
+    would have no durable textual anchor left in the dispatch template."""
+    section = _review_record_durability_section(read(DISPATCH_TEMPLATE))
+    lowered = section.lower()
+
+    assert "review-record.md" in lowered, (
+        "Review Record Durability no longer names "
+        "changes/<feature>/review-record.md as the landing artifact."
+    )
+    assert "verbatim" in lowered, (
+        "Review Record Durability no longer requires VERBATIM excerpts — "
+        "a summarized excerpt could silently drop or reword content the "
+        "convention exists to preserve exactly."
+    )
+    assert "mode declaration" in lowered, (
+        "Review Record Durability no longer names the mode declaration as "
+        "one of the required verbatim excerpts."
+    )
+    assert "drift_items" in section, (
+        "Review Record Durability no longer names `drift_items` as part of "
+        "what must be excerpted — closing task-4's assumption (no persisted "
+        "location named for drift_items) would reopen."
+    )
+    assert "issue-003" in lowered, (
+        "Review Record Durability no longer cross-references ISSUE-003 "
+        "(issue.md) — the honest marker disclosing that this convention has "
+        "no aggregation-time consumer yet was dropped; a future editor would "
+        "have to hunt the scar report to learn the bet."
+    )
+
+
+def test_death__review_record_absent_entry_is_never_recorded_not_nothing_to_record() -> (
+    None
+):
+    """DC-5 pole: an absent review-record entry for a task that ran spec
+    mode must be read as "never recorded" (a finding at aggregation time),
+    never as "nothing to record" — the same missing-vs-empty discipline this
+    feature enforces for drift_items/structural_drift elsewhere must also
+    apply to the review-record artifact itself, or the durability convention
+    would create a NEW place where "never recorded" is indistinguishable
+    from "recorded empty". If this discipline sentence is dropped, this goes
+    RED."""
+    section = _review_record_durability_section(read(DISPATCH_TEMPLATE))
+    lowered = section.lower()
+
+    assert "never recorded" in lowered, (
+        "Review Record Durability no longer states that an absent entry "
+        "means 'never recorded'."
+    )
+    assert "nothing to record" in lowered, (
+        "Review Record Durability no longer explicitly rules out reading an "
+        "absent entry as 'nothing to record' — DC-5's missing-vs-empty "
+        "distinction has no textual anchor left for this artifact."
+    )
+    assert "finding" in lowered, (
+        "Review Record Durability no longer states an absent entry is a "
+        "finding at aggregation time."
+    )
+
+
+def test_unit__both_reviewer_dispatch_blocks_have_feature_field() -> None:
+    """Contract source: skills/implement/dispatch-template.md Yin reviewer
+    and Code Quality reviewer prompt blocks (documented artifact shape).
+    Closes task-3's verified:false assumption: dispatch-template.md named no
+    feature field, so a task whose Changed Files are all outside
+    changes/<feature>/ fell straight to the repo-wide Glob+Grep fallback for
+    planned_task ref resolution.
+
+    Round-1 (coordinator) fix: yin and quality use the Feature field for
+    DIFFERENT purposes — quality resolves `planned_task` refs against
+    index.yaml (agents/code-quality-reviewer.md owns that concept); yin has
+    NO planned_task/index.yaml concept (agents/code-reviewer.md: zero
+    matches) and only uses the path to locate feature artifacts (scar
+    reports, review-record.md) for cross-checks. Both blocks must carry
+    `## Feature` + `changes/<feature>/`; only quality's block may claim the
+    planned_task/index.yaml CLAIM SENTENCE — yin repeating that same claim
+    would be a ghost promise.
+
+    Polarity note: yin's differentiated wording explicitly DISCLAIMS
+    planned_task/index.yaml ("not for planned_task/index.yaml resolution"),
+    so a bare-token 'planned_task'/'index.yaml' absence check on yin_block
+    would be polarity-blind (the negation sentence itself contains both
+    tokens) — this asserts on the CLAIM SENTENCE presence/absence instead,
+    plus the disclaim sentence's presence in yin, matching this file's
+    established presence-not-polarity convention."""
+    text = read(DISPATCH_TEMPLATE)
+    yin_block = _yin_reviewer_block(text)
+    quality_block = _code_quality_reviewer_block(text)
+    yin_normalized = " ".join(yin_block.split()).lower()
+    quality_normalized = " ".join(quality_block.split()).lower()
+    claim_sentence = "resolve planned_task evidence refs against this feature's index.yaml"
+
+    for block, label in ((yin_block, "yin"), (quality_block, "code quality")):
+        assert "## Feature" in block, (
+            f"the {label} reviewer dispatch block has no `## Feature` field."
+        )
+        assert "changes/<feature>/" in block, (
+            f"the {label} reviewer dispatch block's Feature field does not "
+            "name the changes/<feature>/ directory."
+        )
+
+    assert claim_sentence in quality_normalized, (
+        "the code quality reviewer dispatch block's Feature field no longer "
+        "tells the quality reviewer to resolve planned_task refs against "
+        "this feature's index.yaml."
+    )
+    assert claim_sentence not in yin_normalized, (
+        "the yin reviewer dispatch block claims the SAME planned_task/"
+        "index.yaml resolution sentence as quality — agents/code-reviewer.md "
+        "has no such concept; this is the ghost promise the differentiation "
+        "fix was supposed to remove."
+    )
+    assert "not for planned_task/index.yaml resolution" in yin_normalized, (
+        "the yin reviewer dispatch block no longer explicitly disclaims "
+        "planned_task/index.yaml resolution — without this sentence, a "
+        "future bare-token check for 'planned_task'/'index.yaml' cannot "
+        "reliably distinguish yin's block from quality's, since both "
+        "contain the tokens (quality via the claim, yin via the negation)."
+    )
+
+
+def test_death__code_quality_reviewer_names_feature_field_as_first_planned_task_source() -> (
+    None
+):
+    """Closes the quality reviewer's own round-1 Coupling finding: fix-1
+    injects a `## Feature` field into the dispatch (change B), but this
+    agent definition's planned_task Evidence Resolution procedure never
+    named it as an input source — it derived the feature exclusively from a
+    `changes/<feature>/...` path in Changed Files/diff, falling straight to
+    the repo-wide Glob otherwise. A dispatch whose Changed Files are all
+    outside changes/<feature>/ (fix-1 itself is an example) would still hit
+    the Glob branch even though the dispatch carried a Feature field.
+
+    Guards the ORDER (not just presence) via index positions: the dispatch's
+    `## Feature` field must be checked FIRST, path-derivation SECOND, Glob
+    +Grep fallback LAST. If a future edit drops the Feature-field source, or
+    reorders it behind the other two, this goes RED."""
+    section = _spec_mode_additions_section(read(CODE_QUALITY_REVIEWER))
+    clause = _guard_bullet(section, "`planned_task`")
+
+    idx_feature = clause.find("## Feature")
+    idx_path = clause.find("changes/<feature>/")
+    idx_glob = clause.find("Glob")
+
+    assert idx_feature != -1, (
+        "the planned_task resolution bullet no longer names the dispatch's "
+        "`## Feature` field as an input source at all."
+    )
+    assert idx_path != -1 and idx_glob != -1, (
+        "the planned_task resolution bullet lost the path-derivation or "
+        "Glob+Grep fallback source — this test's premise no longer holds."
+    )
+    assert idx_feature < idx_path < idx_glob, (
+        "the planned_task resolution bullet's source order regressed — the "
+        "dispatch's `## Feature` field must be checked FIRST, path-"
+        "derivation SECOND, Glob+Grep fallback LAST."
+    )
+
+
+def test_unit__structure_spec_fragments_durability_points_to_review_record_not_echo_only() -> (
+    None
+):
+    """Contract source: skills/implement/dispatch-template.md Structure Spec
+    Fragments section's Durability paragraph (documented artifact shape).
+    Change C: the paragraph previously said the implementer echo is the
+    only durable artifact "Until a dedicated dispatch log exists" — that
+    stale claim must be gone, replaced by a pointer to the Review Record
+    Durability section as the SINGLE OWNER of the full durability statement.
+
+    Round-1 (coordinator) DRY fix: this paragraph must not restate the full
+    content (echo cross-check, claimed-receipt caveat) that Review Record
+    Durability already owns — the contract is "points to review-record.md,
+    no stale echo-only claim", not duplication of that section's content.
+    Deliberately does NOT assert echo/claimed-receipt wording here (that
+    content, and its own test coverage, belongs solely to the Review Record
+    Durability section — see test_death__dispatch_template_has_review_record_durability_section)."""
+    section = _structure_spec_fragments_section(read(DISPATCH_TEMPLATE))
+    durability = _section(section, "Durability:", [])
+    lowered = durability.lower()
+
+    assert "review-record.md" in lowered, (
+        "the Structure Spec Fragments Durability paragraph no longer points "
+        "to changes/<feature>/review-record.md as the dispatcher-side "
+        "durable artifact."
+    )
+    assert "review record durability" in lowered, (
+        "the Durability paragraph no longer points readers to the Review "
+        "Record Durability section by name."
+    )
+    assert "until a dedicated dispatch log exists" not in lowered, (
+        "the Durability paragraph still claims the implementer echo is the "
+        "only durable artifact 'until a dedicated dispatch log exists' — "
+        "this is the stale echo-only claim the Review Record Durability "
+        "section replaces."
+    )
