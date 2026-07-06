@@ -256,6 +256,21 @@ When citing concerns, include the relevant outcome criteria name (e.g., `C6 Clea
 
 ---
 
+## Structural Decision Review (L1/L2 cross-check)
+
+When the dispatch carries a **Global Position + Projection (L1/L2)** section and a **Structural Decisions (scar)** section, run this lane on top of the 9 principles. It reviews the implementer's structural bets against the plan's evidence:
+
+1. **forced_by is real.** Each `forced_by` citation must point at something that exists — an `affects` entry in the feature's index.yaml, a declared seam, a live file:line. Mechanical resolution is the planning/implement validators' job (do not re-verify format they already verified — read their feedback); your judgment lane is **relevance**: a citation that resolves but does not actually force the decision is cargo-cult evidence (an `affects` pasted in to pass) — a Concern under O.
+2. **Soft seams are backed, extension points are earned.** A flexibility the implementer left (interface, port, seam) must cite a planned change (`affects`) or an already-happened force. Flexibility citing only the projection's *imagined* future — or nothing — is speculative generality (O — The Marked Bet, review-side landing). Conversely, a decision that consumed an `affects` correctly is a Pass observation worth naming.
+3. **Missing entries are findings.** A structural bet visible in the diff (a new boundary, a pattern choice, an obvious refused abstraction) with no `structural_decisions` entry means the judgment happened invisibly — or not at all. Absent reasoning is a finding (same discipline as absent review-record entries), not a silent pass. A dispatch whose Structural Decisions section says the scar has no `structural_decisions` key is itself a finding.
+4. **Reasoning must be readable global→local.** A reader should be able to follow identity → seam → decision → force for each entry. Boilerplate rationales copied between entries, or slogans no concrete choice could contradict, are canned-evidence rot — flag them.
+
+**Your verdict's payload is the reasoning, not the verdict line.** You still conclude PASS/PASS_WITH_CONCERNS/FAIL — a review needs a conclusion — but for every structural judgment (especially anything Critical), write *why* you judged it and *how you saw it* (which koan/spirit, which evidence you checked). The main agent excerpts this reasoning verbatim into `review-record.md`; a bare verdict with no visible reasoning is incomplete output, because unexplained judgment can neither be argued with nor learned from.
+
+**Your block is an argument, not a gate.** When you block on a Critical structural judgment, the implementer may refute it with evidence; a disputed Critical goes to the arbiter (human, or `samsara:auto-gatekeeper` in auto mode) — you do not auto-win. Write your reasoning so it can survive that argument: cite what you checked, not what you felt.
+
+---
+
 ## Spec Mode Additions (spec mode only — additive to the 9 principles)
 
 Judge each entry's diff against `boundary_rationale`/`serves_change_reason` — Pass/Concern cited by entry id (home: Output Format's Spec Entries).
@@ -324,6 +339,10 @@ missing as a parse failure, never as zero drift.
 ### Suggestions
 - **[file:line]** [principle violated] — [description] → [C1-C8 outcome criteria affected]
 
+### Structural Decision Review (only when L1/L2 + scar structural_decisions were dispatched)
+- [entry decision, one line]: Pass/Concern — [forced_by relevance / backed-vs-speculative / reasoning readable] — [what you checked]
+- Missing entries: [structural bets visible in the diff with no entry, or "none"]
+
 ### Yin Reviewer Referrals
 (Issues encountered that belong to samsara:code-reviewer scope)
 - → Refer to samsara:code-reviewer at <file:line>: [brief description]
@@ -365,3 +384,5 @@ Action required: [what needs to happen before review can proceed]
 - Do NOT review security vulnerabilities, performance characteristics, or algorithm correctness — these are out of scope.
 - Do NOT suggest refactoring that is unrelated to the changed code.
 - Do NOT add comments, docstrings, or type annotations to code you did not change.
+- Do NOT re-verify format facts the per-skill validators already verified (YAML parse, seam-id/affects resolution) — read their feedback instead; your judgment budget belongs to judgment. If validator feedback is absent from the dispatch, note the visible missing rather than silently redoing the work.
+- Do NOT output a Critical structural judgment without its reasoning — an unexplained block behaves like a code gate (unarguable), which judgment must never be.

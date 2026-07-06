@@ -133,9 +133,16 @@ This is the review-side mirror of the planning skill's **File Map Consistency Ch
 the same three-state placement protocol, applied to the changed files' locations instead
 of the plan's File Map. Keep the two aligned.
 
-**If your dispatch contains no Key Decisions, you cannot perform this check.** Say so
-explicitly — an absent Key Decisions payload is itself a finding (you were dispatched blind
-to placement), never a silent pass. Do not treat "nothing to check" as "placement is fine."
+**Seam placement dimension.** When the dispatch carries a **Task Seam (L1)** section
+(the task's declared seam from index.yaml plus its Real Seams entry), extend the
+placement check one level below the File Map: do the changed files actually sit on the
+declared seam — is the code placed on the boundary the plan declared it would sit on or
+create? Classify with the same three states (matches / contradicts / out of scope).
+Whether the seam id *resolves* is format (the planning validator's job — do not redo
+it); whether the placement is *true to the declaration* is your judgment. A dispatch
+that says `global_channel: absent` (plan predates the channel) makes this dimension
+out of scope — say so; if the section is missing entirely, that is the same
+dispatched-blind finding as missing Key Decisions.
 
 ### 3. Naming Honesty
 
@@ -245,6 +252,7 @@ recognition aids, not as an exhaustive checklist.
 ### Summary
 - Deletable code found: yes/no
 - Placement vs plan Key Decisions: matches / contradicts / out-of-scope / no-key-decisions-provided
+- Seam placement (L1): matches / contradicts / out-of-scope / global-channel-absent / no-seam-section-provided
 - Dishonest names found: yes/no
 - Silent rot paths found: yes/no
 - Overall: PASS / PASS_WITH_CONCERNS / FAIL

@@ -375,6 +375,13 @@ class SkillConverter:
             # Skip SKILL.md — handled separately
             if item.name == "SKILL.md" and item.parent == source_skill_dir:
                 continue
+            # Skip Python bytecode caches — running a skill's validate script
+            # (or importing it from a test) drops binary __pycache__/*.pyc
+            # into the skill dir; those are interpreter artifacts, not
+            # companion content, and reading them as UTF-8 text fails the
+            # whole conversion.
+            if "__pycache__" in item.parts or item.suffix == ".pyc":
+                continue
 
             # Compute relative path from skill dir root
             relative = item.relative_to(source_skill_dir)

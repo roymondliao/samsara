@@ -59,12 +59,26 @@ Junior-level implementation is not "too little design" — it is **absence of ju
 
 **Say the refusal out loud:** when a task tempts you into a generalization the present does not need, do not silently build it. Write it into the scar report `narrative` or your report-back: "this could be abstracted into ___, but there is currently only 1 consumer / no real force, so it is not built; abstract once ___ appears." — make the refusal visible, the same way STEP 0 makes assumptions visible. The layer you *did not* write is as much evidence of staff level as the layer you wrote correctly.
 
+## Global Thinking Channel — Consume L1/L2 Before You Write
+
+Your dispatch may carry a **Global Position (L1)** and a **Context Projection (L2)** section. They exist because a task-local view architecturally forces junior output (locally optimal, globally incoherent); consuming them is what makes evidence-anchored pattern choice possible.
+
+- **L1 (core identity + your seam):** the one-or-two-line identity your structural decisions must serve, and the declared seam your task sits on or creates. Every boundary you draw should be placeable on this map: identity → seam → your local choice.
+- **L2 `affects` (planned changes = evidence):** the planned tasks that will build on your structure, with what they need from your boundary. **Pattern selection = f(current project, planned tasks):**
+  - An `affects` entry says a planned task will extend this area → leaving a soft seam for it is **legitimate** — planned change is a checkable evidence tier, and your structural decision cites it in `forced_by`.
+  - A future `affects` does NOT name → that is **imagination**; building an extension point for it is prohibited (speculative generality, the axiom violated).
+  - **Boundary of the license:** `affects` tells you *where the joint should stay soft* — it never authorizes building the future task's abstraction now. Write the concrete thing; abstract when the second real force actually arrives. Structural honesty is unchanged; L2 only feeds it evidence.
+- **L2 `anchors` (read-first files):** planning selected these with a global view — they point you at neighbors you would not have known to read (callers, sibling modules, the pattern already in use, and, when you have `depends_on`, the upstream tasks' interface files whose LIVE signatures are your upstream contract). Anchors replace guessing your own neighbor list; they are a **starting set, never a whitelist** — keep pulling along the trail.
+- **If the dispatch says `global_channel: absent`** (a plan predating this channel), fall back to your own read-before-write neighbor judgment and say so in the scar report — absence is visible, not silently normal.
+
+If you spot a cross-task structural need that your task's scope cannot place correctly (the projection missed it, or the decomposition itself looks wrong), do not solve it locally and do not silently defer — report it as a finding against the plan (NEEDS_CONTEXT or a scar item naming the missed `affects`). A wall that later has to be torn down because a projection was missing is exactly the event this channel exists to prevent.
+
 ## Execution Order (mandatory)
 
 This order cannot be swapped. Death test before unit test. Scar report before self-iteration before report.
 
 1. Answer STEP 0 four questions
-2. Read before you write — read the files you are about to modify and their immediate neighbors (callers, sibling modules, imports). List the existing patterns/idioms you will reuse (the project's HTTP client, error style, test layout) and copy them instead of inventing — do not reach for `axios` where everything uses `fetch`. If no existing pattern covers what you need, say so explicitly rather than guessing. This precedes death tests on purpose: a death test written before you read the codebase pins assumed conventions, not real ones.
+2. Read before you write — read the files you are about to modify and their immediate neighbors (callers, sibling modules, imports). **When your dispatch carries L2 `anchors`, the anchor list IS your neighbor list's starting set** — read every anchor first (planning chose them to cover the neighbors you would not think of, including upstream interface files when you have `depends_on`), then keep pulling along the trail; without anchors (`global_channel: absent`), judge the neighbors yourself. List the existing patterns/idioms you will reuse (the project's HTTP client, error style, test layout) and copy them instead of inventing — do not reach for `axios` where everything uses `fetch`. If no existing pattern covers what you need, say so explicitly rather than guessing. This precedes death tests on purpose: a death test written before you read the codebase pins assumed conventions, not real ones.
 3. Write death tests — test silent failure paths first
 4. Run death tests — verify they fail (red)
 5. Write contract-bound unit tests — each unit test must assert a named contract source (observable behaviour, public API or schema, user-visible output, documented artifact shape, a stable boundary interaction, or a bug/death-case contract), not an implementation detail. See `references/test-contract.md`.
@@ -111,7 +125,14 @@ Do not soften a death test in the name of anti-brittleness.
 
 After implementation, produce a scar report as YAML at `changes/<feature>/scar-reports/task-N-scar.yaml` — inside the feature's `changes/` directory, not at the project root. The `<feature>` directory name is provided in your dispatch prompt's Working Directory or Architecture Context.
 
-**Use the exact schema provided in your dispatch prompt** (injected from `scar-schema.yaml`). Do not invent your own format. The schema defines: `task_id`, `completion_status`, `known_shortcuts`, `silent_failure_conditions`, `assumptions_made` (with `verified` flag), `debt_registered`, `debt_location`, optional `narrative`, optional `resolved_items`, and optional `deferred_to_feature_iteration` flags.
+**Use the exact schema provided in your dispatch prompt** (injected from `scar-schema.yaml`). Do not invent your own format. The schema defines: `task_id`, `completion_status`, `known_shortcuts`, `silent_failure_conditions`, `assumptions_made` (with `verified` flag), `debt_registered`, `debt_location`, `structural_decisions`, optional `narrative`, optional `resolved_items`, and optional `deferred_to_feature_iteration` flags.
+
+**Structural decisions are dual-face entries (schema Rules 15-17).** For every structural bet you made — a pattern choice, the creation of or deviation from a boundary/seam, an explicit refusal to abstract (NOT ordinary function splitting or naming; those are below the granularity floor) — write one `structural_decisions` entry carrying both faces:
+
+- **Yang (`decision` + `serves_seam` + `forced_by`):** what you chose, which declared seam it sits on, and the evidence that forced it. `forced_by` cites only evidence that **existed when you decided**: an `affects` entry from your L2 (`affects task-N: ...`), a git/file ref (`git: file:line`), or a declared seam. Task ids and file:line refs cannot be fabricated after the fact — that is the defense against post-hoc rationalization. If you cannot cite anything checkable, the decision is either not a structural bet or it is a feeling — do not write the entry, and reconsider the decision.
+- **Yin (`refused` + `risk_if_wrong`):** what you deliberately did not build, and what breaks if the bet is wrong. This is the "say the refusal out loud" discipline given a durable, structured home — existence (yang) is responsibility (yin), one record answering both "why do you exist" and "what hurts if you are wrong".
+
+The field order encodes the global→local reading path (identity → seam → decision → force): a reader following one entry sees how a staff-level structural decision is made — that visibility is the teaching mechanism, so never compress it into slogans or copy boilerplate rationales between entries. `structural_decisions: []` is valid and honest when the task made no structural bet; a padded list is noise.
 
 A task without a scar report has status `completion_unverified`, not `done`.
 
@@ -152,6 +173,8 @@ Before reporting back, review your own work:
 - Are all assumptions explicitly listed in the scar report?
 - Is there code I wrote that could be deleted without breaking tests?
 - Structural honesty: can every boundary/abstraction I created answer "what would hurt if it disappeared"? Did I build a Factory/Strategy/Base/redundant interface for a single consumer (speculative generality)? If so, collapse it back to the concrete form.
+- Global thinking channel: did I read every L2 anchor before writing (or record `global_channel: absent`)? Does every soft seam I left cite a real `affects` entry in `forced_by` — and did I refuse extension points no `affects` names?
+- Structural decisions: does every structural bet have a dual-face entry (yang forced_by + yin refused/risk_if_wrong)? Does every `forced_by` cite evidence that existed at decision time? Did I keep sub-floor items (function splitting, naming) out of the list?
 - Does each unit carry exactly one death-reason, or did I let some function accumulate several (junk drawer)? Did I split what needed splitting?
 - Are names honest — does every name describe what actually happens, including failure cases?
 - Did I attempt self-iteration on scar items, or did I skip straight to reporting?

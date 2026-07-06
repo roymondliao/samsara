@@ -257,13 +257,36 @@ human 在場時靠讀證據學——**同一份證據兩用**。
   skill-local（redesign §6 字面路徑會被 build 靜默忽略）；(2) 測試分流——`Step B/C` 名是機制、
   隨六步設計移動更新測試 heading，auto-mode「雙路徑四 token」斷言是原則、原封保留並補回被精簡
   掉的 token（atomic-context 的 auto-initiate/Phase 4/escape clause 亦補回 flow.md）。
-- ⏳ **planning**：實質正式化（唯一來源 File Map STOP gate、欄位級入口驗證、index.yaml
-  `seam`＋`affects`、per-task L1 位置、planned-change 證據階強化）——筆記 1-3。目前僅完成契約同步。
-- ⏳ **implement / agents**：全局思考通道 dispatch（L1/L2/L4 錨）、implementer 證據錨定選 pattern
-  ＋ dual-face 留痕——筆記 1、5、6。
-- ⏳ **review**：yin 補 seam 擺放維度、quality verdict→證據可見——筆記 6。
-- ⏳ **format-validate 腳本 / research 強化 / evaluation dogfood**——筆記 4、7。
-- ⏳ **auto 模式怎麼接**：沿用 gatekeeper / auto-decisions.md 機制到新流程。
+- ✅ **planning**（2026-07-06 本輪）：Step 5「Codebase-Craft Products」——task→seam 映射（L1
+  位置）、affects＋anchors（L2 投影＋拉取起點錨，含 F3 上游 interface live-code 錨）、seam 證據
+  加強至 planned-change、缺接縫退回 pre-thinking 的單一來源 STOP gate、consumption-driven 軟
+  上限。templates/index.yaml 加 `seam`/`affects`/`anchors`；templates/overview.md 加 Core
+  Identity＋Real Seams（單一宣告處）。筆記 1-3。
+- ✅ **implement / agents**（2026-07-06 本輪）：dispatch-template 四層 context（三推一拉）——
+  Global Position (L1)＋Context Projection (L2) prompt 段、copy-never-compose 規則、舊 plan
+  顯式 `global_channel: absent`；implementer.md 消費 L1/L2/錨（read-before-write 鄰居清單改由
+  錨供給，順序契約不變）、pattern 選擇＝f(project, 已計畫 tasks) 證據錨定、scar 加 dual-face
+  `structural_decisions`（schema Rules 15-17：粒度地板 write-filter、雙面完整、forced_by 只引
+  決定當下已存在證據）。筆記 1、5、6。
+- ✅ **review**（2026-07-06 本輪）：yin（code-reviewer.md）補 seam 擺放維度（resolve＝format
+  歸 validator、坐落真不真＝judgment 歸 yin）；quality（code-quality-reviewer.md）加
+  Structural Decision Review lane（forced_by 相關性、soft seam 有據 vs 投機、缺留痕＝finding、
+  推理 payload durable 進 review-record）＋「block 是論證非 gate」；F6 仲裁路徑落在
+  implement SKILL（human／auto-gatekeeper 仲裁，非 reviewer 自動勝、非自我豁免）。筆記 6。
+- ✅ **format-validate 腳本**（2026-07-06 本輪）：per-skill 共置——`skills/planning/scripts/
+  validate_format.py`（index 解析、seam/affects/depends/planned 解析、needs 非空）＋
+  `skills/implement/scripts/validate_format.py`（scar 解析、dual-face 完整、forced_by/seam
+  解析、systemic_ref dangling、debt 一致）。回 line-level feedback；輸出貼交棒＝visible
+  missing。**實作期發現**：跑腳本／測試 import 會在 skill 目錄產生 `__pycache__`，converter
+  以 UTF-8 讀全部 companion 檔會炸 build——converter 已補 skip（含 death test）、測試載入端
+  `dont_write_bytecode`。筆記 4。
+- ✅ **research 強化**（2026-07-06 本輪）：Step 0.5 問題本質（需求語言，具名產物）＋ Boundary
+  Scope 三清單（真正要解什麼／涉及哪些／哪些現在不做，附 not-now 理由）；kickoff 模板同步。
+  與 pre-thinking flow.md 既有的「research problem-essence」消費行接上。筆記 2 §3。
+- ⏳ **evaluation dogfood**：用新 1.0.0 全程跑一個真實跨 task 結構 feature、查因果鏈四訊號
+  ——筆記 7。機制已就位，待真實 feature 演練。
+- ✅（部分）**auto 模式怎麼接**：各 skill 既有 Auto Mode Gate 未動；新增的仲裁路徑（F6）已
+  接 auto-gatekeeper＋auto-decisions.md。dogfood 時驗證全鏈。
 - ⏳ **structural-honesty feature 重分類的清理**（`4-format-vs-judgment.md` 第 8 節）：
   【user 定 2026-07-06】**回頭再清理**——先立 1.0.0 正向骨架，之後再拆那幾條「judgment
   假裝 format」的遺留規則。

@@ -41,6 +41,28 @@ resolved_items:  # OPTIONAL — items fixed during task-level self-iteration (Le
     original_description: "the item that was fixed"
     resolution: "what was done to fix it"
 
+structural_decisions:  # dual-face records of STRUCTURAL BETS made in this task
+  # One entry per structural bet: a pattern choice, the creation of or deviation
+  # from a boundary/seam, or an explicit refusal to abstract. NOT for ordinary
+  # function splitting or naming — those sit below the granularity floor and
+  # never get an entry. A yang face (why this wall is here) and a yin face
+  # (what happens if the wall is wrong) together form ONE decision record:
+  # existence (yang) is responsibility (yin).
+  - decision: "what structural choice was made, one line"
+    serves_seam: "<seam-name>"  # L1 — which declared seam (overview.md Real Seams)
+                                # this decision sits on; null if the bet is a pure
+                                # refusal not tied to a declared seam
+    forced_by:                  # YANG — evidence that forced this choice. Cite ONLY
+                                # evidence that already existed at decision time:
+                                # "affects task-N: <needs>" (planned change),
+                                # "git: <file:line or ref>" (already happened), or
+                                # "seam: <name>" (domain-essential, declared).
+                                # If no checkable evidence can be cited, this is not
+                                # a structural bet — or it is a feeling; do not write it.
+      - "affects task-7: will add a second exporter (planned change)"
+    refused: "what was deliberately NOT built (e.g. no generic param for an imagined third output)"  # YIN
+    risk_if_wrong: "what breaks or must be reworked if this bet is wrong"  # YIN
+
 # --- Rules ---
 #
 # 1. No empty scar reports — if all lists are empty, you haven't thought hard enough
@@ -114,6 +136,39 @@ resolved_items:  # OPTIONAL — items fixed during task-level self-iteration (Le
 #     plain-string, missing-flag, or resolved_items-list scar reports that
 #     were already written. An aggregator must accept both the old and new
 #     forms side by side in the same feature.
+#
+# 15. structural_decisions write-filter (granularity floor): an entry is earned
+#     ONLY by a structural bet — a pattern choice, the creation of or deviation
+#     from a boundary/seam, or an explicit refusal to abstract. Ordinary
+#     function splitting, naming, and control-flow shaping are below the floor:
+#     they are inside the interrogation range of review, but they are not bets
+#     and never get an entry. Rule 13's write filter applies on top: if a
+#     future reader would not change their action because of the entry, do not
+#     write it. Zero entries is VALID for a task that made no structural bet —
+#     an empty list is honest; a padded list is noise. The KEY itself is
+#     required for new writes: `structural_decisions: []` means "checked,
+#     no structural bet made" — a MISSING key means "never considered", which
+#     is a different fact (same distinction as task-format structure_refs).
+#     Backward compat: scar reports written before this rule may lack the key;
+#     aggregators read a missing key on an OLD report as no data, not as zero.
+#
+# 16. structural_decisions dual-face completeness: every entry MUST carry both
+#     faces — `forced_by` (yang: the evidence that forced it) AND `refused` +
+#     `risk_if_wrong` (yin: what was deliberately not built, and what breaks if
+#     the bet is wrong). An entry with only the yang face is advertising, not a
+#     record; an entry with only the yin face already has a home (narrative /
+#     known_shortcuts). Missing faces = incomplete record (a format finding).
+#
+# 17. forced_by cites only evidence that EXISTED at decision time — an affects
+#     entry (task id in this feature's index.yaml), a git/file ref
+#     (file:line), or a declared seam name (overview.md Real Seams). Task ids
+#     and file:line refs cannot be fabricated after the fact, which is the
+#     defense against post-hoc rationalization. A forced_by that resolves to
+#     nothing checkable is a dangling ref (format finding); whether a resolvable
+#     ref is genuinely RELEVANT is judgment and belongs to the reviewers.
+#     Side effect (consumption tracing): a forced_by that cites an affects
+#     entry IS that projection's consumption record — affects entries that no
+#     structural decision ever cites are over-projection (planning note).
 
 # --- Verbatim Example (with self-iteration) ---
 #

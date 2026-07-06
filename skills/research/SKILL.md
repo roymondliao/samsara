@@ -17,7 +17,8 @@ digraph research {
 
     start [label="使用者描述問題/需求" shape=doublecircle];
     interrogate [label="Interrogate\n- 問題形狀是誰給的？\n- 什麼條件下不該解決？\n- 誰會因此受損？"];
-    scope [label="Scope\n- 消失了什麼會痛？\n- must-have 附帶死亡條件"];
+    essence [label="Problem Essence\n- 一兩行，需求語言\n- 剝掉實作形狀"];
+    scope [label="Scope\n- 消失了什麼會痛？\n- must-have 附帶死亡條件\n- boundary scope 三清單\n(要解什麼/涉及哪些/現在不做)"];
     north_star [label="北極星指標\n- 失效條件\n- corruption signature\n- proxy confidence"];
     output_kickoff [label="產出 1-kickoff.md"];
     output_autopsy [label="產出 problem-autopsy.md"];
@@ -25,7 +26,8 @@ digraph research {
     next [label="invoke samsara:pre-thinking" shape=doublecircle];
 
     start -> interrogate;
-    interrogate -> scope;
+    interrogate -> essence;
+    essence -> scope;
     scope -> north_star;
     north_star -> output_kickoff;
     output_kickoff -> output_autopsy;
@@ -46,6 +48,12 @@ Ask these questions **one at a time** (not all at once):
 3. **誰會因為這個問題被解決而受損？** 任何解決方案都有成本轉移——找到承受者。
 4. **「解決」狀態長什麼樣？** 三句話內描述「解決」和「沒解決」之間的可觀測差異。描述不了代表問題還沒被真正理解。
 
+## Step 0.5: Problem Essence — a named product
+
+Interrogation 存活下來的問題，蒸餾成一兩行的**問題本質（需求語言）**：真正要解的是什麼，剝掉任何實作形狀。這是交棒給 pre-thinking 的具名產物——pre-thinking 會從它蒸餾出「結構身分（結構語言：code 本質上該是什麼才服務得了它）」，兩者是**兩個不同的產物**，research 只負責前者。
+
+檢驗：本質若寫出了機制（「加一個 cache」「用一個 hook」），那是解法穿著問題的衣服——重寫成需求。
+
 ## Step 1: Scope
 
 陰面的 scope 問：如果這個功能明天消失，系統哪個部分會痛？
@@ -53,6 +61,8 @@ Ask these questions **one at a time** (not all at once):
 - 痛的部分是真正的 scope。不痛的部分是裝飾。
 - 每個 must-have 附帶**死亡條件**：在什麼度量指標低於什麼閾值時，這個 must-have 應被降級為 nice-to-have，並最終移除。
 - 減法的終點不是「功能少」，而是「剩下的每一個東西都有人為它的腐爛負責」。
+
+**Boundary Scope（給 pre-thinking 的邊界範圍）**：用三個清單把「結構思考發生在哪個範圍內」框出來——**真正要解什麼／涉及哪些／哪些現在不做**。沒有這個範圍，pre-thinking 分不清哪些是本 feature 的真接縫、哪些是別人的地盤。「現在不做」的每一項附一行為什麼現在不做——沒有理由的減法會靜默長回來。
 
 ## Step 1.5: North Star
 

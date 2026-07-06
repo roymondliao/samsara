@@ -118,6 +118,7 @@ Use `subagent_type: "samsara:implementer"` — the agent definition (`agents/imp
 The prompt provides per-task context. Follow the template in `./dispatch-template.md`:
 - `task-N.md` — **paste full text**, never tell subagent to read the file
 - `overview.md` — **curate relevant sections**, not the entire file
+- **Global thinking channel (L1/L2)** — COPY the task's `seam` (+ its Real Seams entry and the Core Identity from overview.md) and `affects`/`anchors` from `index.yaml` into the Global Position / Context Projection sections. Copy, never compose: a dispatcher improvising "what's relevant" is the hand-curation blind spot the channel replaces. Plans without these fields get an explicit `global_channel: absent` (see `./dispatch-template.md` Global Thinking Channel for the three states).
 - Related death cases and prior scar reports (if task has dependencies)
 
 **Structure Refs dispatch check** — resolve these states before composing any prompt; re-run per task, never cached:
@@ -142,6 +143,7 @@ After each subagent completes (status DONE or DONE_WITH_CONCERNS):
 2. **Aggregation rule** — main agent MUST receive BOTH review outputs before proceeding:
    - Both pass → proceed to index.yaml update
    - Either reviewer reports Critical issues → implementer fixes → re-review (dispatch both again)
+   - **Arbitration path (reviewer block ≠ code gate):** a reviewer blocking on a Critical *structural judgment* is adversarial review, not a mechanical gate — it must stay arguable. If the implementer disputes the Critical, it refutes **with evidence** (forced_by refs, live code, plan citations); the dispute goes to the arbiter — the **user** in human mode, **`samsara:auto-gatekeeper`** in auto mode (decision appended to `auto-decisions.md`). Neither the reviewer auto-wins nor the implementer self-exempts. A block with a third-party arbitration path is arguable (healthy); a deterministic block with no arbiter is a code gate (the thing judgment must never get).
    - Either reviewer reports `UNKNOWN` → **blocking review failure**; fix the missing/unreadable reference or unsupported domain condition, then re-review (dispatch both again)
    - Only one review output received → **FAIL with "missing reviewer" error** — do NOT assume absent reviewer = PASS. Re-dispatch the missing reviewer before proceeding.
 
@@ -185,7 +187,15 @@ This order is mandatory. Death test before unit test. Scar report before self-it
 
 ### After all tasks complete
 
-18. Commit all changes
+18. **Run implement's format validator** — mechanical shape check of every scar report (parse, dual-face completeness, forced_by/seam resolution, systemic_ref dangling, debt consistency):
+
+    ```bash
+    python scripts/validate_format.py changes/<feature>/ --repo-root <repo-root>
+    ```
+
+    (Resolve `scripts/validate_format.py` relative to this skill's directory.) Paste its output into the transition record — a missing validator output at handoff is a **visible missing**, never a silent skip. Findings are format facts: fix the scar reports (or return the underlying gap to the implementer) and re-run until clean. The validator never judges whether a decision was a good bet — that already happened in review.
+
+19. Commit all changes
 
 ## Yin-Side Constraints
 
@@ -222,6 +232,9 @@ These are non-negotiable:
 - Add a dependency without recording in the scar why the standard library or an existing dependency cannot do it — an unjustified dependency is deletable by default
 - Write death tests before reading the files you are about to touch — a death test built on assumed (not read) conventions pins the wrong contract
 - Dispatch a task whose `## Structure Refs` section is missing entirely — that is a schema violation (FAIL), not a task with no structural touch; return it to planning instead of dispatching
+- Compose the L1/L2 sections at dispatch time instead of copying them from planning's products (overview.md Core Identity / Real Seams, index.yaml `seam`/`affects`/`anchors`) — improvised projection re-creates the curation blind spot; a plan without the fields gets an explicit `global_channel: absent`, never a hand-written substitute
+- Commit without running implement's format validator on the scar reports, or without pasting its output — a missing validator output is a visible missing at handoff, and committing over it converts it back into a silent skip
+- Overrule a disputed Critical structural judgment yourself (either direction) — the arbitration path runs through the user (human mode) or `samsara:auto-gatekeeper` (auto mode), never reviewer-auto-wins or implementer self-exemption
 - Inject the entire `structure-spec.yaml` into a dispatch instead of only the entries `structure_refs` points to — directed injection degrading to full-file injection; the 50% line-count signal exists to catch this and must be recorded as a `known_shortcut` in the task's scar report when crossed
 
 ## Support Files
