@@ -246,6 +246,23 @@ human 在場時靠讀證據學——**同一份證據兩用**。
 
 **設計方向階段完成**：七份設計筆記全封版，開放項全數收斂（落地細節留正式化）。下一步進入
 分頭正式化各 skill 的實作階段（第 6 節總圖 ＋ 各筆記結論為依據）。
+
+**正式化進度（實作階段）：**
+- ✅ **pre-thinking**（commit `0c41e2d`，2026-07-06）：六步 redesign 實作 ＋ codebase-craft L1
+  嫁接。落地 6 檔——`skills/pre-thinking/{SKILL.md,flow.md}` 六步重寫、`templates/pre-thinking.md`
+  含 L1 輸出、新增 `templates/lens-report.md`（搜尋者回傳格式）、新增 `references/lenses.md`
+  （角度清單）、`skills/planning/SKILL.md` 契約同步（Step C→Step 6、L1 消費行）。全套件 938
+  passed。**兩個實作期發現**：(1) `references/` 落點——build（`engine.py` `_copy_referenced_refs_to_skills`）
+  以 **repo-root `references/`** 為唯一來源、按引用打包進各 skill，故 lenses.md 放 repo-root 非
+  skill-local（redesign §6 字面路徑會被 build 靜默忽略）；(2) 測試分流——`Step B/C` 名是機制、
+  隨六步設計移動更新測試 heading，auto-mode「雙路徑四 token」斷言是原則、原封保留並補回被精簡
+  掉的 token（atomic-context 的 auto-initiate/Phase 4/escape clause 亦補回 flow.md）。
+- ⏳ **planning**：實質正式化（唯一來源 File Map STOP gate、欄位級入口驗證、index.yaml
+  `seam`＋`affects`、per-task L1 位置、planned-change 證據階強化）——筆記 1-3。目前僅完成契約同步。
+- ⏳ **implement / agents**：全局思考通道 dispatch（L1/L2/L4 錨）、implementer 證據錨定選 pattern
+  ＋ dual-face 留痕——筆記 1、5、6。
+- ⏳ **review**：yin 補 seam 擺放維度、quality verdict→證據可見——筆記 6。
+- ⏳ **format-validate 腳本 / research 強化 / evaluation dogfood**——筆記 4、7。
 - ⏳ **auto 模式怎麼接**：沿用 gatekeeper / auto-decisions.md 機制到新流程。
 - ⏳ **structural-honesty feature 重分類的清理**（`4-format-vs-judgment.md` 第 8 節）：
   【user 定 2026-07-06】**回頭再清理**——先立 1.0.0 正向骨架，之後再拆那幾條「judgment
