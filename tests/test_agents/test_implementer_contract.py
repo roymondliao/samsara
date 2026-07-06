@@ -105,3 +105,59 @@ def test_death__read_before_write_reaches_inline_mode() -> None:
         "implement SKILL.md does not echo the read-before-write rule. In inline mode "
         "the agent definition is not loaded; the main agent must own this constraint."
     )
+
+
+# ---------------------------------------------------------------------------
+# M1 — Measured Numbers (fix-2, self-reported number inaccuracy pattern)
+#
+# Source scar: task-1 claimed 11 tests (actual 9), task-2 claimed 28 (actual
+# 27), task-3 repeated the pattern until dispatches began mandating
+# `--collect-only`. Every quantitative claim in a report/scar report must
+# come from a command actually executed in this session, named next to the
+# number; an unlabeled estimate presented as fact is a report-integrity
+# violation. Scoped to the Mandatory Behaviors section specifically (not the
+# whole file) so a future edit that moves this constraint out of the loaded
+# agent definition — into a reference doc that is not loaded on every
+# dispatch — goes RED instead of silently passing a whole-file substring
+# check.
+# ---------------------------------------------------------------------------
+
+
+def _mandatory_behaviors_section(text_lower: str) -> str:
+    """Return the '## Mandatory Behaviors' section body (until the next
+    '## ' header), mirroring `_execution_order_section`'s scoping rationale."""
+    start = text_lower.find("## mandatory behaviors")
+    assert start != -1, "implementer.md has no '## Mandatory Behaviors' section"
+    rest = text_lower[start + len("## mandatory behaviors") :]
+    end = rest.find("\n## ")
+    return rest if end == -1 else rest[:end]
+
+
+def test_death__measured_numbers_constraint_present_in_mandatory_behaviors() -> None:
+    """Mandatory Behaviors must require that every quantitative claim comes
+    from a command actually executed in this session, named next to the
+    number, and that an unlabeled estimate presented as fact is named as a
+    report-integrity violation. Three anchors, not two: a rewrite that keeps
+    'actually executed' and 'report-integrity violation' as isolated buzzwords
+    but drops the 'named next to the number' requirement would still satisfy
+    a two-anchor check while gutting the rule's substance — this closes that
+    gap. If any anchor disappears (the rule is dropped, or watered down to a
+    vague reminder with no named failure mode), this goes RED."""
+    section = _mandatory_behaviors_section(IMPLEMENTER.read_text(encoding="utf-8").lower())
+    assert "actually executed" in section, (
+        "Mandatory Behaviors no longer requires quantitative claims to come "
+        "from a command actually executed in this session — an implementer "
+        "could silently resume estimating test/line/file counts (the task-1/"
+        "task-2/task-3 pattern this fix closes)."
+    )
+    assert "named next to the number" in section, (
+        "Mandatory Behaviors no longer requires the measuring command to be "
+        "named next to the number it produced — a bare 'measure things' "
+        "reminder with no traceability requirement is not the rule this fix "
+        "installed."
+    )
+    assert "report-integrity violation" in section, (
+        "Mandatory Behaviors no longer names an unlabeled estimate presented "
+        "as fact a report-integrity violation — without a named failure mode "
+        "the constraint is a vague reminder, not an enforceable rule."
+    )

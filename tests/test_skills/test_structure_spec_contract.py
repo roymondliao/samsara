@@ -1899,3 +1899,63 @@ def test_unit__structure_spec_fragments_durability_points_to_review_record_not_e
         "this is the stale echo-only claim the Review Record Durability "
         "section replaces."
     )
+
+
+# ---------------------------------------------------------------------------
+# Fix-2 (Level-2 iteration) — Coordinator-side measured-numbers rule
+# (skills/implement/dispatch-template.md ## Rules)
+#
+# Source scar: task-6 wrote "spec full text 30 lines" into a dispatch prompt
+# without measuring (actual 25, `wc -l`) — the wrong number was inherited by
+# a reviewer verdict and only caught in review (durable evidence:
+# changes/2026-07-05_issue-002-validate-live-surface/review-record.md:10).
+# The coordinator has the same measurement obligation as the implementer
+# (agents/implementer.md Mandatory Behavior #5); this closes the gap on the
+# dispatch-composition side.
+# ---------------------------------------------------------------------------
+
+
+def _dispatch_template_rules_section(dispatch: str) -> str:
+    return _section(dispatch, "## Rules", ["\n## Anti-Patterns"])
+
+
+def test_unit__dispatch_template_rules_require_measuring_numbers_before_writing() -> (
+    None
+):
+    """Contract source: skills/implement/dispatch-template.md ## Rules
+    section (documented artifact shape). The Rules list must contain a 6th
+    rule requiring quantitative values placed into a dispatch prompt (spec
+    line counts, entry counts, test counts) to be measured before being
+    written, not estimated — reviewers inherit dispatch numbers into
+    verdicts, and an unmeasured estimate can silently become a wrong verdict
+    (the "30 vs 25" precedent this fix closes). If the 6th rule is dropped,
+    or the measure-before-writing anchor phrase is diluted to a vague
+    reminder with no failure-mode link, this goes RED.
+
+    Behavior-preserving-refactor check: renumbering the rules (including
+    inserting a new rule that shifts this one's ordinal) or rewording the
+    other rules leaves this test green, since it anchors only on the
+    measured-numbers rule's own content within the Rules section — never on
+    its list position. Behavior-actually-broke check: deleting the rule (or
+    its 'measure' anchor) reddens it — this is not a tautological
+    presence-of-the-word-Rules check."""
+    section = _dispatch_template_rules_section(read(DISPATCH_TEMPLATE))
+    lowered = section.lower()
+
+    assert "measure" in lowered, (
+        "the Rules section no longer mentions measuring — the "
+        "coordinator-side obligation to measure quantitative values before "
+        "writing them into a dispatch prompt has no textual anchor left."
+    )
+    assert "reviewers inherit" in lowered, (
+        "the Rules section's measured-numbers rule no longer names WHY it "
+        "matters (reviewers inherit dispatch numbers into verdicts) — "
+        "without this link, a future editor could soften the rule into a "
+        "vague style preference disconnected from the '30 vs 25' precedent."
+    )
+    assert "never an estimate" in lowered, (
+        "the Rules section's measured-numbers rule no longer explicitly "
+        "rules out writing an estimate into a dispatch prompt — without "
+        "this, 'measure' alone could be read as 'measure when convenient', "
+        "not as a hard requirement replacing estimation."
+    )

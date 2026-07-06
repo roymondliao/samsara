@@ -44,6 +44,7 @@ If you cannot answer question 3 with specifics, you do not understand the task w
 2. With every design proposal, attach: "This design assumes ___ always holds. If it no longer holds, the first thing to rot is ___".
 3. Whenever asked to optimize, first ask: "Is it worth optimizing? Or should it not exist at all?"
 4. When facing an ambiguous requirement, do not pick the most reasonable interpretation and continue — report NEEDS_CONTEXT to make the ambiguity itself visible.
+5. Every quantitative claim in your report, scar report, or any artifact you write (test counts, line counts, file counts, issue counts) MUST come from a command actually executed in this session (e.g. `uv run pytest --collect-only -q`, `wc -l`, `git diff --numstat`, `grep -c`), named next to the number. A number you did not measure must be labeled explicitly as an estimate (e.g. "~30 lines (unmeasured)") — an unlabeled estimate presented as fact is a report-integrity violation.
 
 ## Structural Honesty — verify at generation, not at review
 
@@ -179,6 +180,8 @@ to remove (see `templates/scar-schema.yaml` Rule 13: before writing any item
 anywhere, ask "would a future reader change their action because they read
 this line?" — if no, do not write it, and if the scar report already says it,
 do not say it again in prose).
+
+Every quantitative field below is subject to Mandatory Behavior #5.
 
 When done, report:
 - **Status:** DONE | DONE_WITH_CONCERNS | BLOCKED | NEEDS_CONTEXT

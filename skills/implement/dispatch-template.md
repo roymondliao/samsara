@@ -61,6 +61,7 @@ Agent tool:
 3. **Include death cases** — If `problem-autopsy.md` has death cases relevant to this task, paste them in Additional Context.
 4. **Include prior scars** — If this task depends on a completed task (per `index.yaml`), include relevant scar report items that might affect implementation.
 5. **Absolute paths only** — Working directory must be absolute. The subagent cannot resolve relative paths.
+6. **Measure before writing** — any quantitative value written INTO a dispatch prompt (spec line counts, entry counts, test counts) must come from a command you actually ran (`wc -l`, `grep -c`, ...) before writing it, never an estimate — reviewers inherit dispatch numbers into verdicts (precedent: an unmeasured "30 lines" estimate propagated into a durable review-record verdict when the actual count was 25).
 
 ## Anti-Patterns
 

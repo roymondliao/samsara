@@ -39,3 +39,35 @@
 > - Overall: **PASS_WITH_CONCERNS**
 
 （yin 3 個 Important：fix-1-scar Rule 10 violation（修正於 round-2 批次）、self-iteration all-deferred pattern surfaced（rationale 已在 scar，無動作）、prose-only silent rot（systemic，ISSUE-003 承載）。）
+
+## Iteration fix-2: measured-numbers discipline
+
+### Dispatcher-side injection record
+
+`structure_spec: absent`（同 fix-1——本 feature 無 spec 實例，無注入）。
+
+### code-reviewer（yin）— verdict 摘錄（round 1）
+
+> ### Important Issues
+> - **`agents/implementer.md:184-185`** — The `## Report Format` addition ("Every quantitative field below follows Mandatory Behavior #5 — measured with a named command, or labeled as an unmeasured estimate.") is a compressed **restatement**, not a bare pointer. [...] The scar report's assumption (`fix-2-scar.yaml:24-26`) marks this "verified: true" with the claim it "does not duplicate content," which is an overstated self-verification — ironic in a fix whose entire subject is not overstating verified claims.
+>
+> ### Summary
+> - Critical: 0 / Important: 1 / Suggestions: 1
+> - Placement vs plan Key Decisions: matches（KD-2、KD-5 +5 lines 實測相符、constraint-ownership split respected）
+> - Overall: **PASS_WITH_CONCERNS**
+
+### code-quality-reviewer — verdict 摘錄（round 1）
+
+> **Mode:** principles mode (structure_spec: absent — pre-existing feature exemption confirmed)
+>
+> ### Important Issues
+> - **`tests/test_skills/test_structure_spec_contract.py:1943`** Coupling — `assert "\n6." in section` pins the measured-numbers rule to its ordinal position (6th) in the `## Rules` list, not only to its substantive content [...] insertion of a new rule that shifts rule 6's ordinal [...] reddens this test for a reason unrelated to the observable contract.
+>
+> ### drift_items
+> []
+>
+> ### Summary
+> - Critical concerns: 0 / Important concerns: 1 / Suggestions: 0
+> - Overall verdict: **PASS_WITH_CONCERNS**
+
+（兩個 Important 均由主 agent 於 review round 直接修正並實測驗證（task-5 先例，0 Critical）：Report Format 行改純 pointer、測試移除 "\n6." 序數斷言改內容錨定、fix-2-scar 第三 assumption 如實改記 verified: false + resolved。全套 936 綠（`uv run pytest tests/`）。註記：quality 對 Report Format 行判 DRY Pass 與 yin 的 restatement 判定相左——主 agent 讀原文裁決 yin 正確（該行含 MB#5 執法機制的迷你重述），已修。）

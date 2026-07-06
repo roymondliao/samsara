@@ -1,0 +1,31 @@
+task_id: fix-2
+completion_status: done
+
+known_shortcuts:
+  - systemic_ref: doc-vs-runtime-obedience
+    note: "agents/implementer.md Mandatory Behavior #5 and dispatch-template.md Rule 6 are prose-only instructions. The doc-contract tests added by this fix (tests/test_agents/test_implementer_contract.py::test_death__measured_numbers_constraint_present_in_mandatory_behaviors, tests/test_skills/test_structure_spec_contract.py::test_unit__dispatch_template_rules_require_measuring_numbers_before_writing) prove the rule TEXT exists in the loaded instruction surface; they cannot prove a future implementer or coordinator actually measures a number before writing it into a report or dispatch prompt."
+  - systemic_ref: doc-instruction-no-code-enforcement
+    note: "Same landing point as above — there is no code-level gate that blocks a report or dispatch prompt containing an unmeasured, unlabeled number. Compliance depends entirely on the writing agent choosing to follow the rule each time."
+  - description: "Phrase-anchored doc-contract tests can only prove the anchor SUBSTRINGS are present, not that the surrounding sentence still carries the full intent. A future edit that keeps every anchor verbatim while rewriting everything around them to no longer actually require measuring could still pass. This is an inherent limitation shared by every phrase-anchored doc-contract test in this codebase (e.g. test_implementer_contract.py's pre-existing A1/A3 tests use the same technique); it is not something this fix's file scope (two markdown docs + their tests) can structurally eliminate — accepted as-is."
+    status: resolved
+    resolution: "Self-iteration narrowed (did not eliminate) this risk: both new tests were strengthened from 2-anchor to 3-anchor checks. test_death__measured_numbers_constraint_present_in_mandatory_behaviors gained a third assertion on 'named next to the number' (closing the gap where a rewrite could keep 'actually executed' + 'report-integrity violation' as isolated buzzwords while dropping the traceability requirement). test_unit__dispatch_template_rules_require_measuring_numbers_before_writing gained a third assertion on 'never an estimate' (closing the gap where 'measure' alone could be read as optional). Full suite re-run green after the change (936 passed, `uv run pytest tests/`)."
+
+silent_failure_conditions:
+  - description: "If a future implementer or coordinator writes an unmeasured number into a report/scar-report/dispatch prompt without labeling it as an estimate, nothing in the test suite or runtime catches it at the moment of writing — the doc-contract tests only run against agents/implementer.md and dispatch-template.md themselves, never against a report or dispatch prompt a dispatched agent actually produces. The failure surfaces later (if at all) only when a downstream reviewer manually notices a wrong number, exactly as happened once already (changes/2026-07-05_issue-002-validate-live-surface/review-record.md:10)."
+    deferred_to_feature_iteration: true
+
+assumptions_made:
+  - assumption: "tests/test_agents/test_implementer_contract.py is the correct home for the implementer.md death test (it already owns implementer.md's A1/A3 doc-contract guards) rather than tests/test_skills/test_structure_spec_contract.py or tests/test_contract_bound_tests/, and tests/test_skills/test_structure_spec_contract.py is the correct home for the dispatch-template.md unit test (it already owns dispatch-template.md's ## Rules/Structure Spec Fragments/Review Record Durability guards, including a prior 'Fix-1' section using the same in-file section-marker convention this fix's 'Fix-2' section follows)."
+    verified: true
+    note: "tests/test_agents/test_implementer_contract.py:1-19 (module docstring naming A1/A3 as implementer.md's owned rules); tests/test_skills/test_structure_spec_contract.py:73 (DISPATCH_TEMPLATE constant) and its pre-existing Fix-1 section (line ~1660)."
+  - assumption: "The dispatch prompt's iteration_budget_context phrase 'the one test file you identified' (singular) does not override the Task section's explicit instruction to follow whichever file already owns each doc's text guards — using two existing owning files (not inventing a new third file) is consistent with 'follow that file's helper conventions' and is not the 'broad cleanup' the converge strategy prohibits, since both files were already in scope for their respective doc's guards."
+    verified: true
+    note: "tests/test_agents/test_implementer_contract.py and tests/test_skills/test_structure_spec_contract.py both pre-date this fix and both already contain doc-contract tests for the file each now additionally guards."
+  - assumption: "Adding a one-line pointer to agents/implementer.md's ## Report Format section does not duplicate Mandatory Behavior #5's content."
+    verified: false
+    note: "Self-verification was overstated — yin review found the original line ('measured with a named command, or labeled as an unmeasured estimate') restated MB#5's enforcement mechanism in miniature, not a pure pointer. Corrected in review round: line trimmed to 'Every quantitative field below is subject to Mandatory Behavior #5.'"
+    status: resolved
+    resolution: "Report Format line replaced with a pure pointer (agents/implementer.md, review-round correction); the drift risk yin named (MB#5 extended without the echo updating) no longer exists."
+
+debt_registered: true
+debt_location: "agents/implementer.md Mandatory Behavior #5 (prose-only, no code-level enforcement); skills/implement/dispatch-template.md Rule 6 (prose-only, no code-level enforcement)."
