@@ -6,8 +6,12 @@ known_shortcuts:
     status: resolved
     resolution: "Level-2 iteration fix：獨立對抗性稽核 subagent 逐項驗證 evaluation-result.md 全部 artifact 引用 —— 四環節全 CONFIRMED、0 refuted（independent-audit.md，逐字保存）。原不可行理由（implementer 無 Agent tool）不適用於 triage 時的主 agent。殘餘的跨 session 消費檢驗留待首個消費 feature，邊界如實記錄於 independent-audit.md 末節。"
   - description: "task-6 演練期間整理的 cross-task 觀察一：domain router gap 的現身 1/2（task-3 兩位 reviewer 的 caveat/觀察）僅存 session-memory、無 repo 錨點 —— 詳見 iteration-input.md 候選 1（本條目使其進入 iteration Step 1 的機械聚合，不依賴偶然發現）。"
+    status: resolved
+    resolution: "Level-2 iteration fix ff1c2be：agents/code-reviewer.md Step 0 router 增設 instruction-surface markdown 顯式路由（scoped，非 catch-all）；doc-contract 測試釘住路由與範圍邊界。sibling gap（code-quality-reviewer.md 同型 router 缺口）為 fix 執行中發現的新 item，記於 fix-3-scar，交 round gate。"
     deferred_to_feature_iteration: true
   - description: "task-6 演練期間整理的 cross-task 觀察二：自我回報數字失準模式（implementer 側三例 session-memory + coordinator 側一例 durable 於 review-record.md 轉錄註記）—— 詳見 iteration-input.md 候選 2。"
+    status: resolved
+    resolution: "Level-2 iteration fix bf02cb0：agents/implementer.md Mandatory Behavior #5（量化宣稱必附實測指令、未測數字必標 estimate）+ dispatch-template.md Rule 6（協調者寫入 dispatch 的數字先實測）；doc-contract 測試釘住兩處。"
     deferred_to_feature_iteration: true
   - description: "Mini-feature 的 research/pre-thinking 精簡（task-6.md 授權）：未跑 pre-thinking gate 鏈 —— 證據鏈演練聚焦 planning 起的四環節；spec path 的 research 端整合（greenfield PRD 等 N1）本來就在本 feature scope 外。"
 
