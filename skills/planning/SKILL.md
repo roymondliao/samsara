@@ -16,7 +16,7 @@ Read from the feature's `changes/` directory:
 - `problem-autopsy.md` — translation delta, kill conditions
 - `pre-thinking.md` — user-LLM design alignment, Evaluation Contract, and commitment
 
-**Guard:** If `pre-thinking.md` is absent, missing Evaluation Contract, missing `## Step C — Commitment`, or has `Decision: Return to Research`, **STOP**. Do not proceed to Step 2: Technical Specification. Re-invoke `samsara:pre-thinking` or `samsara:research` as directed by the unresolved gaps. Proceed only when Step C contains `Decision: Proceed` or `Decision: Accept gap`.
+**Guard:** If `pre-thinking.md` is absent, missing Evaluation Contract, missing `## Step 6 — Commitment`, or has `Decision: Return to Research`, **STOP**. Do not proceed to Step 2: Technical Specification. Re-invoke `samsara:pre-thinking` or `samsara:research` as directed by the unresolved gaps. Proceed only when Step 6 contains `Decision: Proceed` or `Decision: Accept gap`.
 
 ### Spec-Path Guard
 
@@ -71,7 +71,8 @@ digraph planning {
 Before writing the technical plan, copy the following from `pre-thinking.md` into `2-plan.md`:
 - **Decision:** `Proceed` or `Accept gap`
 - **Accepted gaps:** labels and consequences, or `none`
-- **System design constraints:** task-shaping design decisions from Step A/B
+- **System design constraints:** task-shaping design decisions from Step 4
+- **L1 (core identity + real seams):** the Step 6 handoff — these are the **Key Decisions single source**; cite them, do NOT re-derive or add new placement decisions. Real seams carry an evidence tier (`already-happened` / `domain-essential`); planning may strengthen a seam to `planned-change` once tasks are decomposed. (Full planning-side consumption — index.yaml `seam`/`affects`, per-task position — is formalized in the planning skill's own pass; design notes 1-3.)
 - **Primary evaluator:** the single canonical agent-evaluable method
 - **Pass signal / Fail signal:** observable criteria
 - **Feedback loop:** first action if the Primary evaluator fails

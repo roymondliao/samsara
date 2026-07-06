@@ -196,7 +196,7 @@ class TestPrimaryEvaluatorProtocol:
             "research transition": (EARLY_STAGE_SKILLS["research"], "Transition"),
             "pre-thinking gap questions": (
                 EARLY_STAGE_SKILLS["pre-thinking"],
-                "Step B — Question Groups",
+                "Step 5 — Ask what must be asked",
             ),
             "pre-thinking evaluation contract": (
                 EARLY_STAGE_SKILLS["pre-thinking"],
@@ -204,7 +204,7 @@ class TestPrimaryEvaluatorProtocol:
             ),
             "pre-thinking commitment": (
                 EARLY_STAGE_SKILLS["pre-thinking"],
-                "Step C — Commitment",
+                "Commitment",
             ),
             "planning transition": (EARLY_STAGE_SKILLS["planning"], "Transition"),
             "implement execution mode": (
