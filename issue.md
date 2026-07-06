@@ -191,3 +191,52 @@ as a gate. Scope design makes the tool ungateable.
 
 **Re-review signal:** next release or next converter change touches validate behavior;
 **owner:** repo maintainer.
+
+---
+
+## ISSUE-003: Structure-spec evidence chain has no code-level enforcement — the entire four-link chain rests on agent prose obedience
+
+**Discovered:** 2026-07-05
+**Context:** structural-honesty-mechanisms feature, Level-2 iteration triage
+**Severity:** High — single point of dependency for the feature's core guarantee, degradation is by-design invisible
+
+### What Happened
+
+The structural-honesty-mechanisms feature landed a four-link evidence chain (planning
+generates `structure-spec.yaml` → implement injects fragments at dispatch → code-quality-reviewer
+consumes in spec mode → iteration/validate-and-ship audit). Per KD-2 (zero `samsara_cli`
+code in this feature's scope), **every link is enforced only by prose instructions** in
+skills/agents markdown. Four scar items across task-1..4 record this under
+`systemic_ref: doc-vs-runtime-obedience` and `doc-instruction-no-code-enforcement`.
+
+### Why It Matters
+
+The framework's corruption signature applies to itself: if a future agent model quietly
+stops obeying the prose (skips the dispatch check, omits `drift_items`, never runs evidence
+resolution), the chain degrades into ceremony **and nothing detects it** — doc-contract
+tests only prove the instructions still exist, not that they are followed. This is not a
+permanent-risk shape (Accept); it is planned-work shape (Defer): KD-2 was a scope decision
+for one feature, not a permanent architecture decision.
+
+### Scope of the fix (next feature)
+
+Wire `samsara-cli validate` (whose live-surface scoping was just fixed in ISSUE-002) to
+consume `structure-spec.yaml` mechanically:
+
+1. Schema check — parse every `changes/*/structure-spec.yaml`; unparseable = error
+   (today "unreadable → FAIL" is prose-only, dispatch-template.md).
+2. Dangling-ref check — `planned_task` refs must resolve against the same feature's
+   `index.yaml` task ids; `git_history` refs must point at existing repo paths
+   (today this runs only when an agent obeys validate-and-ship's 0-dangling prose).
+3. In-scope instances explicitly covered by this issue: the 50% directed-injection signal
+   has no code check (task-2 scar), and `drift_items` missing-vs-empty distinction has no
+   code check at consumption time (task-3 scar) — both become machine-checkable once the
+   validator owns spec parsing.
+
+Evidence anchor per docs/thinking.md ch.4: this issue entry upgrades the four deferred scar
+items from imagination-level ("any runtime-enforcement someday") to `planned_task`-level —
+the next feature's structure-spec can cite ISSUE-003 as its change reason.
+
+**Re-review signal:** next feature that touches samsara_cli validators, or first ship of a
+feature whose structure-spec was never machine-parsed end-to-end;
+**owner:** yuyu_liao.
