@@ -3,6 +3,8 @@ completion_status: done
 
 known_shortcuts:
   - description: "演練者與四環節檢查者同為主 agent（inline mode C —— samsara:implementer 無 Agent tool 無法派 reviewer，環節 2/3 的真實 dispatch 記錄只有主 agent 能產生）。自評偏誤緩解：證據全部引用 artifact 位置、環節 3 核心證據由獨立 reviewer subagent 產生 —— 但『檢查者獨立於執行者』的完整分離要等未來 feature 由不同 session 消費這些 artifacts 時才成立。"
+    status: resolved
+    resolution: "Level-2 iteration fix：獨立對抗性稽核 subagent 逐項驗證 evaluation-result.md 全部 artifact 引用 —— 四環節全 CONFIRMED、0 refuted（independent-audit.md，逐字保存）。原不可行理由（implementer 無 Agent tool）不適用於 triage 時的主 agent。殘餘的跨 session 消費檢驗留待首個消費 feature，邊界如實記錄於 independent-audit.md 末節。"
   - description: "task-6 演練期間整理的 cross-task 觀察一：domain router gap 的現身 1/2（task-3 兩位 reviewer 的 caveat/觀察）僅存 session-memory、無 repo 錨點 —— 詳見 iteration-input.md 候選 1（本條目使其進入 iteration Step 1 的機械聚合，不依賴偶然發現）。"
     deferred_to_feature_iteration: true
   - description: "task-6 演練期間整理的 cross-task 觀察二：自我回報數字失準模式（implementer 側三例 session-memory + coordinator 側一例 durable 於 review-record.md 轉錄註記）—— 詳見 iteration-input.md 候選 2。"

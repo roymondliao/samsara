@@ -34,3 +34,7 @@
 ## 精簡聲明（誠實記錄）
 
 Mini-feature 的 research/pre-thinking 依 task-6.md 授權精簡（kickoff 直引 ISSUE-002 證據；未跑 pre-thinking gate 鏈 —— 完整 gate 鏈已由本 feature 自身六個 task 驗證）。Planning 起（Spec-Path Guard、Step 2.75、structure_refs 標注、dispatch 檢查、雙 review、reconciliation）全部真實執行。演練者與檢查者同為主 agent（task-6.md 預告的自評偏誤風險）—— 緩解：四環節證據全部引用 artifact 原文位置而非總結，且環節 3 的核心證據（spec-mode verdict）由獨立 reviewer subagent 產生。
+
+## 事後獨立稽核（Level-2 iteration 補記）
+
+上節自評偏誤風險已由獨立對抗性稽核消除：read-only 稽核 subagent 逐項驗證本檔全部 artifact 引用，四環節全 CONFIRMED、0 refuted（含 4 個 minor discrepancies 的完整清單）。稽核者最終報告逐字保存於 `independent-audit.md`——本檔原文不因稽核發現而改寫，修正記錄由該檔擁有。
