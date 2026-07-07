@@ -287,9 +287,19 @@ human 在場時靠讀證據學——**同一份證據兩用**。
   ——筆記 7。機制已就位，待真實 feature 演練。
 - ✅（部分）**auto 模式怎麼接**：各 skill 既有 Auto Mode Gate 未動；新增的仲裁路徑（F6）已
   接 auto-gatekeeper＋auto-decisions.md。dogfood 時驗證全鏈。
-- ⏳ **structural-honesty feature 重分類的清理**（`4-format-vs-judgment.md` 第 8 節）：
-  【user 定 2026-07-06】**回頭再清理**——先立 1.0.0 正向骨架，之後再拆那幾條「judgment
-  假裝 format」的遺留規則。
+- ✅ **structural-honesty feature 重分類的清理**（`4-format-vs-judgment.md` 第 8 節；
+  2026-07-07 執行，user 指示「只留 v1.0.0 優化」）：閘門機制全數移除——planning 的
+  Spec-Path Guard／Step 2.75／structure-spec.yaml 模板、task-format 的 Structure Refs、
+  implement 的 dispatch check＋Structure Spec Fragments（50% 訊號）、quality reviewer 的
+  Spec Mode／drift_items、iteration 的 structural_drift 並列統計、kickoff 的 poc_death_date。
+  **format 核心依筆記 4 §8 表格保留並改載體**：0-dangling 稽查重鑄為 validate-and-ship
+  Step 1 終端重跑兩支 per-skill validator（真程式 teeth，非 prose 服從）。**依 §7 定案保留
+  的三項既成事實未動**：報數紀律（Mandatory Behavior #5＋dispatch Rule 6）、domain router
+  （instruction-surface markdown→code domain）、review-record.md 逐字保存慣例（1.0.0 證據
+  可見的 review 側家園；守護測試重寫為 1.0.0 形狀）。**ISSUE-003 撤回**（issue.md 留撤回
+  記錄與原文）：其修法會 code-enforce judgment（違背 3.6），且其守護對象已不存在；其指出
+  的 format 核心已由兩支 validator 以真程式落地。target.py live-surface 修正（ISSUE-002）
+  為真實行為修復、非閘門機制，保留。
 
 ---
 

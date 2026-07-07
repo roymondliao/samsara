@@ -1,11 +1,13 @@
 """
-Death test — I2 supply-chain sync (task-5, structural-honesty-mechanisms).
+Death test — supply-chain sync for nested companion templates.
 
-Task 1 added a NEW companion template file nested under a skill's
-`templates/` subdirectory (`skills/planning/templates/structure-spec.yaml`).
-This module guards the death case named in task-5's Death Test Requirements:
-a new template silently missing from the multi-platform conversion output
-means the supply chain is incomplete with nobody noticing.
+A companion template file nested under a skill's `templates/` subdirectory
+(e.g. skills/planning/templates/*.yaml) must survive the multi-platform
+conversion. This module guards the death case: a new template silently
+missing from the multi-platform conversion output means the supply chain is
+incomplete with nobody noticing. (Originally added by the structural-honesty
+feature with structure-spec.yaml as the vehicle; the fixture is now a
+neutral nested-template.yaml — the guarded property is unchanged.)
 
 Why this is not fully covered by tests/integration/test_snapshot.py's
 generic byte-diff already:
@@ -16,7 +18,7 @@ generic byte-diff already:
   This module pins the specific, named claim: the committed
   tests/fixtures/expected/<platform>/ snapshot contains a companion file
   nested under templates/ whose bytes are IDENTICAL to the fixture source's
-  templates/structure-spec.yaml (YAML companion files are copied verbatim,
+  templates/nested-template.yaml (YAML companion files are copied verbatim,
   never rule-transformed — samsara_cli/converter/skill.py's
   _process_companion_file contract).
 
@@ -39,20 +41,24 @@ from pathlib import Path
 from samsara_cli.converter.engine import ConversionEngine
 
 FIXTURE_SOURCE = Path(__file__).parent.parent / "fixtures" / "source"
-FIXTURE_EXPECTED_CODEX = Path(__file__).parent.parent / "fixtures" / "expected" / "codex"
+FIXTURE_EXPECTED_CODEX = (
+    Path(__file__).parent.parent / "fixtures" / "expected" / "codex"
+)
 FIXTURE_EXPECTED_GEMINI = (
     Path(__file__).parent.parent / "fixtures" / "expected" / "gemini-cli"
 )
 
-# The new companion template this task adds to the fixture source, mirroring
-# Task 1's real addition (skills/planning/templates/structure-spec.yaml).
-_SOURCE_TEMPLATE = FIXTURE_SOURCE / "skills" / "implement" / "templates" / "structure-spec.yaml"
+# The nested companion template in the fixture source (neutral vehicle for
+# the nesting-survival property).
+_SOURCE_TEMPLATE = (
+    FIXTURE_SOURCE / "skills" / "implement" / "templates" / "nested-template.yaml"
+)
 
 # Output paths are derived from the platform's skills_dir + naming convention
 # (samsara_cli/config/platform/{codex,gemini-cli}.yaml) plus the companion
 # file's relative path under the source skill dir — this preserves nesting.
-_CODEX_OUTPUT_REL = ".agents/skills/samsara-implement/templates/structure-spec.yaml"
-_GEMINI_OUTPUT_REL = ".gemini/skills/samsara-implement/templates/structure-spec.yaml"
+_CODEX_OUTPUT_REL = ".agents/skills/samsara-implement/templates/nested-template.yaml"
+_GEMINI_OUTPUT_REL = ".gemini/skills/samsara-implement/templates/nested-template.yaml"
 
 
 class TestNewTemplateSurvivesSourceFixture:
@@ -80,7 +86,7 @@ class TestNewTemplateSurvivesCommittedSnapshots:
     conversion run) must contain the new template, byte-identical to the
     fixture source. This is what task-5's Death Test Requirement names
     directly: 'tests/fixtures/expected/codex/ 内必須出現轉換後的
-    structure-spec 模板'."""
+    nested 模板'."""
 
     def test_death__codex_expected_snapshot_contains_converted_template(
         self,

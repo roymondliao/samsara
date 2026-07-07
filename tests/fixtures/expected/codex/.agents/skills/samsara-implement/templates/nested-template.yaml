@@ -1,0 +1,8 @@
+# Nested companion template fixture — guards the supply-chain death case:
+# a companion file nested under a skill's templates/ subdirectory must
+# survive multi-platform conversion byte-identically (YAML companions are
+# copied verbatim, never rule-transformed).
+fixture: nested-template
+fields:
+  - name: example
+    value: "verbatim content — includes a source-format token: Read tool"

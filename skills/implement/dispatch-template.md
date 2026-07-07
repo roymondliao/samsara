@@ -110,20 +110,6 @@ Agent tool:
 - **Never** skip Additional Context for tasks with dependencies — prior scars propagate
 - **Never** omit the working directory — the subagent needs to know where to create/edit files
 
-## Structure Spec Fragments
-
-Check `changes/<feature>/structure-spec.yaml`'s existence/readability FIRST, independent of the task's `structure_refs` value — this is resolved before structure_refs is even consulted.
-
-When it exists and is readable and `structure_refs` is non-empty, inject ONLY the entries matching those ids into the implementer prompt's Additional Context and into both reviewer prompts — never the whole spec file. For each id, paste its `id`, `boundary_rationale` (or `serves_change_reason` for patterns), and `evidence` block verbatim.
-
-**50% signal** — one basis only, by line count: `injected fragment lines / structure-spec.yaml total lines`. If a single task's injection exceeds 50%, that is a directed-injection-failure signal (DC-2); record it as a `known_shortcut` in that task's scar report — not a hard block.
-
-**`structure_spec: absent`** — when `structure-spec.yaml` does not exist for this feature (exempt_poc / pre-existing feature), skip injection and write `structure_spec: absent` in the Additional Context instead of a fragment list — distinct from a non-empty `structure_refs` whose matching entries were never pasted in.
-
-**Unreadable ≠ absent** — a spec file that exists but cannot be parsed is never written as `structure_spec: absent`; that would disguise a parse failure as a legitimate exemption. Write `structure_spec: unreadable` and treat dispatch as FAIL (reviewer-side UNKNOWN handling belongs to task-3; here it is only about not lying at dispatch time).
-
-Durability: recorded in `changes/<feature>/review-record.md` (dispatcher-side record: this injection list + the 50% arithmetic) — see Review Record Durability below, the single owner of the full durability statement, not the dispatch conversation alone.
-
 ## Review Dispatch
 
 After the implementer reports back (status DONE or DONE_WITH_CONCERNS), dispatch BOTH reviewers in parallel.
@@ -143,8 +129,7 @@ Agent tool:
     ## Feature
     [MUST name the feature directory: changes/<feature>/ — yin uses this to
      locate feature artifacts (scar reports, review-record.md if present) for
-     cross-checks — not for planned_task/index.yaml resolution, which is the
-     quality reviewer's concern]
+     cross-checks]
 
     ## Task Requirements
     [MUST paste acceptance criteria from task-N.md]
@@ -198,8 +183,9 @@ Agent tool:
     Review the following changes for Task N: [task title]
 
     ## Feature
-    [MUST name the feature directory: changes/<feature>/ — reviewers resolve
-     planned_task evidence refs against this feature's index.yaml]
+    [MUST name the feature directory: changes/<feature>/ — the quality
+     reviewer resolves forced_by / seam / affects citations against this
+     feature's index.yaml and overview.md]
 
     ## Task Requirements
     [MUST paste acceptance criteria from task-N.md]
@@ -239,10 +225,8 @@ After both reviews pass → update `index.yaml` → proceed to next task. Commit
 
 ## Review Record Durability
 
-After a task's review rounds conclude, the MAIN AGENT excerpts each verdict's key sections VERBATIM (not summarized) into `changes/<feature>/review-record.md`: the mode declaration, per-entry spec judgments, `drift_items` (explicit `[]` included — this is drift_items' named persistence location), **the reviewer's reasoning for each structural judgment (the payload is the reasoning, not only the verdict line — why an abstraction was judged speculative, how it was seen)**, any arbitration of a disputed Critical (who arbitrated, the ruling, one-line grounds), and the summary verdict line. Excerpts must be verbatim; if a source number in the verdict is known-wrong, keep the original text and add a transcription annotation next to it (precedent: the "30 lines vs 25" annotation in `changes/2026-07-05_issue-002-validate-live-surface/review-record.md`).
+After a task's review rounds conclude, the MAIN AGENT excerpts each verdict's key sections VERBATIM (not summarized) into `changes/<feature>/review-record.md`: **the reviewer's reasoning for each structural judgment (the payload is the reasoning, not only the verdict line — why an abstraction was judged speculative, how it was seen)**, any arbitration of a disputed Critical (who arbitrated, the ruling, one-line grounds), and the summary verdict line. Excerpts must be verbatim; if a source number in the verdict is known-wrong, keep the original text and add a transcription annotation next to it (precedent: the "30 lines vs 25" annotation in `changes/2026-07-05_issue-002-validate-live-surface/review-record.md`).
 
-The same file also carries the DISPATCHER-SIDE injection record: which `structure_refs` ids were injected (or `structure_spec: absent`/`unreadable`) plus the 50% line-count arithmetic. This dispatcher-side record and the implementer's scar-report echo are two INDEPENDENT sources that later audits cross-check — the echo alone only proves claimed receipt, never content correctness.
+DC-5 discipline: an absent review-record entry for a reviewed task means "never recorded" (a finding at aggregation time), never "nothing to record" — a missing entry is not evidence that nothing happened.
 
-DC-5 discipline: an absent review-record entry for a task that ran spec mode means "never recorded" (a finding at aggregation time), never "nothing to record" — a missing entry is not evidence that nothing happened.
-
-**Honest marker:** this convention is prose-enforced only — no aggregation-time consumer reads `review-record.md` yet to check the DC-5 discipline above actually holds (see `issue.md` ISSUE-003: the structure-spec evidence chain has no code-level enforcement).
+**Honest marker:** this convention is prose-enforced only — no aggregation-time consumer reads `review-record.md` yet to check the DC-5 discipline above actually holds. Judgment records get visibility + adversarial review, not a code gate (format-vs-judgment: only mechanical shape ever gets script teeth).

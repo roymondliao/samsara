@@ -194,7 +194,14 @@ as a gate. Scope design makes the tool ungateable.
 
 ---
 
-## ISSUE-003: Structure-spec evidence chain has no code-level enforcement — the entire four-link chain rests on agent prose obedience
+## ISSUE-003: ~~Structure-spec evidence chain has no code-level enforcement~~ — WITHDRAWN (2026-07-07)
+
+**Status: WITHDRAWN.** Two reasons, recorded per the 1.0.0 design direction (`changes/2026-07-06_samsara-1.0.0-codebase-craft/`, §3.6/§7 — user decision 2026-07-06):
+
+1. **The premise was reversed.** The proposed fix — code-enforcing the structure-spec chain via `samsara-cli validate` — would have code-enforced *judgment* (whether a boundary is right, whether drift matters), turning judgment into ritual. Format-vs-judgment reclassification (design note 4): only mechanical shape ever gets script teeth; judgment gets visibility + adversarial review + consumption discipline, never a gate. Additionally, samsara-cli is the cross-service integration layer, not the home of feature-artifact format checks — those belong to per-skill validate scripts.
+2. **The mechanism this issue guarded was removed.** The structure-spec gate machinery (spec-path guard, structure_refs, fragment injection with 50% signal, spec-mode drift_items, structural_drift aggregation, 0-dangling audit over structure-spec) was deleted on 2026-07-07 in favor of the 1.0.0 global thinking channel (Real Seams + `seam`/`affects`/`anchors` + dual-face `structural_decisions`). The legitimate format core this issue pointed at now has real deterministic teeth: `skills/planning/scripts/validate_format.py` and `skills/implement/scripts/validate_format.py` (dangling-ref checks run as programs, not prose obedience), re-run terminally by validate-and-ship Step 1.
+
+Original entry preserved below for the record.
 
 **Discovered:** 2026-07-05
 **Context:** structural-honesty-mechanisms feature, Level-2 iteration triage

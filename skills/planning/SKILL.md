@@ -18,17 +18,6 @@ Read from the feature's `changes/` directory:
 
 **Guard:** If `pre-thinking.md` is absent, missing Evaluation Contract, missing `## Step 6 — Commitment`, or has `Decision: Return to Research`, **STOP**. Do not proceed to Step 2: Technical Specification. Re-invoke `samsara:pre-thinking` or `samsara:research` as directed by the unresolved gaps. Proceed only when Step 6 contains `Decision: Proceed` or `Decision: Accept gap`.
 
-### Spec-Path Guard
-
-Before Step 2, read `1-kickoff.md`'s optional `poc_death_date` field and resolve which path this planning pass takes. Re-run this check every planning pass — it is never cached as permanently decided:
-
-- **Field absent** (kickoff predates this field, or the feature never set it) — default to `spec_path: default`; Step 2.75 runs in full. Absence is not `unknown` — it means no exemption was ever claimed.
-- **Field present, parses as a date, not yet past today** — `spec_path: exempt_poc`. Record the exemption and death date in `structure-spec.yaml`; do not write `modules`.
-- **Field present, parses as a date, already 過期 (past today)** — the exemption has expired. Force `spec_path: default`. **豁免不可就地續期** — an expired exemption cannot be renewed in place; re-claiming one requires editing `1-kickoff.md` to record a new `poc_death_date`, not continuing under the old one.
-- **Field present but the date cannot be parsed** — `unknown`. Do not silently pick a path — surface it through the **execution-mode gate** (human mode: ask the user which path to take; auto mode: dispatch `samsara:auto-gatekeeper` per `references/auto-mode.md`) before proceeding.
-
-This guard does not apply to `samsara:fast-track` — fast-track has its own entry gate and is untouched by this section.
-
 ## Process
 
 ```dot
@@ -40,8 +29,7 @@ digraph planning {
     blocked [label="STOP:\nre-invoke\nsamsara:pre-thinking" shape=doublecircle];
     spec [label="Tech Spec\n- I/O + unknown_output\n- death cases（非 edge cases）"];
     acceptance [label="Acceptance\n- 死路先行 BDD\n- silent failure scenarios first\n- then happy path"];
-    structure_spec [label="Step 2.75\nStructure Spec\n- spec-path guard result\n- typed evidence per module/pattern/rule"];
-    plan [label="產出 2-plan.md\n+ acceptance.yaml\n+ structure-spec.yaml"];
+    plan [label="產出 2-plan.md\n+ acceptance.yaml"];
     consistency [label="File Map Consistency Check\n(placement/ownership)\nSTOP on contradicts" shape=diamond];
     decompose [label="Task Decompose\n- self-contained tasks\n- 每個 task 附 death test 要求\n- 每個 task 命名 unit-test contract source"];
     craft [label="Step 5\nCodebase-Craft Products\n- task→seam mapping (L1)\n- affects + anchors (L2)\n- seam evidence → planned-change"];
@@ -56,8 +44,7 @@ digraph planning {
     guard -> spec [label="yes\n(valid decision)"];
     guard -> blocked [label="no"];
     spec -> acceptance;
-    acceptance -> structure_spec;
-    structure_spec -> plan;
+    acceptance -> plan;
     plan -> consistency;
     consistency -> decompose [label="matches /\nout of scope"];
     consistency -> plan [label="contradicts\n(STOP)"];
@@ -118,15 +105,6 @@ Order:
 
 A test plan with only success cases has `coverage_type: prayer`. Not accepted.
 
-## Step 2.75: Structure Spec
-
-Generate `changes/<feature>/structure-spec.yaml` from `templates/structure-spec.yaml` (schema template — copy and fill it in; do not edit the template itself).
-
-- **`spec_path: exempt_poc`** (Spec-Path Guard result) — write `poc_death_date` and `exemption_note` only. Omit `modules`/`patterns`/`dependency_rules` entirely.
-- **`spec_path: default`** — for every structural boundary decision drafted for `overview.md` Key Decisions, write one `modules` entry; for every pattern decision, one `patterns` entry; for every dependency-direction constraint, one `dependency_rules` entry. Every entry carries the same typed `evidence`: `git_history` (ref = a repo path), `planned_task` (ref = a task id that will exist in `index.yaml` once Step 4 completes), or `domain_boundary` (no `ref`, `machine_verifiable: false`, and a non-empty rationale field — `boundary_rationale` for modules, `serves_change_reason` for patterns, `evidence.note` for dependency_rules — never mark a domain boundary as machine-verified).
-
-The `overview.md` File Map is derived from these `modules`, not the other way around — see Step 3's anti-bias rule.
-
 ## Step 3: File Map Consistency Check — STOP Gate
 
 Before decomposing tasks, cross-check the File Map paths against the Key Decisions you drafted for `overview.md`. Task files bake in File Map paths, so a contradiction that survives this step propagates into every task (ISSUE-001: four tasks were built in the wrong location before a human caught it).
@@ -150,7 +128,6 @@ Break the plan into self-contained tasks. Each task:
 - Can be executed by an agent with zero context beyond the task file + overview.md
 - Includes death test requirements (what death tests must be written)
 - Names its unit-test contract source — the observable contract a unit test may assert (public API/return value, documented artifact shape, or a source from `references/test-contract.md`) — alongside the death test requirements. The contract is named UPSTREAM here so the implementer asserts it instead of inferring a contract from the current implementation. See the `Unit Test Contract` section in support file `task-format.md`.
-- Names its `structure_refs`: the `structure-spec.yaml` module/pattern/dependency-rule ids this task touches. See the `Structure Refs` section and Rule 6 in support file `task-format.md` for the required-field / empty-array distinction.
 - Includes expected scar report items (what shortcuts/assumptions to watch for)
 - Follows the format in support file `task-format.md`
 
@@ -169,8 +146,6 @@ Planning **consumes** pre-thinking's L1 (core identity + real seams); it does no
 **Single-source STOP gate:** if decomposition reveals the feature needs a seam pre-thinking did not identify, that is a **design-decision gap** — STOP and return to `samsara:pre-thinking` to add it (same shape as the File Map Consistency STOP). Do not invent a new seam in planning: a seam declared outside the single source is the ISSUE-001 pathology — the same decision living in two places with no cross-check.
 
 **Projection volume (soft, consumption-driven):** projections stay small because downstream consumption disciplines them, not because of a line-count gate (a hard count trains gaming the number). Every `affects` entry should later be citable by an implementer structural decision (`forced_by` in the scar report); an entry no implementer ever consumes is over-projection. Conversely, a later task having to **tear down** a prior task's structure to connect is the under-projection death signal — record it as a scar pointing at the missed `affects`. A task whose `affects` list grows large signals decomposition entanglement — re-split the tasks rather than trimming the projection to look small.
-
-**Coexistence note:** `structure-spec.yaml` (Step 2.75) and Real Seams both carry structural evidence today. The structural-honesty mechanisms are scheduled for format-vs-judgment reclassification cleanup (design direction §8, deferred by user decision) — do not delete or merge them during this step.
 
 ## Format Validation — planning's format-validate script
 
@@ -193,10 +168,9 @@ All output files go to `changes/YYYY-MM-DD_<feature-name>/`:
 
 1. **2-plan.md** — full technical plan
 2. **acceptance.yaml** — death-first acceptance criteria (use `templates/acceptance.yaml`)
-3. **structure-spec.yaml** — structural evidence spec (use `templates/structure-spec.yaml`; `exempt_poc` form omits `modules`)
-4. **overview.md** — shared context extracted from 2-plan.md (use `templates/overview.md`; carries the L1 Core Identity and Real Seams declarations)
-5. **index.yaml** — task list with status tracking and per-task `seam` / `affects` / `anchors` from Step 5 (use `templates/index.yaml`)
-6. **tasks/task-N.md** — self-contained tasks (follow `task-format.md`)
+3. **overview.md** — shared context extracted from 2-plan.md (use `templates/overview.md`; carries the L1 Core Identity and Real Seams declarations)
+4. **index.yaml** — task list with status tracking and per-task `seam` / `affects` / `anchors` from Step 5 (use `templates/index.yaml`)
+5. **tasks/task-N.md** — self-contained tasks (follow `task-format.md`)
 
 Then run the format validator (see Format Validation above) and carry its clean output into the transition.
 
@@ -218,9 +192,9 @@ next workflow path:
 
 Canonical protocol: `references/auto-mode.md` Stage Gate Protocol — dispatch, the append-only decision log, and what `proceed`/`revise`/`reject`/`accept_gap` mean all live there; this section only names what Planning adds.
 
-- `workflow_prompt` sources: the transition prompt below, and the Spec-Path Guard's unknown-date question (before Step 2).
+- `workflow_prompt` source: the transition prompt below.
 
   > 「Planning 完成。2-plan.md、acceptance.yaml、index.yaml 和 N 個 tasks 已就緒。確認後進入 Implementation？」
 
-- Decision points this gate covers: two — the planning completion transition, and the Spec-Path Guard's unknown-date resolution.
-- `proceed` invokes `samsara:implement` (guard: continues planning with the resolved `spec_path`); `revise` re-runs the relevant step; `accept_gap` applies only to the completion transition — the guard must resolve one path, never defer it.
+- Decision points this gate covers: the planning completion transition (one decision point).
+- `proceed` invokes `samsara:implement`; `revise` re-runs the relevant step; `accept_gap` continues to `samsara:implement` with the accepted gap visible.

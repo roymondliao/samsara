@@ -148,7 +148,7 @@ structural_decisions:  # dual-face records of STRUCTURAL BETS made in this task
 #     an empty list is honest; a padded list is noise. The KEY itself is
 #     required for new writes: `structural_decisions: []` means "checked,
 #     no structural bet made" — a MISSING key means "never considered", which
-#     is a different fact (same distinction as task-format structure_refs).
+#     is a different fact (empty-vs-missing must stay distinguishable).
 #     Backward compat: scar reports written before this rule may lack the key;
 #     aggregators read a missing key on an OLD report as no data, not as zero.
 #

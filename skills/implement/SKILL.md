@@ -121,15 +121,6 @@ The prompt provides per-task context. Follow the template in `./dispatch-templat
 - **Global thinking channel (L1/L2)** — COPY the task's `seam` (+ its Real Seams entry and the Core Identity from overview.md) and `affects`/`anchors` from `index.yaml` into the Global Position / Context Projection sections. Copy, never compose: a dispatcher improvising "what's relevant" is the hand-curation blind spot the channel replaces. Plans without these fields get an explicit `global_channel: absent` (see `./dispatch-template.md` Global Thinking Channel for the three states).
 - Related death cases and prior scar reports (if task has dependencies)
 
-**Structure Refs dispatch check** — resolve these states before composing any prompt; re-run per task, never cached:
-
-- **`structure-spec.yaml` absent or unreadable for this feature — checked first, independent of `structure_refs`'s value.** See `./dispatch-template.md` Structure Spec Fragments for the absent-vs-unreadable distinction, notation, and FAIL handling.
-- **`## Structure Refs` section missing entirely — unconditional, independent of spec state (spec absence never excuses this)** — **FAIL, schema violation — do not dispatch**; return the task to planning to backfill `structure_refs`.
-- **`structure_refs: []`** (present, empty) — a confirmed non-touch; dispatch normally, inject nothing.
-- **`structure_refs: [<ids>]`** (non-empty, spec present and readable) — look up each id in `changes/<feature>/structure-spec.yaml` and inject ONLY the matching entries into the implementer prompt and both reviewer prompts — never the whole spec file (50% directed-injection signal: `./dispatch-template.md` Structure Spec Fragments).
-
-Applies identically in inline mode C: the main agent performs this check and holds the fragments itself, rather than pasting them into a subagent prompt.
-
 ### Subagent Review (modes A and B)
 
 After each subagent completes (status DONE or DONE_WITH_CONCERNS):
@@ -209,7 +200,6 @@ These are non-negotiable:
 - **Commit after all tasks:** Do not commit per-task. Commit once after all tasks complete and all reviews pass.
 - **Structural honesty applies at generation, not only at review:** The implementer's 結構誠實 constraints (`agents/implementer.md`) — justify every boundary/abstraction by what breaks if it is removed, and refuse speculative generalization built for a single consumer — apply whether the implementer runs as a subagent (modes A/B) **or inline (mode C)**. In inline mode the agent definition is not loaded, so the main agent owns these constraints directly; do not skip them just because no subagent was dispatched.
 - **Read-before-write and dependency hygiene apply inline too:** The implementer's `agents/implementer.md` constraints — **read before you write** (read the files you touch + neighbors, copy existing patterns instead of inventing) and **no silent dependency addition** (ask whether the standard library or an existing dependency already covers it before adding one; record why one earns its place) — apply in subagent modes A/B **and inline mode C**. In inline mode the agent definition is not loaded, so the main agent owns these directly.
-- **Structure Refs dispatch check applies inline too:** the check and directed injection in Subagent Context above is not only a subagent-dispatch step — mode C runs the identical check and holds the fragments itself; see Subagent Context for the rule, not restated here.
 
 ## Red Flags
 
@@ -231,14 +221,9 @@ These are non-negotiable:
 - Assume an absent review output means PASS — missing reviewer output is always a FAIL
 - Add a dependency without recording in the scar why the standard library or an existing dependency cannot do it — an unjustified dependency is deletable by default
 - Write death tests before reading the files you are about to touch — a death test built on assumed (not read) conventions pins the wrong contract
-- Dispatch a task whose `## Structure Refs` section is missing entirely — that is a schema violation (FAIL), not a task with no structural touch; return it to planning instead of dispatching
 - Compose the L1/L2 sections at dispatch time instead of copying them from planning's products (overview.md Core Identity / Real Seams, index.yaml `seam`/`affects`/`anchors`) — improvised projection re-creates the curation blind spot; a plan without the fields gets an explicit `global_channel: absent`, never a hand-written substitute
 - Commit without running implement's format validator on the scar reports, or without pasting its output — a missing validator output is a visible missing at handoff, and committing over it converts it back into a silent skip
 - Overrule a disputed Critical structural judgment yourself (either direction) — the arbitration path runs through the user (human mode) or `samsara:auto-gatekeeper` (auto mode), never reviewer-auto-wins or implementer self-exemption
-- Inject the entire `structure-spec.yaml` into a dispatch instead of only the entries `structure_refs` points to — directed injection degrading to full-file injection; the 50% line-count signal exists to catch this and must be recorded as a `known_shortcut` in the task's scar report when crossed
-
-## Support Files
-
 - `./dispatch-template.md` — prompt template for implementer and reviewer dispatch
 - `./scar-report.md` — scar report format reference
 - `references/test-contract.md` — the canonical Test Contract Gate protocol (over-fit and silent-green poles, snapshot/spy/minimum-contract patterns); the Test Contract Gate points here rather than duplicating the catalog

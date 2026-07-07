@@ -9,7 +9,6 @@
 
 feature: "<feature-name>"
 signal_lost_initial: 0  # signal_lost at iteration entry (before any rounds)
-structural_drift_initial: 0  # structural_drift at iteration entry (SKILL.md Step 1) — reported alongside signal_lost_initial, never merged into it
 
 budget:
   max_rounds: 3
@@ -58,7 +57,6 @@ rounds:
 #
 # feature: "paper-metadata-registry"
 # signal_lost_initial: 8
-# structural_drift_initial: 0
 # budget:
 #   max_rounds: 3
 #   reviewer_retry_limit: 2
