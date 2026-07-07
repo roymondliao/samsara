@@ -241,9 +241,17 @@ class ConversionEngine:
         )
 
     def _run_target_validation(self, output_dir: Path) -> list[str]:
-        """Run target validation. Returns list of errors (empty = valid)."""
+        """Run target validation. Returns list of errors (empty = valid).
+
+        strict_namespace=True: the engine only ever validates converted output,
+        where any colon-form `samsara:X` is a dead reference on the target
+        platform. (Repo-root/live-surface validation goes through the CLI,
+        which defaults strict off.)
+        """
         validator = TargetValidator()
-        return validator.validate(output_dir=output_dir, platform=self._platform)
+        return validator.validate(
+            output_dir=output_dir, platform=self._platform, strict_namespace=True
+        )
 
     def _run_all_converters(self, source_dir: Path, temp_dir: Path) -> None:
         """Run all converter modules in order.

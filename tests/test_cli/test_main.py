@@ -500,6 +500,9 @@ class TestCLIValidate:
         mock_validator.validate.assert_called_once_with(
             output_dir=converted_dir,
             platform="gemini-cli",
+            # CLI default is non-strict: repo-root validation legitimately
+            # contains colon-form source names (ISSUE-002 live-surface mode).
+            strict_namespace=False,
         )
 
     def test_validate_with_errors_exits_nonzero(self, tmp_path):

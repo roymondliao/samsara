@@ -163,3 +163,32 @@ transformations:
     match: 'Glob tool'
     replace: 'exec_command with find/rg --files'
     priority: medium
+
+  # --- Cleanup: variants the specific rules above do not reach ---
+  - id: agent_tool_dispatch_phrase
+    scope: body
+    type: literal
+    match: 'Dispatch with the Agent tool using'
+    replace: 'Dispatch using'
+    priority: medium
+
+  - id: ask_user_question
+    scope: body
+    type: literal
+    match: 'AskUserQuestion'
+    replace: 'user-choice question'
+    priority: medium
+
+  # --- MUST STAY LAST: generic namespace fallback ---
+  # Catches every colon-form `samsara:X` the specific rules above did not
+  # rewrite (dispatch `samsara:X`, dot-graph labels without backticks,
+  # descriptive mentions inside references/). The target platform names
+  # everything `samsara-X`, so the plain hyphen form is correct in every
+  # remaining context. Rules run in list order — keep this entry last so
+  # the specific phrasings above win first.
+  - id: samsara_namespace_fallback
+    scope: body
+    type: regex
+    match: 'samsara:([\w-]+)'
+    replace: 'samsara-\1'
+    priority: low
