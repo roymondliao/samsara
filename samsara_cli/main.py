@@ -455,6 +455,18 @@ def validate(
             help="Converted output directory to validate",
         ),
     ] = None,
+    strict_namespace: Annotated[
+        bool,
+        typer.Option(
+            "--strict-namespace/--no-strict-namespace",
+            help=(
+                "Flag ANY colon-form `samsara:X` residue as an error. "
+                "Use on converted output only — the source repo legitimately "
+                "uses colon-form names, so repo-root validation keeps this off. "
+                "(The conversion engine always validates with this on.)"
+            ),
+        ),
+    ] = False,
 ) -> None:
     """Validate converted output for a target platform.
 
@@ -471,7 +483,9 @@ def validate(
     console.print(f"Validating [bold]{platform}[/bold] output in: {source_dir}")
 
     validator = TargetValidator()
-    errors = validator.validate(output_dir=source_dir, platform=platform)
+    errors = validator.validate(
+        output_dir=source_dir, platform=platform, strict_namespace=strict_namespace
+    )
 
     if errors:
         typer.echo(f"Validation failed: {len(errors)} error(s) found\n", err=True)

@@ -1,0 +1,30 @@
+task_id: task-8
+completion_status: done
+
+known_shortcuts:
+  - description: "task-8 由 main agent inline 執行（原 mode B 為 subagent sequential）——性質為量測/聚合而非創作性實作，基線歷史（6,356 的量測命令與口徑）由 main agent 持有，dispatch fresh subagent 需重建全部脈絡且無 fresh-eyes 效益。偏離已記於 index.yaml。"
+
+  - description: "淨減量參考值 ~300 行未達（核心 −168、全含 −55）——差異原因逐項記於 evaluation-result.md 第二段。user 已於 planning 期把行數目標定為『先減少為主』非硬性，故非驗收失敗；但『Auto Gate 去重可省 ~125 行』的原始估計被實測推翻（實省 ~46），估計方法（段落行數總和 × 假設指針極小）忽略了階段特異語義必須 inline 的量。"
+
+silent_failure_conditions:
+  - systemic_ref: doc-vs-runtime-obedience
+    note: "evaluation-result.md 第三段的 8 項條件多數由 doc-contract 測試守護——doc 存在不等於未來 session 服從；真正的 runtime 驗證是下一個真實 feature 的 dogfood（scar 平均行數 ≤70 的 proxy 亦屬之）。"
+
+  - description: "samsara-cli validate --platform codex 在 main 基線即有 42 issues（本分支 36）——validate 的守護目前對 CI 無效力（測試綠但 validate 紅是常態）。這是本 feature 範圍外的既有 rot，validate 若無人消費將重演 expiry 的『永不響的鬧鐘』。"
+    status: resolved
+    resolution: "Level-2 iteration fix 0f8a35c：登記為 issue.md ISSUE-002（含候選修法＋re-review signal）；修 validate 本身屬未來 feature"
+    deferred_to_feature_iteration: true
+
+assumptions_made:
+  - assumption: "tests/test_auto_mode/ 四檔的修改是斷言目標同步而非弱化"
+    verified: true
+    note: "task-4 yin review 對照 git show HEAD: 逐項驗證；index.yaml task-4 review trace"
+  - assumption: "dist regenerate 會移除已刪 skill 的舊輸出目錄（非 additive-only）"
+    verified: true
+    note: "regen 後 ls dist/codex/.agents/skills/ 無 security 目錄（task-3 scar 曾標 verified:false，本 task 實測翻正）"
+  - assumption: "基線 6,356 在 feature 期間未被外部 commit 改變"
+    verified: true
+    note: "HEAD worktree 實測 2,808+3,548=6,356，與 planning 期量測一致"
+
+debt_registered: true
+debt_location: "samsara-cli validate 既有 42→36 issues 無 CI 消費者（deferred item 上方）；scar 平均行數 ≤70 的實測屬下一 feature dogfood"

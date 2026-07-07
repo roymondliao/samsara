@@ -548,6 +548,31 @@ class TestCompanionFileHandling:
         assert "diagram.png.txt" in result.companion_files
         assert result.companion_files["diagram.png.txt"] == "binary-like-content"
 
+    def test_pycache_artifacts_are_skipped_not_fatal(self, tmp_path: Path):
+        """Death case: running a skill's validate script (or importing it in a
+        test) drops binary __pycache__/*.pyc into the skill dir. The converter
+        reads companions as UTF-8 text — without the skip, one cache artifact
+        fails the WHOLE conversion. Cache artifacts must be excluded, and the
+        real script must still travel."""
+        skill_dir = make_skill_dir(tmp_path, "planning", "Planning", "# Body\n")
+        scripts_dir = skill_dir / "scripts"
+        scripts_dir.mkdir()
+        (scripts_dir / "validate_format.py").write_text("print('ok')\n")
+        cache_dir = scripts_dir / "__pycache__"
+        cache_dir.mkdir()
+        # real .pyc magic header bytes — not valid UTF-8
+        (cache_dir / "validate_format.cpython-314.pyc").write_bytes(
+            b"\x0d\x0d\x0d\x0a\x00\x00\x00\x00\xdc\xffbinary"
+        )
+
+        converter = SkillConverter()
+        result = converter.convert(skill_dir, [], make_naming())
+
+        assert "scripts/validate_format.py" in result.companion_files
+        assert not any("__pycache__" in k for k in result.companion_files), (
+            "bytecode cache artifacts must not ship as companion files"
+        )
+
 
 # ---------------------------------------------------------------------------
 # UT-SK-6: All 11 skills — key transformation points

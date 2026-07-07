@@ -17,7 +17,8 @@ digraph research {
 
     start [label="使用者描述問題/需求" shape=doublecircle];
     interrogate [label="Interrogate\n- 問題形狀是誰給的？\n- 什麼條件下不該解決？\n- 誰會因此受損？"];
-    scope [label="Scope\n- 消失了什麼會痛？\n- must-have 附帶死亡條件"];
+    essence [label="Problem Essence\n- 一兩行，需求語言\n- 剝掉實作形狀"];
+    scope [label="Scope\n- 消失了什麼會痛？\n- must-have 附帶死亡條件\n- boundary scope 三清單\n(要解什麼/涉及哪些/現在不做)"];
     north_star [label="北極星指標\n- 失效條件\n- corruption signature\n- proxy confidence"];
     output_kickoff [label="產出 1-kickoff.md"];
     output_autopsy [label="產出 problem-autopsy.md"];
@@ -25,7 +26,8 @@ digraph research {
     next [label="invoke samsara:pre-thinking" shape=doublecircle];
 
     start -> interrogate;
-    interrogate -> scope;
+    interrogate -> essence;
+    essence -> scope;
     scope -> north_star;
     north_star -> output_kickoff;
     output_kickoff -> output_autopsy;
@@ -35,7 +37,7 @@ digraph research {
 }
 ```
 
-## Phase 0: Interrogate
+## Step 1: Interrogate
 
 先嘗試殺死問題本身。問題活下來了，才值得往下走。
 
@@ -46,7 +48,15 @@ Ask these questions **one at a time** (not all at once):
 3. **誰會因為這個問題被解決而受損？** 任何解決方案都有成本轉移——找到承受者。
 4. **「解決」狀態長什麼樣？** 三句話內描述「解決」和「沒解決」之間的可觀測差異。描述不了代表問題還沒被真正理解。
 
-## Step 1: Scope
+## Step 2: Problem Essence — a named product
+
+Interrogation 存活下來的問題，蒸餾成一兩行的**問題本質（需求語言）**：真正要解的是什麼，剝掉任何實作形狀。
+
+- **這是交棒給 pre-thinking 的具名產物。**
+- **分工**：research 產出「問題本質（需求語言）」；pre-thinking 從它蒸餾「結構身分（結構語言：code 本質上該是什麼才服務得了它）」。兩者是兩個不同的產物，research 只負責前者。
+- **檢驗**：本質若寫出了機制（「加一個 cache」「用一個 hook」），那是解法穿著問題的衣服——重寫成需求。
+
+## Step 3: Scope
 
 陰面的 scope 問：如果這個功能明天消失，系統哪個部分會痛？
 
@@ -54,7 +64,15 @@ Ask these questions **one at a time** (not all at once):
 - 每個 must-have 附帶**死亡條件**：在什麼度量指標低於什麼閾值時，這個 must-have 應被降級為 nice-to-have，並最終移除。
 - 減法的終點不是「功能少」，而是「剩下的每一個東西都有人為它的腐爛負責」。
 
-## Step 1.5: North Star
+**Boundary Scope（給 pre-thinking 的邊界範圍）** — 用三個清單框出結構思考發生的範圍：
+
+1. 真正要解什麼
+2. 涉及哪些
+3. 哪些現在不做 — 每一項附一行「為什麼現在不做」；沒有理由的減法會靜默長回來
+
+沒有這三個清單，pre-thinking 分不清哪些是本 feature 的真接縫、哪些是別人的地盤。
+
+## Step 4: North Star
 
 定義北極星指標，同時定義：
 
@@ -86,23 +104,17 @@ Format details: read support file `problem-autopsy.md`
 
 ## Auto Mode Gate
 
-When the session context contains `Execution mode: auto`, keep the same
-transition question but route it through `samsara:auto-gatekeeper` instead of
-pausing for human input.
-Dispatch it with the Agent tool using `subagent_type: "samsara:auto-gatekeeper"`.
+Canonical protocol: `references/auto-mode.md` Stage Gate Protocol —
+dispatch, the append-only decision log, and what `proceed`/`revise`/
+`reject`/`accept_gap` mean all live there; this section only names what
+Research adds.
 
-The gatekeeper must append an append-only entry to
-`changes/<feature>/auto-decisions.md` before continuing. Use the canonical
-schema in `references/auto-mode.md`; this stage must provide `prompt_type`,
-`workflow_prompt`, and `gatekeeper_answer` for the entry.
+- `workflow_prompt` source: the transition prompt below.
 
-Use the original transition prompt as `workflow_prompt`:
+  > 「Research 完成。1-kickoff.md 和 problem-autopsy.md 已寫入 `changes/<feature>/`。確認後進入 Pre-thinking？」
 
-> 「Research 完成。1-kickoff.md 和 problem-autopsy.md 已寫入 `changes/<feature>/`。確認後進入 Pre-thinking？」
-
-Then follow the recorded decision:
-
-- `proceed` — invoke `samsara:pre-thinking`.
-- `revise` — revise the research artifacts, then re-run this gate.
-- `reject` — stop the auto run and leave the rejection in `auto-decisions.md`.
-- `accept_gap` — invoke `samsara:pre-thinking` with the recorded gap visible.
+- Decision points this gate covers: the research → pre-thinking transition
+  (one decision point).
+- `proceed` invokes `samsara:pre-thinking`; `revise` revises the research
+  artifacts (1-kickoff.md, problem-autopsy.md) then re-runs this gate;
+  `accept_gap` invokes `samsara:pre-thinking` with the gap visible.

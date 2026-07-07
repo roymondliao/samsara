@@ -1,0 +1,25 @@
+# Structural evidence spec — instance (schema: skills/planning/templates/structure-spec.yaml)
+feature: issue-002-validate-live-surface
+spec_path: default  # Spec-Path Guard: kickoff 無 poc_death_date 欄位 → 預設 spec path
+
+modules:
+  - id: SS-1
+    name: validator-live-surface-boundary
+    responsibility: "TargetValidator 的 source-tree 掃描範圍：live instruction surface（skills/ agents/ references/ hooks/ .claude-plugin/），排除 changes/ docs/ bugfix/ tests/"
+    boundary_rationale: "這個邊界消失時，歷史/示範文字的合法未轉換樣式混入 issue 計數，validate 永遠非零、gate 永遠不可消費 —— ISSUE-002 已實證此變動理由發生過（main 42 issues、CI 恆綠）"
+    evidence:
+      type: git_history
+      ref: "issue.md"
+      machine_verifiable: true
+      note: "ISSUE-002 條目（2026-07-04 登記）記載此邊界缺失的實際損害"
+
+patterns: []  # 無 pattern 決策 —— 不為演練硬湊
+
+dependency_rules:
+  - id: SD-1
+    rule: "live-surface 排除清單定義一次（TargetValidator 內單一常數），CLI 與未來任何 gate 消費同一定義 —— 不得在 main.py 或測試中複製第二份清單"
+    evidence:
+      type: planned_task
+      ref: "task-1"
+      machine_verifiable: true
+      note: "task-1 的 Unit Test Contract 直接斷言此單一常數的行為"

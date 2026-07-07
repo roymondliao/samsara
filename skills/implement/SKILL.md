@@ -43,8 +43,9 @@ digraph implement {
     update [label="主 agent: 更新 index.yaml\n+ TaskUpdate completed"];
     more [label="還有 task？" shape=diamond];
     commit [label="主 agent: Commit\n（全部 task 完成後）"];
-    gate [label="Completion gate\nhuman: ask\nauto: gatekeeper" shape=diamond];
-    next [label="invoke samsara:security-privacy-review\nor samsara:iteration" shape=doublecircle];
+    criteria [label="Iteration-entry criteria\ncross-task pattern OR\nsignal_lost>=5 ?\n(parse failure -> unknown)" shape=diamond];
+    gate [label="判準成立 / unknown\nhuman: ask\nauto: gatekeeper" shape=diamond];
+    next [label="invoke samsara:validate-and-ship\nor samsara:iteration" shape=doublecircle];
 
     start -> mode;
     mode -> step0 [label="A/B: dispatch\n(paste full text)" lhead=cluster_implementer];
@@ -64,14 +65,16 @@ digraph implement {
     update -> more;
     more -> step0 [label="yes" lhead=cluster_implementer];
     more -> commit [label="no"];
-    commit -> gate;
+    commit -> criteria;
+    criteria -> gate [label="成立 / 解析失敗(unknown)"];
+    criteria -> next [label="不成立 + 全部可解析\n預設 skip + 可推翻紀錄"];
     gate -> next [label="confirmed"];
 }
 ```
 
 ## Progress Tracking
 
-On entry, after reading `index.yaml`, create a TaskCreate item for each task to provide real-time UI progress. `index.yaml` remains the source of truth — TaskCreate is its UI projection.
+On entry, after reading `index.yaml`, create a TaskCreate item for each task to provide real-time UI progress.
 
 ```
 Read index.yaml
@@ -82,7 +85,7 @@ After each task's review passes:
   → TaskUpdate({ status: "completed" }) for the corresponding task
 ```
 
-Always update both together. Never update one without the other.
+index.yaml 是唯一真實狀態（source of truth）；TaskCreate/TaskUpdate 是盡力而為的 UI 投影，投影未更新不構成流程錯誤，但 index.yaml 未更新是。
 
 ## Execution Mode Selection
 
@@ -115,6 +118,13 @@ Use `subagent_type: "samsara:implementer"` — the agent definition (`agents/imp
 The prompt provides per-task context. Follow the template in `./dispatch-template.md`:
 - `task-N.md` — **paste full text**, never tell subagent to read the file
 - `overview.md` — **curate relevant sections**, not the entire file
+- **Global thinking channel (L1/L2)** — COPY the task's `seam` (+ its Real
+  Seams entry and the Core Identity from overview.md) and `affects`/`anchors`
+  from `index.yaml` into the Global Position / Context Projection sections.
+  - Copy, never compose: a dispatcher improvising "what's relevant" is the
+    hand-curation blind spot the channel replaces.
+  - Plans without these fields get an explicit `global_channel: absent` (see
+    `./dispatch-template.md` Global Thinking Channel for the three states).
 - Related death cases and prior scar reports (if task has dependencies)
 
 ### Subagent Review (modes A and B)
@@ -130,6 +140,18 @@ After each subagent completes (status DONE or DONE_WITH_CONCERNS):
 2. **Aggregation rule** — main agent MUST receive BOTH review outputs before proceeding:
    - Both pass → proceed to index.yaml update
    - Either reviewer reports Critical issues → implementer fixes → re-review (dispatch both again)
+   - **Arbitration path (reviewer block ≠ code gate):** a reviewer blocking on
+     a Critical *structural judgment* is adversarial review, not a mechanical
+     gate — it must stay arguable:
+     1. The implementer disputes the Critical → it must refute **with
+        evidence** (forced_by refs, live code, plan citations).
+     2. The dispute goes to the arbiter: the **user** in human mode,
+        **`samsara:auto-gatekeeper`** in auto mode (decision appended to
+        `auto-decisions.md`).
+     3. Neither side auto-wins: the reviewer cannot force the fix, the
+        implementer cannot self-exempt. A block with a third-party arbitration
+        path is arguable (healthy); a deterministic block with no arbiter is a
+        code gate — the thing judgment must never get.
    - Either reviewer reports `UNKNOWN` → **blocking review failure**; fix the missing/unreadable reference or unsupported domain condition, then re-review (dispatch both again)
    - Only one review output received → **FAIL with "missing reviewer" error** — do NOT assume absent reviewer = PASS. Re-dispatch the missing reviewer before proceeding.
 
@@ -159,7 +181,7 @@ This order is mandatory. Death test before unit test. Scar report before self-it
 8. Run all tests — verify they pass (green)
 9. Write scar report → `changes/<feature>/scar-reports/task-N-scar.yaml` (read `templates/scar-schema.yaml` for the exact format; `<feature>` = the feature directory name from `changes/`)
 10. Self-iteration (Level 1) — review scar items, fix task-scope actionable items
-11. Update scar report — add `resolved_items` for fixed items, mark remaining items with `deferred_to_feature_iteration` flags where applicable
+11. Update scar report — mark fixed items in place with `status: resolved` + a one-line `resolution` (`scar-schema.yaml` Rule 11; the older separate `resolved_items` list remains readable per Rule 14 but is retired for new writes), mark remaining items with `deferred_to_feature_iteration` flags where applicable
 12. Run all tests — verify no regression from self-iteration fixes
 13. Report back (do NOT commit)
 
@@ -173,7 +195,15 @@ This order is mandatory. Death test before unit test. Scar report before self-it
 
 ### After all tasks complete
 
-18. Commit all changes
+18. **Run implement's format validator** — mechanical shape check of every scar report (parse, dual-face completeness, forced_by/seam resolution, systemic_ref dangling, debt consistency):
+
+    ```bash
+    python scripts/validate_format.py changes/<feature>/ --repo-root <repo-root>
+    ```
+
+    (Resolve `scripts/validate_format.py` relative to this skill's directory.) Paste its output into the transition record — a missing validator output at handoff is a **visible missing**, never a silent skip. Findings are format facts: fix the scar reports (or return the underlying gap to the implementer) and re-run until clean. The validator never judges whether a decision was a good bet — that already happened in review.
+
+19. Commit all changes
 
 ## Yin-Side Constraints
 
@@ -185,8 +215,19 @@ These are non-negotiable:
 - **Review before index update:** `index.yaml` is updated only after code-reviewer passes. No pre-review status changes.
 - **UNKNOWN blocks review completion:** Reviewer `UNKNOWN` is not a partial pass. It means a required reference/domain condition could not be verified; do not proceed, update `index.yaml`, or mark review complete until the condition is fixed and both reviewers are re-run.
 - **Commit after all tasks:** Do not commit per-task. Commit once after all tasks complete and all reviews pass.
-- **Structural honesty applies at generation, not only at review:** The implementer's 結構誠實 constraints (`agents/implementer.md`) — justify every boundary/abstraction by what breaks if it is removed, and refuse speculative generalization built for a single consumer — apply whether the implementer runs as a subagent (modes A/B) **or inline (mode C)**. In inline mode the agent definition is not loaded, so the main agent owns these constraints directly; do not skip them just because no subagent was dispatched.
-- **Read-before-write and dependency hygiene apply inline too:** The implementer's `agents/implementer.md` constraints — **read before you write** (read the files you touch + neighbors, copy existing patterns instead of inventing) and **no silent dependency addition** (ask whether the standard library or an existing dependency already covers it before adding one; record why one earns its place) — apply in subagent modes A/B **and inline mode C**. In inline mode the agent definition is not loaded, so the main agent owns these directly.
+- **Inline mode (C) loads no agent definition — the main agent owns the
+  implementer constraints directly.** In modes A/B `agents/implementer.md` is
+  loaded for the subagent; in mode C it is not, but its constraints still
+  apply at generation, not only at review. Do not skip them just because no
+  subagent was dispatched:
+  - Structural honesty (結構誠實): justify every boundary/abstraction by what
+    breaks if it is removed; refuse speculative generalization built for a
+    single consumer.
+  - Read before you write: read the files you touch + their neighbors; copy
+    existing patterns instead of inventing.
+  - No silent dependency addition: ask whether the standard library or an
+    existing dependency already covers it before adding one; record why a new
+    one earns its place.
 
 ## Red Flags
 
@@ -208,6 +249,9 @@ These are non-negotiable:
 - Assume an absent review output means PASS — missing reviewer output is always a FAIL
 - Add a dependency without recording in the scar why the standard library or an existing dependency cannot do it — an unjustified dependency is deletable by default
 - Write death tests before reading the files you are about to touch — a death test built on assumed (not read) conventions pins the wrong contract
+- Compose the L1/L2 sections at dispatch time instead of copying them from planning's products (overview.md Core Identity / Real Seams, index.yaml `seam`/`affects`/`anchors`) — improvised projection re-creates the curation blind spot; a plan without the fields gets an explicit `global_channel: absent`, never a hand-written substitute
+- Commit without running implement's format validator on the scar reports, or without pasting its output — a missing validator output is a visible missing at handoff, and committing over it converts it back into a silent skip
+- Overrule a disputed Critical structural judgment yourself (either direction) — the arbitration path runs through the user (human mode) or `samsara:auto-gatekeeper` (auto mode), never reviewer-auto-wins or implementer self-exemption
 
 ## Support Files
 
@@ -217,51 +261,66 @@ These are non-negotiable:
 
 ## Transition
 
-All tasks complete. Calculate remaining scar items:
-- Count items across all `changes/<feature>/scar-reports/` where `deferred_to_feature_iteration: true` or items without `resolved_items` coverage
-- These are the **feature-level items** that Level 1 self-iteration could not resolve
+All tasks complete. Calculate the iteration-entry criteria:
 
-Then use the implementation completion prompt to decide the next workflow path:
+1. Read every `changes/<feature>/scar-reports/task-N-scar.yaml`.
+2. Compute `signal_lost` and identify parse failures using the SAME
+   definition and parse-failure semantics as iteration SKILL.md's Step 1:
+   Aggregate Remaining Scars (the signal_lost formula, and `systemic_ref`
+   dangling = parse failure) — canonical there, not restated here.
+3. Check for a **cross-task pattern**: the same item (by description or
+   `systemic_ref` id) appears in ≥2 different task scar reports.
+   已知限制：這是**字面比對**（description 全同或 id 相同）——兩個 task 用
+   不同措辭描述同一 rot 時會漏判而落入預設 skip；可推翻紀錄的存在就是這個
+   限制的補償措施。
 
-> 「Implementation 完成。N 個 tasks 已執行，共 M 個 scar report items（Level 1 self-iteration 已處理 R 個，剩餘 K 個 feature-level items）。
->
-> (A) 進入 Iteration — 審視 feature-level scar items（cross-task patterns, system-level rot）
-> (B) Skip — 直接進入 Security & Privacy Review（剩餘 items 由 validate-and-ship 的 failure budget review 處理）」
+Branch into exactly one of three states:
 
-- If `Execution mode: human-in-the-loop`, ask the user this question.
-  - User chooses A → invoke `samsara:iteration`
-  - User chooses B → invoke `samsara:security-privacy-review`
-- If `Execution mode: auto`, do not ask the user. Use the Auto Mode Gate below
-  to dispatch `samsara:auto-gatekeeper`, record the decision, and invoke the
-  next skill named by the recorded decision.
+- **判準成立**（cross-task pattern found, OR `signal_lost >= 5` — this
+  threshold is a rough estimate from historical iteration-log data, not a
+  calibrated constant; adjust only by citing newer iteration-log evidence in
+  the scar report） AND every scar report parsed → 依 execution mode 過
+  gate（human: ask the user；auto: dispatch `samsara:auto-gatekeeper`，見下方
+  Auto Mode Gate）建議進入 iteration，並列出找到的 cross-task patterns 與
+  signal_lost 數值。
+- **判準不成立，且全部 scar 可解析** → 預設 skip：不經過 gate
+  （deterministic），但一律先印出這行可推翻紀錄，才能繼續：
+  > 「signal_lost=N、無 cross-task pattern，已 skip iteration（回覆可推翻）」
+
+  同一行紀錄必須同時寫入 feature 的 `index.yaml`（durable——auto mode 沒有人
+  在讀對話輸出，只印不寫等於沒有紀錄）。然後直接進入
+  `samsara:validate-and-ship`（其 Step 0 為 security/privacy gate；剩餘 items
+  由 failure budget review 處理）。
+- **任何 scar report 解析失敗** → 結果為 unknown，**不准 skip**（解析失敗代表
+  signal_lost 可能被少算，unknown 不等於「不需要 iteration」）。列出每個 parse
+  failure（file，以及懸空 `systemic_ref` 的 id），再依 execution mode 過
+  gate（human: 連同 parse failures 詢問使用者；auto: dispatch
+  `samsara:auto-gatekeeper`）決定 `samsara:iteration` 或
+  `samsara:validate-and-ship` — 絕不落回上面的預設 skip 路徑。
+
+- If `Execution mode: human-in-the-loop` and the gate above is invoked, the
+  user's answer selects `samsara:iteration` or `samsara:validate-and-ship`.
+- If `Execution mode: auto` and the gate above is invoked, do not ask the user. Use the Auto Mode Gate below to dispatch `samsara:auto-gatekeeper`,
+  record the decision, and invoke the next skill named by the recorded
+  decision.
 
 ## Auto Mode Gate
 
-When the session context contains `Execution mode: auto`, keep the implementation
-execution decisions but route them through `samsara:auto-gatekeeper` instead of
-pausing for input.
-Dispatch it with the Agent tool using `subagent_type: "samsara:auto-gatekeeper"`.
+Canonical protocol: `references/auto-mode.md` Stage Gate Protocol —
+dispatch, the append-only decision log, and what `proceed`/`revise`/
+`reject`/`accept_gap` mean all live there; this section only names what
+Implement adds.
 
-The gatekeeper must append an append-only entry to
-`changes/<feature>/auto-decisions.md` before continuing. Use the canonical
-schema in `references/auto-mode.md`; this stage must provide `prompt_type`,
-`workflow_prompt`, and `gatekeeper_answer` for the entry.
-
-Use the implementation completion choice as `workflow_prompt`: choose whether to
-enter iteration for feature-level scar review or continue to security/privacy
-review.
-
-Also route the implementation execution-mode selection through the gatekeeper.
-Use the original `(A) Subagent parallel / (B) Subagent sequential / (C) Inline sequential`
-prompt as `workflow_prompt`; the gatekeeper answer chooses the
-execution strategy and records why that strategy fits the task dependencies.
-
-Then follow the recorded decision:
-
-- `proceed` — invoke the next skill named by the gatekeeper answer:
-  `samsara:iteration` or `samsara:security-privacy-review`.
-- `revise` — revise implementation artifacts or scar reports, then re-run this
-  gate.
-- `reject` — stop the auto run and leave the rejection in `auto-decisions.md`.
-- `accept_gap` — continue to the recorded next skill with the accepted gap visible
-  in the next-stage context.
+- `workflow_prompt` sources: (1) the implementation completion gate — only
+  invoked when the Transition iteration-entry criteria are met (canonical in
+  Transition above) or scar parse failures make it unknown (deterministic
+  default-skip never invokes this gate); (2) the implementation execution-mode selection — the original
+  `(A) Subagent parallel / (B) Subagent sequential / (C) Inline sequential`
+  prompt.
+- Decision points this gate covers: the completion transition (when
+  triggered) and the execution-mode selection.
+- `proceed` invokes the next skill named by the gatekeeper answer
+  (`samsara:iteration` or `samsara:validate-and-ship`) and/or applies the
+  chosen execution strategy; `revise` revises implementation artifacts or
+  scar reports then re-runs this gate; `accept_gap` continues to the
+  recorded next skill with the accepted gap visible.

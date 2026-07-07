@@ -1,0 +1,36 @@
+task_id: fix-3
+completion_status: done
+
+known_shortcuts:
+  - systemic_ref: doc-vs-runtime-obedience
+    note: "agents/code-reviewer.md Step 0's new instruction-surface route is prose; tests/test_agents/test_code_reviewer_contract.py proves the route TEXT exists, not that a future reviewer dispatch actually applies it instead of defaulting to caution/UNKNOWN."
+  - systemic_ref: doc-instruction-no-code-enforcement
+    note: "No code path validates that a reviewer's declared domain for a markdown diff matches this new route; compliance depends entirely on the dispatched reviewer reading and following Step 0."
+  - description: "agents/code-quality-reviewer.md Step 0 (lines 108-120) has the IDENTICAL five-domain router + bare UNKNOWN fallback with no instruction-surface route — the same class of gap this fix closes in code-reviewer.md is still open in its sibling agent. This fix's task scope (converge strategy: agents/code-reviewer.md + one test file only) explicitly excludes touching code-quality-reviewer.md."
+    deferred_to_feature_iteration: true
+  - description: "The route is scoped to skills/**/*.md, agents/*.md, references/*.md only, per the fix spec's explicit list. Other instruction-surface markdown outside these three families (e.g. a hypothetical top-level AGENTS.md/CLAUDE.md diff) is conceptually the same 'executable surface with a stable contract' but is NOT covered — it still falls to UNKNOWN under this router. This is a spec-scoped boundary (the dispatch named exactly three families), not an oversight, but any future UNKNOWN incident on such a file traces back to the same class of gap."
+    deferred_to_feature_iteration: true
+
+silent_failure_conditions:
+  - description: "If a future edit to agents/code-reviewer.md rewords the instruction-surface clause while keeping the three anchor phrases ('instruction-surface markdown', 'skill definitions'+'agent definitions', 'routes to the `code` domain') verbatim but guts the surrounding scoping intent, the phrase-anchored doc-contract test would still pass. This is the same phrase-anchoring limitation fix-2's scar registered (test_implementer_contract.py's pre-existing A1/A3 tests share it) — inherent to substring-anchored doc-contract tests, not something this fix's two-file scope can structurally eliminate."
+  - description: "Even with the route text in place, a reviewer applying extra caution could still return UNKNOWN for an in-scope instruction-surface file — the route is guidance for LLM judgment during Step 0, not a deterministic code-level dispatch. The doc-contract test can only prove the router TEXT exists, never that any specific review invocation actually resolved domain=code from it."
+
+assumptions_made:
+  - assumption: "No prior doc-contract test already guarded agents/code-reviewer.md's Step 0 domain router before this fix (tests/test_agents/ contained only test_implementer_contract.py; the only other file referencing code-reviewer.md, tests/test_contract_bound_tests/test_reviewer_test_contract.py, only asserts the file EXISTS as a required protocol surface and that a dispatch anchor string appears elsewhere — it never touches Step 0's domain list)."
+    verified: true
+    note: "grep -rl 'code-reviewer.md' tests/ + tests/test_contract_bound_tests/test_reviewer_test_contract.py:1-46"
+  - assumption: "tests/test_agents/ is the correct home for this doc-contract test, following test_implementer_contract.py's established convention (agent-definition Step-0/Execution-Order guards live here, scoped via a section-extraction helper)."
+    verified: true
+    note: "tests/test_agents/test_implementer_contract.py:1-19,62-73 (_execution_order_section helper pattern copied as _step0_section)."
+  - assumption: "The net addition to agents/code-reviewer.md stays within the fix spec's 2-4 line target and does not require re-litigating the feature's already-accepted loaded-context overage."
+    verified: true
+    note: "git diff --numstat agents/code-reviewer.md -> '2 0 agents/code-reviewer.md'"
+
+debt_registered: true
+debt_location: "agents/code-reviewer.md Step 0 instruction-surface clause (prose-only, no code-level enforcement); agents/code-quality-reviewer.md Step 0 (lines 108-120) carries the identical unaddressed router gap."
+
+narrative: |
+  Full suite: `uv run pytest tests/ -v` -> 938 passed (936 baseline + 2 new death
+  tests), 0 failed. Net diff measured via `git diff --numstat`: agents/code-reviewer.md
+  +2/-0 (net +2, within the 2-4 line target). tests/test_agents/test_code_reviewer_contract.py
+  is a new 94-line test-only file (not loaded-context, per fix-1/fix-2 precedent).

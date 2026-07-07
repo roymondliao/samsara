@@ -1,0 +1,83 @@
+structure_refs_received: [SS-1, SD-1]
+
+task_id: task-1
+completion_status: done
+
+known_shortcuts:
+  - description: >
+      Live-surface exclusion (_LIVE_SURFACE_EXCLUDED_TOP_LEVEL_DIRS) matches
+      by exact top-level path SEGMENT via string equality (relative.parts[0]
+      in the frozenset), not resolved path identity. A symlink whose target
+      escapes the excluded subtree, or an excluded top-level name that is
+      itself a symlink pointing at a live-surface path, is not specially
+      detected — the check only inspects the syntactic first segment under
+      output_dir. Accepted because the exclusion targets a small, fixed,
+      repo-controlled set of top-level names, not arbitrary/untrusted input;
+      no symlink currently exists at any of the four excluded top-level
+      paths in this repo (verified: `find changes docs bugfix tests -maxdepth 1 -type l`
+      → empty).
+    deferred_to_feature_iteration: false
+
+silent_failure_conditions:
+  - description: >
+      SD-1 mandates ONE shared constant/behavior for every caller of
+      TargetValidator.validate() — including converter/engine.py's
+      _run_target_validation(), which runs on REAL converted output during
+      every conversion (not just the CLI's repo-root ad-hoc scan). If a
+      future platform's converted output ever legitimately has a top-level
+      directory literally named "changes", "docs", "bugfix", or "tests"
+      (containing skill-adjacent .md/.txt content), a genuine unconverted
+      chain-link leak inside it would be silently excluded from
+      _scan_source_patterns system-wide — not just when validate is run at
+      the repo root. Currently zero risk: verified no SkillConverter/
+      AgentConverter/HookConverter output path or platform config
+      (samsara_cli/config/config.yaml paths.*) uses any of these four names,
+      and TargetValidator._get_skills_dir/_get_agents_dir hardcode
+      "skills"/".agents/skills"/".gemini/skills" and
+      "agents"/".codex/agents"/".gemini/agents" — none collide. This is an
+      inherent, accepted consequence of the given architecture (KD-C
+      explicitly rejected a per-consumer flag as YAGNI) — not a task-scope
+      gap I can close by adding scope-differentiation without violating
+      SD-1/KD-C.
+    deferred_to_feature_iteration: false
+
+assumptions_made:
+  - assumption: >
+      The four live-surface-excluded top-level prefixes (changes/, docs/,
+      bugfix/, tests/) fully cover the repo's non-live-surface noise sources
+      for `samsara-cli validate --platform codex` run at repo root.
+    verified: true
+    note: "Empirically measured: 36 -> 11 issues; all 11 residuals classified live-surface (1 references/, 10 skills/), 0 unclassified. See classification below."
+  - assumption: >
+      The exclusion mechanism itself correctly excludes bugfix/, even though
+      this repo's bugfix/ directory currently has zero .md/.txt files (so
+      the 36->11 delta above did not exercise bugfix/ against real content).
+    verified: true
+    note: "tests/test_validators/test_target_live_surface.py::TestLiveSurfaceExclusionCoversAllFourPrefixes::test_bugfix_top_level_prefix_excluded (planted file, passes)"
+
+debt_registered: true
+debt_location: "samsara_cli/validators/target.py — _scan_source_patterns exclusion check (~line 425), module docstring Known shortcuts / Assumption 5"
+
+narrative: |
+  Residual-issue classification (repo-root `samsara-cli validate --platform codex`,
+  after implementation, 11 issues — all genuine live-surface findings, none are
+  task-1's concern to fix):
+    - references/auto-mode.md: 1 `subagent_type:` — live surface (references/),
+      real finding, out of this task's scope.
+    - skills/*.md (research, samsara-bootstrap x2, debugging, planning,
+      implement x2, iteration, fast-track, pre-thinking/flow.md): 10 issues
+      — all live surface (skills/), all genuine unconverted "invoke
+      `samsara:X`"/`subagent_type:` patterns in shipped skill source, real
+      findings, out of this task's scope (task-1 is the exclusion boundary
+      only, not a content-fix pass).
+  Baseline-to-residual accounting (36 -> 11): docs/ (4), tests/fixtures/ (6),
+  changes/ (15) fully absorbed by the exclusion = 25 removed; 36 - 25 = 11,
+  matches observed residual exactly. No unexplained noise remained.
+
+  Structural refusal (per Structural Honesty): no flag, no per-caller
+  override, no Factory/Strategy was introduced for the exclusion — SD-1
+  explicitly requires exactly one constant shared by every consumer, and
+  KD-C explicitly marks a --no-exclude-style flag as out of scope (YAGNI).
+  A single frozenset checked against relative.parts[0] is the entire
+  mechanism; there is currently exactly one force (ISSUE-002's noise) and
+  one boundary (SS-1) — nothing further was built.

@@ -265,4 +265,12 @@ output/
 # for ongoing verification but not part of feature ship surface.
 changes/*/artifacts/
 changes/*/experiment/
-.samsara
+.samsara/*
+# Exception: systemic-scars.yaml is a small, manually-curated, cross-feature
+# registry (analogous to a committed template, not generated runtime state
+# like codebase-map.yaml) — it must survive across clones for the registry
+# mechanism (scar-schema.yaml Rule 9) to mean anything. A parent-directory
+# ignore (bare ".samsara") cannot be re-included by a negation pattern (git
+# does not descend into an excluded directory), so the directory itself is
+# NOT excluded — only its contents are, with this one named exception.
+!.samsara/systemic-scars.yaml

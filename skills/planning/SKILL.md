@@ -16,7 +16,7 @@ Read from the feature's `changes/` directory:
 - `problem-autopsy.md` — translation delta, kill conditions
 - `pre-thinking.md` — user-LLM design alignment, Evaluation Contract, and commitment
 
-**Guard:** If `pre-thinking.md` is absent, missing Evaluation Contract, missing `## Step C — Commitment`, or has `Decision: Return to Research`, **STOP**. Do not proceed to Step 2: Technical Specification. Re-invoke `samsara:pre-thinking` or `samsara:research` as directed by the unresolved gaps. Proceed only when Step C contains `Decision: Proceed` or `Decision: Accept gap`.
+**Guard:** If `pre-thinking.md` is absent, missing Evaluation Contract, missing `## Step 6 — Commitment`, or has `Decision: Return to Research`, **STOP**. Do not proceed to Step 1: Technical Specification. Re-invoke `samsara:pre-thinking` or `samsara:research` as directed by the unresolved gaps. Proceed only when Step 6 contains `Decision: Proceed` or `Decision: Accept gap`.
 
 ## Process
 
@@ -32,7 +32,11 @@ digraph planning {
     plan [label="產出 2-plan.md\n+ acceptance.yaml"];
     consistency [label="File Map Consistency Check\n(placement/ownership)\nSTOP on contradicts" shape=diamond];
     decompose [label="Task Decompose\n- self-contained tasks\n- 每個 task 附 death test 要求\n- 每個 task 命名 unit-test contract source"];
+    craft [label="Step 5\nCodebase-Craft Products\n- task→seam mapping (L1)\n- affects + anchors (L2)\n- seam evidence → planned-change"];
+    seam_gap [label="missing seam?\n(pre-thinking didn't\nidentify it)" shape=diamond];
+    seam_stop [label="STOP:\nreturn to\nsamsara:pre-thinking" shape=doublecircle];
     output [label="產出 overview.md\n+ index.yaml\n+ tasks/task-N.md"];
+    validate [label="run format validator\nscripts/validate_format.py\n(paste feedback)"];
     gate [label="Execution-mode gate\nhuman: confirm\nauto: gatekeeper" shape=diamond];
     next [label="invoke samsara:implement" shape=doublecircle];
 
@@ -44,21 +48,27 @@ digraph planning {
     plan -> consistency;
     consistency -> decompose [label="matches /\nout of scope"];
     consistency -> plan [label="contradicts\n(STOP)"];
-    decompose -> output;
-    output -> gate;
+    decompose -> craft;
+    craft -> seam_gap;
+    seam_gap -> seam_stop [label="yes"];
+    seam_gap -> output [label="no"];
+    output -> validate;
+    validate -> gate [label="clean"];
+    validate -> output [label="findings\n(fix + re-run)"];
     gate -> next [label="proceed"];
     gate -> spec [label="revise"];
 }
 ```
 
-## Step 2: Technical Specification
+## Step 1: Technical Specification
 
 ### Pre-thinking Commitments Consumed
 
 Before writing the technical plan, copy the following from `pre-thinking.md` into `2-plan.md`:
 - **Decision:** `Proceed` or `Accept gap`
 - **Accepted gaps:** labels and consequences, or `none`
-- **System design constraints:** task-shaping design decisions from Step A/B
+- **System design constraints:** task-shaping design decisions from Step 4
+- **L1 (core identity + real seams):** the Step 6 handoff — these are the **Key Decisions single source**; cite them, do NOT re-derive or add new placement decisions. Copy the core identity into `overview.md`'s Core Identity section and the real seams into Key Decisions → Real Seams verbatim (with their evidence tiers: `already-happened` / `domain-essential`). Planning strengthens a seam to `planned-change` only after task decomposition — see Step 5: Codebase-Craft Products.
 - **Primary evaluator:** the single canonical agent-evaluable method
 - **Pass signal / Fail signal:** observable criteria
 - **Feedback loop:** first action if the Primary evaluator fails
@@ -84,7 +94,7 @@ For each death case, document:
 - What actually happens (the truth)
 - How to detect the lie
 
-## Step 2.5: Acceptance Criteria — Death First
+## Step 2: Acceptance Criteria — Death First
 
 Write acceptance criteria using death-first BDD. See support file `death-first-spec.md` for format.
 
@@ -121,15 +131,84 @@ Break the plan into self-contained tasks. Each task:
 - Includes expected scar report items (what shortcuts/assumptions to watch for)
 - Follows the format in support file `task-format.md`
 
+## Step 5: Codebase-Craft Products — Seam Mapping, Affects Projection, Anchors
+
+Planning **consumes** pre-thinking's L1 (core identity + real seams); it does not create structural decisions. After task decomposition, produce three things — all of them mappings or annotations of what pre-thinking already decided:
+
+1. **Per-task seam mapping (L1 position)** — for each task in `index.yaml`,
+   set `seam` to the semantic name of the seam this task sits on or creates.
+   - The name must resolve to a seam declared in `overview.md` Key Decisions →
+     Real Seams. Use semantic names (`parser-boundary`), never opaque codes —
+     a code forces the reader to look it up.
+   - A task with no structural touch gets `seam: null`.
+   - One seam per task. A task genuinely spanning multiple seams is a
+     decomposition signal — consider re-splitting (soft signal, not a block).
+
+2. **Seam evidence strengthening (planned-change tier)** — pre-thinking could only mark seams `already-happened` / `domain-essential`; task decomposition is what creates the **planned-change** evidence tier. For each declared seam, if downstream tasks will extend it (visible in `affects`), add those task ids to the seam's `planned:` line in Real Seams. This is an **annotation, not a new decision** — the seam remains pre-thinking's; planning only adds the evidence tier that becomes available at this stage.
+
+3. **L2 reverse projection (`affects` + `anchors`)** — for each task, fill in
+   `index.yaml`:
+   - **`affects`** — which downstream tasks will build on this task's
+     structure, each with a one-line `needs` naming what they need from this
+     boundary.
+     - Sources: (a) tasks sharing the same seam; (b) `depends_on` edges where
+       the downstream extends the upstream's structure; (c) planning's own
+       decomposition knowledge.
+     - `affects` ≠ `depends_on`: structural impact (me → my consumers) vs
+       ordering (me → my prerequisites). A task can affect another with no
+       ordering dependency, and an ordering dependency is not necessarily a
+       structural extension.
+     - A `needs` that merely restates ordering ("runs after me") is noise.
+   - **`anchors`** — the files the implementer must read before writing:
+     path + one-line why (pointers, not content — raw content stays narrow,
+     awareness stays broad).
+     - Select them with planning's global view — callers, sibling modules,
+       the pattern already in use nearby: exactly the neighbors the
+       implementer would not know to look for.
+     - When `depends_on` is non-empty, include the interface files of each
+       depended-on task — the implementer reads live signatures, never a
+       prose summary that would drift.
+     - Anchors are a starting set, never a whitelist.
+
+**Single-source STOP gate:** if decomposition reveals the feature needs a seam pre-thinking did not identify, that is a **design-decision gap** — STOP and return to `samsara:pre-thinking` to add it (same shape as the File Map Consistency STOP). Do not invent a new seam in planning: a seam declared outside the single source is the ISSUE-001 pathology — the same decision living in two places with no cross-check.
+
+**Projection volume (soft, consumption-driven):** no line-count gate — a hard
+count trains gaming the number. Watch three signals instead:
+
+- **Over-projection:** an `affects` entry no implementer ever cites in a scar
+  report `forced_by`.
+- **Under-projection (death signal):** a later task must tear down a prior
+  task's structure to connect — record it as a scar pointing at the missed
+  `affects`.
+- **Decomposition entanglement:** a task whose `affects` list grows large —
+  re-split the tasks rather than trimming the projection to look small.
+
+## Format Validation — planning's format-validate script
+
+After writing `overview.md` and `index.yaml`, run the validator script shipped with this skill, passing the feature directory:
+
+```bash
+python scripts/validate_format.py changes/YYYY-MM-DD_<feature-name>/
+```
+
+(Resolve `scripts/validate_format.py` relative to this skill's directory.)
+
+- **What it checks is FORMAT only** — machine-decidable facts where a machine with no domain understanding gets the right answer every time: `index.yaml` parses; every task `seam` resolves to a seam declared in `overview.md` Real Seams (no dangling seam ids); every `affects.task` points to a task id that exists in `index.yaml`; every `affects` entry has a non-empty `needs`; every `anchors` entry has `path` + `why`; every `depends_on` id resolves.
+- **What it never checks is JUDGMENT** — whether a seam is the right boundary, whether an `affects` names a real structural need, whether an anchor list is complete. Those belong to pre-thinking and the reviewers. Classification is the teeth policy: format gets the hardest available teeth precisely because it does not touch judgment; judgment never gets a code gate.
+- The script returns **line-level feedback** (which seam id dangles, which `affects` points at nothing), not a bare pass/fail — fix and re-run until clean.
+- **Paste the validator output into the transition record.** The pasted output is the falsifiable trace: at handoff, a missing validator output is a **visible missing**, never a silent skip.
+
 ## Output
 
 All output files go to `changes/YYYY-MM-DD_<feature-name>/`:
 
 1. **2-plan.md** — full technical plan
 2. **acceptance.yaml** — death-first acceptance criteria (use `templates/acceptance.yaml`)
-3. **overview.md** — shared context extracted from 2-plan.md (use `templates/overview.md`)
-4. **index.yaml** — task list with status tracking (use `templates/index.yaml`)
+3. **overview.md** — shared context extracted from 2-plan.md (use `templates/overview.md`; carries the L1 Core Identity and Real Seams declarations)
+4. **index.yaml** — task list with status tracking and per-task `seam` / `affects` / `anchors` from Step 5 (use `templates/index.yaml`)
 5. **tasks/task-N.md** — self-contained tasks (follow `task-format.md`)
+
+Then run the format validator (see Format Validation above) and carry its clean output into the transition.
 
 ## Transition
 
@@ -147,24 +226,11 @@ next workflow path:
 
 ## Auto Mode Gate
 
-When the session context contains `Execution mode: auto`, keep the planning
-completion question but route it through `samsara:auto-gatekeeper` rather than
-pausing for human input.
-Dispatch it with the Agent tool using `subagent_type: "samsara:auto-gatekeeper"`.
+Canonical protocol: `references/auto-mode.md` Stage Gate Protocol — dispatch, the append-only decision log, and what `proceed`/`revise`/`reject`/`accept_gap` mean all live there; this section only names what Planning adds.
 
-The gatekeeper must append an append-only entry to
-`changes/<feature>/auto-decisions.md` before continuing. Use the canonical
-schema in `references/auto-mode.md`; this stage must provide `prompt_type`,
-`workflow_prompt`, and `gatekeeper_answer` for the entry.
+- `workflow_prompt` source: the transition prompt below.
 
-Use the original transition prompt as `workflow_prompt`:
+  > 「Planning 完成。2-plan.md、acceptance.yaml、index.yaml 和 N 個 tasks 已就緒。確認後進入 Implementation？」
 
-> 「Planning 完成。2-plan.md、acceptance.yaml、index.yaml 和 N 個 tasks 已就緒。確認後進入 Implementation？」
-
-Then follow the recorded decision:
-
-- `proceed` — invoke `samsara:implement`.
-- `revise` — revise the plan artifacts, then re-run this gate.
-- `reject` — stop the auto run and leave the rejection in `auto-decisions.md`.
-- `accept_gap` — invoke `samsara:implement` with the recorded gap visible in the
-  implementation context.
+- Decision points this gate covers: the planning completion transition (one decision point).
+- `proceed` invokes `samsara:implement`; `revise` re-runs the relevant step; `accept_gap` continues to `samsara:implement` with the accepted gap visible.

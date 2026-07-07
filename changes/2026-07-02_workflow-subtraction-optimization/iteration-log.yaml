@@ -1,0 +1,67 @@
+# Iteration Log — workflow-subtraction-optimization (Level-2 feature iteration)
+#
+# 第一份使用新 signal-driven accept 格式（re_review_signal + owner）的 iteration log
+# ——本 feature 自己引入的格式，dogfood。
+# 執行模式註記：4 個 fix 由 main agent inline 執行（user 最小 review 指令；
+# 每 fix 附 mutation/測試證據與獨立 commit，deviation 顯式記錄於此）。
+
+feature: "workflow-subtraction-optimization"
+signal_lost_initial: 34  # 8 份 task scar 聚合；0 parse failures；systemic_ref 全數命中 registry
+
+budget:
+  max_rounds: 3
+  reviewer_retry_limit: 2
+
+rounds:
+  - round: 1
+    signal_lost_before: 34
+    budget_context:
+      remaining_rounds_at_start: 2
+      stagnation_count_at_start: 0
+      net_rot_previous_round: 0
+      strategy_hint: converge  # actionable 項少而明確，目標一輪收斂
+    items_triaged: 34
+    triage_result:
+      fix:
+        - "iteration 被 skip 時懸空 systemic_ref 無人解析（task-1 defer）→ validate-and-ship Failure Budget Review 補三分支解析＋death test（commit 894152d）"
+        - "implement SKILL step 11／implementer.md 仍指示舊 resolved_items 寫入形式（task-1 defer）→ 同步至 Rule 11 就地標記（commit 9c605ba）"
+        - "samsara-cli validate 無 CI 消費者、main 基線即 42 issues（task-8 defer）→ 登記 issue.md ISSUE-002 含候選修法（commit 0f8a35c）"
+        - "記帳雙修：MEMORY.md Phase 8 條目＋Phase 6 expiry 歷史註記；task-3 dist-regen 假設依 task-8 實測翻正（commit a45d7a9）"
+      accept:
+        - description: "系統性類別（7 項）：doc-vs-runtime-obedience ×5、doc-instruction-no-code-enforcement ×2——doc 框架的永久結構性事實，iteration 修不掉"
+          re_review_signal: "samsara 引入任何 code-level enforcement 機制（hook 驗證、schema 強制、CI gate）時重審全類"
+          owner: "repo maintainer"
+          rationale: "registry 機制照設計運作的結果；每項在原 scar 都有本 task 的具體落點 note"
+        - description: "Step 0 本文與 Auto Mode Gate 的 unknown≠pass 三重述（task-3/4 累積項）"
+          re_review_signal: "Step 0 的 Result/Red-Flags 措辭或 Auto Gate override 措辭任一被修改時，同步核對另外兩處"
+          owner: "該次修改的作者"
+          rationale: "task-4 quality review 終局裁決：test-guarded 雙保險（label-only decoy 在案），非意外重複"
+        - description: "舊 expiry_date accept 條目遷移至新 schema 的指引僅在 ship-manifest.md rule 2 fallback，無 cross-file 測試（task-2 defer）"
+          re_review_signal: "第一次從含 expiry_date 的舊 feature 產出 ship manifest 時人工核對 fallback 是否被執行"
+          owner: "該次 validate-and-ship 的執行者"
+          rationale: "rule 2 fallback 已載明語義；test-level guard 與風險不成比例"
+        - description: "reviewed_criteria 可填而不真查（task-6 defer）；閾值 5 未校準；cross-task pattern 字面比對缺口；negation window 固定寬度殘差；行數參考值未達——等原 scar 已附 rationale/death condition/signal 的項目（合計約 15 項）"
+          re_review_signal: "各項沿用原 scar 內已記的 signal（如：違規紀錄率長期為零且 C5-C8 回歸→回退勾選；連兩 feature 漏判 cross-task rot→恢復詢問；善意改寫誤紅→調窗不刪斷言）"
+          owner: "repo maintainer（觸發事件的處理者）"
+          rationale: "Level 1 已就地記錄完整的接受理由與重審條件，Level 2 逐項複核無新資訊可加"
+      defer:
+        - "codebase-map 過時條目（含已刪 skill 的 module entry）→ post-ship 全量重建（pre-thinking D0 決定既定排程）"
+        - "交棒輸出檔具體欄位樣式 → 正式重寫 skills/pre-thinking/ 工程（獨立 feature）"
+        - "§6 所述 planning STOP gate 對 pre-thinking 決定的直接核對 → 同上，正式重寫工程"
+    fixes_applied: 4
+    fixes_scar_count: 0  # inline fixes 未產生新 scar items；證據在 commit + death test
+    budget_spent:
+      implementer_dispatches: 0  # inline（user 最小 review 指令）
+      reviewer_dispatches: 0     # deviation：以 mutation 驗證與既有測試替代，見 evidence
+      reviewer_retries: 0
+      validation_runs: 5
+    evidence_gained:
+      - "新 death test：validate-and-ship failure budget 缺 systemic_ref 解析條款即紅（mutation 驗證 red→green，commit 894152d）"
+      - "857 tests 綠（+1）維持每個 fix 後全量驗證"
+      - "signal_lost 重算腳本複核：34→30，減量與 resolved 標記一一對應"
+    residual_risk:
+      - "約 19 項 accept（含系統性 7 項）帶 re_review_signal 進 failure budget review"
+      - "3 項 defer 各有明確去處（post-ship map 重建、pre-thinking 正式重寫）"
+    signal_lost_after: 30
+    decision: stop
+    decision_reason: "全部 triaged fix 項完成（4/4，各自獨立 commit）；剩餘皆為 accept（附 signal+owner）或 defer（有去處）；無可再 fix 項，safety valve 乾淨（round 1/3、signal 下降、net rot 0）"

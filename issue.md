@@ -149,3 +149,101 @@ Moved to: `changes/2026-04-15_continuous-learning/issues.md`
 **Note:** The Loop Engineering Gap Analysis (originally ISSUE-005 ~ ISSUE-009, recorded 2026-06-10)
 was moved to `roadmap.md` (renumbered RM-001 ~ RM-005) — those entries are capability
 enhancements identified through analysis, not defects discovered during usage.
+
+---
+
+## ISSUE-002: `samsara-cli validate` has no CI consumer — an alarm clock that never rings
+
+**Discovered:** 2026-07-04
+**Context:** workflow-subtraction-optimization feature, task-8 final reconciliation
+**Severity:** Medium — a whole guard mechanism silently inert
+
+### What Happened
+
+During the feature's final reconciliation, `uv run samsara-cli validate --platform codex`
+reported 36 issues on the feature branch. A HEAD-worktree comparison showed **main was
+already at 42 issues** — the validator has been failing continuously, and nothing consumes
+its exit code: CI gates on pytest only, no release step runs validate, and no human ritual
+checks it. Tests green + validate red is the standing steady state.
+
+### Why It Matters
+
+This is the exact failure shape the same feature removed elsewhere (`expiry_date` — a
+re-review promise no mechanism ever read). A validator that always fails and blocks nothing
+is worse than no validator: it trains everyone to ignore it, and a real conversion
+regression would land invisibly among the 36 pre-existing issues.
+
+### Root Cause (initial read)
+
+The validator scans workflow artifacts (`changes/`, `docs/`) for platform-specific patterns
+alongside the live instruction surface — historical artifacts can never be "fixed" (they are
+records), so the issue count can never reach zero, so the exit code can never be consumed
+as a gate. Scope design makes the tool ungateable.
+
+### Candidate Fixes (for a future feature — not attempted here)
+
+1. Scope validate to the live instruction surface (skills/, agents/, references/, hooks/),
+   excluding `changes/` and `docs/` historical artifacts — makes zero reachable, then wire
+   the exit code into CI.
+2. Or split: `validate --strict` (live surface, CI-gated) vs `validate --all` (informational).
+3. Or delete the validator if conversion tests already cover its guarantees — per the axiom,
+   a guard nobody consumes should not exist.
+
+**Re-review signal:** next release or next converter change touches validate behavior;
+**owner:** repo maintainer.
+
+---
+
+## ISSUE-003: ~~Structure-spec evidence chain has no code-level enforcement~~ — WITHDRAWN (2026-07-07)
+
+**Status: WITHDRAWN.** Two reasons, recorded per the 1.0.0 design direction (`changes/2026-07-06_samsara-1.0.0-codebase-craft/`, §3.6/§7 — user decision 2026-07-06):
+
+1. **The premise was reversed.** The proposed fix — code-enforcing the structure-spec chain via `samsara-cli validate` — would have code-enforced *judgment* (whether a boundary is right, whether drift matters), turning judgment into ritual. Format-vs-judgment reclassification (design note 4): only mechanical shape ever gets script teeth; judgment gets visibility + adversarial review + consumption discipline, never a gate. Additionally, samsara-cli is the cross-service integration layer, not the home of feature-artifact format checks — those belong to per-skill validate scripts.
+2. **The mechanism this issue guarded was removed.** The structure-spec gate machinery (spec-path guard, structure_refs, fragment injection with 50% signal, spec-mode drift_items, structural_drift aggregation, 0-dangling audit over structure-spec) was deleted on 2026-07-07 in favor of the 1.0.0 global thinking channel (Real Seams + `seam`/`affects`/`anchors` + dual-face `structural_decisions`). The legitimate format core this issue pointed at now has real deterministic teeth: `skills/planning/scripts/validate_format.py` and `skills/implement/scripts/validate_format.py` (dangling-ref checks run as programs, not prose obedience), re-run terminally by validate-and-ship Step 1.
+
+Original entry preserved below for the record.
+
+**Discovered:** 2026-07-05
+**Context:** structural-honesty-mechanisms feature, Level-2 iteration triage
+**Severity:** High — single point of dependency for the feature's core guarantee, degradation is by-design invisible
+
+### What Happened
+
+The structural-honesty-mechanisms feature landed a four-link evidence chain (planning
+generates `structure-spec.yaml` → implement injects fragments at dispatch → code-quality-reviewer
+consumes in spec mode → iteration/validate-and-ship audit). Per KD-2 (zero `samsara_cli`
+code in this feature's scope), **every link is enforced only by prose instructions** in
+skills/agents markdown. Four scar items across task-1..4 record this under
+`systemic_ref: doc-vs-runtime-obedience` and `doc-instruction-no-code-enforcement`.
+
+### Why It Matters
+
+The framework's corruption signature applies to itself: if a future agent model quietly
+stops obeying the prose (skips the dispatch check, omits `drift_items`, never runs evidence
+resolution), the chain degrades into ceremony **and nothing detects it** — doc-contract
+tests only prove the instructions still exist, not that they are followed. This is not a
+permanent-risk shape (Accept); it is planned-work shape (Defer): KD-2 was a scope decision
+for one feature, not a permanent architecture decision.
+
+### Scope of the fix (next feature)
+
+Wire `samsara-cli validate` (whose live-surface scoping was just fixed in ISSUE-002) to
+consume `structure-spec.yaml` mechanically:
+
+1. Schema check — parse every `changes/*/structure-spec.yaml`; unparseable = error
+   (today "unreadable → FAIL" is prose-only, dispatch-template.md).
+2. Dangling-ref check — `planned_task` refs must resolve against the same feature's
+   `index.yaml` task ids; `git_history` refs must point at existing repo paths
+   (today this runs only when an agent obeys validate-and-ship's 0-dangling prose).
+3. In-scope instances explicitly covered by this issue: the 50% directed-injection signal
+   has no code check (task-2 scar), and `drift_items` missing-vs-empty distinction has no
+   code check at consumption time (task-3 scar) — both become machine-checkable once the
+   validator owns spec parsing.
+
+Evidence anchor per docs/thinking.md ch.4: this issue entry upgrades the four deferred scar
+items from imagination-level ("any runtime-enforcement someday") to `planned_task`-level —
+the next feature's structure-spec can cite ISSUE-003 as its change reason.
+
+**Re-review signal:** next feature that touches samsara_cli validators, or first ship of a
+feature whose structure-spec was never machine-parsed end-to-end;
+**owner:** yuyu_liao.

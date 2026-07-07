@@ -1,0 +1,30 @@
+task_id: task-3
+completion_status: done
+
+known_shortcuts:
+  - systemic_ref: doc-instruction-no-code-enforcement
+    note: "Structure Spec Mode's mode selection, Spec Mode Additions' evidence-ref resolution (git_history/planned_task/domain_boundary), and drift_items emission are entirely prose-executed inside agents/code-quality-reviewer.md — nothing code-level forces a dispatched reviewer to actually run the resolution or emit the field. This is the DC-1 reviewer-side defense line's residual risk (kill condition 2), and it also covers the fuzzier judgment call of telling 'spec fragments parse cleanly' from 'do not parse' when they are pasted prompt text rather than a standalone file."
+  - description: "How a `violated_boundary` (a spec-committed boundary being crossed) is OBSERVED for a markdown/skill-class codebase is left to reviewer judgment — same latitude the agent definition already grants 'insufficient context to verify [principle]' Concerns elsewhere. Not resolved further: the agent-definition net-add budget (60/60 lines, task-3's Files note caps at 60) has no room left for domain-specific worked examples, and this task's Files scope is agents/code-quality-reviewer.md only (no new reference-file section to carry markdown-specific koans)."
+
+silent_failure_conditions:
+  - description: "A missing `drift_items` field in a real spec-mode review output is only distinguished from an explicit `drift_items: []` by the DOCUMENTED semantics this task writes (DC-5). No code in this feature yet enforces that distinction at consumption time — that is task-4's iteration-aggregation responsibility per this feature's KD-4 division of labor (overview.md File Map: `skills/iteration/SKILL.md` — structural_drift aggregation). Until task-4 lands, a reviewer output that silently drops `drift_items` is indistinguishable, AT THE CODE LEVEL, from a principles-mode review that never had drift_items to begin with."
+    status: resolved
+    resolution: "Level-2 iteration 簿記：deferral 目標（task-4）已落地 — skills/iteration/SKILL.md:103「drift_items 欄位缺失 → parse failure（不是零漂移，DC-5）」為消費端的 prose 執法；code-level 執法缺口歸 systemic doc-instruction-no-code-enforcement（本 feature iteration 轉 Defer，見 issue.md ISSUE-003）。"
+    deferred_to_feature_iteration: true
+  - description: "A dispatched code-quality-reviewer that receives spec entry fragments but is NOT told the originating feature name/path (dispatch-template.md's Code Quality reviewer prompt, owned by task-2, names no feature field) cannot directly compute `changes/<feature>/index.yaml` to resolve a `planned_task` ref."
+    status: resolved
+    resolution: "Spec Mode Additions' planned_task bullet now derives the feature from a `changes/<feature>/...` path in the dispatch's Changed Files/diff FIRST (round-2 quality review low-cost #5 — cheap, high-resolving-power source since scar-report and spec-instance paths already carry the feature name); only when that fails does it Glob `changes/*/index.yaml` + Grep the ref id. A no-match or ambiguous match after both steps is reported as `unknown`, flagged as a finding — never silently guessed or skipped. This closes the SILENT half of the gap; it does not close the root cause (dispatch-template.md still names no feature field), which is out of this task's file scope — see the assumptions_made entry."
+
+assumptions_made:
+  - assumption: "A code-quality-reviewer dispatch for this feature will make the originating feature name/path discoverable enough (via a `changes/<feature>/...` path already present in Changed Files/diff, or failing that the Glob+Grep fallback resolving uniquely against index.yaml task ids) for planned_task ref resolution to actually run, rather than silently never firing."
+    verified: false
+    note: "dispatch-template.md's Code Quality reviewer prompt (task-2, outside this task's file scope) names no feature field; a task whose Changed Files are all outside changes/<feature>/ (the common case for most code tasks) falls straight to the repo-wide Glob+Grep step. If two concurrent features shared a task id, that fallback correctly reports `unknown` instead of guessing wrong — but this narrows, rather than closes, reviewer-side DC-1 coverage for planned_task refs specifically."
+    status: resolved
+    resolution: "Level-2 iteration fix 9ee97e9：dispatch-template.md 兩個 reviewer prompt 增設必填 ## Feature 欄位，且 agents/code-quality-reviewer.md 的 planned_task 解析改為三來源順序（Feature 欄位第一、path-derivation 第二、Glob+Grep 殿後）——order-sensitive death test 釘住。"
+    deferred_to_feature_iteration: true
+  - assumption: "The three-state mode selection (spec / principles / UNKNOWN) in Structure Spec Mode is exhaustive only because task-2's dispatch-time guards upstream guarantee every dispatch lands in exactly one of those states before this agent ever runs: `skills/implement/SKILL.md`'s Structure Refs dispatch check is the actual enforcer (missing section = FAIL, not dispatched; empty/non-empty structure_refs branch correctly), with dispatch-template.md owning only the absent/unreadable notation format and the injected-entry shape — this task's mode selection is a downstream cross-task dependency on that upstream guarantee, not an independently-verifiable exhaustiveness proof."
+    verified: false
+    note: "round-2 quality review low-cost item #7; guarantor attribution corrected in round-3 (Coupling fix) to name SKILL.md, not dispatch-template.md alone. No test in this task's scope exercises either guard at runtime — only their own doc-contract tests (task-2) do. If either regressed, this task's three-state exhaustiveness claim would silently stop holding with no local detection."
+
+debt_registered: true
+debt_location: "agents/code-quality-reviewer.md Structure Spec Mode / Spec Mode Additions sections — mode declaration, evidence-ref resolution, and drift_items presence are documented but not code-enforced; enforcement lands in task-4 (iteration aggregation) and validate-and-ship's terminal 0-dangling audit per this feature's KD-4."

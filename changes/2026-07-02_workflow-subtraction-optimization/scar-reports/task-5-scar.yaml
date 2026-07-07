@@ -1,0 +1,173 @@
+task_id: task-5
+completion_status: done
+
+known_shortcuts:
+  - description: >
+      The `signal_lost >= 5` threshold is a rough estimate derived from
+      historical iteration-log data (per task Key Decisions), not a
+      calibrated constant — no statistical analysis was done on how well 5
+      separates "worth iterating" from "not worth iterating" cases. The doc
+      (implement SKILL.md Transition section) explicitly labels it as such
+      and states the only legitimate way to adjust it ("citing newer
+      iteration-log evidence"). Per the task's kickoff, the death condition
+      for revisiting this is already defined (two features in a row where a
+      default-skip lets rot reach ship) — recorded in the doc, not treated
+      as unresolved debt requiring code-level calibration in this task.
+    deferred_to_feature_iteration: false
+
+  - description: >
+      "Cross-task pattern" is operationalized as literal-or-id match ("the
+      same item, by description text or systemic_ref id, appears in >= 2
+      task scar reports") rather than semantic-similarity match. Two items
+      that describe the same underlying rot in DIFFERENT wording across two
+      tasks (e.g. "sort order undefined" in task-2 vs "ordering not
+      specified" in task-5) will NOT be detected as a cross-task pattern by
+      this literal rule. See silent_failure_conditions below for the error
+      direction this creates.
+    deferred_to_feature_iteration: false
+
+silent_failure_conditions:
+  - description: >
+      Because cross-task pattern detection is literal-match (see
+      known_shortcuts), a real cross-task rot pattern expressed in
+      different words across tasks can silently fail to trigger 判準成立
+      (criteria-met), even though signal_lost is also below 5 — the
+      combined result routes to the default-skip branch instead of
+      recommending iteration. The failure is silent because the printed
+      one-line skip record ("signal_lost=N、無 cross-task pattern") is
+      technically true under the literal-match definition while being
+      misleading about the semantic reality. Direction of the error:
+      under-triggers iteration entry (false "no cross-task pattern"), never
+      over-triggers — the literal-match rule cannot manufacture a pattern
+      that doesn't exist verbatim, only miss one that does exist in
+      substance. Mitigation already in the doc: the default-skip branch's
+      record is explicitly "可推翻" (reversible on reply), so a human/auto
+      gatekeeper reading the skip record still has a chance to catch this
+      before validate-and-ship — but only if someone reads the skip record
+      critically rather than treating it as a rubber stamp.
+
+  - systemic_ref: doc-vs-runtime-obedience
+    note: >
+      This task's entire deliverable is a rewritten decision procedure
+      inside SKILL.md prose (implement SKILL.md Transition section,
+      iteration SKILL.md's new Iteration-Entry Criteria reference note).
+      Nothing in this repo executes the "compute signal_lost, check
+      cross-task pattern, branch three ways" logic — an agent must read
+      and follow the written procedure. A dispatched agent that skips
+      reading the Transition section entirely would silently fall back to
+      whatever it already believes the transition protocol is.
+
+assumptions_made:
+  - assumption: >
+      YIN REVIEW RECOVERY（task 預登記的假設在初版 scar 被靜默丟掉，補記）：
+      skip 在 auto mode 也要留紀錄——初版實作的可推翻紀錄只印在對話輸出，
+      auto mode 無人讀對話、skip 不過 gate 也不進 auto-decisions.md，等於
+      無 durable 紀錄。
+    verified: true
+    note: "已修——Transition 現要求 skip 紀錄同步寫入 feature index.yaml（skills/implement/SKILL.md Transition 預設 skip 分支）"
+
+  - assumption: >
+      Cross-task pattern detection should be literal-match (description
+      text or systemic_ref id equality) rather than semantic-similarity
+      match, because a semantic-similarity check has no deterministic,
+      doc-only specification an agent could reliably execute without a
+      code-level NLP/embedding tool this repo does not have.
+    verified: false
+    note: >
+      Not tested against real historical scar-report data for false-negative
+      rate. If literal-match consistently misses real cross-task patterns in
+      practice, the criteria will systematically under-trigger iteration
+      entry (see silent_failure_conditions above) — the fix would be to
+      require implementers to reference existing systemic_ref ids more
+      consistently (making the id-match path catch more cases) rather than
+      inventing free-text semantic matching in a markdown instruction.
+
+  - assumption: >
+      implement SKILL.md's Auto Mode Gate section (rewritten in task-4 to a
+      pointer, budget-locked to <=18 content lines by
+      tests/test_auto_mode/test_skill_auto_mode_protocol.py's _BUDGETS) can
+      absorb the task-5 wording change (workflow_prompt now conditionally
+      invoked, not unconditional) without exceeding budget or breaking the
+      pre-existing required substrings ("implementation execution-mode
+      selection", "Subagent parallel", "Inline sequential").
+    verified: true
+    note: "tests/test_skills/test_iteration_entry_criteria.py::test_unit__auto_mode_gate_workflow_prompt_reflects_conditional_gating + full suite 843 passed"
+
+  - assumption: >
+      Pre-existing tests that assert implement/iteration SKILL.md Transition
+      or Progress Tracking wording (tests/test_skills/test_security_gate_fold.py,
+      tests/test_auto_mode/test_skill_auto_mode_protocol.py's
+      TestPrimaryEvaluatorProtocol) do not conflict with the new three-state
+      branch and truth/projection sentence.
+    verified: true
+    note: "uv run pytest -> 843 passed, 0 failed, 0 errors (baseline 829 + 14 new)"
+
+debt_registered: true
+debt_location: >
+  skills/implement/SKILL.md '## Transition' section (signal_lost >= 5
+  threshold — calibration debt, documented); cross-task pattern literal-match
+  operationalization (semantic-similarity gap, documented in
+  silent_failure_conditions above)
+
+resolved_items:
+  - original_section: "assumptions_made (self-iteration)"
+    original_description: >
+      Initial draft of two Transition-section literal-phrase unit-test
+      checks ("not a calibrated constant", the Auto Mode Gate
+      "deterministic default-skip never invokes this gate" phrase) were
+      written as exact single-string `in` checks, but the actual doc's
+      natural markdown line-wrap split these phrases across a
+      newline+indent — a formatting artifact that would have silently
+      reddened the unit tests on the very first harmless rewrap, which is
+      an over-fit (brittleness) violation of the Test Contract Gate.
+    resolution: >
+      Added a `_normalize_ws` helper (collapses whitespace runs including
+      wrap newlines to a single space) and applied it before these two
+      multi-word phrase checks; the clause-bounded proximity predicates
+      (death tests) were left untouched since their real-doc phrases stay
+      on one physical line by construction and newline-exclusion is
+      intentional there (project test lesson: boundary bleed). Verified by
+      re-running tests/test_skills/test_iteration_entry_criteria.py (all
+      14 tests green) and the full suite (843 passed).
+
+  - original_section: "process order (self-iteration correction)"
+    original_description: >
+      The implementer initially wrote the doc changes to skills/implement/
+      SKILL.md and skills/iteration/SKILL.md BEFORE writing the death
+      tests against them, violating the mandatory "death test before
+      implementation" order (the tests were written afterward, against an
+      already-passing target, so they were never actually observed red).
+    resolution: >
+      Backed up both files, mechanically reverted every task-5-specific
+      edit (leaving prior tasks' 1-4 uncommitted changes intact) using the
+      exact old_string/new_string pairs from the edit history, re-ran
+      tests/test_skills/test_iteration_entry_criteria.py against the
+      reverted (pre-task-5) doc state, and confirmed 9 of 14 tests went
+      RED (yin review reproduced and corrected the internal breakdown: 2
+      death tests on missing new clauses + 1 death test firing on the
+      still-present legacy phrase = 3 death-test reds, plus 6 unit tests
+      failing on missing new sections/content) with the 5 permanent decoy
+      sanity tests staying green throughout (as expected, since they test
+      hardcoded fixture strings, not the doc). Then restored both files
+      from the backup and re-ran the full suite to confirm 843 passed / 0
+      failed with the actual implementation in place.
+
+narrative: |
+  Design choices not built (Structural Honesty — say the refusal out loud):
+  no new abstraction, factory, or shared helper module was introduced for
+  the "compute signal_lost + check cross-task pattern" logic — it is
+  described once in implement SKILL.md's Transition section as the
+  canonical location, and iteration SKILL.md's Prerequisites area gets a
+  short reference note pointing there instead of a second copy. There is
+  currently exactly one place this criteria needs to be evaluated (the
+  implement-to-next-skill transition); iteration SKILL.md's own Step 1
+  signal_lost formula remains the single canonical home for the
+  COMPUTATION formula (unchanged by this task), while the ENTRY THRESHOLD
+  criteria has its own single home in implement's Transition — deliberately
+  two different single-owner facts, not one duplicated fact, per the
+  Architecture Context's warning that this exact canonical-vs-duplicate
+  trap has already been caught three times in this feature.
+
+  Test suite: 829 passed (baseline, unchanged going in) -> 843 passed (829
+  + 14 new tests in tests/test_skills/test_iteration_entry_criteria.py), 0
+  failed, 0 errors. Zero regressions in any pre-existing test.

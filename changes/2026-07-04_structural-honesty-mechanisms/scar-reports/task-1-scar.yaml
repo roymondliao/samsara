@@ -1,0 +1,24 @@
+task_id: task-1
+completion_status: done
+
+known_shortcuts:
+  - systemic_ref: doc-vs-runtime-obedience
+    note: "Spec-Path Guard's 過期/unknown date-comparison branches in SKILL.md are prose only; nothing code-level forces a future planning pass to actually run the comparison."
+
+silent_failure_conditions:
+  - description: "structure-spec.yaml instances written by a real planning pass are not machine-checked by this task for evidence.type=domain_boundary carrying machine_verifiable: true (the death test only guards the TEMPLATE's own example). Per this feature's KD-3/KD-4 division of labor, that per-instance check belongs to task-3 (reviewer) and task-4 (validate-and-ship 0-dangling); task-1 only builds the schema + generation step."
+    status: resolved
+    resolution: "Level-2 iteration 簿記：deferral 目標已落地 — task-3 的 per-entry evidence resolution 含 domain_boundary binary judgment（agents/code-quality-reviewer.md:272）＋ task-4 的 0-dangling terminal audit（skills/validate-and-ship/SKILL.md:133）。首次實跑證據：mini-feature spec-mode review 對 SS-1/SD-1 逐條判定（changes/2026-07-05_issue-002-validate-live-surface/review-record.md）。"
+    deferred_to_feature_iteration: true
+  - description: "A planned_task evidence ref written at Step 2.75 is necessarily a forward reference — index.yaml does not exist until Step 4 completes. SKILL.md documents that a ref still missing after Step 4 is dangling, but this task builds no mechanism that actually re-checks it post-Step-4; that resolution lands in task-3/task-4."
+    status: resolved
+    resolution: "Level-2 iteration 簿記：deferral 目標已落地 — task-3 的 planned_task ref resolution（agents/code-quality-reviewer.md Spec Mode Additions，path-derivation-first + Glob/Grep fallback）＋ task-4 的 0-dangling terminal audit 全量掃描含 planned_task refs（skills/validate-and-ship/SKILL.md:133）。首次實跑：mini-feature SD-1（planned_task→task-1）resolution=resolved（reconciliation.md 0-dangling 2/2）。"
+    deferred_to_feature_iteration: true
+
+assumptions_made:
+  - assumption: "The `scope-anchor` ref-format placeholder in 2-plan.md's schema draft (line 34) is not a required fourth evidence-ref format; the finalized D2 decision (pre-thinking.md, overview.md) defines exactly three evidence types (git_history/planned_task/domain_boundary), and domain_boundary explicitly omits ref."
+    verified: true
+    note: "grep -rn 'scope-anchor' changes/2026-07-04_structural-honesty-mechanisms/ — only hit is 2-plan.md:34; no task-2..6 file or overview.md references it."
+
+debt_registered: true
+debt_location: "skills/planning/SKILL.md Spec-Path Guard (prose-only enforcement); skills/planning/templates/structure-spec.yaml (per-instance domain_boundary / forward planned_task ref checks deferred to task-3/task-4)"

@@ -102,8 +102,7 @@ digraph samsara_routing {
     planning [label="samsara:planning"];
     implement [label="samsara:implement\n(含 Level 1 task iteration)"];
     iteration [label="samsara:iteration\n(Level 2 feature iteration)"];
-    security_review [label="samsara:security-privacy-review\n(push 前 security gate)"];
-    validate [label="samsara:validate-and-ship"];
+    validate [label="samsara:validate-and-ship\n(含 Step 0 security gate)"];
     debugging [label="samsara:debugging\n(四階段陰面 debugging)"];
 
     fix_size [label="Fix 規模？" shape=diamond];
@@ -119,9 +118,8 @@ digraph samsara_routing {
     pre_thinking -> planning [label="human gate"];
     planning -> implement [label="human gate"];
     implement -> iteration [label="human gate\n(iterate)"];
-    implement -> security_review [label="human gate\n(skip iteration)"];
-    iteration -> security_review [label="iteration done\nor forced stop"];
-    security_review -> validate [label="review pass\nor human accept risk"];
+    implement -> validate [label="human gate\n(skip iteration)"];
+    iteration -> validate [label="iteration done\nor forced stop"];
     validate -> done [label="human choose"];
 
     fast_track -> done;
@@ -145,8 +143,7 @@ digraph samsara_routing {
 - **samsara:planning** — pre-thinking 完成後（commitment = Proceed 或 Accept gap）。產出 plan + acceptance + tasks
 - **samsara:implement** — plan 就緒後。death test first 的實作流程（含 Level 1 task-scope self-iteration）
 - **samsara:iteration** — implement 完成後（可選）。Level 2 feature-level scar resolution — cross-task patterns, system-level rot
-- **samsara:security-privacy-review** — implement/iteration 完成後。平台內建 security & privacy review gate
-- **samsara:validate-and-ship** — security-privacy-review 完成後。驗屍 + 交付
+- **samsara:validate-and-ship** — implement/iteration 完成後。內建 Step 0 security & privacy STOP gate（平台內建 review 能力）+ 驗屍 + 交付
 
 **Utility Skills（工具性 — 按需使用）：**
 - **samsara:codebase-map** — 進入新專案或 codebase 大幅變動後

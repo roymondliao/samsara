@@ -1,0 +1,49 @@
+task_id: task-2
+completion_status: done
+
+known_shortcuts:
+  - systemic_ref: doc-instruction-no-code-enforcement
+    note: "ship-manifest.md rule 2 + iteration SKILL.md accept format require re_review_signal/owner in prose only; no runtime watcher polls for the named signal firing, and nothing blocks an author from writing an empty/placeholder value in either field."
+
+  - description: "Negation-detection windows in the test file's step2_accept_requires_signal / step2_accept_requires_expiry (fixed 20-char trailing) and yin_declares_accept_requires_signal (fixed 30-char trailing) are NOT clause-bounded to the sentence's actual end punctuation, because the real Yin-Side bullet is one long em-dash/semicolon-joined compound sentence containing unrelated negations ('risk acceptance is not permanent', 'never rings') that would false-negative the correct doc if the window extended that far. I tried an alternative during self-iteration (bounding the window to the nearest em-dash/semicolon/sentence-end instead of a fixed char count) and verified by direct trace that it does NOT close the gap — it only relocates it: a decoy placing its negation just past an em-dash boundary (`... — but this field is not actually required ...`) still slips past the em-dash-bounded window the same way a fixed-width window misses a distant negation. This is an irreducible category of heuristic residual for a doc-presence regex, not an oversight; task-1's scar (index.yaml: 'negation distant >40 chars can still fool carrier predicate') already established the same precedent and accepted it rather than chasing it with more regex complexity."
+    # accepted, not fixed — verified during self-iteration that the "improved"
+    # alternative has an equivalent-class gap, so widening the window is not
+    # actually a fix, just a different blind spot in the same shape.
+
+  - description: "quality review 建議項（accepted, not fixed）：「no mechanism ever read expiry / alarm clock never rings」的理由句在 ship-manifest.md rule 2 與 iteration SKILL.md Yin bullet 各自完整出現一次（DRY）。不修的理由：iteration SKILL 那句身處 negation-window 校準過的複合句內（'never rings' 是 window 取捨的已驗證輸入之一），為 Suggestion 級 DRY 改動它會擾動剛驗證的測試取捨——風險大於收益。re-review signal：若未來任一處理由句被修改，另一處需同步（owner: 修改者；下次觸碰這兩檔任一 rule/bullet 時檢查）。"
+
+silent_failure_conditions:
+  - description: "No cross-file test asserts that a FUTURE validate-and-ship run, drafting ship-manifest.yaml's accepted_risks from a feature whose iteration-log.yaml used the legacy expiry_date format, actually follows ship-manifest.md Rule 2's fallback clause (embed the calendar date INTO re_review_signal text) instead of silently leaving re_review_signal empty or inventing an unrelated placeholder. This is the migration-path instance of doc-instruction-no-code-enforcement, distinct from the direct-write path already covered by the systemic_ref item above — validate-and-ship/SKILL.md's Output section (out of this task's Files scope) is where migration-specific guidance would need to be added."
+    deferred_to_feature_iteration: true
+
+assumptions_made:
+  - assumption: "Historical changes/*/iteration-log.yaml expiry_date fields appear ONLY inside accept entries, never in other fields, so the Yin-Side tolerance clause's scope does not need to enumerate other locations."
+    verified: true
+    note: "grep -n -B2 expiry_date changes/*/iteration-log.yaml — all matches sit directly under an accept: list entry"
+
+  - assumption: "No pre-existing test (before this task) asserted the literal word 'expiry' anywhere in tests/, so rewording it out of the 4 modified doc files could not break an existing test's contract."
+    verified: true
+    note: "grep -rn expiry --include=*.py tests/ (pre-edit) -> 0 matches"
+
+  - assumption: "ship-manifest.md Rule 2's existing fallback clause ('if the only real trigger is a calendar date, write it INTO the re_review_signal text') is generic enough to also cover translating an OLD expiry_date-only accept entry into the new schema when drafting a fresh ship manifest — no separate migration-specific sentence is needed inside ship-manifest.md itself."
+    verified: true
+    note: "skills/validate-and-ship/ship-manifest.md Rule 2 final sentence（fallback clause 措辭本身即證據）"
+
+debt_registered: true
+debt_location: "skills/validate-and-ship/SKILL.md Output section (no explicit migration-path guidance for accepted_risks generated from legacy iteration-log accept entries — see deferred silent_failure_conditions item)"
+
+narrative: |
+  Files modified are exactly the task's Files list plus the one Additional
+  Context item (skills/iteration/templates/iteration-log.yaml, the new-write
+  template). skills/iteration/SKILL.md's Step 1, Transition, and Auto Mode
+  Gate sections (explicitly off-limits per the dispatch prompt) were verified
+  untouched via `git diff` before writing this report.
+
+  During self-review I found the Step 2 triage prompt's Chinese phrase
+  "誰負責" (who is responsible) did not visibly bind to the YAML field name
+  `owner` used everywhere else (Yin-Side Constraints, Red Flags, both
+  templates) — a reader skimming only the triage prompt could miss that this
+  maps to the `owner` field. Fixed immediately (before writing this scar
+  report, so not listed under resolved_items) by appending "（owner）" to the
+  triage prompt: `誰負責（owner）+ rationale`. Re-ran the full suite after —
+  no regression (782 passed).

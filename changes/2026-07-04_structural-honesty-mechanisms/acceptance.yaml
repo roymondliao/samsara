@@ -1,0 +1,101 @@
+feature: structural-honesty-mechanisms
+coverage_type: verified
+
+scenarios:
+  # --- Death paths first ---
+  - name: "Silent failure - cargo-cult 證據通過審查"
+    type: death_path
+    given: "structure-spec.yaml 中一個 module 的 evidence.type=planned_task 且 ref 指向 index.yaml 不存在的 task id"
+    when: "reviewer（spec mode）或 validate-and-ship 終局抽查解析該 ref"
+    then:
+      - "解析結果必須是 failure（dangling），明列檔案與 id"
+      - "解析狀態必須恰為 resolved / failure / unknown 三態之一"
+      - "dangling 絕不靜默跳過，比照 systemic_ref parse failure 語意，blocking"
+
+  - name: "Silent failure - task 檔缺 structure_refs 欄位被當純行為 task 派發"
+    type: death_path
+    given: "planning 產出的 task-N.md 完全沒有 structure_refs 欄位（非空陣列）"
+    when: "implement 主 agent 準備 dispatch 該 task"
+    then:
+      - "dispatch 前檢查必須 FAIL（schema violation），不得派發"
+      - "欄位缺失與空陣列必須可區分：缺失 = 漏標，空 = 確認無結構觸及"
+
+  - name: "Silent failure - spec 存在但不可讀時 reviewer 靜默降級為 principles mode"
+    type: death_path
+    given: "changes/<feature>/structure-spec.yaml 存在但 YAML 損壞不可解析"
+    when: "code-quality-reviewer 被 dispatch"
+    then:
+      - "verdict 必須是 UNKNOWN（blocking），沿用既有 UNKNOWN 語意"
+      - "不得靜默退回 9 原則模式給出 PASS"
+      - "模式選擇必須恰為 spec mode / principles mode / UNKNOWN 三態之一"
+
+  - name: "Silent failure - drift 欄位缺失被讀作零漂移"
+    type: death_path
+    given: "spec-mode reviewer 的輸出沒有 drift_items 欄位"
+    when: "iteration Step 1 聚合 structural_drift"
+    then:
+      - "欄位缺失必須列為該 task 的 parse failure（未檢查 ≠ 零漂移）"
+      - "顯式空陣列 drift_items: [] 才代表檢查過且無漂移"
+
+  - name: "Silent failure - 過期 poc_death_date 繼續豁免"
+    type: death_path
+    given: "kickoff 含 poc_death_date 且日期早於今天"
+    when: "planning 入口 guard 執行"
+    then:
+      - "豁免失效，強制走 spec path 並記錄豁免過期事實"
+      - "豁免不可就地續期——延期只能修改 kickoff 重新記錄"
+
+  # --- Degradation paths ---
+  - name: "Degradation - domain_boundary 型證據偽裝已驗證"
+    type: degradation
+    given: "structure-spec.yaml 中 evidence.type=domain_boundary 的條目"
+    when: "spec 生成或審查"
+    then:
+      - "條目必須帶 machine_verifiable: false 顯式標記"
+      - "機器檢查僅限 rationale 非空，不得將其計入 resolved"
+      - "缺標記或標成 true 均為 schema violation"
+
+  - name: "Degradation - poc_death_date 格式不可解析"
+    type: degradation
+    given: "kickoff 的 poc_death_date 存在但格式無法解析為日期"
+    when: "planning 入口 guard 執行"
+    then:
+      - "狀態為 unknown，不得靜默選 spec path 或豁免"
+      - "unknown 必須過 execution-mode gate（human: 問使用者；auto: gatekeeper 記錄）"
+
+  - name: "Degradation - 定向注入退化為全量注入"
+    type: degradation
+    given: "task 的 structure_refs 只含 2 個 spec entry，spec 全文 10 個 entries"
+    when: "implement 主 agent 組裝 dispatch"
+    then:
+      - "注入內容限於 structure_refs 指到的條目＋其 evidence"
+      - "單 task 注入量超過 spec 全文 50% 視為定向失效訊號（M2 death condition 量測基礎）"
+
+  # --- Happy paths with evidence ---
+  - name: "Success - mini-feature 證據鏈四環節（Primary evaluator）"
+    type: happy_path
+    given: "機制全部落地後，一個小型真實 feature 走完 spec path"
+    when: "agent 執行證據鏈檢查"
+    then:
+      - "生成：structure-spec.yaml 存在且全部 evidence refs 0 dangling"
+      - "注入：task-N.md 含 structure_refs；dispatch 記錄含對應 spec 片段"
+      - "消費：reviewer verdict 引用 spec entry id 並含顯式 drift_items"
+      - "驗屍：reconciliation 輸出含結構維度對照"
+      - "任何未來稽核可僅憑 artifacts 重建結構決策鏈"
+
+  - name: "Success - 真 POC 豁免記錄完整"
+    type: happy_path
+    given: "kickoff 含未過期 poc_death_date"
+    when: "planning 入口 guard 執行"
+    then:
+      - "structure-spec.yaml 以 exempt_poc 形式存在（記錄豁免與死期，不含 modules）"
+      - "豁免事實在 2-plan.md 可見，不是靜默跳過"
+
+  - name: "Success - 儀式淨增量在預算內"
+    type: happy_path
+    given: "全部 skill/agent 修改完成"
+    when: "計算單 session loaded-context 新增行數（北極星 sub-metric 度量法）"
+    then:
+      - "新增總量 <= 200 行"
+      - "structure-spec.yaml 模板含註解 <= 60 行"
+      - "無內容搬家假輕量（references/ 未等量膨脹）"

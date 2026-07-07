@@ -64,7 +64,7 @@ Samsara 提供從研究到交付的結構化流程。每個階段產生特定的
 research ──> pre-thinking ──> planning ──> implement ──> iteration（可選）
                                                │              │
                                                v              v
-                                       security-privacy-review ──> validate-and-ship
+                                          validate-and-ship（Step 0：security & privacy gate）
 
 fast-track（小型低風險改動）──────> 完成
 debugging（production 故障）──> 小 fix 走 fast-track / 大 fix 走 implement
@@ -74,7 +74,7 @@ debugging（production 故障）──> 小 fix 走 fast-track / 大 fix 走 imp
 
 ## Auto Mode
 
-在 `samsara:research` 之前，Samsara 會先詢問 execution mode：`human-in-the-loop` 或 `auto`。`human-in-the-loop` 保留現有的 human gate；`auto` 仍然完整跑同一條 workflow：`research -> pre-thinking -> planning -> implement -> iteration -> security-privacy-review -> validate-and-ship`，但原本要問 human 的問題與確認，會交給 `samsara:auto-gatekeeper` 回答。
+在 `samsara:research` 之前，Samsara 會先詢問 execution mode：`human-in-the-loop` 或 `auto`。`human-in-the-loop` 保留現有的 human gate；`auto` 仍然完整跑同一條 workflow：`research -> pre-thinking -> planning -> implement -> iteration -> validate-and-ship`，但原本要問 human 的問題與確認，會交給 `samsara:auto-gatekeeper` 回答。
 
 這個 gatekeeper 是可重用的 principle-level reviewer，帶有 project context、architecture judgment、first-principles reasoning。每一個 auto decision 都會 append 到 `changes/<feature>/auto-decisions.md`，這是一份 append-only 記錄，保留原始 `workflow_prompt`、`gatekeeper_answer`、rationale、uncertainty、consequences。
 
@@ -89,8 +89,7 @@ debugging（production 故障）──> 小 fix 走 fast-track / 大 fix 走 imp
 | `samsara:planning` | Pre-thinking commitment 後（Proceed / Accept gap） | Death-first 規格 + 帶驗收條件的任務 |
 | `samsara:implement` | Plan 與 tasks 就緒 | 帶 death test 的程式碼 + scar reports |
 | `samsara:iteration` | Implement 完成後（可選）——feature-level scar resolution | Cross-task patterns + 系統級腐爛修復的 iteration log |
-| `samsara:security-privacy-review` | Implement/iteration 完成後、交付前 | Security & privacy review gate 結果 |
-| `samsara:validate-and-ship` | Security review 通過（或風險已被接受） | 帶失敗預算的交付清單 |
+| `samsara:validate-and-ship` | Implement/iteration 完成——Step 0 先跑 security & privacy STOP gate | 帶失敗預算的交付清單 |
 | `samsara:fast-track` | 小型低風險改動（< 100 行） | 簡化流程，death test 仍先行 |
 | `samsara:debugging` | 既有程式碼的 production 故障 | 四階段陰面根因分析 |
 | `samsara:codebase-map` | 進入新專案或程式碼大幅變動後 | 結構地圖 + 靜默失敗面評估 |
@@ -191,8 +190,7 @@ samsara/
 │   ├── planning/                # Death-first 規格 + 任務生成
 │   ├── implement/               # Subagent 協調 + scar reports
 │   ├── iteration/               # Feature-level scar resolution
-│   ├── security-privacy-review/ # 交付前的 security & privacy gate
-│   ├── validate-and-ship/       # 驗證 + 交付清單
+│   ├── validate-and-ship/       # Step 0 security & privacy gate + 驗證 + 交付清單
 │   ├── fast-track/              # 小改動的簡化流程
 │   ├── debugging/               # 四階段陰面 debugging
 │   ├── codebase-map/            # 專案結構 + 失敗面掃描

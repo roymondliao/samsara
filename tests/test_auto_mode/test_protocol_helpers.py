@@ -3,6 +3,14 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SKILLS_DIR = ROOT / "skills"
+REFERENCES_DIR = ROOT / "references"
+
+# Canonical auto-mode protocol doc. Task 4 moved the Stage Gate Protocol
+# (dispatch mechanism, append-before-continue, decision-value semantics)
+# here so each skill's own "Auto Mode Gate" section can shrink to a
+# pointer. Canonical-completeness assertions read THIS file, not any
+# individual skill.
+AUTO_MODE_REFERENCE = REFERENCES_DIR / "auto-mode.md"
 
 BOOTSTRAP = SKILLS_DIR / "samsara-bootstrap" / "SKILL.md"
 EARLY_STAGE_SKILLS = {
@@ -14,7 +22,6 @@ EARLY_STAGE_SKILLS = {
 LATER_STAGE_SKILLS = {
     "implement": SKILLS_DIR / "implement" / "SKILL.md",
     "iteration": SKILLS_DIR / "iteration" / "SKILL.md",
-    "security-privacy-review": SKILLS_DIR / "security-privacy-review" / "SKILL.md",
     "validate-and-ship": SKILLS_DIR / "validate-and-ship" / "SKILL.md",
 }
 
@@ -29,7 +36,6 @@ REQUIRED_WORKFLOW_STAGES = {
     "planning",
     "implement",
     "iteration",
-    "security-privacy-review",
     "validate-and-ship",
 }
 

@@ -1,0 +1,51 @@
+# Systemic Scar Registry
+#
+# Cross-feature structural facts that keep re-appearing as scar items across
+# unrelated tasks and features (e.g. "doc-presence tests cannot prove agent
+# runtime obedience"). Once an item is judged systemic — it repeats across
+# features and is not specific to one task's code — it is recorded HERE once.
+# Every scar report that hits the same fact references it via
+# `systemic_ref: <id>` instead of re-describing it in full (see
+# skills/implement/templates/scar-schema.yaml Rule 9).
+#
+# Write timing: an entry is added here ONLY when Level 2 iteration
+# (skills/iteration/SKILL.md) or validate-and-ship judges a scar item to be a
+# cross-feature structural fact — not by an individual task implementer. A
+# task implementer may REFERENCE an existing id via `systemic_ref`; it does
+# not register new ids.
+#
+# Schema per entry:
+#   id: kebab-case identifier, referenced by scar reports as `systemic_ref: <id>`
+#   description: the systemic fact itself — this is the ONE canonical
+#     restatement. Scar reports must NOT copy this text; they reference the id.
+#   first_recorded: ISO date (YYYY-MM-DD) this fact was first registered
+#   applies_when: what kind of task/change tends to hit this fact
+#
+# systemic_ref syntax and the dangling-id=parse-failure rule: see
+# skills/implement/templates/scar-schema.yaml Rule 9. The full resolution
+# procedure (present / dangling / missing-registry) is canonical in
+# skills/iteration/SKILL.md Step 1 — not restated here.
+
+entries:
+  - id: doc-vs-runtime-obedience
+    description: >
+      Doc-presence tests (grep/parse checks on instruction markdown) can only
+      prove a rule EXISTS in the instruction surface. They cannot prove an
+      agent actually OBEYS the rule at runtime — obedience is not observable
+      from the doc layer alone.
+    first_recorded: "2026-07-02"
+    applies_when: >
+      A task adds or modifies an agent-facing instruction (SKILL.md,
+      agents/*.md, reference doc) and the only verification available is a
+      doc-contract test.
+
+  - id: doc-instruction-no-code-enforcement
+    description: >
+      A written instruction in a skill/agent markdown file has no code-level
+      enforcement mechanism. Whether it is followed depends entirely on the
+      dispatched agent choosing to comply — there is no runtime gate that
+      blocks non-compliant behavior.
+    first_recorded: "2026-07-02"
+    applies_when: >
+      A task's guard is "add/modify a markdown instruction" rather than a
+      code-level check, gate, or test that runs regardless of agent behavior.

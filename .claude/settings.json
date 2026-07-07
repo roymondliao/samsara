@@ -34,7 +34,7 @@
   "enableAllProjectMcpServers": true,
   "enabledPlugins": {
     "claude-mem@thedotmack": false,
-    "superpowers@claude-plugins-official": true,
+    "superpowers@claude-plugins-official": false,
     "feature-dev@claude-plugins-official": true,
     "code-simplifier@claude-plugins-official": true
   },

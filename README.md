@@ -64,7 +64,7 @@ Samsara provides a structured workflow from research to shipping. Each phase pro
 research ──> pre-thinking ──> planning ──> implement ──> iteration (optional)
                                                │              │
                                                v              v
-                                       security-privacy-review ──> validate-and-ship
+                                          validate-and-ship (Step 0: security & privacy gate)
 
 fast-track (small, low-risk changes) ──────> done
 debugging (production failures) ──> small fix: fast-track / large fix: implement
@@ -74,7 +74,7 @@ Each transition is a human gate (or an `auto-gatekeeper` decision in auto mode).
 
 ## Auto Mode
 
-The selection happens before `samsara:research`: Samsara asks for an execution mode, either `human-in-the-loop` or `auto`. `human-in-the-loop` keeps the existing workflow gates. In `auto`, the same workflow still runs from `research -> pre-thinking -> planning -> implement -> iteration -> security-privacy-review -> validate-and-ship`, but former human questions and confirmations are routed to `samsara:auto-gatekeeper`.
+The selection happens before `samsara:research`: Samsara asks for an execution mode, either `human-in-the-loop` or `auto`. `human-in-the-loop` keeps the existing workflow gates. In `auto`, the same workflow still runs from `research -> pre-thinking -> planning -> implement -> iteration -> validate-and-ship`, but former human questions and confirmations are routed to `samsara:auto-gatekeeper`.
 
 The gatekeeper answers as a reusable principle-level reviewer with project context, architecture judgment, and first-principles reasoning. Every auto decision is appended to `changes/<feature>/auto-decisions.md` as an append-only record that preserves the original `workflow_prompt`, the `gatekeeper_answer`, rationale, uncertainty, and consequences.
 
@@ -89,8 +89,7 @@ First-cut scope is intentionally session-level: `samsara_config.yaml` is not sup
 | `samsara:planning` | After pre-thinking commitment (Proceed / Accept gap) | Death-first spec + tasks with acceptance criteria |
 | `samsara:implement` | Plan with tasks is ready | Code with death tests + scar reports |
 | `samsara:iteration` | After implement (optional) — feature-level scar resolution | Iteration log of cross-task patterns + system-level rot fixes |
-| `samsara:security-privacy-review` | After implement/iteration, before shipping | Security & privacy review gate result |
-| `samsara:validate-and-ship` | Security review passed (or risk accepted) | Ship manifest with failure budget |
+| `samsara:validate-and-ship` | Implement/iteration complete — Step 0 runs the security & privacy STOP gate first | Ship manifest with failure budget |
 | `samsara:fast-track` | Small, low-risk changes (< 100 lines) | Compressed workflow, death test still first |
 | `samsara:debugging` | Production failure in existing code | Four-phase yin-side root cause analysis |
 | `samsara:codebase-map` | Entering a new project or after significant changes | Structural map + silent failure surface assessment |
@@ -191,8 +190,7 @@ samsara/
 │   ├── planning/                # Death-first spec + task generation
 │   ├── implement/               # Subagent orchestration + scar reports
 │   ├── iteration/               # Feature-level scar resolution
-│   ├── security-privacy-review/ # Pre-ship security & privacy gate
-│   ├── validate-and-ship/       # Validation + ship manifest
+│   ├── validate-and-ship/       # Step 0 security & privacy gate + validation + ship manifest
 │   ├── fast-track/              # Compressed workflow for small changes
 │   ├── debugging/               # Four-phase yin-side debugging
 │   ├── codebase-map/            # Project structural + failure surface mapping

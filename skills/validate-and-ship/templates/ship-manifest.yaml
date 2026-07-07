@@ -8,7 +8,8 @@ known_failure_modes:
 accepted_risks:
   - risk: "<risk description>"
     accepted_by: "human"
-    expires: "YYYY-MM-DD"
+    re_review_signal: "<observable condition that should trigger re-review — required, not a calendar date>"
+    owner: "<who is responsible for noticing the signal — required, cannot be empty>"
 
 silent_failure_surface: low  # low | medium | high
 

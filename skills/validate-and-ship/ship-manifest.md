@@ -17,7 +17,8 @@ known_failure_modes:
 accepted_risks:
   - risk: "<risk description>"
     accepted_by: "<who accepted this risk — typically 'human'>"
-    expires: "YYYY-MM-DD"  # When this risk acceptance should be re-evaluated
+    re_review_signal: "<observable condition that should trigger re-review — not a calendar date>"
+    owner: "<who is responsible for noticing the signal and re-reviewing>"
 
 silent_failure_surface: low | medium | high
 # low: <3 known silent failure paths
@@ -33,6 +34,6 @@ kill_switch: "<how to disable this feature immediately if it starts rotting>"
 ## Rules
 
 1. **No empty failure modes.** Every feature can fail. If `known_failure_modes` is empty, the analysis was insufficient.
-2. **accepted_risks must have expiry dates.** Risk acceptance is not permanent. Every accepted risk has a date by which it must be re-evaluated.
+2. **accepted_risks must have a re-review signal and an owner, not an expiry date.** Risk acceptance is not permanent — but no mechanism anywhere in this repo (hooks, CLI, tests, skills) has ever read or acted on an `expires` date; a time-driven re-review promise is an alarm clock that never rings. Every accepted risk must instead name `re_review_signal` (the observable condition — a metric, an error pattern, a new dependency, a specific event — that should trigger re-review) and `owner` (who is responsible for noticing that signal and acting on it). Do not reintroduce `expires`/`expiry`; if the only real trigger available is a calendar date, write it INTO the `re_review_signal` text (e.g. "re-review at next quarterly audit"), but the field stays signal-shaped, not date-shaped.
 3. **kill_switch is mandatory.** If you can't describe how to disable the feature, you can't ship it safely.
 4. **silent_failure_surface** is computed from scar reports. Count the unique `silent_failure_conditions` across all task scar reports.

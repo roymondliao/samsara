@@ -1,169 +1,214 @@
 # Pre-thinking Flow — Detailed Procedures
 
-This file expands the SKILL.md step descriptions into agent-executable instructions. Read this alongside SKILL.md; do not treat it as a standalone script.
+This file expands the SKILL.md six-step descriptions into agent-executable instructions. Read this alongside SKILL.md; do not treat it as a standalone script.
+
+**Cross-cutting principles (the design's load-bearing spine):**
+
+1. **Anything a "feeling" could fake, replace with "point to checkable evidence."** Confidence, done-ness, derivation, pattern choice, seam reality — all use this move. An LLM can fake confidence; it cannot fake a pointable file:line.
+2. **Asymmetric friction.** Thinking less has friction everywhere; thinking more is free. Deep needs no reason, shallow needs a written reason; adding a lens is free, dropping a known lens needs a reason; challenging an assumption is free, self-accepting is banned; recording reversal cost is cheap, building a speculative extension point is expensive.
+3. **Facts parallel, judgment sequential.** Gathering facts can fan out (facts don't fight); making decisions must be single-file (decisions are interdependent; parallel forks into contradictions).
+4. **Leave convergence traces.** Every decision carries "why not the others" and "what rots first" as signposts for the next person who iterates.
+5. **Prefer failures that alarm.** Choose the option that fails loudly over the one that fails silently. A guess isn't dangerous; a silent guess is.
 
 ---
 
-## 1. Gap and Design Identification
+## 1. Step 1 — Locate the work
 
-A **gap** is a decision the LLM would need to make during planning that research has not constrained.
+The agent judges two things from the research conclusions + one look at the codebase, writes them down; both are revisable later.
 
-There are two categories:
-- **Information gaps** — research did not establish a fact planning needs.
-- **Design decision gaps** — research established constraints, but multiple valid system designs remain and the choice changes task decomposition, artifact contracts, ownership, or failure modes.
+### (1) Type (may be several at once)
 
-Information gap examples:
-- Interface ownership is unclear ("Should this live in module A or B?")
-- Success definition is undefined ("How many is 'enough' for the north star metric?")
-- Location is ambiguous ("Does this new file go in `lib/` or `core/`?")
-- Runtime entrypoint is unverified ("Which command, API route, hook, or worker
-  actually enters this behavior?")
-- Config or environment source is unverified ("Which env var, config file, or
-  deployment setting controls this path?")
-- External interaction is untraced ("Which service, database, queue, filesystem
-  path, or network call owns this side effect?")
-- Current behavior source is unclear ("Which existing test, evaluator, public
-  interface, or artifact defines today's behavior?")
-- Codebase map is missing or stale and the needed boundary/environment facts
-  cannot be verified by targeted local inspection.
+feature / perf optimization / infra / refactor / external-service integration / data-structure change. Can't tell → count them all.
+→ Why: different types need different things thought about (Step 4 uses this to pick which dimensions to reason over).
 
-Atomic context procedure:
+### (2) Depth — one ruler: uncertainty × blast radius
+
+- **uncertainty** = are there design questions still "not thought through, must guess"?
+- **blast radius** = if this is built wrong, how far does damage spread? Do you know how far?
+  - **Codebase/structural dimension (codebase-craft):** beyond system/data/permission spread, ask *which seam does this change land on? Does it touch a load-bearing boundary?* Landing on a core seam (much existing or planned code sits on it) = large radius → think deep; only adding a leaf node = small. This makes "think deep?" sensitive to codebase structure, not just system consequences (design note 2 §5).
+
+The ruler has exactly one real gate: **deep thinking is the default; fast-track is a narrow path you must *prove* into.**
+
+- **fast-track**: prove *both axes approach zero* (no unresolved design question; wrong = bounded, known damage) → no thinking needed. What lets you skip is not "small change" — "small" is only the surface.
+- **deep thinking**: everything else, all through the same flow (Step 2 assume → Step 3 gather → Step 4 converge).
+- The rule is one-directional: fast-track needs proof; unsure = deep. Do not assume you can judge "this one needs no depth." Misjudging into deep only costs tokens; misjudging into fast-track drops blind spots — asymmetric cost.
+- **No "light thinking" middle tier.** Whether to dispatch searchers, and how many, is the *emergent result* of Step 2's not-confident-assumption count — 0 not-confident assumptions → 0 searchers (equivalent to the old "light" case), with no separate first-step judgment call.
+
+**Revisable (depth one-way valve + mid-flight upgrade):** if later steps surface new evidence, the main agent upgrades depth on its own (never downgrades). Not a new mechanism — the existing single-directional valve.
+
+---
+
+## 2. Step 2 — Assume, frame, and distil core identity
+
+Collect the research conclusions into a set of **explicitly written assumptions**. This step **converges** (draws a box the later thinking runs inside; stops it sprawling), it does not brainstorm.
+
+An assumption earns writing if the blast-radius axis says so: **"if this is wrong, does the design change?" Yes → write it; no → noise (leave it to implementation).** How many is decided by that filter, no fixed count; when unsure whether to write one, write it (a line is cheap, a missed wrong premise is expensive).
+
+Each assumption, four fields:
+```
+Assumption: what this run takes to be true
+Boundary: when it holds; when it does not
+If it breaks: what rots, who notices first
+Basis: a checkable piece of evidence to point at (or none)
+```
+
+**"Confident / not confident" is judged objectively, not by feeling:**
+- **Confident = can point, right now, to a concrete checkable basis** (file:line / an existing test / a research finding / an existing contract). Claim confidence → you must write the basis; none written = not confident automatically.
+- Not a basis: "usually it's like this" / "the framework should handle it" / "industry convention." That's feeling, not this case's evidence.
+- This matches the axiom: existence is responsibility; what exists leaves evidence; producing evidence is how you carry the responsibility.
+
+Assumptions then split naturally: **confident** → used to frame scope; **not confident** → go to Step 3 for evidence (those that can't be gathered, only the human knows → become Step 5 questions). If assumptions contradict each other and won't reconcile → research framed it wrong, **return to research**.
+
+### Atomic context procedure (before framing is complete)
+
+Framing needs live system facts (module boundaries, entrypoints, config/env sources, external services, data flow, existing tests). Derive them from live codebase artifacts:
+
 1. Check `.samsara/codebase-map.yaml`.
-2. If present and fresh, read it as derived context for module boundaries,
-   entrypoints, config sources, external services, data flow, hidden coupling, and
-   assumptions.
-3. If present but stale and churn (changed source files since `last_updated`,
-   excluding paths under `changes/`, `docs/`, `bugfix/`) exceeds
-   `staleness_churn_threshold` (canonical definition: codebase-map SKILL.md
-   Triggers): auto-initiate `samsara:codebase-map` regeneration before
-   continuing. In human-in-the-loop mode, retain Phase 4 human review. Do not
-   proceed past this step until regeneration completes. If auto-initiated
-   regeneration fails, aborts, or is rejected at Phase 4 review, do NOT treat
-   it as completed and do NOT block indefinitely: proceed with the map
-   explicitly marked stale, record an information gap noting the failed
-   regeneration, and continue planning on that basis.
-   If present but stale and churn is at or below `staleness_churn_threshold`:
-   use it only as a starting hypothesis. Verify any fact needed for planning
-   against live codebase artifacts; record stale or unverifiable facts as
-   information gaps.
-4. If missing, do not invent a map from memory. For a small, localized task, run
-   targeted local inspection of the affected files and their immediate
-   entrypoints/config/external interactions. For broad or unclear scope, record an
-   information gap recommending `samsara:codebase-map`.
-5. If the map and live codebase disagree, live codebase artifacts win. Surface the
-   drift as an information gap or update requirement; do not silently trust the
-   map.
+2. If present and fresh, read it as derived context for module boundaries, entrypoints, config sources, external services, data flow, hidden coupling, and assumptions.
+3. If present but stale and churn (changed source files since `last_updated`, excluding paths under `changes/`, `docs/`, `bugfix/`) exceeds `staleness_churn_threshold` (canonical definition: codebase-map SKILL.md Triggers): **auto-initiate** `samsara:codebase-map` regeneration before continuing. In human-in-the-loop mode, retain **Phase 4 human review**. Do not proceed past this step until regeneration completes. **If auto-initiated regeneration fails, aborts, or is rejected at Phase 4 review, do NOT treat it as completed and do NOT block indefinitely: proceed with the map explicitly marked stale, record an information gap noting the failed regeneration, and continue planning on that basis.** If present but stale and churn is at or below `staleness_churn_threshold`: use it only as a starting hypothesis. Verify any fact needed for planning against live codebase artifacts; record stale or unverifiable facts as information gaps.
+4. If missing, do not invent a map from memory. For a small, localized task, run targeted local inspection of the affected files and their immediate entrypoints/config/external interactions. For broad or unclear scope, record an information gap recommending `samsara:codebase-map`.
+5. If the map and live codebase disagree, live codebase artifacts win. Surface the drift as an information gap or update requirement; do not silently trust the map.
 
-Design decision gap examples:
-- Boundary is unclear ("Is this a new chain skill, a planning responsibility, or a validate-and-ship check?")
-- Artifact contract is unclear ("Which file owns the canonical evaluation result?")
-- Feedback route is unclear ("Should evaluator failure return to iteration, debugging, or planning?")
+### Codebase-craft — distil the domain core identity
 
-**Not a gap:**
-- Implementation detail choices that don't change observable behavior (e.g., which loop style to use)
-- Decisions that research explicitly delegated to the implementer
-- Choices where any option is valid without user input (the LLM can proceed without bias)
+While framing, produce one more named output: the **domain core identity**.
 
-A gap test: "If I make this decision without asking, am I smuggling an assumption into planning that the user didn't approve?" If yes — it is a gap.
+- **What it is:** what this system (within feature scope) essentially *is*, one or two lines — the thing structural decisions must serve.
+- **Where it comes from:** the research problem-essence + this step's hypothesis-framing. As you condense research into an explicit hypothesis, force out the "this thing's core identity is X" judgment that frames scope.
+- **Operability test (guards against empty slogans):** the identity must be able to **adjudicate a concrete structural decision**. Test: if two opposite structural choices both "serve" your written identity, it is too vague — rewrite it. (Same "replace anything foolable with checkable" principle.)
 
-Write each gap as a specific, non-leading question. Non-leading means: the question does not embed a recommended answer. Bad: "Should we use PostgreSQL (recommended for reliability)?" Good: "Which database engine should this feature use, and why?"
-
-Include a hypothesis for each gap: the LLM's current best assumption. The hypothesis is shown to the user for challenge, not framed as the answer.
+Core identity is a **design decision** and rides the Step 6 handoff channel (planning Key Decisions single source). It is feature-level, produced once here (design note 2 §4.1).
 
 ---
 
-## 2. Group Formation
+## 3. Step 3 — Multi-lens evidence
 
-Group questions by:
-- **Topic domain** — questions about the same subsystem or concern belong together
-- **Answer-interdependency** — questions whose answers depend on each other belong in the same group (answering Q1 may change the right answer to Q2)
+Go find evidence for the not-confident assumptions. **Why multi-lens and not the main agent alone:** the main agent only searches where it already thought to look — its blind spots decide what it can find. Independent searchers at **different lenses** hit what it didn't think to look for. This is the only reason multi-lens exists: cover blind spots.
 
-Order groups by **resolution dependency**: groups whose answers unblock other groups come first.
+- **No cap on lens count** — dispatch as many as this run needs, decided by "which kinds of places the evidence is scattered across." No cap is possible because **searchers bring back only facts, and facts don't fight — they only complement** (let them judge, and many of them return contradictory advice built on different premises — so they don't judge).
+- **Each searcher returns:** facts found (with sources), things found along the way that weren't on the list (this is the real blind-spot value), things not found. **No "recommendation" field.** (Return shape: `templates/lens-report.md`.)
+- **How to dispatch:** the lens (question to answer) + thinking scope (Step 2's box) + starting points (a few entry files, but a *start* not "only search these," else you smuggle the main agent's blind spot into the searcher) + return format.
+- A lens that fails or comes back blank → record it as an "unverified gap," do not carry on as if nothing happened.
+- **Searcher count comes from Step 2, not Step 1:** lenses dispatched = how many not-confident assumptions Step 2 had / how many kinds of places evidence is scattered across — 0 not-confident assumptions → 0 searchers, main agent looks itself. This is the direct consequence of deleting the "light thinking" tier, not a new rule.
+- A **default lens list** (`references/lenses.md`) serves as a reminder (not a cap): after deriving lenses, check it for known-important ones you missed; deliberately skipping one needs a written reason.
+- **codebase-map as a start, not truth:** when `.samsara/codebase-map.yaml` exists and is fresh enough, searchers take it as a starting hypothesis (saves re-digging), but **live codebase wins** — where map and reality disagree, trust reality and surface the drift. Map missing or stale → don't invent from memory; search.
+- **Sole writer:** searchers only *return results* to the main agent; they write no file. `pre-thinking.md` is written by the main agent alone (avoids many searchers writing one file at once).
 
-Within a group, order questions so earlier questions narrow the context for later ones.
+### Codebase-craft — which lenses gather seam facts
 
----
+Among the default lenses, **structure / evolution / boundary** are the ones that feed the real-seam decision in Step 4:
+- **structure / boundary** gather *facts*: existing module/abstraction boundaries, coupling, existing patterns in the area.
+- **evolution** gathers the **already-happened** evidence tier: how this area has historically changed (git history) — used to judge whether a seam is stable/real.
 
-## 3. Group Overflow Procedure
-
-**When a group has N > 3 questions:**
-
-1. Split into rounds: Round 1 takes the first 3 questions; Round 2 takes the next 3 (or fewer if N ≤ 6); add Round 3 if N > 6.
-2. Issue Round 1 via AskUserQuestion (exactly 3 questions, no more).
-3. Append Round 1 answers to `pre-thinking.md` under heading `### Group X: <theme> (round 1)`.
-4. Issue Round 2 via AskUserQuestion (remaining questions, ≤ 3).
-5. Append Round 2 answers under `### Group X: <theme> (round 2)`.
-6. Continue until all questions in the group are answered.
-
-**Label invariant:** All rounds share the same group number and theme. `Group X (round 1)` and `Group X (round 2)` are sub-rounds of the same group — do NOT label them as separate groups (Group X and Group X+1). Group identity must be preserved across rounds.
-
-**Hard limit:** NEVER put more than 3 questions in a single AskUserQuestion call. (This round-splitting arithmetic depends on the limit defined in §7. If §7's limit changes, the round-split sizes above must change in lockstep.)
-
-**Example (5-question cluster on database schema):**
-- Round 1: Questions 1, 2, 3 → AskUserQuestion → append under `### Group 2: database-schema (round 1)`
-- Round 2: Questions 4, 5 → AskUserQuestion → append under `### Group 2: database-schema (round 2)`
+These are still facts, not judgment. The judgment (is this a real seam? what tier?) happens in Step 4. Keep the separation (design note 2 §4.2).
 
 ---
 
-## 4. File-Edit Detection Procedure
+## 4. Step 4 — Converge to design decisions
 
-Before EACH Step B append (every group, every round):
+The main agent, **alone and in order** (can't parallelize — decisions depend on each other: "where to put it" needs "what's the core" first). This is the most dangerous step — passing judgment is exactly where an LLM snaps back to "looks fine, ship it."
+
+### First decide which decisions to make (where dimensions come from)
+
+Not a fixed list — dimensions **grow naturally + a type checklist as safety net** (same management as Step 3 lenses):
+1. From Step 2's **not-confident assumptions** — each "wrong → design changes" assumption is a decision to make.
+2. From Step 3's **evidence and candidate gaps** — what searchers hit becomes a dimension to decide.
+3. Against the **type checklist** below — fill a missed known-important one; to truly skip, write one line of reason (adding a dimension is free, dropping a known one needs a reason).
+
+Type checklist (reminder, not a cap; Step 1's type decides which rows to read):
+
+| Type | Common decision dimensions |
+|---|---|
+| feature | where + why / reuse existing or build new / consistent with existing style or deviate (write the cost of deviating) / which upstream contracts to inherit |
+| perf | current baseline + target / how to measure (→ becomes Step 6 evaluator) / how to prevent regression |
+| infra | format contracts (data/secret/config) / blast radius (incl. permissions) / placeholder-value lifecycle (who fills, when swapped, warning if wrong) / rollback / which validations the agent does vs the operator |
+| refactor | how to prove behavior wasn't broken / safe cut order (stepwise, stoppable anytime) |
+| external integration | build or use existing / exit cost / their interface contract |
+| data-structure change | compatibility / old-new coexistence window / rollback point |
+
+(This dimension table and Step 3's lens table are **different layers but corresponding**: lenses gather facts, dimensions consume those facts to decide. E.g. structure-lens facts → feed the "where / reuse / pattern" dimension.)
+
+### Each dimension lands in one of three boxes
+
+Core mechanism, one sentence: **every decision must land in one of three boxes — there is no fourth box called "I feel."**
+
+1. **Evidence-decided** — Step 3's facts forced a single answer; cite the source.
+2. **Self-derived** — evidence didn't force it, but you derive it from a **nameable root** and **write the chain out**. Root = **Samsara axiom + the problem's hard requirements + existing convention/contract (if found and confirmed not rotten)**. You don't need to first classify this change's "novelty/maturity" to decide what to check: go look for a convention/contract; not found → fall back to axiom + hard requirements. The act of looking gives the situated answer; classify-then-check and check-directly are equivalent.
+   - Why write the chain, not just "I used first principles": the latter can label any conclusion, trivially faked; a written chain exposes fakes (they don't reconnect to the root).
+   - **Mature-repo trap:** some existing code is rotten. "Consistent with existing" may perpetuate rot — before citing an existing convention, confirm it isn't rotten; if it is, deviate and record the deviation as a decision.
+3. **Needs an external call** — can't derive it, several answers stand, the choice needs a preference/priority the agent has no authority to invent. Answerer: **human, or the gatekeeper in auto mode.**
+   - Sub-split: (a) derivable from project principle/convention → gatekeeper judges legitimately; (b) only human/org knows (naming convention, business priority) → gatekeeper can only guess, and **must mark "unconfirmed guess" and record it**, making it a visible risk rather than a silent wrong assumption.
+
+**Reversibility folds into the three boxes:** on each decision, ask "how painful to change later" —
+- easy to change, or both options equally easy → pick the flexible one yourself ("self-derived"), record reversal cost in passing.
+- keeping flexibility costs extra now → a trade-off with no standard answer, "needs external call."
+- actually building the extension point → only when a present-day, real force exists; otherwise record reversal cost, don't build.
+- specially flag the pseudo-reversible ("looks easy to change, but semantics are locked") — it gives false safety and rots first.
+
+### Codebase-craft — real seams as a named decision category
+
+The domain's essential boundaries the feature **sits on or creates** (module/abstraction boundaries) are a **named decision category** in Step 4 — run through the same three boxes, **not a separate structural pass**.
+
+- **Where produced:** Step 3's structure/boundary/evolution lenses gathered the facts → converge here into named seam decisions.
+- **Evidence-tier marker (key) + accrues along the pipeline:** the full tier order is
+  **already-happened (git history) > planned change (plan's future tasks) > domain-essential boundary > imagination**.
+  But evidence accrues along the *pipeline stage*: pre-thinking can only mark **already-happened / domain-essential** (or "needs external call"); the **planned-change** tier is added later by planning, once it decomposes tasks (see design note 2 §7). So pre-thinking marks each seam already-happened/domain-essential; planning may later *strengthen* the same seam to planned-change. **Imagination is not evidence** — a seam that at pre-thinking time cannot be marked with any checkable tier is not a real seam (death case DC-1 below).
+- **Feature-scope limited:** recognize only seams the feature sits on/creates, do **not** redraw the whole project's architecture (guards seam astronomy).
+- **Granularity floor:** seams go down to **function / module / abstraction boundary**, no lower (design direction §3.2). Note the floor is about *what yin review can see*; the *threshold for leaving a trace* is narrower — only a structural bet (pattern choice / boundary-seam creation or deviation / explicit refusal) leaves a trace, ordinary function splitting does not (design notes 5 §9, 6 §2.3).
+
+### Death cases (silent failure + detection)
+
+| Death | Silent-failure shape | Detection / defense |
+|---|---|---|
+| **Seam astronomy** | pre-thinking tries to draw the whole project's architecture; seams explode, most imaginary | feature-scope limit + evidence-tier marker (imagination tier rejected) + downstream consumption discipline (a seam no code sits on = noise, design note 1) |
+| **Empty core identity** | identity written as a slogan that adjudicates no decision | operability test: two opposite structural choices both "serve" it → too vague, rewrite |
+| **Seam with no evidence tier** | looks like structural thinking, actually drawing lines by feeling (DC-1) | three-box discipline: a seam also lands in one box (evidence-decided / self-derived+chain / needs external call); no markable tier = not a real seam |
+| **Mature repo perpetuates a rotten seam** | "consistent with existing" reuses an already-rotten boundary | before citing an existing convention, confirm it isn't rotten; if rotten, deviate and record as a decision |
+
+### Closing check
+
+You may declare "no gaps" only when **every dimension that grew (including checklist ones skipped with a written reason) has landed in one of the three boxes.** Do not wave it off with "nothing to ask."
+
+---
+
+## 5. Step 5 — Ask what must be asked
+
+Step 4 recognized and marked which decisions "need an external call"; this step actually asks and records the answers. The most dangerous thing: **how you ask decides whether you get a real decision or a rubber stamp.** So two rules:
+
+- **Every question is a real multiple-choice:** ≥2 options + each option's trade-off. Never ask "shall we do it the way I recommend?" (that yes/no is exactly the samsara "shall we do all of it?" disease).
+- **Answers recorded as traces**, not just the conclusion: which was chosen / why not the others / what this decision assumes / what rots first when that assumption breaks. So the next person can pick it up and change it without re-litigating the whole thing.
+
+Practice: human asks via multiple-choice; auto has the gatekeeper answer per question (mark (b)-type as guess). Ask a small batch at a time, split rounds if many. If an answer overturns a Step 4 derivation, propagate the fix downstream (decisions are interdependent).
+
+### Grouping and overflow
+
+- Group questions by **topic domain** (same subsystem/concern together) and **answer-interdependency** (answering Q1 may change Q2's right answer → same group). Order groups by **resolution dependency** (unblocking groups first).
+- **Hard limit: never more than 3 questions in one AskUserQuestion call** (§8 header constraint applies too). When a group has N > 3: split into rounds of ≤3, all rounds sharing the same group number + theme (`### Group X: <theme> (round 1)`, `(round 2)`, …) — sub-rounds of one group, never relabelled as separate groups.
+
+### File-edit detection (before EACH Step 5 append)
 
 1. **Read** the current `pre-thinking.md` from disk.
 2. **Compare** to the content the LLM last wrote (the expected state tracked internally).
-3. **If the file differs from expected:**
-   - Print exactly: `I see you've edited pre-thinking.md. Incorporating your changes.`
-   - Treat the user-edited version as authoritative for all differing sections.
-   - Use the user-edited content as the base for the upcoming append.
+3. **If it differs:** print exactly `I see you've edited pre-thinking.md. Incorporating your changes.`; treat the user-edited version as authoritative for differing sections; use it as the base for the append.
 4. **Append** the new group's answers below the (possibly user-edited) content.
 
-**This procedure runs before every append — not only the first one.** Users may edit between any two Step B groups.
-
-**If the expected state is unavailable** (e.g., K3b Resume from a prior session, or context compression): reconstruct the baseline by reading the current file's Step A section and all visible Step B groups. Treat that reconstructed content as the expected state and compare the full current file against it. Proceed with the comparison normally.
-
-**Do NOT:**
-- Overwrite the user's edits with the original LLM-written Step A content.
-- Halt with an error when user edits are detected — detect, acknowledge, incorporate, continue.
-- Skip the read-before-append step even if you are confident nothing changed.
+This runs before every append, not only the first. **If expected state is unavailable** (K3b resume or context compression): reconstruct the baseline by reading the current file's earlier sections and all visible Step 5 groups; treat that as expected state and compare. Do NOT overwrite user edits, do NOT halt on detecting edits, do NOT skip the read-before-append.
 
 ---
 
-## 5. K3b Recovery and Completion Procedure
+## 6. Step 6 — Honest handoff
 
-**On session start, before Step A:**
+Hand three things to planning; be honest about your own state.
 
-1. Check if `pre-thinking.md` exists in `changes/<feature>/`.
-2. **If absent:** proceed normally to Step A.
-3. **If present AND complete:** read the `Decision:` field and Evaluation Contract.
-   - `Decision: Proceed` or `Decision: Accept gap` + complete Evaluation Contract = planning-ready.
-   - `Decision: Return to Research` = complete but NOT planning-ready. Stop and ask user to re-invoke `samsara:research` with the unresolved gaps.
-   - Step C heading without one of these decisions is incomplete.
-   - Any Step C without Evaluation Contract is incomplete.
-4. **If present AND incomplete:** session was interrupted (K3b state).
-   - Identify the last completed section (Step A written? Which Step B groups are present?).
-     - A group is **complete** if its `### Group N:` header is followed by at least one `**A:**` answer line (anywhere before the next `### Group` header or end of file).
-     - A group is **partial** (header present, no `**A:**` lines) — treat it as the NEXT INCOMPLETE group and resume from it.
-   - Inform the user: `"Pre-thinking was interrupted before commitment was reached. [Last completed section: Step A / Step B Group N]"`
-   - Offer via AskUserQuestion (header ≤ 12 chars):
-     - **Resume** — continue from the next incomplete group in Step B; do NOT re-run Step A
-     - **Restart** — overwrite the file, run Step A fresh
-   - Wait for user selection. Do NOT proceed past this point without it.
-   - For Resume: before proceeding, reconstruct the expected-state baseline using the §4 file-edit detection fallback procedure (read current file's Step A and all visible Step B groups as the baseline). Then proceed to the next incomplete Step B group (or Step C if all groups done).
-   - For Restart: overwrite `pre-thinking.md`, run Step A fresh.
+### (1) L1 handoff — core identity + real seams (codebase-craft)
 
-**Failure to detect K3b = planning may be invoked with zero commitment.** This check is mandatory at session start, not optional. Never use heading presence alone as a completion signal.
+The feature-level **core identity** (Step 2) and **real seams** (Step 4) are design decisions. They travel through the **existing "planning Key Decisions single source" channel** (the same channel Step 4's other design decisions use) — planning cites them, does **not** re-derive them and does **not** add new placement decisions. This is the **L1 contract** the implementer's global-thinking channel later consumes (design notes 1 §10, 2 §7). No new file, no new mechanism: L1 = the shared (identity + seams) + planning's per-task (position) added at decomposition.
 
----
+Do not build the seam's future abstraction now — structural-honesty rules still govern: write the concrete first, abstract when the second real force appears. L1 says *where the joint should be soft*, it does not authorize growing the joint pre-emptively (design note 1 §6).
 
-## 6. Evaluation Contract
+### (2) Evaluation Contract (single standard, existing format)
 
-Evaluation is never optional. Even when Step A produces `gaps: none identified`, the agent must ask for an Evaluation Contract before Step C.
-
-Ask the user:
-
-> "What is the one Primary evaluator the agent should use to decide this task is actually done? It must be something the agent can run, inspect, or apply consistently."
-
-Write the result in this exact structure:
+Define one Primary evaluator — something that, when it holds, means done; the agent can actually run/inspect it, not "feels done." This is not a new thing — it's the existing Evaluation Contract. Write it in this exact structure:
 
 ```
 ## Evaluation Contract
@@ -177,36 +222,41 @@ Write the result in this exact structure:
 ```
 
 Rules:
-- `Primary evaluator` must be singular. Supporting evidence is allowed, but there is only one canonical feedback source.
-- TDD and death-path tests remain mandatory engineering gates. They are not the Primary evaluator unless the user explicitly chooses "tests only" as the unique standard.
-- If the user gives multiple evaluators, ask one follow-up question to choose the canonical one.
-- Planning, iteration, debugging, and validate-and-ship must use this same Primary evaluator instead of inventing a new success standard.
+- `Primary evaluator` must be singular. Supporting evidence is allowed, but there is only one canonical feedback source. Iterating up (10%→90%), swapping the ruler each increment confuses progress with drift.
+- TDD and death-path tests remain mandatory engineering gates. They are not the Primary evaluator unless the user (or recorded gatekeeper decision) explicitly chooses "tests only" as the unique standard.
+- If multiple evaluators are given, ask one follow-up to pick the canonical one.
+- Planning, iteration, debugging, and validate-and-ship must reuse this same Primary evaluator, never invent a new success standard.
+- Defined here because this is the last moment design intent is fully in view and no code is written yet — most accurate.
+
+### (3) Commitment (one of three) + residual list
+
+**Proceed / Accept gap / Return to Research** — forces an explicit stance so no one slips into planning while pretending everything's solved. Residual list = things unsolvable here, handed to planning or later (e.g. "this step needs an operator to fill a value manually"). Auto: commitment made by the gatekeeper too; "Return to Research" is allowed (a flow redirect, not a fallback to a human).
 
 ---
 
-## 7. Return to Research Write Format
+## 7. Return to Research write format
 
-**When commitment = Return to Research (from mid-Step-B OR Step C):**
+**When commitment = Return to Research (from mid-Step-5 OR Step 6):**
 
-1. Write `## Step C — Commitment` section immediately.
+1. Write `## Step 6 — Commitment` section immediately.
 2. Use this exact format:
 
 ```
-## Step C — Commitment
+## Step 6 — Commitment
 
 **Date:** <ISO timestamp>
 **Decision:** Return to Research
 **Accepted gaps:** none
 **Unresolved gaps:**
 - Gap <n> (<label>): <specific question that needs research to answer>
-[list ALL unresolved gaps from Step A by their exact gap labels]
+[list ALL unresolved gaps by their exact labels]
 ```
 
-3. `unresolved_gaps` must be non-empty. Each entry must reference a specific Step A gap label (e.g., `Gap 1 (interface-ownership)`) — do NOT write generic labels like "unclear requirements."
+3. `unresolved_gaps` must be non-empty. Each entry references a specific gap/assumption label (e.g. `Gap 1 (interface-ownership)`) — never generic labels like "unclear requirements."
 4. After writing, output: `"Pre-thinking suspended. The following gaps require clarification before planning: [gap list]. Please re-invoke samsara:research."`
 5. **Do NOT invoke `samsara:planning`.** Stop.
 
-**If Return to Research is triggered mid-Step-B** (user signals uncertainty during a Step B group): write Step C immediately with all gaps from Step A that have not been resolved by Step B answers so far. Mark any partially-answered groups as unresolved if the answers were insufficient.
+**If triggered mid-Step-5** (user signals uncertainty during a group): write Step 6 immediately with all not-confident assumptions/decisions unresolved so far. Mark partially-answered groups unresolved if answers were insufficient.
 
 ---
 
@@ -214,17 +264,31 @@ Rules:
 
 All `AskUserQuestion` calls in this skill must use a `header` field of **≤ 12 characters** for broadest client compatibility (Codex CLI, Gemini CLI v0.29.0+).
 
-Examples of compliant headers: `"Pre-thinking"` (12 chars), `"Gap review"` (10 chars), `"Commitment"` (10 chars), `"Resume?"` (7 chars).
+Compliant headers: `"Pre-thinking"` (12), `"Lens review"` (11), `"Commitment"` (10), `"Resume?"` (7).
 
 ---
 
-## 9. Quick-Pass Path
+## 9. K3b Recovery and Completion Procedure
 
-When Step A produces `gaps: none identified`:
+**On session start, before Step 1:**
 
-1. Write Step A section with content: `gaps: none identified — proceeding directly to commitment.`
-2. **Skip gap-question groups entirely.** Do NOT write an empty answers section. Do NOT issue gap AskUserQuestion calls.
-3. Ask the Evaluation Contract question.
-4. Proceed to Step C.
-5. Write Step C after receiving the commitment response.
-6. Total AskUserQuestion calls for a quick-pass session: one or two. Prefer folding Evaluation Contract and Step C into one call if the client supports multiple questions in one AskUserQuestion call.
+1. Check if `pre-thinking.md` exists in `changes/<feature>/`.
+2. **If absent:** proceed normally to Step 1.
+3. **If present AND complete:** read the `Decision:` field and Evaluation Contract.
+   - `Decision: Proceed` or `Decision: Accept gap` + complete Evaluation Contract + L1 (core identity + real seams) present = planning-ready.
+   - `Decision: Return to Research` = complete but NOT planning-ready. Stop and ask the user to re-invoke `samsara:research` with the unresolved gaps.
+   - A Step 6 heading without one of these decisions is incomplete.
+   - Any Step 6 without Evaluation Contract, or without L1, is incomplete.
+4. **If present AND incomplete:** session was interrupted (K3b state).
+   - Identify the last completed step (which of Steps 1–6 are written? which Step 5 groups are present?).
+     - A Step 5 group is **complete** if its `### Group N:` header is followed by at least one `**A:**` answer line before the next `### Group` header or end of file.
+     - A group with header but no `**A:**` line is **partial** — treat it as the NEXT INCOMPLETE group and resume from it.
+   - Inform the user: `"Pre-thinking was interrupted before commitment was reached. [Last completed step: Step N]"`
+   - Offer via AskUserQuestion (header ≤ 12 chars):
+     - **Resume** — continue from the next incomplete step; do NOT re-run earlier completed steps.
+     - **Restart** — overwrite the file, run from Step 1 fresh.
+   - Wait for user selection. Do NOT proceed without it.
+   - For Resume: reconstruct the expected-state baseline via the §5 file-edit fallback (read all written steps + visible Step 5 groups as baseline), then continue.
+   - For Restart: overwrite `pre-thinking.md`, run Step 1 fresh.
+
+**Failure to detect K3b = planning may be invoked with zero commitment.** This check is mandatory at session start, not optional. Never use heading presence alone as a completion signal.

@@ -7,4 +7,27 @@ tasks:
     status: pending  # pending | in_progress | done | blocked | completion_unverified
     scar_count: null
     unresolved_assumptions: null
-    depends_on: []
+    depends_on: []  # ORDERING (forward): which tasks must complete before this one runs
+    seam: <seam-name>  # L1 per-task position — the semantic seam name this task sits on
+                       # or creates (e.g. parser-boundary, not SEAM-1). MUST reference a
+                       # seam declared in overview.md Key Decisions → Real Seams (single
+                       # source — planning never invents a seam here). Use null only when
+                       # the task genuinely touches no declared seam.
+    affects: []  # L2 reverse projection — who will build on this task's structure.
+                 # Entry form:
+                 #   - task: task-7
+                 #     needs: "one line: what task-7 needs from this task's boundary"
+                 # `affects` is STRUCTURAL impact (reverse: me → downstream consumers);
+                 # `depends_on` is ORDERING (forward: me → prerequisites). Neither
+                 # replaces the other. A `needs` that only restates ordering
+                 # ("runs after me") is noise — consumption discipline will flag it.
+    anchors: []  # L2 pull-starting-points — files the implementer must read BEFORE
+                 # writing (pointers, not content: keep raw content narrow).
+                 # Entry form:
+                 #   - path: exact/path/to/neighbor.py
+                 #     why: "one line: caller / sibling module / pattern already in use"
+                 # When depends_on is non-empty, anchors MUST include the interface
+                 # file(s) of each depended-on task — the implementer reads the LIVE
+                 # signatures to honor upstream contracts (a prose summary would drift).
+                 # Anchors are a starting set, never a whitelist — the implementer
+                 # still pulls further along the trail (L4).

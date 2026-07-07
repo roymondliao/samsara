@@ -37,6 +37,14 @@ Known shortcuts:
   Rationale: YAML files may legitimately contain samsara namespace references
   in documentation text (scar-schema.yaml, etc.). Scanning them would produce
   false positives. This is consistent with SkillConverter's YAML exclusion.
+- Live-surface exclusion (_LIVE_SURFACE_EXCLUDED_TOP_LEVEL_DIRS, ISSUE-002/SS-1)
+  matches by exact top-level path SEGMENT via string equality, not resolved
+  path identity. A symlink whose target lies outside the excluded subtree
+  (or an excluded directory that is itself a symlink to a live-surface path)
+  is not specially handled — the check only looks at the syntactic first
+  path segment under output_dir. This is a known shortcut: acceptable
+  because the exclusion targets a small, fixed, repo-controlled set of
+  top-level directory names, not arbitrary/untrusted input.
 
 Assumptions:
 1. TOML agent files are in output/agents/*.toml (platform-specific path).
@@ -50,6 +58,14 @@ Assumptions:
 4. Dispatch-template.md is the primary file that references agent names.
    Other companion files (e.g., SKILL.md body) may also reference agents —
    not currently validated. First-priority coverage is dispatch-template.md.
+5. The four live-surface-excluded top-level directories (changes/, docs/,
+   bugfix/, tests/) are assumed to fully cover the repo's non-live-surface
+   noise sources. Verified empirically for this repo: repo-root validate
+   dropped from 36 to 11 issues after this exclusion, and all 11 residual
+   issues were classified as genuine live-surface findings (references/,
+   skills/) — none were unclassified noise. If a new top-level directory is
+   added later that holds historical/demonstrative text (not live surface),
+   it will need to be added to the constant, or it will re-introduce noise.
 """
 
 import json
@@ -71,6 +87,16 @@ _INVOKE_SAMSARA_PATTERN = re.compile(r"invoke `samsara:[\w-]+`")
 # `subagent_type:` is the Claude Code-specific agent dispatch syntax.
 _SUBAGENT_TYPE_PATTERN = re.compile(r"subagent_type:")
 
+# Colon-form namespace residue (strict lane only). The target platforms name
+# everything `samsara-X`; any surviving `samsara:X` in converted output is a
+# dead reference for the executing agent. This is broader than the two legacy
+# patterns above on purpose: enumerating known phrasings ("invoke `samsara:X`")
+# missed 94 residues in a live conversion (2026-07-07) while still reporting
+# PASS — the residue signature itself is the thing to scan for.
+# Strict-only because repo-root validation (ISSUE-002 live-surface mode)
+# legitimately contains source-form names everywhere.
+_SAMSARA_NAMESPACE_PATTERN = re.compile(r"samsara:[\w-]+")
+
 # Pattern for agent name references in companion files (dispatch-template.md).
 # Matches 'agent named "X"' where X is the referenced agent name.
 _AGENT_REF_PATTERN = re.compile(r'agent named "([^"]+)"')
@@ -78,6 +104,29 @@ _AGENT_REF_PATTERN = re.compile(r'agent named "([^"]+)"')
 # File extensions that receive source pattern scanning.
 # YAML files are excluded — they may legitimately contain samsara namespace strings.
 _SCAN_EXTENSIONS = {".md", ".txt"}
+
+# Live-surface source-tree scan boundary (SS-1, ISSUE-002).
+#
+# `samsara-cli validate` defaults --source to the repo root, so
+# `_scan_source_patterns`'s rglob("*") walks the ENTIRE repo tree when run
+# there — not just converted output. Top-level directories that hold
+# historical/demonstrative documentation (changes/, docs/, bugfix/, tests/)
+# legitimately contain sample text that matches the source patterns (e.g.
+# "invoke `samsara:X`", "subagent_type:") without being a real unconverted
+# chain link. Scanning them inflated the issue count with noise no one could
+# act on (ISSUE-002: main 42, branch 36 issues, permanently non-zero).
+#
+# Live instruction surface — skills/, agents/, references/, hooks/,
+# .claude-plugin/ — is never excluded here; a genuine leak in those paths
+# must still be reported.
+#
+# This is the ONLY definition of the exclusion list (SD-1, single source of
+# truth). The CLI (`samsara-cli validate` in main.py) and any future direct
+# caller of TargetValidator.validate() share this exact behavior — do not
+# duplicate this set anywhere else.
+_LIVE_SURFACE_EXCLUDED_TOP_LEVEL_DIRS = frozenset(
+    {"changes", "docs", "bugfix", "tests"}
+)
 
 # Colon character in skill directory names indicates source format (samsara:X).
 # Target format uses hyphen (samsara-X).
@@ -115,6 +164,7 @@ class TargetValidator:
         self,
         output_dir: Path,
         platform: str = "codex",
+        strict_namespace: bool = False,
     ) -> list[str]:
         """Validate the converted output directory.
 
@@ -125,6 +175,11 @@ class TargetValidator:
             output_dir: Path to the converted output directory (temp dir or final).
             platform: Target platform name. Defaults to "codex" for backward
                       compatibility with older tests/callers.
+            strict_namespace: When True, ANY colon-form `samsara:X` reference in
+                      scannable output files is an error (dead reference on the
+                      target platform). Use ONLY on converted output — never on
+                      the source repo, where colon-form names are the legitimate
+                      source format. The conversion engine always passes True.
 
         Returns:
             List of error strings. Empty list means the output is valid.
@@ -152,7 +207,9 @@ class TargetValidator:
             errors.extend(self._validate_gemini_layout(output_dir))
 
         # --- Check 2: Source pattern scan across all scannable files ---
-        pattern_errors = self._scan_source_patterns(output_dir)
+        pattern_errors = self._scan_source_patterns(
+            output_dir, strict_namespace=strict_namespace
+        )
         errors.extend(pattern_errors)
 
         # --- Check 3: TOML file validation ---
@@ -368,12 +425,16 @@ class TargetValidator:
                 frontmatter[key] = str(value)
         return frontmatter, None
 
-    def _scan_source_patterns(self, output_dir: Path) -> list[str]:
+    def _scan_source_patterns(
+        self, output_dir: Path, strict_namespace: bool = False
+    ) -> list[str]:
         """Scan all scannable files in output_dir for remaining source patterns.
 
         Source patterns that must NOT appear in output:
         - invoke `samsara:X` — chain transition death case
         - subagent_type: — agent dispatch source pattern
+        - (strict only) any `samsara:X` colon-form reference — dead reference
+          on the target platform
 
         Returns list of error strings (may be empty if no patterns found).
         """
@@ -385,6 +446,20 @@ class TargetValidator:
             if file_path.suffix.lower() not in _SCAN_EXTENSIONS:
                 continue
 
+            relative = file_path.relative_to(output_dir)
+
+            # Live-surface exclusion (SS-1/SD-1): skip files whose top-level
+            # path segment is a non-live-surface directory (changes/, docs/,
+            # bugfix/, tests/). Matches the exact first path segment only —
+            # a directory merely starting with the same string (e.g.
+            # "docs-site/") or a same-named directory nested deeper in the
+            # tree (e.g. "skills/x/changes/") is NOT excluded.
+            if (
+                relative.parts
+                and relative.parts[0] in _LIVE_SURFACE_EXCLUDED_TOP_LEVEL_DIRS
+            ):
+                continue
+
             try:
                 content = file_path.read_text(encoding="utf-8")
             except (OSError, UnicodeDecodeError) as e:
@@ -393,8 +468,6 @@ class TargetValidator:
                     "Cannot read file for pattern scan: %s: %s", file_path, e
                 )
                 continue
-
-            relative = file_path.relative_to(output_dir)
 
             # Check for invoke `samsara:X` pattern
             match = _INVOKE_SAMSARA_PATTERN.search(content)
@@ -414,6 +487,20 @@ class TargetValidator:
                     f"'{relative}'. This is Claude Code-specific agent dispatch syntax. "
                     "It must be converted to the target platform format before output is valid."
                 )
+
+            # Strict lane: any colon-form namespace residue is a dead reference
+            # on the target platform (target names are samsara-X). Skip files
+            # already flagged by the invoke pattern to avoid double-reporting.
+            if strict_namespace and not match:
+                match3 = _SAMSARA_NAMESPACE_PATTERN.search(content)
+                if match3:
+                    errors.append(
+                        f"Colon-form namespace residue '{match3.group()}' found in "
+                        f"output file '{relative}'. The target platform names this "
+                        f"'{match3.group().replace(':', '-', 1)}' — a colon-form "
+                        "reference is a dead reference for the executing agent. "
+                        "Add or fix a transformation rule; do not ship this output."
+                    )
 
         return errors
 

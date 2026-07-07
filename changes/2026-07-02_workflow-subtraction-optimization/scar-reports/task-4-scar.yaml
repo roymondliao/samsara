@@ -1,0 +1,232 @@
+task_id: task-4
+completion_status: done
+
+known_shortcuts:
+  - description: >
+      Line-count budget vs. the "≤8 行" formal cap named in the task's Key
+      Decisions: actual pointer-section content-line counts (non-blank
+      lines inside "## Auto Mode Gate") are research=11, planning=11,
+      pre-thinking=15, implement=18, iteration=18, validate-and-ship=48.
+      Only research/planning come close to "≤8"; all six exceed it once
+      the formal cap is read literally. Each overage is a stage genuinely
+      needing more than one line to name its workflow_prompt source(s) and
+      decision-point list (pre-thinking has 3 prompt groups; implement has
+      2 workflow_prompt sources + inline execution-strategy semantics;
+      iteration enumerates 4 decision points; validate-and-ship keeps the
+      Step 0 auto-overrides list + the double decision-trace check inline,
+      per the task's own "階段特異行為必須 inline 保留" instruction). Recorded
+      per the task's explicit request, not because it is unresolved debt —
+      the task itself anticipated validate-and-ship exceeding the cap
+      ("它的指針段預期超過 8 行上限，記錄實際行數與理由即可").
+
+  - description: >
+      Canonical increment vs. skills decrement (task acceptance criteria
+      "canonical 增量必須遠小於 skills 減量"): measuring the "## Auto Mode Gate"
+      section body (raw lines, same `section()` helper both sides) before
+      and after this task: research 22->16, pre-thinking 24->18,
+      planning 23->16, implement 30->21, iteration 35->21,
+      validate-and-ship 61->57. Total across the 6 skills: 195 -> 149
+      (-46 raw lines). references/auto-mode.md's new "## Stage Gate
+      Protocol" section adds 27 raw lines. Net across the whole feature:
+      -19 raw lines (a real reduction, not a wash) — but the canonical
+      increment (27) is the majority (~59%) of the skills' decrement (46),
+      not "far smaller" in a strict ratio sense. The gap is real
+      *added* content, not moved text: no single one of the 6 skills
+      previously spelled out the dispatch mechanism, append-before-continue
+      timing, or the four decision values' general meaning as
+      explicitly as the new canonical section does — every skill's old
+      section only said "route through the gatekeeper... follow
+      proceed/revise/reject/accept_gap" without defining what those verbs
+      mean for the calling workflow. That definition had to be written
+      somewhere once; it did not exist compressed anywhere before. Trimmed
+      the canonical section twice during implementation (46 -> 31 -> 27
+      raw lines) after the first draft over-explained; did not trim
+      further because the remaining content is exactly the two
+      concrete-force items the task asked for (dispatch + decision-value
+      semantics), not filler.
+
+  - description: >
+      validate-and-ship's Step 0 body (lines 64-113, NOT edited by this
+      task) and its Auto Mode Gate's "Step 0 auto overrides" list still
+      state overlapping facts (e.g. both say "unknown is never a pass").
+      This is the task-3-deferred item ("Step 0 本文與 Auto Gate 段重述").
+      What THIS task fixed: the genuine duplicate-of-duplicate inside the
+      Auto Mode Gate section itself — a standalone paragraph
+      ("If review capability is absent, review result is unknown...")
+      that restated the 6-item override bullet list immediately above it,
+      word for word in prose form — was deleted; its two required literal
+      terms ("partial", "must not proceed past Step 0") were folded into
+      the "unknown result" bullet instead, so the override list is now the
+      SOLE place that states the auto-mode decision VALUE per case. What
+      this task did NOT fully eliminate: Step 0's body text still
+      generally describes what "unknown" and "fail" mean (needed for
+      human-in-the-loop mode, and pinned by tests/test_skills/
+      test_security_gate_fold.py's DC2/DC3, which is outside this task's
+      Files list). Fully collapsing that remaining overlap would require
+      rewording Step 0's body prose itself — out of this task's declared
+      scope (Files list only names the 6 skills' "Auto Mode Gate"
+      sections and references/auto-mode.md) and risks reddening
+      test_security_gate_fold.py's unrelated DC2/DC3 assertions for no
+      requested benefit.
+      FINAL DISPOSITION (quality review verdict, accepted by main agent):
+      the residual triple-statement of "unknown != pass" (Step 0 body :85,
+      Red Flags :108, Auto Gate overrides :209-211) is a DELIBERATE
+      test-guarded belt-and-suspenders — test_security_gate_fold.py requires
+      the blocking phrase INSIDE the Auto Gate section specifically, with a
+      label-only decoy guarding against "reject labeled but not blocking".
+      Accepted, not re-deferred.
+      re_review_signal: "Step 0 的 Result/Red-Flags 措辭或 Auto Gate override
+      措辭任一被修改時，同步核對另外兩處"
+      owner: "該次修改的作者（signal 綁在改動事件上）"
+      Additionally fixed this round (quality Important): references/
+      auto-mode.md "Security And Privacy Unknowns" trailing procedure
+      restatement trimmed to policy axiom + pointer (no test pinned it).
+
+silent_failure_conditions:
+  - systemic_ref: doc-vs-runtime-obedience
+    note: >
+      Every one of the 6 pointer sections assumes the executing agent
+      actually opens references/auto-mode.md's Stage Gate Protocol before
+      dispatching the gatekeeper; nothing in this repo enforces that a
+      session reads the referenced file. skills/*/SKILL.md Auto Mode Gate
+      sections (all 6), references/auto-mode.md Stage Gate Protocol.
+
+  - description: >
+      The new anti-duplication death test
+      (test_death__no_skill_reembeds_canonical_decision_definitions in
+      tests/test_auto_mode/test_skill_auto_mode_protocol_death.py) matches
+      4 VERBATIM substrings, one per canonical decision value. A
+      paraphrased re-embedding (same meaning, different words) of the
+      canonical definitions into a skill's own section would not be
+      caught — only an exact-text copy-paste regrowth is guarded. This is
+      the same doc-vs-runtime-obedience-adjacent limit as any grep-based
+      doc-contract test: it proves absence of the LITERAL string, not
+      absence of the underlying duplication in different words.
+      HONESTY CORRECTION (review round): this was NOT hypothetical — yin
+      review proved a live instance had already shipped in this very diff
+      (the byte-identical "`reject` stops the auto run" clause in 5 skills,
+      green under the anti-dup test). The 5 residue lines were deleted
+      inline by the main agent (canonical already covers reject); the
+      test's limitation itself remains accepted — the durable guard is
+      deleting residue when found, not paraphrase-matching regex.
+    status: resolved
+    resolution: "5 處偽特異 reject 殘留刪除＋research revise 動詞修正＋行數預算收緊至 actual+1（iteration 22→19、v&s 50→49）；829 tests 綠"
+
+assumptions_made:
+  - assumption: >
+      skills/fast-track/, skills/debugging/, skills/codebase-map/, and
+      skills/writing-skills/ have no "## Auto Mode Gate" section, so this
+      task's dedup does not need to touch them.
+    verified: true
+    note: "grep -rn 'Auto Mode Gate' skills/{fast-track,debugging,codebase-map,writing-skills}/ -> 0 matches"
+
+  - assumption: >
+      tests/integration/ tests that mention "auto-decisions.md" or
+      "Auto Mode Gate" do not depend on any of the 6 workflow skills'
+      Auto Mode Gate section full text — they assert against the
+      converted samsara-auto-gatekeeper.md agent output instead, which
+      this task did not touch.
+    verified: true
+    note: "tests/integration/test_smoke_gemini_cli.py:92-102, test_pipeline.py:493-506 both target .gemini/agents/samsara-auto-gatekeeper.md, not any workflow skill"
+
+  - assumption: >
+      tests/test_auto_mode/test_auto_mode_docs_death.py does not assert
+      any individual skill's Auto Mode Gate section full text (only
+      README.md/README.zh-TW.md's "Auto Mode" section and the
+      2026-05-27_samsara-auto-mode overview.md), so it needed no edit for
+      this task despite being named in the task's Files list.
+    verified: true
+    note: "grep -n 'Auto Mode Gate' tests/test_auto_mode/test_auto_mode_docs_death.py -> 0 matches"
+
+  - assumption: >
+      tests/test_skills/test_security_gate_fold.py (task-3's doc-contract
+      test, outside this task's Files list) would stay green against the
+      redesigned validate-and-ship Auto Mode Gate section without needing
+      any edit to that test file.
+    verified: true
+    note: "uv run pytest tests/test_skills/test_security_gate_fold.py -> 21 passed, unchanged from before this task"
+
+debt_registered: true
+debt_location: >
+  references/auto-mode.md Stage Gate Protocol section (canonical home —
+  any future decision-value semantic change must land here once, and every
+  pointer must still resolve correctly); skills/validate-and-ship/SKILL.md
+  Step 0 body vs. Auto Mode Gate overlap (partially resolved, see
+  known_shortcuts — full resolution needs Step 0 body prose changes
+  outside this task's Files list)
+
+resolved_items:
+  - original_section: "silent_failure_conditions (self-iteration)"
+    original_description: >
+      Initial anti-duplication death test predicate only matched ONE
+      canonical decision-value definition verbatim (`revise`), so a skill
+      re-embedding only the `proceed`, `reject`, or `accept_gap` canonical
+      text (without also copying `revise`'s exact wording) would not have
+      been caught, even though the task explicitly asks to guard against
+      re-embedding "任一" (ANY) of the 4 decision-value definitions.
+    resolution: >
+      Broadened `reembeds_canonical_decision_definitions` in
+      tests/test_auto_mode/test_skill_auto_mode_protocol_death.py to check
+      all 4 canonical decision-value definitions
+      (_CANONICAL_DECISION_DEFINITIONS tuple, one verbatim marker per
+      value) via `any()`, not just `revise`. Verified by injecting the
+      `accept_gap` canonical phrase (not `revise`) into a live skill file
+      and confirming the death test caught it, then restoring the file
+      (diff-confirmed clean) and re-running the full suite (829 passed).
+
+  - original_section: "known_shortcuts (found during implementation, not deferred)"
+    original_description: >
+      Three literal test-required phrases were accidentally split across a
+      markdown line-wrap while writing the pointer sections:
+      "Subagent parallel" (implement), "must not proceed past Step 0" and
+      "invalid in auto mode" (validate-and-ship) — each phrase's exact
+      substring was broken by a newline+indent landing mid-phrase, which
+      would have silently reddened tests/test_skills/
+      test_security_gate_fold.py and this task's own protocol tests without
+      any content actually being wrong (a formatting artifact, not a
+      semantic gap).
+    resolution: >
+      Re-wrapped each line so the load-bearing exact phrase stays on one
+      physical line (skills/implement/SKILL.md:248-250,
+      skills/validate-and-ship/SKILL.md:209-214). Verified via
+      `grep -n "Subagent parallel"` / `grep -n "must not proceed past Step 0"`
+      / `grep -n "invalid in auto mode"` each now match on a single line;
+      full suite re-run green (829 passed) after the fix.
+
+narrative: |
+  Before/after summary (raw lines in each skill's "## Auto Mode Gate"
+  section body, measured with the same `section()` helper the test suite
+  uses):
+
+    stage               before  after
+    research               22     16
+    pre-thinking           24     18
+    planning               23     16
+    implement              30     21
+    iteration              35     21
+    validate-and-ship      61     57
+    TOTAL                 195    149   (-46)
+
+    references/auto-mode.md "## Stage Gate Protocol" (new): +27
+
+    Net across the feature: -19 raw lines.
+
+  Design choices not built (per Structural Honesty — say the refusal out
+  loud): the canonical Stage Gate Protocol section does NOT restate the
+  Decision Log Contract's Required Fields list or Entry Template — it
+  points at them ("see Decision Log Contract / Required Fields / Entry
+  Template above"). A second canonical home for the field list was
+  tempting (since Stage Gate Protocol is "the execution half" and Required
+  Fields is "the schema half") but there is only ONE consumer of the field
+  list (the gatekeeper writing an entry) and no second force requiring a
+  split; restating it would have been exactly the kind of re-duplication
+  this task exists to remove.
+
+  Baseline: 803 passed before this task. Final: 829 passed (803 + 26 new
+  tests in the rewritten test_skill_auto_mode_protocol_death.py, net of
+  the unit-test file's additions/removals balancing out — see
+  tests/test_auto_mode/test_skill_auto_mode_protocol.py and
+  test_skill_auto_mode_protocol_death.py for the full new test bodies).
+  Zero regressions in any pre-existing test outside tests/test_auto_mode/,
+  including tests/test_skills/test_security_gate_fold.py (task-3's test,
+  outside this task's Files list, verified unchanged and still green).

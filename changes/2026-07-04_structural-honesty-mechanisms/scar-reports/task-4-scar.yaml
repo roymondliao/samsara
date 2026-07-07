@@ -1,0 +1,43 @@
+task_id: task-4
+completion_status: done
+
+known_shortcuts:
+  - systemic_ref: doc-instruction-no-code-enforcement
+    note: "Both new clauses (iteration Step 1 structural_drift aggregation; validate-and-ship's 0-dangling terminal audit + Step 5 structural reconciliation bullet) are entirely prose — nothing code-level forces a dispatched main agent to actually run the resolution or report the counts. Lands at skills/iteration/SKILL.md's `**structural_drift aggregation:**` clause and skills/validate-and-ship/SKILL.md's `**0-dangling terminal audit` clause."
+  - description: "structural_drift is aggregated and reported but does NOT feed the iteration-entry criteria (the cross-task-pattern-OR-signal_lost>=5 gate in implement/SKILL.md's Transition section) — a feature can accumulate nonzero structural_drift and still default-skip iteration on signal_lost alone. This is an intentional first-version boundary (implement/SKILL.md's Transition is a single-owner section this task's Files scope does not touch), recorded here so a future reader does not assume drift counts already influence the gate."
+  - description: "The 0-dangling terminal audit is a hardcoded full scan (no sampling), justified by structure-spec.yaml's entry counts being small today. If a future feature's spec ever grows to a large entry count, there is no batching/sampling fallback documented — the audit would just get slower, not silently skip entries (full scan degrades gracefully, it does not degrade to wrong results), so this is a performance shortcut, not a correctness one."
+  - description: "Review process violation, recorded as-is per Rule 13: in BOTH this task's initial implementation and its round-2 fix session, I wrote the SKILL.md edits before running the (new) tests to confirm red — violating the mandated death-test-before-implementation order twice, not once. Both times caught during self-review before reporting, remediated by `git stash`-ing the SKILL.md edits, re-running the affected tests to confirm they failed red without the edits, then `git stash pop` and re-confirming green. samsara:code-reviewer independently reproduced the round-1 stash sequence and confirmed the remediation was methodologically sound — a future reader who doubts another completion claim in this task now knows to check for a similar stash trail rather than take the report at face value."
+  - description: "Round-2 review found two documented-but-unexamined ambiguities that are now fixed: (a) Step 1's 0-dangling audit and Step 5's Structural dimension bullet never cross-referenced each other (a reader of either alone could assume it was the only structural check); (b) `structure_spec: absent/exempt` reuses dispatch-template.md's per-task `structure_spec: absent` token without stating the scope difference (feature-level audit-skip vs. per-task dispatch note)."
+    status: resolved
+    resolution: "Added a one-clause mutual cross-reference between the two clauses, and a one-clause token-scope disclaimer inside the 0-dangling audit clause; both covered by new unit tests."
+
+silent_failure_conditions:
+  - description: "validate-and-ship's `structure_spec: absent/exempt` vs. missing-anomaly (finding) distinction depends on reading task-level `structure_refs`, but validate-and-ship's Prerequisites list never named that input source before this task — the distinction would have existed in prose with no documented place to read it from."
+    status: resolved
+    resolution: "Discovered during this task's own implementation (not inherited from any other task's scar) — added `structure-spec.yaml` and `tasks/task-N.md`'s Structure Refs sections to validate-and-ship's Prerequisites list, scoped to the 0-dangling audit and structural reconciliation only."
+  - description: "Closes task-3's deferred item at the prose level only: iteration's structural_drift clause now states a missing `drift_items` field is a parse failure, distinct from an explicit `drift_items: []` — but there is still no code path that reads a real reviewer-output artifact and enforces this at execution time (systemic_ref: doc-instruction-no-code-enforcement applies here too). A main agent that skips reading drift_items entirely (rather than reading it and finding it missing) produces the same visible outcome (structural_drift not reported) as one that correctly found zero — the clause cannot distinguish 'never checked' from 'checked, none found' if the checking step itself is skipped, only 'checked and found nothing' from 'checked and found a missing field'."
+  - description: "Round-2 review found `structural_drift` (computed in iteration Step 1) had no consumer landing point: Step 2's triage prompt only interpolated `signal_lost`, `templates/iteration-log.yaml` had no field for it, and the Transition message never mentioned it — a computed value with nowhere to go is silently lost information."
+    status: resolved
+    resolution: "Added `structural_drift_initial` to `templates/iteration-log.yaml` (File Map amendment below), interpolated `structural_drift = M` into the Step 2 triage prompt's first line, and added a `structural_drift: M（並列回報，未併入 signal_lost）` clause to the Transition message."
+  - description: "Round-2 review found the Structural dimension bullet (Step 5) said its output 'may be explicitly empty' without stating how a reader distinguishes that from the comparison never having run — the exact DC-5 shape (missing read as zero) this feature has already been turned back for three times, reappearing at the terminal reconciliation step."
+    status: resolved
+    resolution: "Bullet now states the output field MUST exist: explicit `structural_drift_final: []` means compared/no drift, a MISSING field means the comparison never ran and reconciliation is incomplete — covered by a new death test."
+
+assumptions_made:
+  - assumption: "A completed task's spec-mode code-quality-reviewer output (containing `drift_items`) is discoverable by iteration at the point iteration runs — e.g. because the main agent copies it into the task's scar report narrative, or holds it in the same conversation/run context that later invokes iteration."
+    verified: false
+    note: "No artifact in this feature's file map actually names a persisted location for drift_items. iteration's own Prerequisites (index.yaml, pre-thinking.md, scar-reports/) do not carry it, and neither implement/SKILL.md's per-task index.yaml update step (status/scar_count/unresolved_assumptions) nor scar-schema.yaml's field set has a slot for it. Task-3's scar (silent_failure_conditions item 1) deferred exactly this gap to task-4; task-4's own Files scope (skills/iteration/SKILL.md, skills/validate-and-ship/SKILL.md only) cannot add a field to index.yaml or scar-schema.yaml (owned by task-1/implement territory) without exceeding this task's scope. If a feature runs iteration and no task's reviewer output is actually retrievable, every task should be listed as a structural_drift parse failure per the new clause — but nothing forces the aggregating agent to notice the source is empty rather than assuming zero tasks ran spec mode."
+    status: resolved
+    resolution: "Level-2 iteration fix 9ee97e9：drift_items 的持久化位置落定為 changes/<feature>/review-record.md（dispatch-template.md Review Record Durability——verdict 摘錄必含 drift_items，顯式 [] 亦記錄）；「來源空 vs 零漂移」由 DC-5 條款覆蓋（absent entry = never recorded = finding）。aggregation 消費端接線歸 ISSUE-003。"
+    deferred_to_feature_iteration: true
+
+debt_registered: true
+debt_location: "skills/iteration/SKILL.md Step 1 structural_drift aggregation clause + Step 2 triage prompt + Transition message; skills/iteration/templates/iteration-log.yaml structural_drift_initial field; skills/validate-and-ship/SKILL.md Failure Budget Review's 0-dangling terminal audit clause and Step 5's Structural dimension bullet — all documented but not code-enforced, and structural_drift's per-task persistence source is undecided pending a future task that can touch index.yaml/scar-schema.yaml."
+
+# File Map amendment: this task's Files list named skills/iteration/SKILL.md
+# only, but skills/iteration/templates/iteration-log.yaml (same skill
+# directory, different file) also needed a `structural_drift_initial` field
+# to close the ghost promise of a count computed in Step 1 with nowhere to
+# land in the persisted log, the Step 2 triage prompt, or the Transition
+# message. Minimal necessary boundary crossing — recorded here per review
+# round 2's Important #4.

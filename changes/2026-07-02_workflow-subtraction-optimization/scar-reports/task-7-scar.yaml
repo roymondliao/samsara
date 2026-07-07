@@ -1,0 +1,132 @@
+task_id: task-7
+completion_status: done
+
+known_shortcuts:
+  - description: >
+      The new corrosion signal in §5 ("pre-thinking 文件長度中位數超過上限,暫定
+      300 行") uses an uncalibrated number. It is derived only from the two
+      extremes cited in §2's evidence table (secondsight's 533-line doc, judged
+      too deep; the existing 50-line-floor signal, judged too shallow) — 300 is
+      the midpoint order of magnitude, not a measured threshold from any real
+      pre-thinking output under the NEW six-step process (which does not exist
+      yet). The doc text itself now says this explicitly ("這個數字未經校準,
+      上線後應依實際案例回頭調整"), so the shortcut is disclosed in place
+      rather than presented as calibrated.
+    deferred_to_feature_iteration: false
+    # Calibrating the number requires real six-step pre-thinking runs, which
+    # do not exist until skills/pre-thinking/ is formally rewritten (out of
+    # this feature's scope per Architecture Context). Nothing further can be
+    # fixed within this task's file scope beyond the disclosure already added.
+
+  - description: >
+      Revision 1 (交棒格式) only fixes the PRINCIPLE — pre-thinking's step-4
+      decisions are the sole source for planning's Key Decisions, cited
+      per-item, no re-derivation. The concrete output file's field shape,
+      filename, and the exact citation syntax planning would read are
+      explicitly left open (§8 "較小的開放項"), per the task's own scope
+      boundary ("正式重寫是未來獨立工程,不在本次 scope").
+    deferred_to_feature_iteration: true
+    # Fixing this requires the formal skills/pre-thinking/ rewrite (a
+    # separate, not-yet-scheduled engineering effort per Architecture
+    # Context) plus a skills/planning/ change to read the new output shape —
+    # both outside this task's single-file scope (0-design-direction.md only).
+
+silent_failure_conditions:
+  - description: >
+      Section 8's superseded items (former "成熟度" classification, former
+      "輕想/深想分界" resolution) are marked in place with rationale rather
+      than deleted outright — this preserves the collapse-trace principle
+      (§4 principle 4: "留下收斂痕跡"). A future reader who skims only bullet
+      titles (not the parenthetical) could still misread these as live
+      mechanisms and re-introduce "成熟度" or "輕想" into the formal
+      skills/pre-thinking/ rewrite. No linter enforces this on a markdown
+      design doc — the only guard is a human reading the full sentence.
+    status: resolved
+    resolution: >
+      Self-iteration: reworded both bullet leads from an easy-to-skim-past
+      "(已解決,後由 2026-07-04 修訂取代)" parenthetical to a bracketed,
+      bolded, front-loaded marker — "**〔已被 2026-07-04 修訂取代刪除,非現行
+      機制〕**" — placed immediately after the bullet's bold title so it is
+      visible even on a title-only skim
+      (changes/2026-06-13_pre-thinking-dynamic-redesign/0-design-direction.md:325,335).
+      This narrows but does not eliminate the risk (still no mechanical
+      enforcement) — the residual risk is unresolved and left as-is, not
+      deferred (no further in-scope action exists for a markdown-only file
+      per this task's Death Test Requirements).
+
+  - description: >
+      §6's "要改哪些檔案" table now states the planning STOP gate should check
+      directly against pre-thinking's decisions (revision 1) and that
+      flow.md's interruption-recovery section should reuse the existing K3b
+      mechanism (revision 5) — but this document only records the INTENT.
+      Nothing in this doc, or anywhere in the codebase, currently enforces
+      that the eventual formal rewrite of skills/pre-thinking/ and
+      skills/planning/ actually implements what §6 now describes. If the
+      formal rewrite silently diverges from this design-direction doc (e.g.
+      implements a second, undocumented placement-decision path in planning),
+      nothing here would catch that — this doc is upstream of, not
+      cross-checked against, the future implementation.
+    deferred_to_feature_iteration: true
+    # This is inherent to a design-direction doc that precedes its own
+    # implementation by an unscheduled future task; verifying the eventual
+    # rewrite matches this doc is that future task's job, not this one's.
+
+assumptions_made:
+  - assumption: >
+      §6's "要改哪些檔案" table (describing what the future flow.md rewrite
+      should contain) needed to be updated to reflect the 輕想/成熟度 deletions,
+      per the task's own "Assumption to verify" prompt.
+    verified: true
+    note: "changes/2026-06-13_pre-thinking-dynamic-redesign/0-design-direction.md:288,292 — flow.md and planning rows rewritten to drop 三段/成熟度 references and add sole-source handoff + K3b reuse wording"
+
+  - assumption: >
+      After all six revisions, grep for "輕想" and "成熟度" would only match
+      historical/superseded references (not descriptions of a currently active
+      mechanism), and §8 would no longer have a "待討論(本輪)" heading.
+    verified: true
+    note: "grep -n '輕想|成熟度|待討論' changes/2026-06-13_pre-thinking-dynamic-redesign/0-design-direction.md — all matches are inside revision-record / superseded-item / negative-reference context (e.g. '無「輕想」層'), no '待討論(本輪)' heading remains"
+
+  - assumption: >
+      The pytest tests/test_skills/ failures observed while working on this
+      task (test_fast_track_quality_review.py, flipping between different
+      failing tests on repeated runs) are caused by a concurrent, unrelated,
+      uncommitted edit to skills/fast-track/SKILL.md (likely another task's
+      in-progress work in this shared working tree), not by this task's edit
+      to changes/2026-06-13_pre-thinking-dynamic-redesign/0-design-direction.md.
+    verified: true
+    note: "git diff --stat -- skills/fast-track/SKILL.md skills/fast-track/templates/fast-track.yaml showed a 13-line uncommitted diff unrelated to this task's single touched file at the time of the flaky run; a later re-run (uv run pytest tests/test_skills/ -q) came back fully green, 107 tests collected == 107 dots, 0 failures, consistent with the concurrent edit having since settled"
+
+debt_registered: true
+debt_location: >
+  changes/2026-06-13_pre-thinking-dynamic-redesign/0-design-direction.md
+  §5 (300-line uncalibrated threshold), §6/§8 (handoff output file shape left
+  open for the future formal skills/pre-thinking/ rewrite)
+
+narrative: |
+  Design choice not built (Structural Honesty — say the refusal out loud):
+  this task did not invent a concrete output-file schema for the new
+  pre-thinking -> planning handoff (revision 1) — only the principle (sole
+  source, per-item citation, no re-derivation) was written into §3 Step 6 and
+  §9. There is currently no second consumer forcing a specific field layout
+  into existence yet (skills/pre-thinking/ has not been rewritten), so
+  inventing a concrete schema now would be speculative generality against a
+  not-yet-existing force; it is left as an explicit open item in §8 instead
+  of silently assumed.
+
+  Cross-reference verification performed before reporting (the task's
+  equivalent of a death test): re-read the full 386-line revised document
+  end-to-end and confirmed by inspection that §3 (six-step description), §4
+  (design principles), §5 (health metrics), §6 (files-to-change table), §7
+  (rejection list), and §8 (resolved/open items) are internally consistent
+  with all six revisions — no residual reference to 輕想 as an active
+  mechanism, no residual reference to 成熟度 as a first-step classification,
+  §7's "三段" ruler item corrected to the two-state ruler, §8's "待討論(本輪)"
+  heading removed (its one item resolved and folded into "已解"), and a
+  revision-record section (§9) added naming all six revisions with a one-line
+  rationale each and the source (workflow-subtraction-optimization feature,
+  user decision).
+
+  No pytest coverage applies to this task (changes/ directory files are
+  outside test scope per Architecture Context); the equivalent guard is the
+  cross-reference check plus grep validation described above, both performed
+  and recorded here rather than left as an unverified claim.

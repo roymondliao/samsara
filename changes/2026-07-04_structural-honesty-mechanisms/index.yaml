@@ -1,0 +1,51 @@
+feature: structural-honesty-mechanisms
+status: in_progress
+
+tasks:
+  - id: task-1
+    title: "structure-spec schema 模板 + planning guard/生成步驟 + kickoff poc_death_date + task-format structure_refs"
+    status: done
+    scar_count: 4  # 1 systemic_ref shortcut + 2 deferred silent_failure + 1 verified assumption
+    unresolved_assumptions: 0
+    depends_on: []
+    review: "round 3: yin PASS + quality PASS（round-1: 死碼 helper Critical；round-2: silent-green test Critical — 均已修復並經 reviewer 獨立 mutation 驗證）"
+
+  - id: task-2
+    title: "implement dispatch 注入：structure_refs 檢查（缺失=FAIL）+ spec 片段定向注入規則"
+    status: done
+    scar_count: 5  # 1 systemic_ref + 2 silent_failure（1 KD-2 永久接受、1 deferred to task-6/iteration）+ 2 verified assumptions
+    unresolved_assumptions: 0
+    depends_on: [task-1]
+    review: "round 3: yin PASS（mutation 驗證）+ quality PASS_WITH_CONCERNS 0C/0I（R1: DRY 雙寫+四態擠壓；R2: bullet-1×2 互動缺口+記帳失準 — 均修復；新增 unreadable≠absent 區分）"
+
+  - id: task-3
+    title: "code-quality-reviewer 雙模式（spec/principles/UNKNOWN）+ drift_items 輸出 schema"
+    status: done
+    scar_count: 6  # 2 shortcuts（1 systemic_ref + drift 觀測模糊）+ 2 silent_failure（1 in-place resolved + 1 deferred to task-4）+ 2 assumptions（verified: false, deferred）
+    unresolved_assumptions: 2
+    depends_on: [task-1]
+    review: "round 4: yin PASS（雙 mutation 獨立驗證）+ quality PASS（R1: Mode 矛盾+DRY；R2: 假 pointer+guarantor 標錯；R3: 極性盲測試 — 逐輪修復；agent 定義 +60/-0 打滿預算）"
+
+  - id: task-4
+    title: "iteration structural_drift 聚合 + validate-and-ship reconciliation 結構維度與 0-dangling 終局抽查"
+    status: done
+    scar_count: 7  # 4 shortcuts（systemic_ref + entry-criteria 邊界 + 全量掃描 + TDD 順序違規×2 如實記錄）+ 2 silent_failure（1 in-place resolved）+ 1 assumption（drift_items 持久化位置，deferred）
+    unresolved_assumptions: 1
+    depends_on: [task-3]
+    review: "round 2: yin PASS_WITH_CONCERNS（6 findings 全 stash 驗證 resolved；唯一 concern 是 coordinator 重派時漏附 KD payload — 由 round-1 完整 placement 對照閉合）+ quality PASS_WITH_CONCERNS 0C/0I。過程記錄：yin round-2 首次派發遇 domain router 硬 UNKNOWN（router gap 第三次現身，iteration 候選），修正 dispatch 錨點後重派"
+
+  - id: task-5
+    title: "供應鏈同步：doc-contract 測試 + FIXTURE_VERSION bump + fixtures regen + dist regen + 全測試綠"
+    status: done
+    scar_count: 6  # 2 shortcuts（KD-5 超標 217/200 deferred + hardcoded path accepted）+ 1 silent_failure（validate 預設 scope，in-place resolved）+ 3 assumptions（1 deferred: KD-5；2 verified）
+    unresolved_assumptions: 1
+    depends_on: [task-1, task-2, task-3, task-4]
+    review: "round 1: yin + quality 均 PASS_WITH_CONCERNS 0 Critical；4 項修正（scar 雙格式、死 OR 分支、docstring 過度宣稱）由主 agent 直接驗證結案（無 Critical 不觸發強制 re-review；deferred flag 爭議經主 agent 讀檔裁決為 yin 誤讀）。實質驗證：217 行超標可重現、dist 雙平台 validate 0 errors、917 全綠含實跑雙 CLI"
+
+  - id: task-6
+    title: "Primary evaluator 執行：mini-feature 證據鏈四環節演練 + evaluation-result.md"
+    status: done
+    scar_count: 8  # 4 shortcuts（自評偏誤 + 精簡聲明 + 2 個 cross-task 觀察 deferred）+ 2 silent_failure（ring-2 durability deferred + ring-3 in-place resolved）+ 2 assumptions（均 verified）
+    unresolved_assumptions: 0
+    depends_on: [task-5]
+    review: "round 2: yin Critical（ring-3 敘事超出 durable 證據）→ review-record.md 逐字摘錄 durable 化後 resolved；quality 2I（候選清單無契約家 + grounding 缺失）→ iteration-input.md + grounding 標記後 resolved；兩個 round-2 新 Important（摘錄內 30 vs 25 行 — coordinator 報數未實測；iteration-input 無宣告讀取邊）→ 轉錄註記 + task-6 scar deferred 條目機械聚合，主 agent 直接驗證結案。Primary evaluator 判定：四環節全 PASS、0 dangling"
