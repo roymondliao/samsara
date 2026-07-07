@@ -118,7 +118,13 @@ Use `subagent_type: "samsara:implementer"` — the agent definition (`agents/imp
 The prompt provides per-task context. Follow the template in `./dispatch-template.md`:
 - `task-N.md` — **paste full text**, never tell subagent to read the file
 - `overview.md` — **curate relevant sections**, not the entire file
-- **Global thinking channel (L1/L2)** — COPY the task's `seam` (+ its Real Seams entry and the Core Identity from overview.md) and `affects`/`anchors` from `index.yaml` into the Global Position / Context Projection sections. Copy, never compose: a dispatcher improvising "what's relevant" is the hand-curation blind spot the channel replaces. Plans without these fields get an explicit `global_channel: absent` (see `./dispatch-template.md` Global Thinking Channel for the three states).
+- **Global thinking channel (L1/L2)** — COPY the task's `seam` (+ its Real
+  Seams entry and the Core Identity from overview.md) and `affects`/`anchors`
+  from `index.yaml` into the Global Position / Context Projection sections.
+  - Copy, never compose: a dispatcher improvising "what's relevant" is the
+    hand-curation blind spot the channel replaces.
+  - Plans without these fields get an explicit `global_channel: absent` (see
+    `./dispatch-template.md` Global Thinking Channel for the three states).
 - Related death cases and prior scar reports (if task has dependencies)
 
 ### Subagent Review (modes A and B)
@@ -134,7 +140,18 @@ After each subagent completes (status DONE or DONE_WITH_CONCERNS):
 2. **Aggregation rule** — main agent MUST receive BOTH review outputs before proceeding:
    - Both pass → proceed to index.yaml update
    - Either reviewer reports Critical issues → implementer fixes → re-review (dispatch both again)
-   - **Arbitration path (reviewer block ≠ code gate):** a reviewer blocking on a Critical *structural judgment* is adversarial review, not a mechanical gate — it must stay arguable. If the implementer disputes the Critical, it refutes **with evidence** (forced_by refs, live code, plan citations); the dispute goes to the arbiter — the **user** in human mode, **`samsara:auto-gatekeeper`** in auto mode (decision appended to `auto-decisions.md`). Neither the reviewer auto-wins nor the implementer self-exempts. A block with a third-party arbitration path is arguable (healthy); a deterministic block with no arbiter is a code gate (the thing judgment must never get).
+   - **Arbitration path (reviewer block ≠ code gate):** a reviewer blocking on
+     a Critical *structural judgment* is adversarial review, not a mechanical
+     gate — it must stay arguable:
+     1. The implementer disputes the Critical → it must refute **with
+        evidence** (forced_by refs, live code, plan citations).
+     2. The dispute goes to the arbiter: the **user** in human mode,
+        **`samsara:auto-gatekeeper`** in auto mode (decision appended to
+        `auto-decisions.md`).
+     3. Neither side auto-wins: the reviewer cannot force the fix, the
+        implementer cannot self-exempt. A block with a third-party arbitration
+        path is arguable (healthy); a deterministic block with no arbiter is a
+        code gate — the thing judgment must never get.
    - Either reviewer reports `UNKNOWN` → **blocking review failure**; fix the missing/unreadable reference or unsupported domain condition, then re-review (dispatch both again)
    - Only one review output received → **FAIL with "missing reviewer" error** — do NOT assume absent reviewer = PASS. Re-dispatch the missing reviewer before proceeding.
 
@@ -198,8 +215,19 @@ These are non-negotiable:
 - **Review before index update:** `index.yaml` is updated only after code-reviewer passes. No pre-review status changes.
 - **UNKNOWN blocks review completion:** Reviewer `UNKNOWN` is not a partial pass. It means a required reference/domain condition could not be verified; do not proceed, update `index.yaml`, or mark review complete until the condition is fixed and both reviewers are re-run.
 - **Commit after all tasks:** Do not commit per-task. Commit once after all tasks complete and all reviews pass.
-- **Structural honesty applies at generation, not only at review:** The implementer's 結構誠實 constraints (`agents/implementer.md`) — justify every boundary/abstraction by what breaks if it is removed, and refuse speculative generalization built for a single consumer — apply whether the implementer runs as a subagent (modes A/B) **or inline (mode C)**. In inline mode the agent definition is not loaded, so the main agent owns these constraints directly; do not skip them just because no subagent was dispatched.
-- **Read-before-write and dependency hygiene apply inline too:** The implementer's `agents/implementer.md` constraints — **read before you write** (read the files you touch + neighbors, copy existing patterns instead of inventing) and **no silent dependency addition** (ask whether the standard library or an existing dependency already covers it before adding one; record why one earns its place) — apply in subagent modes A/B **and inline mode C**. In inline mode the agent definition is not loaded, so the main agent owns these directly.
+- **Inline mode (C) loads no agent definition — the main agent owns the
+  implementer constraints directly.** In modes A/B `agents/implementer.md` is
+  loaded for the subagent; in mode C it is not, but its constraints still
+  apply at generation, not only at review. Do not skip them just because no
+  subagent was dispatched:
+  - Structural honesty (結構誠實): justify every boundary/abstraction by what
+    breaks if it is removed; refuse speculative generalization built for a
+    single consumer.
+  - Read before you write: read the files you touch + their neighbors; copy
+    existing patterns instead of inventing.
+  - No silent dependency addition: ask whether the standard library or an
+    existing dependency already covers it before adding one; record why a new
+    one earns its place.
 
 ## Red Flags
 
@@ -224,6 +252,9 @@ These are non-negotiable:
 - Compose the L1/L2 sections at dispatch time instead of copying them from planning's products (overview.md Core Identity / Real Seams, index.yaml `seam`/`affects`/`anchors`) — improvised projection re-creates the curation blind spot; a plan without the fields gets an explicit `global_channel: absent`, never a hand-written substitute
 - Commit without running implement's format validator on the scar reports, or without pasting its output — a missing validator output is a visible missing at handoff, and committing over it converts it back into a silent skip
 - Overrule a disputed Critical structural judgment yourself (either direction) — the arbitration path runs through the user (human mode) or `samsara:auto-gatekeeper` (auto mode), never reviewer-auto-wins or implementer self-exemption
+
+## Support Files
+
 - `./dispatch-template.md` — prompt template for implementer and reviewer dispatch
 - `./scar-report.md` — scar report format reference
 - `references/test-contract.md` — the canonical Test Contract Gate protocol (over-fit and silent-green poles, snapshot/spy/minimum-contract patterns); the Test Contract Gate points here rather than duplicating the catalog

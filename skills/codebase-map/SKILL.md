@@ -13,12 +13,13 @@ Generate a map of the project that answers both "what is this system?" (yang) an
 
 1. **User-invoked:** `samsara:codebase-map` is invoked directly by the user.
 2. **Auto-initiated:** `samsara:pre-thinking` auto-initiates regeneration when
-   the map is present but stale and churn (changed source files since
-   `last_updated`, excluding paths under `changes/`, `docs/`, `bugfix/`)
-   exceeds `staleness_churn_threshold`. The `staleness_churn_threshold` field
-   (default 30) in `.samsara/codebase-map.yaml` controls when pre-thinking
-   treats the map as too stale and triggers regeneration. In human-in-the-loop
-   mode, Phase 4 human review is retained for auto-initiated runs.
+   the map is present but stale and churn exceeds the threshold.
+   - Churn = changed source files since `last_updated`, excluding paths under
+     `changes/`, `docs/`, `bugfix/`.
+   - Threshold = the `staleness_churn_threshold` field (default 30) in
+     `.samsara/codebase-map.yaml`.
+   - In human-in-the-loop mode, Phase 4 human review is retained for
+     auto-initiated runs.
 
 ## Process
 

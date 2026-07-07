@@ -16,7 +16,7 @@ Read from the feature's `changes/` directory:
 - `problem-autopsy.md` — translation delta, kill conditions
 - `pre-thinking.md` — user-LLM design alignment, Evaluation Contract, and commitment
 
-**Guard:** If `pre-thinking.md` is absent, missing Evaluation Contract, missing `## Step 6 — Commitment`, or has `Decision: Return to Research`, **STOP**. Do not proceed to Step 2: Technical Specification. Re-invoke `samsara:pre-thinking` or `samsara:research` as directed by the unresolved gaps. Proceed only when Step 6 contains `Decision: Proceed` or `Decision: Accept gap`.
+**Guard:** If `pre-thinking.md` is absent, missing Evaluation Contract, missing `## Step 6 — Commitment`, or has `Decision: Return to Research`, **STOP**. Do not proceed to Step 1: Technical Specification. Re-invoke `samsara:pre-thinking` or `samsara:research` as directed by the unresolved gaps. Proceed only when Step 6 contains `Decision: Proceed` or `Decision: Accept gap`.
 
 ## Process
 
@@ -60,7 +60,7 @@ digraph planning {
 }
 ```
 
-## Step 2: Technical Specification
+## Step 1: Technical Specification
 
 ### Pre-thinking Commitments Consumed
 
@@ -94,7 +94,7 @@ For each death case, document:
 - What actually happens (the truth)
 - How to detect the lie
 
-## Step 2.5: Acceptance Criteria — Death First
+## Step 2: Acceptance Criteria — Death First
 
 Write acceptance criteria using death-first BDD. See support file `death-first-spec.md` for format.
 
@@ -135,17 +135,53 @@ Break the plan into self-contained tasks. Each task:
 
 Planning **consumes** pre-thinking's L1 (core identity + real seams); it does not create structural decisions. After task decomposition, produce three things — all of them mappings or annotations of what pre-thinking already decided:
 
-1. **Per-task seam mapping (L1 position)** — for each task in `index.yaml`, set `seam` to the semantic name of the seam this task sits on or creates. The name must resolve to a seam declared in `overview.md` Key Decisions → Real Seams (semantic names like `parser-boundary`, never opaque codes — a code forces the reader to look it up, which is friction against evidence visibility). A task with no structural touch gets `seam: null`. One seam per task: a task that genuinely spans multiple seams is a decomposition signal — consider re-splitting the task (soft signal, not a hard block).
+1. **Per-task seam mapping (L1 position)** — for each task in `index.yaml`,
+   set `seam` to the semantic name of the seam this task sits on or creates.
+   - The name must resolve to a seam declared in `overview.md` Key Decisions →
+     Real Seams. Use semantic names (`parser-boundary`), never opaque codes —
+     a code forces the reader to look it up.
+   - A task with no structural touch gets `seam: null`.
+   - One seam per task. A task genuinely spanning multiple seams is a
+     decomposition signal — consider re-splitting (soft signal, not a block).
 
 2. **Seam evidence strengthening (planned-change tier)** — pre-thinking could only mark seams `already-happened` / `domain-essential`; task decomposition is what creates the **planned-change** evidence tier. For each declared seam, if downstream tasks will extend it (visible in `affects`), add those task ids to the seam's `planned:` line in Real Seams. This is an **annotation, not a new decision** — the seam remains pre-thinking's; planning only adds the evidence tier that becomes available at this stage.
 
-3. **L2 reverse projection (`affects` + `anchors`)** — for each task, fill in `index.yaml`:
-   - **`affects`** — which downstream tasks will build on this task's structure, each with a one-line `needs` naming what they need from this boundary. Sources: (a) tasks sharing the same seam naturally affect each other; (b) `depends_on` edges where the downstream extends the upstream's structure; (c) planning's own decomposition knowledge. **`affects` ≠ `depends_on`:** structural impact (reverse: me → my consumers) vs ordering (forward: me → my prerequisites); a task can affect another with no ordering dependency, and an ordering dependency is not necessarily a structural extension. A `needs` that merely restates ordering ("runs after me") is noise.
-   - **`anchors`** — the files the implementer must read before writing: path + one-line why (pointers, not content — this keeps raw content narrow while awareness stays broad). Planning selects them with its global view — callers, sibling modules, the pattern already in use nearby — precisely the neighbors the implementer would not know to look for. When `depends_on` is non-empty, include the interface files of each depended-on task: the implementer reads **live signatures** to honor upstream contracts, never a prose summary that would drift. Anchors are a starting set, never a whitelist.
+3. **L2 reverse projection (`affects` + `anchors`)** — for each task, fill in
+   `index.yaml`:
+   - **`affects`** — which downstream tasks will build on this task's
+     structure, each with a one-line `needs` naming what they need from this
+     boundary.
+     - Sources: (a) tasks sharing the same seam; (b) `depends_on` edges where
+       the downstream extends the upstream's structure; (c) planning's own
+       decomposition knowledge.
+     - `affects` ≠ `depends_on`: structural impact (me → my consumers) vs
+       ordering (me → my prerequisites). A task can affect another with no
+       ordering dependency, and an ordering dependency is not necessarily a
+       structural extension.
+     - A `needs` that merely restates ordering ("runs after me") is noise.
+   - **`anchors`** — the files the implementer must read before writing:
+     path + one-line why (pointers, not content — raw content stays narrow,
+     awareness stays broad).
+     - Select them with planning's global view — callers, sibling modules,
+       the pattern already in use nearby: exactly the neighbors the
+       implementer would not know to look for.
+     - When `depends_on` is non-empty, include the interface files of each
+       depended-on task — the implementer reads live signatures, never a
+       prose summary that would drift.
+     - Anchors are a starting set, never a whitelist.
 
 **Single-source STOP gate:** if decomposition reveals the feature needs a seam pre-thinking did not identify, that is a **design-decision gap** — STOP and return to `samsara:pre-thinking` to add it (same shape as the File Map Consistency STOP). Do not invent a new seam in planning: a seam declared outside the single source is the ISSUE-001 pathology — the same decision living in two places with no cross-check.
 
-**Projection volume (soft, consumption-driven):** projections stay small because downstream consumption disciplines them, not because of a line-count gate (a hard count trains gaming the number). Every `affects` entry should later be citable by an implementer structural decision (`forced_by` in the scar report); an entry no implementer ever consumes is over-projection. Conversely, a later task having to **tear down** a prior task's structure to connect is the under-projection death signal — record it as a scar pointing at the missed `affects`. A task whose `affects` list grows large signals decomposition entanglement — re-split the tasks rather than trimming the projection to look small.
+**Projection volume (soft, consumption-driven):** no line-count gate — a hard
+count trains gaming the number. Watch three signals instead:
+
+- **Over-projection:** an `affects` entry no implementer ever cites in a scar
+  report `forced_by`.
+- **Under-projection (death signal):** a later task must tear down a prior
+  task's structure to connect — record it as a scar pointing at the missed
+  `affects`.
+- **Decomposition entanglement:** a task whose `affects` list grows large —
+  re-split the tasks rather than trimming the projection to look small.
 
 ## Format Validation — planning's format-validate script
 

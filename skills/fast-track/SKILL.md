@@ -76,15 +76,34 @@ Inline review — main agent self-checks both yin and quality. No subagent dispa
 - Can anything be deleted? (zero-cost deletion test)
 - Are names lying? (do names describe what actually happens, including failures?)
 
-**Quality questions** (selected from C5/C6/C7/C8 — the 4 criteria most likely to be violated in changes < 100 lines; full 8 criteria in `samsara/references/code-quality.md`):
+**Quality questions** (selected from C5 Reuse / C6 Clear Structure / C7 Elegant Logic / C8 No Redundancy — the 4 criteria most likely to be violated in changes < 100 lines; full 8 criteria in `samsara/references/code-quality.md`):
 - **C5 Reuse**: Did this change introduce a duplicate helper or inline logic that already has a single home elsewhere?
 - **C6 Clear Structure**: Is every new boundary justified — "why here, not there"? Is any function/variable misplaced?
 - **C7 Elegant Logic**: Are there extra variables, wrappers, or abstractions introduced that serve no protection?
 - **C8 No Redundancy**: Does any new code state a fact already encoded somewhere else — two sources of truth for the same thing?
 
-Selection rationale: For typical small changes (bug fix, config, dep update, small refactor under 100 lines), the quality risks most likely to be introduced silently are: duplicating logic that already exists (C5), placing code in the wrong boundary (C6), adding unnecessary abstraction (C7), and restating facts already encoded elsewhere (C8). C1 Readability is ambient and covered by the naming yin question. C2 Maintainability and C3 Extensibility are architectural concerns unlikely to surface in <100 lines. C4 Debuggability overlaps with the yin reviewer's silent-rot scope.
+Selection rationale — why these 4 and not the other criteria:
 
-**Recording the review — `quality_review` (canonical field shape: `templates/fast-track.yaml`)**: write `reviewed_criteria` naming which of C5/C6/C7/C8 were actually checked — this line is required, always, even when nothing was found wrong. Write `violations` listing only what was found wrong; an empty `violations` list means "reviewed and clean". 缺 `reviewed_criteria` 的空 `violations` 清單視為未檢查，不得 commit — an empty `violations` list with no `reviewed_criteria` line is indistinguishable from "never reviewed" and must not ship.
+- C5 Reuse / C6 Clear Structure / C7 Elegant Logic / C8 No Redundancy are the
+  quality risks a <100-line change most easily introduces silently:
+  duplicating existing logic (C5), placing code in the wrong boundary (C6),
+  adding unnecessary abstraction (C7), restating a fact already encoded
+  elsewhere (C8).
+- C1 Readability is ambient and covered by the naming yin question.
+- C2 Maintainability / C3 Extensibility are architectural concerns unlikely
+  to surface in <100 lines.
+- C4 Debuggability overlaps with the yin reviewer's silent-rot scope.
+
+**Recording the review — `quality_review`** (canonical field shape:
+`templates/fast-track.yaml`):
+
+- `reviewed_criteria` — name which of C5 Reuse / C6 Clear Structure /
+  C7 Elegant Logic / C8 No Redundancy were actually checked. Required,
+  always, even when nothing was found wrong.
+- `violations` — list only what was found wrong. An empty list means
+  "reviewed and clean".
+- 缺 `reviewed_criteria` 的空 `violations` 清單視為未檢查，不得 commit — it
+  is indistinguishable from "never reviewed" and must not ship.
 
 - Write `fast-track.yaml` to `changes/` directory
 - Commit with `[scar:none]` or `[scar:N items]` tag
@@ -94,7 +113,7 @@ Selection rationale: For typical small changes (bug fix, config, dep update, sma
 - **Death test first** — even for fast track, this order cannot be skipped
 - **Gate defaults to full workflow** — positive evidence required to enter Fast Track
 - **Every commit tagged** — `[scar:none]` or `[scar:N items]`
-- **Quality symmetry** — fast-track's Step 4 review must check both yin (deletion, naming) and quality (C5/C6/C7/C8) faces, recording the quality face as `quality_review` (`reviewed_criteria` + `violations`); checking only one face, or an empty `violations` list with no `reviewed_criteria` line, is an incomplete review
+- **Quality symmetry** — fast-track's Step 4 review must check both yin (deletion, naming) and quality (C5 Reuse / C6 Clear Structure / C7 Elegant Logic / C8 No Redundancy) faces, recording the quality face as `quality_review` (`reviewed_criteria` + `violations`); checking only one face, or an empty `violations` list with no `reviewed_criteria` line, is an incomplete review
 
 ## Output
 
@@ -114,6 +133,7 @@ scar_items:
 files_changed:
   - "<file path>"
 quality_review:  # canonical field shape: templates/fast-track.yaml
+  # C5 Reuse / C6 Clear Structure / C7 Elegant Logic / C8 No Redundancy
   reviewed_criteria: [C5, C6, C7, C8]
   violations: []
 ```

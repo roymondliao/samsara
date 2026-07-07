@@ -91,7 +91,12 @@ If the platform has no built-in review capability, this is a **visible degradati
 3. Return to Result Handling above
 4. From round 3 onward, the safety-valve gate fires **every round** (not just once): continue fixing vs. accept remaining risk, routed through the execution-mode gate
 
-**Accepted risk carries forward:** any risk a human accepts in `human-in-the-loop` mode — at ANY Step 0 decision point (no-capability skip, unknown-result skip, fail-result risk acceptance, or remaining fix-loop risk) — must be recorded and carried into `ship-manifest.yaml`'s `accepted_risks` field (see Output below). Auto mode must never accept security/privacy risk — see Auto Mode Gate.
+**Accepted risk carries forward:** any risk a human accepts in
+`human-in-the-loop` mode — at ANY Step 0 decision point (no-capability skip,
+unknown-result skip, fail-result risk acceptance, remaining fix-loop risk) —
+must be recorded in `ship-manifest.yaml`'s `accepted_risks` field (see Output
+below). Auto mode must never accept security/privacy risk — see Auto Mode
+Gate.
 
 - If `Execution mode: human-in-the-loop`, ask the user each prompt above (edge
   case, capability-absent, result handling (fail or unknown), fix selection,
@@ -130,23 +135,25 @@ silently skip it. Without this check, a feature that default-skips iteration
 would carry dangling systemic_refs all the way to ship with nothing resolving
 them.
 
-**Terminal format audit (mandatory, DC-1 terminal defense line; referential
-integrity only — whether the shipped structure honors its declarations is
-review's judgment lane, not this audit):** re-run both per-skill format
-validators against the feature directory and paste their output:
+**Terminal format audit (mandatory — DC-1 terminal defense line):** this audit
+checks referential integrity only; whether the shipped structure honors its
+declarations is review's judgment lane, not this audit's. Re-run both
+per-skill format validators against the feature directory and paste their
+output:
 
 ```bash
 python skills/planning/scripts/validate_format.py changes/<feature>/
 python skills/implement/scripts/validate_format.py changes/<feature>/ --repo-root <repo-root>
 ```
 
-Any `FINDING` (dangling seam id, affects pointing at no task, forced_by
-resolving to nothing checkable, dangling systemic_ref) is a **blocking
-finding** — list it explicitly, never silently pass. A `CANNOT VALIDATE`
-exit is an unknown, not a pass and not a skip — surface it through the gate
-like any other unknown. A feature planned before the global thinking channel
-(no seam fields anywhere) records `global_channel: absent` and skips only the
-planning-side checks — absence is recorded, never silent.
+- Any `FINDING` (dangling seam id, affects pointing at no task, forced_by
+  resolving to nothing checkable, dangling systemic_ref) is a **blocking
+  finding** — list it explicitly, never silently pass.
+- A `CANNOT VALIDATE` exit is an unknown — not a pass, not a skip; surface it
+  through the gate like any other unknown.
+- A feature planned before the global thinking channel (no seam fields
+  anywhere) records `global_channel: absent` and skips only the planning-side
+  checks — absence is recorded, never silent.
 
 ### 2. Acceptance Validation
 

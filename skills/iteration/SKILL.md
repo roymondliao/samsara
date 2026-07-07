@@ -18,16 +18,18 @@ Read from the feature's `changes/` directory:
 
 ## Iteration-Entry Criteria (Reference)
 
-Whether to even enter this skill is decided BEFORE this skill runs. The
-canonical entry criteria (cross-task pattern OR a `signal_lost` threshold,
-the threshold's historical-estimate rationale, and the three-state
-gate/default-skip/unknown branch) live in `skills/implement/SKILL.md`'s
-**Transition** section — not restated here, so the criteria has exactly one
-place to evolve. This file's Step 1 below remains the canonical home for the
-`signal_lost` computation formula and parse-failure semantics that BOTH
-places use. Do not redefine the entry threshold here. (If implement's
-Transition section is renamed or restructured, update this pointer in the
-same change — a stale pointer here silently breaks the single-owner claim.)
+Whether to enter this skill is decided BEFORE it runs.
+
+- The canonical entry criteria (cross-task pattern OR a `signal_lost`
+  threshold, the threshold's historical-estimate rationale, and the
+  three-state gate/default-skip/unknown branch) live in
+  `skills/implement/SKILL.md` → **Transition**. Do not redefine the entry
+  threshold here — the criteria has exactly one place to evolve.
+- Step 1 below is the canonical home for the `signal_lost` computation formula
+  and parse-failure semantics that BOTH places use.
+- If implement's Transition section is renamed or restructured, update this
+  pointer in the same change — a stale pointer silently breaks the
+  single-owner claim.
 
 ## Process
 
@@ -89,7 +91,13 @@ signal_lost = count(known_shortcuts)
 
 All three scar categories contribute. Only count items from the remaining set (exclude Level 1 resolved items — both the `resolved_items`-list form and the in-place `status: resolved` form).
 
-**Parse failure handling:** If a scar report does not conform to `scar-schema.yaml` (e.g., markdown format instead of YAML — NOT the old plain-string `known_shortcuts`/`silent_failure_conditions` format, which Rule 8 requires counting normally, never treating as a parse failure) OR contains a dangling `systemic_ref`, list the file (and, for dangling refs, the id) explicitly:
+**Parse failure handling:** two conditions are parse failures — list each
+file (and, for dangling refs, the id) explicitly:
+- The scar report does not conform to `scar-schema.yaml` (e.g. markdown format
+  instead of YAML). This is NOT the old plain-string
+  `known_shortcuts`/`silent_failure_conditions` format —
+  Rule 8 requires counting the old plain-string format normally, never treating it as a parse failure.
+- The report contains a dangling `systemic_ref`.
 
 > 「以下 scar reports 無法解析：[files]。這些 files 的 items 未被計入 signal_lost。」
 > 「以下 systemic_ref 懸空：[file: id, ...]。這些 items 未被計入 signal_lost，比照非 conforming items 處理。」
@@ -185,7 +193,8 @@ Both reviewers must PASS before the per-fix commit is allowed. Either reviewer r
 | Either FAIL | Block per-fix commit — implementer must fix and re-review |
 | Missing reviewer (only one output received) | **FAIL with "missing reviewer" error** — block per-fix commit, log the missing reviewer by name, re-dispatch (max 2 retries); if still missing after retries, escalate and do not proceed |
 
-**Missing reviewer handling:** If the main agent receives only one review output (the other dispatcher returned nothing or timed out), this is a **FAIL with "missing reviewer" error** — do NOT assume absent reviewer = PASS. Log the missing reviewer by name and re-dispatch. Bounded retry: max 2 re-dispatch attempts. If both retries still produce no output, escalate to the user and do not proceed with the per-fix commit. This is a structural block, not an advisory warning.
+**Missing reviewer handling:** absent reviewer output is never PASS. This is a
+structural block, not an advisory warning — follow the table row above.
 
 **Re-review rule:** After implementer fixes issues from FAIL, dispatch both reviewers in parallel again. Do not dispatch only the reviewer that failed — both must re-review after any code change.
 
@@ -263,7 +272,11 @@ Write `iteration-log.yaml` to the feature's `changes/` directory. Use template `
   records the gatekeeper decision before classification is applied.
 - **Safety valve is advisory:** Forced stop emits a warning and suggestion, but
   the active execution-mode gate makes the final decision.
-- **Accept requires a re-review signal, not an expiry date:** Every `accept` classification must include a `re_review_signal` (the observable condition that should trigger re-review) and an `owner` (who is responsible for noticing it) — risk acceptance is not permanent, but no mechanism in this repo has ever read or acted on an `expiry_date`; a time-driven re-review promise is an alarm clock that never rings.
+- **Accept requires a re-review signal, not an expiry date:** every `accept`
+  must include a `re_review_signal` (the observable condition that triggers
+  re-review) and an `owner` (who is responsible for noticing it). No mechanism
+  in this repo has ever read or acted on an `expiry_date` — a time-driven
+  re-review promise is an alarm clock that never rings.
 - **Legacy `expiry_date` is tolerated on read:** Historical `iteration-log.yaml` entries or scar reports carrying the old `expiry_date` field are read without error and without requiring backfill to `re_review_signal`/`owner` — this is a read-time compatibility guarantee only; new `accept` entries must use `re_review_signal` + `owner`.
 
 ## Red Flags

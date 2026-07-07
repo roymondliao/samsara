@@ -36,7 +36,15 @@ Determine the execution model of the file under review. Known domains and their 
 - `pipeline` → `references/pipeline-review.md` — CI/CD pipelines (GitHub Actions, Jenkins, GitLab CI, Airflow)
 - `orchestration` → `references/orchestration-review.md` — orchestration manifests (Kubernetes, Helm)
 
-**Instruction-surface markdown** — skill definitions (`skills/**/*.md`, including templates), agent definitions (`agents/*.md`), and reference docs (`references/*.md`) — routes to the `code` domain (`references/code-review.md`): in this framework these files ARE the executable surface (agents execute them at runtime); where a doc-contract test guards the file, that is its observable contract (coverage is partial, not universal). This route does not widen into a catch-all: markdown files outside that surface (e.g. arbitrary prose docs with no contract) still fall to UNKNOWN.
+**Instruction-surface markdown routes to the `code` domain** (`references/code-review.md`):
+
+- **In scope:** skill definitions (`skills/**/*.md`, including templates),
+  agent definitions (`agents/*.md`), and reference docs (`references/*.md`).
+  In this framework these files ARE the executable surface — agents execute
+  them at runtime. Where a doc-contract test guards the file, that test is its
+  observable contract (coverage is partial, not universal).
+- **Not in scope:** markdown files outside that surface (e.g. arbitrary prose
+  docs with no contract) still fall to UNKNOWN. This route is not a catch-all.
 
 If the file does not belong to any known domain, or you cannot confidently determine its execution model, set domain = UNKNOWN.
 
@@ -69,21 +77,12 @@ Read the reference file. Then proceed to Step 1.
 
 ## Reference File Protocol
 
-**This agent's domain-specific patterns come exclusively from the reference file. Do not use memory.**
+Domain-specific patterns come exclusively from the reference file selected in
+Step 0. Never review from memory.
 
-Before starting review steps 1-5, read the reference file identified in Step 0.
-The Mother Rules (above) define the review spirit — what you are looking for and why.
-The reference file provides the domain-specific foundation — what those concerns look
-like in this particular execution model, with detection patterns and severity defaults.
-
-**If the reference file becomes unavailable after Step 0 (path not found, permission error, empty file, or any read failure):**
-
-1. Do NOT fallback to your memory of review patterns.
-2. Do NOT fallback to generic code review heuristics.
-3. Do NOT produce a PASS or FAIL verdict.
-4. Return immediately with the Outcome B format above, noting the domain and that the reference could not be read.
-
-The UNKNOWN-on-unreadable-reference rule is a hard stop, not a fallback.
+If the reference file cannot be read — at any point, for any reason — return
+the Outcome B format above, noting the domain and the read failure. There is
+no fallback: not your memory, not generic heuristics. This is a hard stop.
 
 ---
 
@@ -133,16 +132,19 @@ This is the review-side mirror of the planning skill's **File Map Consistency Ch
 the same three-state placement protocol, applied to the changed files' locations instead
 of the plan's File Map. Keep the two aligned.
 
-**Seam placement dimension.** When the dispatch carries a **Task Seam (L1)** section
-(the task's declared seam from index.yaml plus its Real Seams entry), extend the
-placement check one level below the File Map: do the changed files actually sit on the
-declared seam — is the code placed on the boundary the plan declared it would sit on or
-create? Classify with the same three states (matches / contradicts / out of scope).
-Whether the seam id *resolves* is format (the planning validator's job — do not redo
-it); whether the placement is *true to the declaration* is your judgment. A dispatch
-that says `global_channel: absent` (plan predates the channel) makes this dimension
-out of scope — say so; if the section is missing entirely, that is the same
-dispatched-blind finding as missing Key Decisions.
+**Seam placement dimension.** When the dispatch carries a **Task Seam (L1)**
+section (the task's declared seam from index.yaml plus its Real Seams entry),
+run one more placement check: do the changed files sit on the seam the plan
+declared they would sit on or create?
+
+- Classify with the same three states: matches / contradicts / out of scope.
+- Whether the seam id *resolves* is format — the planning validator already
+  checked it; do not redo it. Your judgment: is the placement *true to the
+  declaration*?
+- Dispatch says `global_channel: absent` (plan predates the channel) → this
+  dimension is out of scope; say so.
+- Dispatch is missing the Task Seam section entirely → report it as a finding,
+  same as missing Key Decisions: you were dispatched blind.
 
 ### 3. Naming Honesty
 
@@ -195,13 +197,11 @@ verdict is **fix the test, not the implementation** — do not bend the implemen
 to a rotten test. Not every failing test means the implementation is wrong. You may
 say "fix the test" when the test asserts the wrong contract.
 
-**Challenge a perfunctory contract label (the Clean Scar anti-pattern).** A named
-contract is only real if it maps to an observable behavior, a public API/schema, a
-documented artifact shape, or a death/bug case. A perfunctory contract label — a
-slogan like `# contract: it works` that maps to NO observable behavior, API, schema,
-artifact, or death-case — does NOT satisfy the gate. Reject the perfunctory contract
-declaration; a tautological contract label that maps to no observable behavior is a
-Clean Scar and is Critical.
+**Reject perfunctory contract labels (the Clean Scar anti-pattern).** A named
+contract is real only if it maps to at least one of: an observable behavior, a
+public API/schema, a documented artifact shape, or a death/bug case. A label
+that maps to none of these (e.g. `# contract: it works`) is a Clean Scar →
+Critical. It does not satisfy the gate.
 
 ### 6. Scar Report Integrity
 

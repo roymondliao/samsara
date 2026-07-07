@@ -88,7 +88,20 @@ The main agent, **alone and in sequence** (decisions are interdependent), turns 
 2. **Self-derived** — evidence didn't force it, but you can derive it from a **named root** (Samsara axiom + the problem's hard requirements + existing convention/contract *if found and confirmed not rotten*) **and you write the derivation chain out**.
 3. **Needs an external call** — several answers stand up; the choice needs a preference/priority the agent has no authority to invent. Answered by the human, or in auto mode by the gatekeeper (a genuinely-human-only answer must be marked "unconfirmed guess").
 
-**Codebase-craft extension — real seams as a named decision category:** the domain's essential boundaries this feature will *sit on or create* are a **named decision** in Step 4, run through the same three boxes (not a separate structural pass). Each seam carries an **evidence-tier marker**. The full tier order is `already-happened (git history) > planned change > domain-essential boundary > imagination`, but **evidence accrues along the pipeline**: pre-thinking can only mark **already-happened / domain-essential** (or "needs external call"); the **planned-change** tier is added later by planning once it decomposes tasks. A seam that can be marked with no checkable tier at pre-thinking time is not a real seam (cargo-cult). Scope is feature-limited — do not redraw the whole project's architecture (guards against seam astronomy). See `flow.md` §4 and design note 2 §4.2/§7.
+**Codebase-craft extension — real seams as a named decision category:** the
+domain's essential boundaries this feature will *sit on or create* are a named
+decision in Step 4, run through the same three boxes (not a separate
+structural pass). Rules:
+
+- Each seam carries an **evidence-tier marker**. Full tier order:
+  `already-happened (git history) > planned change > domain-essential boundary > imagination`.
+- Evidence accrues along the pipeline: pre-thinking may only mark
+  **already-happened / domain-essential** (or "needs external call"). The
+  **planned-change** tier is added later by planning when it decomposes tasks.
+- A seam with no checkable tier at pre-thinking time is not a real seam
+  (cargo-cult) — drop it.
+- Scope is feature-limited: do not redraw the whole project's architecture
+  (seam astronomy). See `flow.md` §4 and design note 2 §4.2/§7.
 
 **Granularity floor:** the codebase layer descends only to **function / module / abstraction boundary**, no lower (control-flow / naming / line-shaping are not the disease here). See design direction §3.2.
 
@@ -105,7 +118,12 @@ Route by execution mode:
 
 Hand three things to planning, and be honest about your own state:
 
-- **L1 (codebase-craft output)** — the feature-level **core identity + real seams** distilled in Steps 2/4 are **design decisions**, so they travel through the **existing "planning Key Decisions single source" channel** — planning cites them, does not re-derive or add new placement decisions. This is the L1 contract the implementer's global-thinking channel later consumes (design notes 1 §10, 2 §7). No new mechanism.
+- **L1 (codebase-craft output)** — the core identity + real seams from Steps
+  2/4 are design decisions: they travel through the existing "planning Key
+  Decisions single source" channel. Planning cites them — it does not
+  re-derive them or add new placement decisions. This is the L1 contract the
+  implementer's global-thinking channel later consumes (design notes 1 §10,
+  2 §7). No new mechanism.
 - **Evaluation Contract** — exactly one Primary evaluator (see below). Defined here, at the last moment design intent is fully in view and no code is written yet.
 - **Commitment (one of three) + residual list** — `Proceed` / `Accept gap` / `Return to Research`. Only the first two may invoke `samsara:planning`.
 
@@ -123,25 +141,21 @@ Check `.samsara/codebase-map.yaml` first when it exists. Use it as derived
 context, not as truth over the live codebase: if the map and live artifacts
 disagree, live artifacts win and the drift must be surfaced.
 
-If the map is present but stale and churn (changed source files since
-`last_updated`, excluding paths under `changes/`, `docs/`, `bugfix/`) exceeds
-`staleness_churn_threshold` (canonical definition: codebase-map SKILL.md
-Triggers), auto-initiate `samsara:codebase-map` regeneration before
-proceeding. In human-in-the-loop mode, Phase 4 human review is retained. Do
-not continue with a stale map when churn is over threshold; auto-initiate so
-planning is not built on outdated context. If auto-initiated regeneration
-fails, aborts, or is rejected at Phase 4 review, do NOT treat it as completed
-and do NOT block indefinitely: proceed with the map explicitly marked stale,
-record an information gap noting the failed regeneration, and continue
-planning on that basis.
+Staleness handling (churn = changed source files since `last_updated`,
+excluding `changes/`, `docs/`, `bugfix/`; threshold: `staleness_churn_threshold`,
+canonical definition in codebase-map SKILL.md Triggers):
 
-If the map is present but stale and churn is at or below
-`staleness_churn_threshold`, use it only as a starting hypothesis: verify
-facts needed for planning against live codebase artifacts and record stale or
-unverifiable facts as information gaps.
-
-If the map is missing, either run targeted local inspection for the task scope
-or record an information gap recommending `samsara:codebase-map`.
+- **Map present, churn > threshold:** auto-initiate `samsara:codebase-map`
+  regeneration before proceeding — do not plan on a stale map. In
+  human-in-the-loop mode, Phase 4 human review is retained. If regeneration
+  fails, aborts, or is rejected at Phase 4 review: do NOT treat it as
+  completed and do NOT block indefinitely — proceed with the map explicitly
+  marked stale, and record an information gap noting the failed regeneration.
+- **Map present, churn ≤ threshold:** use the map only as a starting
+  hypothesis — verify facts needed for planning against live artifacts;
+  record stale or unverifiable facts as information gaps.
+- **Map missing:** run targeted local inspection for the task scope, or
+  record an information gap recommending `samsara:codebase-map`.
 
 Boundary and environment facts are prerequisite design context; do not let
 yin/yang framing substitute for this map.
