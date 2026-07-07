@@ -235,9 +235,7 @@ class TestLiveSurfaceExclusionCoversAllFourPrefixes:
     def test_bugfix_top_level_prefix_excluded(self, tmp_path: Path):
         bugfix_dir = tmp_path / "bugfix" / "2026-01-01_issue"
         bugfix_dir.mkdir(parents=True)
-        (bugfix_dir / "notes.md").write_text(
-            'subagent_type: "samsara:implementer"\n'
-        )
+        (bugfix_dir / "notes.md").write_text('subagent_type: "samsara:implementer"\n')
         validator = TargetValidator()
         errors = validator.validate(output_dir=tmp_path, platform="codex")
         assert errors == [], f"bugfix/ noise was not excluded: {errors}"

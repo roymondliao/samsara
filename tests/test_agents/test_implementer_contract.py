@@ -143,7 +143,9 @@ def test_death__measured_numbers_constraint_present_in_mandatory_behaviors() -> 
     a two-anchor check while gutting the rule's substance — this closes that
     gap. If any anchor disappears (the rule is dropped, or watered down to a
     vague reminder with no named failure mode), this goes RED."""
-    section = _mandatory_behaviors_section(IMPLEMENTER.read_text(encoding="utf-8").lower())
+    section = _mandatory_behaviors_section(
+        IMPLEMENTER.read_text(encoding="utf-8").lower()
+    )
     assert "actually executed" in section, (
         "Mandatory Behaviors no longer requires quantitative claims to come "
         "from a command actually executed in this session — an implementer "

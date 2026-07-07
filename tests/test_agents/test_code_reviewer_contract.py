@@ -48,7 +48,9 @@ def _step0_section(text_lower: str) -> str:
     rename of the next section fail loudly instead of silently widening the
     span to end-of-file."""
     start = text_lower.find(_STEP0_HEADER)
-    assert start != -1, "code-reviewer.md has no '## Step 0: Determine Domain Before Review' section"
+    assert start != -1, (
+        "code-reviewer.md has no '## Step 0: Determine Domain Before Review' section"
+    )
     rest = text_lower[start + len(_STEP0_HEADER) :]
     end = rest.find("\n## reference file protocol")
     assert end != -1, (

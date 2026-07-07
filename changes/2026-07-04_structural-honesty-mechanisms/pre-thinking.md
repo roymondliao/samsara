@@ -100,4 +100,3 @@ Codebase map 於本 session 完整重生（churn 227 > threshold 30 觸發 auto-
 - D3: planning 入口 guard（kickoff `poc_death_date` 未過期 → 豁免；fast-track 不觸及）
 - D4: task-N.md 必填 `structure_refs` 欄位，planning 上游標注（空陣列 ≠ 漏標）
 - D5: spec-mode code-quality-reviewer 回報 drift items；iteration 聚合 `structural_drift`（與 signal_lost 並列）；reconciliation 做 feature 級對照；零新 agent
-
