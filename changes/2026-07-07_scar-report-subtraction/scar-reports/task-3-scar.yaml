@@ -14,9 +14,9 @@ known_shortcuts:
     resolution: "三個新檢查函式改為直接 enumerate 原始清單並逐項用 _normalize_item 正規化，index 恆對齊 seq_node.value，不再借道會丟項目的 _iter_items。"
   - what: "legacy-form/length-budget 無 grandfather 例外，本 feature-dir 內 task-1 的第二代 description 格式 scar 被判定為 finding"
     bites_when: "任何人對本 feature-dir 跑本 validator，且 task-1 scar 尚未機械遷移至槽位形式"
-    where: "changes/2026-07-07_scar-report-subtraction/scar-reports/task-1-scar.yaml（自檢已確認 10 筆 finding）"
-    accepted_because: "task 指示與既有 docstring 先例皆明言 handoff 時每份 report 視為新——見本報告 structural_decisions"
-    deferred_to_feature_iteration: true
+    where: "changes/2026-07-07_scar-report-subtraction/scar-reports/task-1-scar.yaml（自檢時 10 筆 finding）"
+    status: resolved
+    resolution: "主 agent 已將 task-1 scar 一次性機械遷移至槽位形式（見該檔頭註記）；validator 對 feature dir 全 clean"
   - what: "_registry_ids() 讀錯 registry 頂層鍵：用 data.get('scars', data) 回退整份 dict，導致回傳 {'entries'} 而非真正的 id 集合，每個真實 id 皆誤判為 dangling"
     bites_when: "任何 scar report 引用一個確實存在於 .samsara/systemic-scars.yaml（真實 entries: 格式）的 systemic_ref id"
     where: "skills/implement/scripts/validate_format.py:_registry_ids（main agent 自檢本 feature 時發現並回報）"
@@ -46,7 +46,7 @@ assumptions_made:
     note: "test_implement_overbudget_item_lines_is_a_length_budget_finding／…structural_entry… 對已知行數(7,11)逐一釘住並通過"
 
 debt_registered: true
-debt_location: "changes/2026-07-07_scar-report-subtraction/scar-reports/task-1-scar.yaml（Gen-2 格式，需機械遷移至槽位形式，超出本 task 檔案範圍）"
+debt_location: "skills/implement/scripts/validate_format.py（YAML 多文件分隔符未測、malformed item 隱形 — 見 silent_failure_conditions）"
 
 narrative: |
   本 task 對「新 report」定義選擇 (d)：本 feature-dir 內每份 report（含 task-1 第二代

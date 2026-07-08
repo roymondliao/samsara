@@ -1,0 +1,51 @@
+delivered_capability: "Scar report 的簡潔可讀由機制保證：一頁槽位式寫入契約（what/bites_when/where/accepted_because）、validate_format.py 長度預算/legacy-form/slot-required 硬檢查、三代格式讀取契約 canonical home 於 iteration Step 1、具名錨點取代規則編號、golden re-expression 實證預算不傷誠實（232→75 行零真疤損失）。"
+
+validation_summary:
+  step0_security_privacy: "PASS — 35 檔全數審查（markdown 工作流文件、YAML fixtures/模板、1 個本地 Python 格式 linter）；yaml.safe_load/compose 非執行式載入、生產碼零 eval/exec/subprocess、測試唯一 subprocess 為固定 argv git 呼叫、零 secrets/auth/PII 面。零 findings。"
+  failure_budget: "remaining silent_failures=5、accepted shortcuts=5、unverified assumptions=1（已揭露的 judgment 邊界）、resolved in place=9；systemic_ref 全數解析（doc-vs-runtime-obedience、doc-instruction-no-code-enforcement 皆在 registry）"
+  terminal_format_audit: "planning validator: clean（index parse/seam-resolves/affects/anchors/depends/planned）；implement validator: clean — 6 scar report(s)（parse/dual-face/forced-by/seam/systemic-ref/debt/length-budget/legacy-form/slot-required）"
+  acceptance: "10/10 scenarios 由測試覆蓋且綠（death paths 先行：over-budget/legacy 逃逸/folded scalar/三代聚合丟失/compat 回長/懸空引用/exit-2 degradation；happy: clean slot-form/golden 過檢/全套件）；North Star 長期 corruption signature（內容位移、clean-scar 率）屬主觀抽查，無法本次測試"
+  primary_evaluator: "uv run pytest tests/ → 959 passed, 0 failed（decision-002 pass signal；新測試曾以突變證明可轉紅，非 tautological）"
+  e2e: "integration/smoke/snapshot 測試含於 959；samsara-cli validate --platform codex → 12 live-surface findings 全數為 issue-002 既知基線＋另一 session 變更，本 feature 零新增"
+  reconciliation: "與 2-plan 漂移均已記錄且在容忍內：(a) char cap 範圍明文化排除 structural_decisions 欄位（review 驅動的釐清，非漂移）；(b) _registry_ids bug 修復為計畫外的在範圍內修正；(c) task-1 scar 遷移由 main agent 執行（計畫明列選項）；(d) .samsara/modules/skill-implement.yaml 為全量 grep 發現的第 6 檔（超出已知 5 檔清單，正是全量掃描的目的）；(e) task-5 修正與 task-6 由 main agent inline 執行（人工裁示，review-record 留痕）"
+  ship_level_code_review: "WAIVED by human directive（review-record.md Task 5 Round 2 process note）；per-task 雙審（yin＋quality）已於 task 1–5 執行並全數通過"
+
+known_failure_modes:
+  - mode: "anti-dup death test 只比對 6 個逐字 literal token — compat 內容被改寫措辭貼回 schema 時測試保持綠，單一源在語意上再度分裂"
+    severity: silent_corruption
+    detection: "無自動偵測（語意比對非 regex 可及）；durable guard 是任何人讀 schema 發現殘留即刪（eb4ae07 先例）＋ per-task review 的 DRY 檢查"
+  - mode: "具名錨點被改名而跨檔引用未同步 — dangling-citation death test 只擋數字引用，不擋錨點改名"
+    severity: silent_corruption
+    detection: "test_unit__rewritten_citations_name_the_correct_anchor 可抓引用點的錨點消失（但抓不到改成另一個仍有效字串）"
+  - mode: "iteration Step 1 世代識別文字與未來真實 aggregator 行為漂移（synthetic reader 是 doc 的鏡像，不是 runtime）"
+    severity: silent_corruption
+    detection: "doc-contract 測試守文字存在；runtime 服從屬 systemic_ref doc-vs-runtime-obedience 的固有限制，靠 review 抽查"
+  - mode: "YAML 多文件分隔符（---/...）的 report 對 compose() 行為未測，行數計算可能失真"
+    severity: degradation
+    detection: "schema 範例與現存 report 皆不使用；若出現，validator 的 char cap 仍為兜底"
+  - mode: "dist/ 內 md 檔經 rules 引擎改寫，無法 byte-diff 驗證 — converter 對新 schema 內容的非預期改寫只能靠 integration 測試攔截"
+    severity: degradation
+    detection: "tests/integration 套件＋samsara-cli validate 的 live-surface 掃描"
+
+accepted_risks:
+  - risk: "北極星脫鉤情境：validator 全綠但內容位移到 commit message/task log 以繞過預算（corruption signature），或 clean-scar 反模式率上升"
+    accepted_by: "human（kickoff corruption_signature 條款）+ decision-007 accept_gap"
+    re_review_signal: "validate-and-ship 主觀抽查發現 report 讀不懂但 validator 綠；或同 feature 內 scar 條目數驟降而 diff 規模不變"
+    owner: "下一個 feature 的 validate-and-ship 執行者（Failure Budget Review 段）"
+  - risk: "task-5 golden 逐列語意分類（真疤 vs 辯護文）為 judgment，未機械驗證（verified: false 假設）；首版對照表審計宣稱曾出錯（已修，見 review-record）"
+    accepted_by: "human（decision-002 明定 golden 為 supporting artifact 非 Primary 的原因）"
+    re_review_signal: "任何人追溯 golden-re-expression.md 某列發現原文真疤被錯分類為刪除項"
+    owner: "發現者所在 session 的主 agent（對照表逐列可追溯性即偵測面）"
+  - risk: "budget 閾值（≤90/≤6/≤200 等）校準自 25 份歷史 report，若未來任務型態改變導致誠實內容裝不下（kill-condition #3）需上修"
+    accepted_by: "human（kickoff must-have death condition）"
+    re_review_signal: "implementer 回報 BLOCKED with 具體條目與所需行數；或 reviewer 在 ≥2 個 feature 抓到壓縮導致的誠實損失"
+    owner: "當次 feature 的主 agent（走 kill-condition #3 重校準路徑並記錄）"
+
+silent_failure_surface: medium  # 5 個 unique remaining silent_failure_conditions（3-7 區間）
+
+monitoring_hooks:
+  - "validate_format.py 於每次 implement handoff 強制執行（SKILL.md step 18，缺輸出 = visible missing）— 預算/格式回歸的常設攔截點"
+  - "22 個 doc-contract death tests（noise-rules）＋ 14+ validator 行為測試＋三代聚合測試，隨 uv run pytest tests/ 每次全跑"
+  - "數值/欄位名雙向防漂移測試：schema 預算表與 validator 常數任一側單獨改動即紅"
+
+kill_switch: "git revert fea676b（單一 commit，內含全部 35 檔變更）。半退場：僅移除 validator 新檢查（刪 _check_length_budget/_check_legacy_form/_check_required_slots 三函式與其測試）可保留新 schema 格式但撤掉硬 gate；讀取端三代相容為 additive，舊 report 不受任何退場影響。"
