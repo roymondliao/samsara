@@ -1,0 +1,26 @@
+# Gen 3 fixture (task-5, feature scar-report-subtraction): what/bites_when/
+# where slot items (the current write format, task-2). One item is deferred
+# (must appear in "remaining" — same rule as Gen 2). One item is resolved
+# in-place via `status: resolved` (must be EXCLUDED from remaining — the new
+# generation's resolution mechanism, read identically to Gen 2's for triage
+# per iteration SKILL.md Step 1).
+task_id: gen3-demo
+completion_status: done
+known_shortcuts:
+  - what: "Gen3 shortcut A: deferred slot item, must appear in the remaining set"
+    bites_when: "feature-level iteration has not yet triaged it"
+    where: "fixture:1"
+    deferred_to_feature_iteration: true
+  - what: "Gen3 shortcut B: resolved slot item, must be excluded from remaining"
+    bites_when: "this was the condition before the in-place fix below"
+    where: "fixture:2"
+    status: resolved
+    resolution: "fixed in place; excluded from remaining per resolved-in-place rule"
+silent_failure_conditions:
+  - what: "Gen3 silent failure: remaining, no resolution"
+    bites_when: "the aggregator misreads the what/bites_when shape as unrecognized and drops it"
+    where: "fixture:3"
+assumptions_made: []
+debt_registered: true
+debt_location: "n/a - synthetic fixture for aggregation test"
+structural_decisions: []

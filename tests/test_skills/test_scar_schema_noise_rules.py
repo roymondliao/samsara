@@ -1,6 +1,11 @@
 """
-Doc-contract guard for Task 1 (Scar 產出瘦身): schema noise rules, the
-systemic-scar registry, and the implementer report-format dedup.
+Doc-contract guard for the scar-report-subtraction feature, spanning three
+tasks' additions: task-1 (Scar 產出瘦身 — schema noise rules, the
+systemic-scar registry, the implementer report-format dedup, and the
+generational backward-compat rebind onto iteration SKILL.md Step 1), task-2
+(scar-schema.yaml's new slot/budget form and its anti-dup guard against
+regrowing compat-rule text), and task-4 (the numbered-Rule-N to named-anchor
+citation sweep and its dangling-citation death test).
 
 These are DOC-PRESENCE / ARTIFACT-SHAPE tests, not behavioral tests — there is
 no runtime code in this task. The instruction surfaces themselves (scar-schema
@@ -138,24 +143,29 @@ _CLAUSE = r"[^.!?\n]"  # clause-bounded gap: stop at sentence punctuation or
 # 5, boundary bleed).
 
 _PLAIN_STRING_EXCLUSION_ANCHOR = re.compile(r"not\s+the\s+old\s+plain[- ]string")
-_RULE_8_ACTUAL_CLAIM = re.compile(
-    rf"rule\s*8\b{_CLAUSE}{{0,40}}(count|normally|never\s+treat{_CLAUSE}{{0,20}}parse\s*failure)"
+_LEGACY_INVALID_ACTUAL_CLAIM = re.compile(
+    rf"legacy-invalid{_CLAUSE}{{0,60}}(count|normally|never\s+treat{_CLAUSE}{{0,20}}parse\s*failure)"
 )
 
 
 def _step1_declares_plain_string_exclusion(sentence_lower: str) -> bool:
-    """True iff `sentence_lower` makes an UNDAMAGED Rule-8-exclusion claim:
-    (a) the negative anchor 'not the old plain-string' appears verbatim
-        (rejects an unrelated 'does NOT conform' satisfying a loose 'not'
-        trigger from far away in the sentence), AND
-    (b) 'rule 8' is directly followed, within the same clause (no crossing a
-        sentence boundary), by an actual claim ('count'/'normally'/'never
-        treat ... parse failure') — rejects a decoy that cites 'Rule 8' to
-        (wrongly) justify treating plain-string AS a parse failure.
+    """True iff `sentence_lower` makes an UNDAMAGED legacy-invalid-exclusion
+    claim: (a) the negative anchor 'not the old plain-string' appears
+    verbatim (rejects an unrelated 'does NOT conform' satisfying a loose
+    'not' trigger from far away in the sentence), AND
+    (b) 'legacy-invalid' is directly followed, within the same clause (no
+        crossing a sentence boundary), by an actual claim ('count'/
+        'normally'/'never treat ... parse failure') — rejects a decoy that
+        cites the anchor to (wrongly) justify treating plain-string AS a
+        parse failure.
+
+    Historical note (task-4, scar-schema numeric-rule sweep): this anchor was
+    named `Rule 8` before scar-schema.yaml's rule numbering was retired in
+    favor of named anchors; `legacy-invalid` is its current name.
     """
     return bool(
         _PLAIN_STRING_EXCLUSION_ANCHOR.search(sentence_lower)
-        and _RULE_8_ACTUAL_CLAIM.search(sentence_lower)
+        and _LEGACY_INVALID_ACTUAL_CLAIM.search(sentence_lower)
     )
 
 
@@ -177,6 +187,19 @@ _PLAIN_STRING_REINTRODUCTION_DECOY = (
     "dangling `systemic_ref`, list the file explicitly:"
 ).lower()
 
+# Isolates the renamed _LEGACY_INVALID_ACTUAL_CLAIM branch specifically: the
+# decoy above never reaches that branch (it fails the OTHER half of the `and`
+# — _PLAIN_STRING_EXCLUSION_ANCHOR — first, so its False result is ambiguous
+# about which half caught it). This decoy satisfies the anchor half (contains
+# "not the old plain-string" verbatim) but names the legacy-invalid anchor
+# WITHOUT the actual claim (count/normally/never-treat-parse-failure) in the
+# same clause — must still report False, and must do so because the claim
+# regex specifically rejected it.
+_LEGACY_INVALID_ANCHOR_WITHOUT_CLAIM_DECOY = (
+    "this is not the old plain-string format — the legacy-invalid anchor "
+    "governs backward compatibility for future writers."
+).lower()
+
 
 # ---------------------------------------------------------------------------
 # Death tests
@@ -184,28 +207,33 @@ _PLAIN_STRING_REINTRODUCTION_DECOY = (
 
 
 def test_death__dangling_systemic_ref_is_documented_as_parse_failure() -> None:
-    """DC4 (systemic_ref 懸空), doc half in scar-schema.yaml.
+    """DC4 (systemic_ref 懸空) — split write/read binding (D3 canonical-home
+    migration, task-1).
 
-    If the clause defining `systemic_ref` item form AND "a dangling id is a
-    parse failure, list file+id, never skip" is removed from the Rules
-    section, this must go RED — the rule was silently deleted.
+    The `systemic_ref` item-FORM marker stays anchored to scar-schema.yaml —
+    that is write-side guidance (task-2 territory, untouched this task). The
+    "a dangling id is a parse failure, never silently skip" declaration is
+    READ-side (aggregation-time) behavior and is now bound to iteration
+    SKILL.md Step 1 — the read-side canonical home. If either half is
+    silently deleted, this test goes RED.
     """
-    rules = _rules_section(read(SCAR_SCHEMA)).lower()
-
-    assert "systemic_ref" in rules, (
+    schema_rules = _rules_section(read(SCAR_SCHEMA)).lower()
+    assert "systemic_ref" in schema_rules, (
         "scar-schema.yaml Rules section no longer documents the systemic_ref "
         "item form — a future scar writer has no way to know this form exists."
     )
-    assert "parse failure" in rules, (
-        "scar-schema.yaml Rules section no longer says a dangling systemic_ref "
+
+    step1 = _iteration_step1_section(read(ITERATION)).lower()
+    assert "parse failure" in step1, (
+        "iteration SKILL.md Step 1 no longer says a dangling systemic_ref "
         "is a parse failure — the DC4 death case guard was silently removed."
     )
-    assert "dangling" in rules, (
-        "scar-schema.yaml Rules section no longer names the dangling-reference "
+    assert "dangling" in step1, (
+        "iteration SKILL.md Step 1 no longer names the dangling-reference "
         "case explicitly."
     )
-    assert "never silently skip" in rules or "not silently skip" in rules, (
-        "scar-schema.yaml Rules section no longer prohibits silently skipping "
+    assert "never silently skip" in step1 or "not silently skip" in step1, (
+        "iteration SKILL.md Step 1 no longer prohibits silently skipping "
         "a dangling systemic_ref."
     )
 
@@ -245,60 +273,135 @@ def test_death__iteration_registry_missing_marks_unknown_not_silent_drop() -> No
     )
 
 
+def test_death__iteration_step1_documents_all_three_scar_format_generations() -> None:
+    """D6 (世代識別用欄位形狀推斷，無 schema_version).
+
+    Guards the read-side generation-identification contract: plain string
+    (Gen 1), `description` dict (Gen 2), and `what`/`bites_when` slots (Gen 3,
+    introduced by this feature's task-2) must all remain identifiable by
+    field shape alone. If any one generation's identifying language is
+    deleted, a future aggregator has no textual instruction telling it that
+    generation exists — the exact DC-B silent-drop mode (an entire generation
+    of items quietly falls out of aggregation).
+    """
+    step1 = _iteration_step1_section(read(ITERATION)).lower()
+
+    assert "plain string" in step1, (
+        "iteration SKILL.md Step 1 no longer identifies the Gen 1 plain-string "
+        "scar item shape — an aggregator has no way to recognize this generation."
+    )
+    assert "description dict" in step1, (
+        "iteration SKILL.md Step 1 no longer identifies the Gen 2 `description` "
+        "dict scar item shape."
+    )
+    assert re.search(r"what\s*/\s*bites_when", step1), (
+        "iteration SKILL.md Step 1 no longer identifies the Gen 3 `what`/"
+        "`bites_when` slot scar item shape (adjacency-bound check — a bare "
+        "'what' or 'bites_when' anywhere in the section is NOT sufficient, "
+        "since 'what' is an ordinary English word that would silently keep "
+        "this test green even if the Gen 3 line were deleted and replaced "
+        "with unrelated prose) — the newest format would be unrecognized by "
+        "a future aggregator (DC-B)."
+    )
+
+
+def test_death__iteration_step1_all_generations_count_toward_signal_lost() -> None:
+    """DC-B textual guard: the commitment that ALL THREE generations count
+    toward signal_lost identically must survive. If deleted, a future
+    aggregator could silently treat one generation (e.g. the newest, Gen 3)
+    as worth less — or as not countable at all — understating signal_lost
+    with no other signal catching it.
+    """
+    step1 = _iteration_step1_section(read(ITERATION)).lower()
+
+    assert "all three generations" in step1, (
+        "iteration SKILL.md Step 1 no longer states that all three scar "
+        "format generations are covered — the aggregation-parity commitment "
+        "was silently dropped."
+    )
+    assert "signal_lost" in step1, (
+        "iteration SKILL.md Step 1 no longer mentions signal_lost near the "
+        "generation-parity commitment."
+    )
+    assert "identically" in step1 or "equally" in step1 or "the same" in step1, (
+        "iteration SKILL.md Step 1 no longer states that all three "
+        "generations count toward signal_lost the SAME way — a future "
+        "aggregator could silently weight one generation differently."
+    )
+
+
 def test_death__backward_compat_rules_survive_and_extend_to_new_forms() -> None:
-    """DC3 (舊格式 scar 聚合靜默歸零).
+    """DC3 (舊格式 scar 聚合靜默歸零) — read-side canonical home (D3): the
+    generational backward-compat reading contract now lives in iteration
+    SKILL.md Step 1. scar-schema.yaml's old Rules 7/8/11/14 numbering was
+    fully retired by task-2 in favor of named anchors (task-4 swept the
+    dangling numeric citations that survived that rewrite) — this test
+    asserts the READ-side text, which is the copy an aggregator actually
+    follows, and no longer pins the old numbers themselves.
 
     Guards THREE things simultaneously so a partial regression is caught:
       1. the pre-existing rule-7 marker (missing deferred flag / resolved_items)
-      2. the pre-existing rule-8 marker (plain-string format)
-      3. the NEW extension marker saying rules 9-11 are additive, not a
-         replacement, for scar reports already on disk (rule 14)
+      2. the pre-existing rule-8 marker (plain-string format, now `legacy-invalid`)
+      3. the NEW extension marker saying the newer forms are additive, not a
+         replacement, for scar reports already on disk (formerly rule 14,
+         now the `legacy-invalid` backward-compat extension)
     If ANY of the three is deleted, this test goes RED.
     """
-    rules = _rules_section(read(SCAR_SCHEMA)).lower()
+    step1 = _iteration_step1_section(read(ITERATION)).lower()
 
     # (1) pre-existing rule 7
-    assert "missing deferred flag = false" in rules, (
+    assert "missing deferred flag = false" in step1, (
         "rule 7 backward-compat marker (missing deferred flag = false) is gone "
-        "from scar-schema.yaml — older scar reports without the flag would no "
-        "longer be documented as valid."
+        "from iteration SKILL.md Step 1 — older scar reports without the flag "
+        "would no longer be documented as valid."
     )
-    assert "missing resolved_items = no self-iteration" in rules, (
+    assert "missing resolved_items = no self-iteration" in step1, (
         "rule 7 backward-compat marker for missing resolved_items is gone."
     )
 
     # (2) pre-existing rule 8
-    assert "plain string format backward compatibility" in rules, (
-        "rule 8 plain-string backward-compat header is gone from scar-schema.yaml."
+    assert "plain string format backward compatibility" in step1, (
+        "rule 8 plain-string backward-compat header is gone from iteration "
+        "SKILL.md Step 1."
     )
-    assert "do not reject or silently skip plain string format items" in rules, (
+    assert "do not reject or silently skip plain string format items" in step1, (
         "rule 8's explicit 'do not silently skip plain string items' clause is "
         "gone — this is the exact DC3 silent-zeroing failure mode."
     )
 
     # (3) NEW extension tying old rules to the new forms introduced by this task
-    assert "rules 7 and 8 continue to apply unchanged" in rules, (
-        "the new backward-compat extension rule (rule 14) is gone — without it "
-        "there is no documented guarantee that systemic_ref / status:resolved "
-        "additions do not implicitly deprecate the old formats."
+    assert (
+        "the legacy-generation reading guarantees continue to apply unchanged" in step1
+    ), (
+        "the backward-compat extension marker (formerly rule 14, now the "
+        "legacy-invalid anchor) is gone — without it there is no documented "
+        "guarantee that systemic_ref / status:resolved additions do not "
+        "implicitly deprecate the old formats."
     )
-    assert "additive" in rules, (
-        "rule 14 no longer states that the new forms are additive, not a "
-        "replacement, for pre-existing scar reports."
+    assert "additive" in step1, (
+        "the extension marker (rule 14) no longer states that the new forms "
+        "are additive, not a replacement, for pre-existing scar reports."
     )
 
 
-def test_death__iteration_parse_failure_example_does_not_contradict_rule_8() -> None:
+def test_death__iteration_parse_failure_example_does_not_contradict_legacy_invalid() -> (
+    None
+):
     """Regression guard for a real bug caught by yin review during this task.
+
+    Historical note (task-4, scar-schema numeric-rule sweep): this test was
+    named `..._does_not_contradict_rule_8` before scar-schema.yaml's rule
+    numbering was retired in favor of named anchors; `legacy-invalid` is the
+    anchor's current name, and the name below reflects that.
 
     skills/iteration/SKILL.md's 'Parse failure handling' sentence once listed
     'old plain-string format' as an example of a non-conforming scar report to
-    treat as a parse failure — directly contradicting scar-schema.yaml Rule 8
-    (plain string known_shortcuts/silent_failure_conditions is a VALID format
-    that must be counted normally, never excluded as a parse failure). Had
-    this shipped, an agent following the literal instruction would silently
-    drop valid old-format items from signal_lost — the exact DC3 failure mode
-    this task exists to prevent.
+    treat as a parse failure — directly contradicting scar-schema.yaml's
+    legacy-invalid anchor (plain string known_shortcuts/silent_failure_conditions
+    is a VALID format that must be counted normally, never excluded as a parse
+    failure). Had this shipped, an agent following the literal instruction
+    would silently drop valid old-format items from signal_lost — the exact
+    DC3 failure mode this task exists to prevent.
 
     This assertion is UNCONDITIONAL — it does not gate on first finding a
     trigger keyword (e.g. "if 'plain-string' in sentence: check for a counter-
@@ -361,6 +464,32 @@ def test_death__plain_string_reintroduction_decoy_is_detected() -> None:
         "The plain-string reintroduction decoy (Rule 8 cited to justify treating "
         "plain-string AS a parse failure) was reported as a valid exclusion claim "
         "— the polarity/boundary-bleed check has regressed."
+    )
+
+
+def test_death__legacy_invalid_anchor_without_claim_decoy_is_detected() -> None:
+    """Task-4 tripwire for the renamed `_LEGACY_INVALID_ACTUAL_CLAIM` branch.
+
+    The pre-existing reintroduction decoy above never exercises this branch:
+    it fails `_PLAIN_STRING_EXCLUSION_ANCHOR` first, so its False result
+    proves nothing about the claim regex specifically. This decoy satisfies
+    the anchor half (contains "not the old plain-string" verbatim) but names
+    `legacy-invalid` WITHOUT the actual claim in the same clause — if a
+    future edit widens `_LEGACY_INVALID_ACTUAL_CLAIM` to match on the bare
+    anchor name alone (dropping the count/normally/never-treat-parse-failure
+    requirement), this decoy starts reporting a valid exclusion claim and
+    this test goes RED.
+    """
+    assert (
+        _step1_declares_plain_string_exclusion(
+            _LEGACY_INVALID_ANCHOR_WITHOUT_CLAIM_DECOY
+        )
+        is False
+    ), (
+        "The legacy-invalid-anchor-without-claim decoy (anchor named, but no "
+        "count/normally/never-treat-parse-failure claim attached) was reported "
+        "as a valid exclusion claim — _LEGACY_INVALID_ACTUAL_CLAIM has "
+        "regressed to matching on the bare anchor name."
     )
 
 
@@ -678,3 +807,258 @@ def test_death__validate_and_ship_failure_budget_resolves_systemic_refs() -> Non
     assert re.search(r"never\s+silently\s+skip", section), (
         "SILENT FAILURE: the never-silently-skip prohibition is gone."
     )
+
+
+# ---------------------------------------------------------------------------
+# Task-2 (feature scar-report-subtraction): scar-schema.yaml rewritten to a
+# one-page WRITE contract. Compat reading rules (Gen 1/2/3 backward
+# compatibility) now live SOLELY in iteration SKILL.md Step 1 (task-1's new
+# canonical home) — schema must never regrow them (DC-C single-source
+# drift). Schema must instead declare the new what/bites_when/where/
+# accepted_because slot form and its budget numbers, so a future trim cannot
+# silently narrow the write contract with no other signal catching it.
+# ---------------------------------------------------------------------------
+
+_FORBIDDEN_COMPAT_TOKENS = (
+    "plain string format backward compatibility",
+    "missing deferred flag = false",
+    "missing resolved_items = no self-iteration",
+    "do not reject or silently skip plain string format items",
+    "rules 7 and 8 continue to apply unchanged",
+    "remain valid and must still be read as resolved",
+)
+
+
+def test_death__schema_does_not_regrow_compat_rule_tokens() -> None:
+    """DC-C (單一源漂移): if any of these exact backward-compat reading
+    tokens is pasted back into scar-schema.yaml, the write-side and
+    read-side (iteration SKILL.md Step 1) copies would drift independently
+    again with nothing else catching it. This must go RED the moment any
+    ONE token reappears verbatim in scar-schema.yaml.
+    """
+    schema = read(SCAR_SCHEMA).lower()
+    for token in _FORBIDDEN_COMPAT_TOKENS:
+        assert token not in schema, (
+            f"scar-schema.yaml re-introduced compat-rule token {token!r} — "
+            "the canonical home for scar-format backward-compat reading "
+            "rules is iteration SKILL.md Step 1 (task-1); scar-schema.yaml "
+            "(the write contract) must not restate it (DC-C single-source "
+            "drift, anti-dup death test)."
+        )
+
+
+def test_death__schema_declares_new_slot_form_and_budget_numbers() -> None:
+    """Guards against a future trim silently narrowing the write contract:
+    the current-generation item slot fields, and the length-budget numbers
+    a scar report must be written within, must both remain declared in
+    scar-schema.yaml. If either disappears, a writer (or task-3's validator,
+    which reads these same numbers) has no textual source for the contract.
+
+    Anchoring notes (yin mutation-testing round, both fixed after a real
+    catch):
+      - Slot tokens are anchored to line-start/list-item position
+        (`^\\s*-?\\s*<slot>:`), NOT a bare substring. A bare `"where:" in
+        schema` is silent-green: deleting every actual `where:` slot line
+        still passes, because the prose word "elsewhere" (inside the
+        `go-elsewhere:` anchor heading) contains "where:" as a substring.
+        Line-start anchoring rejects that mid-word match.
+      - Budget numbers are matched with a bounded regex tolerant of both the
+        `≤` glyph and an ASCII `<=` fallback, with a trailing `\\b` word
+        boundary — `≤6` alone would falsely stay green if the number were
+        silently widened to `≤60` (substring match), and pinning only the
+        `≤` glyph would falsely go red on an honest `≤`→`<=` rewording that
+        preserves the exact same figure.
+    """
+    schema = read(SCAR_SCHEMA).lower()
+
+    slot_patterns = {
+        "what:": r"^\s*-?\s*what:",
+        "bites_when:": r"^\s*-?\s*bites_when:",
+        "where:": r"^\s*-?\s*where:",
+        "accepted_because:": r"^\s*-?\s*accepted_because:",
+    }
+    for slot, pattern in slot_patterns.items():
+        assert re.search(pattern, schema, re.MULTILINE), (
+            f"scar-schema.yaml no longer declares the {slot!r} slot field at "
+            "line-start/list-item position — the current-generation item "
+            "form was silently narrowed (a substring match on prose "
+            "elsewhere, e.g. 'go-elsewhere:', must NOT satisfy this)."
+        )
+
+    budget_patterns = {
+        "≤200": r"(?:≤|<=)\s*200\b",
+        "≤120": r"(?:≤|<=)\s*120\b",
+        "≤6": r"(?:≤|<=)\s*6\b",
+        "≤10": r"(?:≤|<=)\s*10\b",
+        "≤90": r"(?:≤|<=)\s*90\b",
+    }
+    for label, pattern in budget_patterns.items():
+        assert re.search(pattern, schema), (
+            f"scar-schema.yaml no longer states the {label!r} budget figure "
+            "(checked tolerant of the ≤/<= glyph, bounded to the exact "
+            "number by a word boundary) — a future validator (task-3) and a "
+            "future writer would have no shared textual source for this "
+            "number."
+        )
+
+
+# ---------------------------------------------------------------------------
+# Task-4 (feature scar-report-subtraction): task-2 retired scar-schema.yaml's
+# Rule 1-17 numbering in favor of named anchors. Every cross-file citation
+# that still says "Rule N" now points at nothing a grep can resolve — DC-D
+# (a dangling numbered-rule citation surviving the sweep, silently, with the
+# surrounding doc "looking consistent"). This section sweeps all such
+# citations in the live instruction surfaces and guards the sweep against
+# regression.
+# ---------------------------------------------------------------------------
+
+_LIVE_SURFACE_DIRS = ("skills", "agents", ".samsara")
+_LIVE_SURFACE_EXCLUDED_PARTS = {"changes", "docs", "bugfix", "dist"}
+_LIVE_SURFACE_SUFFIXES = {".md", ".py", ".yaml", ".yml"}
+
+# Single source of truth for the 10 named anchors that replaced
+# scar-schema.yaml's retired Rule 1-17 numbering (task-2). Referenced by both
+# the death test's docstring/assert message and the unit test below it, so
+# the list is written out exactly once.
+_NAMED_ANCHORS = (
+    "write-filter",
+    "verified-pointer",
+    "no-review-diary",
+    "granularity-floor",
+    "dual-face",
+    "forced-by-evidence",
+    "systemic-ref",
+    "resolved-in-place",
+    "legacy-invalid",
+    "go-elsewhere",
+)
+
+# Case-insensitive numbered-rule citation: "Rule 13", "schema Rule 9",
+# "rules 7 and 8", "rules: 7,8,9" (colon-separated enumeration — the shape
+# actually found in .samsara/modules/skill-implement.yaml during the task-4
+# sweep; a bare `rules?\s+[0-9]` pattern misses this list shape because a
+# colon sits between the word and the first digit). Excludes the unrelated
+# "Mother Rule N" numbering (agents/code-reviewer.md's own permanent
+# code-quality rule set, a different intentionally-numbered system this task
+# does not touch) via a negative lookbehind.
+_DANGLING_RULE_CITATION = re.compile(
+    r"(?<!mother )(schema )?rules?\s*:?\s*[0-9]", re.IGNORECASE
+)
+
+
+def _iter_live_surface_files():
+    for dirname in _LIVE_SURFACE_DIRS:
+        base = ROOT / dirname
+        if not base.exists():
+            continue
+        for path in sorted(base.rglob("*")):
+            if not path.is_file() or path.suffix not in _LIVE_SURFACE_SUFFIXES:
+                continue
+            if _LIVE_SURFACE_EXCLUDED_PARTS & set(path.relative_to(ROOT).parts):
+                continue
+            yield path
+
+
+def test_death__no_dangling_numbered_rule_citation_in_live_surfaces() -> None:
+    """DC-D (數字規則引用全量 sweep, task-4): scar-schema.yaml's Rule 1-17
+    numbering was retired by task-2 in favor of the 10 named anchors in
+    `_NAMED_ANCHORS` above. Any surviving numeric rule citation ("Rule 13",
+    "schema Rule 9", "rules 7 and 8") in a live instruction surface
+    (skills/, agents/, .samsara/) now points at nothing a future reader can
+    resolve by grep — a silent dangling reference. This must go RED the
+    moment ANY such citation exists anywhere in these three directories,
+    and stay RED for every citation found, not just the first (a sweep that
+    silently stops after the first hit is itself a DC-D failure mode).
+
+    Excludes: changes/, docs/, bugfix/, dist/ (history and generated
+    snapshots — dist/ in particular still carries the pre-sweep, numbered
+    schema until a future regeneration task runs; see task-4 scar report,
+    known_shortcuts). Also excludes the unrelated "Mother Rule N" numbering
+    (agents/code-reviewer.md's own permanent code-quality rule set) via a
+    negative lookbehind — a different rule system, not a scar-schema
+    citation, and out of this task's scope.
+    """
+    hits = []
+    for path in _iter_live_surface_files():
+        text = path.read_text(encoding="utf-8")
+        for lineno, line in enumerate(text.splitlines(), start=1):
+            if _DANGLING_RULE_CITATION.search(line):
+                hits.append(f"{path.relative_to(ROOT)}:{lineno}: {line.strip()}")
+    assert not hits, (
+        "Dangling numbered scar-schema rule citation(s) found in live "
+        "instruction surfaces (skills/, agents/, .samsara/) — rewrite each "
+        "to the correct named anchor ("
+        + ", ".join(_NAMED_ANCHORS)
+        + "):\n"
+        + "\n".join(hits)
+    )
+
+
+def test_unit__rewritten_citations_name_the_correct_anchor() -> None:
+    """Contract source: documented artifact shape of the live instruction
+    surfaces task-4 rewired from numbered scar-schema.yaml Rule references to
+    named anchors. The absence-only death test above cannot distinguish "the
+    citation was correctly renamed" from "the citation (and its meaning) was
+    silently deleted" — both leave zero digits behind. This unit test asserts
+    the POSITIVE contract: the correct anchor name must be present at each
+    rewired citation point.
+
+    Behavior-preserving refactor (reword the surrounding sentence, keep the
+    anchor name) keeps this green. Behavior-actually-broke (the citation is
+    deleted outright, or renamed to the WRONG anchor) turns it red.
+    """
+    implementer = read(IMPLEMENTER)
+    assert "resolved-in-place" in implementer, (
+        "agents/implementer.md no longer names the resolved-in-place anchor "
+        "at its status:resolved citation points."
+    )
+    assert "write-filter" in implementer, (
+        "agents/implementer.md Report Format no longer names the write-filter anchor."
+    )
+    for anchor in ("granularity-floor", "dual-face", "forced-by-evidence"):
+        assert anchor in implementer, (
+            f"agents/implementer.md Structural Decisions section no longer "
+            f"names the {anchor!r} anchor."
+        )
+
+    skill_implement = read(ROOT / "skills" / "implement" / "SKILL.md")
+    assert "resolved-in-place" in skill_implement, (
+        "skills/implement/SKILL.md Execution Order no longer names the "
+        "resolved-in-place anchor."
+    )
+    assert "legacy-invalid" in skill_implement, (
+        "skills/implement/SKILL.md Execution Order no longer names the "
+        "legacy-invalid anchor."
+    )
+
+    step1 = _iteration_step1_section(read(ITERATION)).lower()
+    for anchor in ("systemic-ref", "resolved-in-place", "legacy-invalid"):
+        assert anchor in step1, (
+            f"iteration SKILL.md Step 1 no longer names the {anchor!r} anchor "
+            "at its rewired citation point."
+        )
+
+    registry = read(REGISTRY)
+    assert "systemic-ref" in registry, (
+        ".samsara/systemic-scars.yaml header comments no longer name the "
+        "systemic-ref anchor at their scar-schema.yaml citation points."
+    )
+
+    validate_format = read(
+        ROOT / "skills" / "implement" / "scripts" / "validate_format.py"
+    )
+    for anchor in ("granularity-floor", "legacy-invalid", "forced-by-evidence"):
+        assert anchor in validate_format, (
+            f"validate_format.py no longer names the {anchor!r} anchor in its "
+            "docstrings/finding messages."
+        )
+
+    # scar-report.md's citations were task-2's edits, not task-4's — but the
+    # positive contract covers every live citation surface regardless of
+    # which task wrote it (a future trim here is just as silent a break).
+    scar_report_md = read(SCAR_REPORT_MD)
+    for anchor in ("write-filter", "no-review-diary"):
+        assert anchor in scar_report_md, (
+            f"skills/implement/scar-report.md no longer names the {anchor!r} "
+            "anchor at its scar-schema.yaml citation point."
+        )

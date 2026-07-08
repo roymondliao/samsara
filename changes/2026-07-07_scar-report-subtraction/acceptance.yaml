@@ -1,0 +1,83 @@
+feature: scar-report-subtraction
+coverage_type: verified
+
+scenarios:
+  # --- Death paths first ---
+  - name: "Silent failure - over-budget report passes validator"
+    type: death_path
+    given: "第三代格式 scar report：單 item 8 行／欄位 250 chars／整份 95 行（任一超標）"
+    when: "validate_format.py 對該 feature dir 執行"
+    then:
+      - "length-budget finding，訊息含實測值與上限，exit code 1"
+      - "結果必須是 success/failure/unknown 三態之一，超標永不 exit 0"
+
+  - name: "Silent failure - budget evasion via legacy description blob"
+    type: death_path
+    given: "新 report 的 known_shortcuts 使用 description 自由文本（或 plain string）而非槽位欄位"
+    when: "validate_format.py 執行"
+    then:
+      - "legacy-form finding，exit 1 — 預算逃逸路徑封死"
+      - "systemic_ref 條目不受此檢查誤傷"
+
+  - name: "Silent failure - third-generation items dropped from aggregation"
+    type: death_path
+    given: "同一 feature 內三代混合 fixture：plain string、description dict、what/bites_when 槽位各含 deferred 條目"
+    when: "依 iteration Step 1 世代識別契約做聚合計數（測試層模擬）"
+    then:
+      - "三代 items 全數計入，計數等於實際條目數，零靜默丟失"
+      - "槽位形 deferred_to_feature_iteration: true 條目出現在 remaining 集合"
+
+  - name: "Silent failure - compat rules regrow inside scar-schema.yaml"
+    type: death_path
+    given: "schema 重寫後，有人把 compat 規則 token（如 plain string format backward compatibility）貼回 schema"
+    when: "anti-duplication death test 執行"
+    then:
+      - "測試轉紅 — compat 規則單一源在 iteration SKILL.md Step 1，schema 再現即失敗"
+
+  - name: "Silent failure - dangling numbered-rule citation survives sweep"
+    type: death_path
+    given: "任一 live surface（skills/、agents/）殘留對 scar-schema 的數字規則引用（Rule N）"
+    when: "dangling-citation death test 執行"
+    then:
+      - "測試轉紅，指出檔案與行"
+
+  - name: "Silent failure - folded scalar defeats line counting"
+    type: death_path
+    given: "單一槽位欄位以 folded scalar（>）塞入 400 chars 長文，實體行數看似合規"
+    when: "validate_format.py 執行"
+    then:
+      - "欄位 char cap finding（char 上限兜底行數計法差異），exit 1"
+
+  # --- Degradation paths ---
+  - name: "Degradation - validator cannot validate is unknown, never pass"
+    type: degradation
+    given: "feature dir 無 scar-reports/ 或 PyYAML 缺失"
+    when: "validate_format.py 執行"
+    then:
+      - "exit 2（unknown）並印出 CANNOT VALIDATE 訊息 — 既有慣例在擴充後不退化"
+      - "unknown 不得被任何呼叫方當 pass"
+
+  # --- Happy paths with evidence ---
+  - name: "Success - clean slot-form report validates clean"
+    type: happy_path
+    given: "第三代格式 report：必填槽位齊、全部在預算內、structural_decisions 合現制"
+    when: "validate_format.py 執行"
+    then:
+      - "exit 0，輸出含檢查類清單（parse/dual-face/…/length-budget/legacy-form）"
+      - "既有 clean fixtures（SCAR_OK）不被新檢查誤傷"
+
+  - name: "Success - golden re-expression proves honesty survives budget"
+    type: happy_path
+    given: "task-4-scar.yaml（232 行）之真疤內容以第三代格式重寫為 golden fixture"
+    when: "validator 對 golden fixture 執行＋對照清單檢視"
+    then:
+      - "fixture ≤90 行且 validator clean（含預算）"
+      - "golden-re-expression.md 對照清單覆蓋原報告每一條內容：新槽位、或去別處目的地（review-record/commit/systemic_ref）、或『無讀者刪除』並附一行理由"
+
+  - name: "Success - full suite green (Primary evaluator)"
+    type: happy_path
+    given: "全部 6 tasks 完成"
+    when: "uv run pytest tests/"
+    then:
+      - "0 failed；新 length-budget／legacy-form／三代聚合／anti-dup／dangling-citation 測試存在且曾對壞 fixture 轉紅（非 tautological）"
+      - "dist/codex 與 dist/gemini-cli 下 scar-schema.yaml 與 source byte-identical（regenerate 後）"

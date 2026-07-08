@@ -1,0 +1,22 @@
+# Gen 2 fixture (task-5, feature scar-report-subtraction): `description`
+# dict items. One item carries deferred_to_feature_iteration: true (must
+# still appear in the "remaining" set — deferred != excluded). One resolved
+# item is tracked via the classic separate top-level `resolved_items` list
+# (Gen 2's original resolution mechanism) — it never re-appears in
+# known_shortcuts, so an aggregator must not double-count it, but must also
+# not need it re-stated to know it is excluded.
+task_id: gen2-demo
+completion_status: done
+known_shortcuts:
+  - description: "Gen2 shortcut A: deferred, must appear in the remaining set"
+    deferred_to_feature_iteration: true
+  - description: "Gen2 shortcut B: missing deferred flag, defaults false, remaining"
+silent_failure_conditions:
+  - description: "Gen2 silent failure: remaining, no resolution"
+assumptions_made: []
+debt_registered: true
+debt_location: "n/a - synthetic fixture for aggregation test"
+resolved_items:
+  - original_section: "known_shortcuts"
+    original_description: "Gen2 shortcut C: fixed during self-iteration, excluded from remaining via the classic resolved_items list"
+    resolution: "fixed; tracked here, not re-counted as remaining"

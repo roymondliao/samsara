@@ -1,0 +1,39 @@
+task_id: task-2
+completion_status: done_with_concerns
+
+known_shortcuts:
+  - systemic_ref: doc-instruction-no-code-enforcement
+    note: "go-elsewhere table (scar-schema.yaml:143-149) names destinations for non-scar content; no runtime check that content actually lands there — validator teeth is task-3."
+  - what: "anti-dup death test 只比對 6 個逐字 literal token"
+    bites_when: "compat 內容被改寫措辭（非逐字）貼回 schema 時，測試保持綠"
+    where: "tests/test_skills/test_scar_schema_noise_rules.py (anti-dup test)"
+    accepted_because: "語意比對非 regex 可及；durable guard 是發現殘留即刪（同 eb4ae07 先例）"
+
+silent_failure_conditions:
+  - what: "task-4's known anchor list (index.yaml) does not name .samsara/systemic-scars.yaml, which still cites 'scar-schema.yaml Rule 9' by number twice"
+    bites_when: "task-4's sweep is run scoped to only its listed known anchors instead of a full-repo grep"
+    where: ".samsara/systemic-scars.yaml:9,25"
+    status: resolved
+    resolution: "task-4 全量 grep sweep（非僅 known anchors）已改寫該兩處為 systemic-ref 具名錨點；dangling-citation death test 防回歸"
+
+assumptions_made:
+  - assumption: "dispatch-template.md's injection instruction ('paste full content of scar-schema.yaml') is content-length-agnostic and needs no edit after this rewrite"
+    verified: true
+    note: "dispatch-template.md:38,84 — wording says 'full content', not a size or line count"
+  - assumption: "all 17 original numbered rules were classified keep/migrate/delete with none silently dropped"
+    verified: true
+    note: "manual line-by-line audit against skills/implement/templates/scar-schema.yaml pre-rewrite (205 lines) — full table in this task's report-back (transition record)"
+  - assumption: "the copy-as-is dist pipeline preserves the non-ASCII '≤' budget-number character byte-for-byte"
+    verified: true
+    note: "tests/test_converter/test_skill.py::test_yaml_files_copied_without_rule_application; dist/codex/.../templates/scar-schema.yaml already carries '—' verbatim from the pre-rewrite file"
+
+debt_registered: true
+debt_location: "scar-schema.yaml:143-149 (go-elsewhere, no validator teeth) + .samsara/systemic-scars.yaml:9,25 (dangling Rule 9 citation, task-4 scope)"
+
+structural_decisions:
+  - decision: "Kept the literal '# --- Rules ---' / '# --- Verbatim Example ---' section markers as the schema's structural spine; named-anchor rules replaced the numbered list's CONTENT inside them, not the marker strings themselves"
+    serves_seam: "scar-write-contract"
+    forced_by:
+      - "git: tests/test_skills/test_scar_schema_noise_rules.py _rules_section()/_iteration_step1_section() scoped-extraction helpers depend on these exact marker strings to bound their search"
+    refused: "Did not restructure the file into markdown ## headings or a different delimiter convention, even though the numbered-rule content was fully replaced — no force required a header-style change, so it would have been redecoration, not restructuring"
+    risk_if_wrong: "If a future edit renames/removes a marker string without updating the two test helpers, every test using _rules_section() on SCAR_SCHEMA raises an assertion error immediately (loud, not silent) — but the marker strings are now an implicit contract documented only here and in the test docstrings"

@@ -1,0 +1,123 @@
+feature: scar-report-subtraction
+status: done
+
+tasks:
+  - id: task-1
+    title: "Compat 讀取契約遷入 iteration Step 1（canonical home）＋ noise-rules 測試重綁"
+    status: done
+    scar_count: 4  # 1 shortcut（Gen-2 bullet 重複，resolved in place）+ 1 silent_failure（systemic_ref doc-vs-runtime-obedience，deferred 至 task-2）+ 2 assumptions（均 verified）
+    unresolved_assumptions: 0
+    depends_on: []
+    seam: write-read-boundary
+    affects:
+      - task: task-2
+        needs: "compat 規則已有新 canonical home，schema 重寫才被允許刪除 Rules 7/8/11/14 文字而不失單一源"
+      - task: task-5
+        needs: "三代世代識別契約的成文定義（聚合測試斷言的就是這段文字所述行為）"
+    anchors:
+      - path: skills/iteration/SKILL.md
+        why: "Step 1（:65-103）是遷入目的地；:77,80-83 既有 compat 重述是併入基底"
+      - path: skills/implement/templates/scar-schema.yaml
+        why: "Rules 7/8/9/11/14 原文 — 遷移的 source（本 task 不刪 schema，只建新家＋重綁測試）"
+      - path: tests/test_skills/test_scar_schema_noise_rules.py
+        why: "重綁對象：:248-288、:186-210 綁 schema 的 compat 斷言；:213-245、:604-621 是已讀 iteration 的先例寫法"
+
+  - id: task-2
+    title: "scar-schema.yaml 重寫為一頁寫入契約＋scar-report.md 同步＋anti-dup death test"
+    status: done
+    scar_count: 6  # 2 shortcuts（systemic_ref go-elsewhere 無 teeth＋anti-dup 逐字比對盲點，均 accepted）+ 1 silent_failure（systemic-scars.yaml 懸空 Rule 9 引用，deferred 至 task-4）+ 3 assumptions（均 verified）
+    unresolved_assumptions: 0
+    depends_on: [task-1]
+    seam: scar-write-contract
+    affects:
+      - task: task-3
+        needs: "定案的槽位欄位名（what/bites_when/where/accepted_because）與預算表數值 — validator 檢查以此為契約"
+      - task: task-4
+        needs: "具名錨點的正式名單（write-filter、granularity-floor…）— 跨檔引用 sweep 的改寫目標"
+      - task: task-5
+        needs: "golden re-expression 重寫所依據的最終寫入格式與短例"
+      - task: task-6
+        needs: "dist regenerate 複製的即是本 task 的最終檔案內容"
+    anchors:
+      - path: skills/implement/templates/scar-schema.yaml
+        why: "重寫對象全文"
+      - path: skills/iteration/SKILL.md
+        why: "task-1 建好的 compat canonical home — 確認刪除面與新家零重疊（anti-dup 的邊界）"
+      - path: tests/test_skills/test_global_thinking_channel.py
+        why: ":204-233 釘 structural_decisions 欄位名與 granularity-floor token — 重寫後必須保綠"
+      - path: skills/implement/scar-report.md
+        why: "同步修改對象（write filter／review-diary 引用改具名錨點）"
+
+  - id: task-3
+    title: "validate_format.py 長度預算／legacy-form／槽位必填檢查＋行為測試"
+    status: done
+    scar_count: 9  # 4 shortcuts（含 _registry_ids entries-key bug 與 item 對位風險，均 resolved）+ 2 silent_failure（YAML 多文件分隔符未測、malformed item 對三新檢查隱形，accepted）+ 3 assumptions（均 verified）；另 2 structural_decisions（no-grandfather、拒建 check-registry）
+    unresolved_assumptions: 0
+    depends_on: [task-2]
+    seam: format-vs-judgment
+    affects:
+      - task: task-5
+        needs: "length-budget 與 legacy-form 檢查行為 — golden fixture 的 clean 判定由這些檢查給出"
+      - task: task-6
+        needs: "擴充後 validator 是整合驗證時全套件綠的一部分"
+    anchors:
+      - path: skills/implement/scripts/validate_format.py
+        why: "擴充對象；沿用其 finding 語彙、_iter_items 正規化、exit 0/1/2 慣例"
+      - path: tests/test_skills/test_format_validators.py
+        why: "既有行為測試模式（importlib 載入、SCAR_OK fixture :91-105）— 新測試同款寫法且不誤傷 clean fixture"
+      - path: skills/implement/templates/scar-schema.yaml
+        why: "task-2 定案的預算表與槽位欄位 — 檢查數值與宣告同源"
+
+  - id: task-4
+    title: "數字規則引用全量 sweep → 具名錨點＋dangling-citation death test"
+    status: done
+    scar_count: 6  # 2 shortcuts（dist 殘留 30 處/11 檔待 task-6、modules Rule-7 collapse 判斷，accepted）+ 1 silent_failure（錨點改名 drift — death test 只擋數字引用，accepted 殘餘）+ 3 assumptions（均 verified）；另 1 structural_decision（拒建 schema-aware anchor validator）
+    unresolved_assumptions: 0
+    depends_on: [task-1, task-2]
+    seam: scar-write-contract
+    affects: []
+    anchors:
+      - path: agents/implementer.md
+        why: ":144,184,208,255-256 已知數字引用點；sweep 仍須全量 grep 不得只改已知點"
+      - path: skills/implement/SKILL.md
+        why: ":184 已知引用點（gatekeeper 補充發現）"
+      - path: skills/iteration/SKILL.md
+        why: ":77,80 已知引用點；task-1 遷移後行號可能位移，以 grep 為準"
+      - path: skills/implement/scar-report.md
+        why: ":19,26 已知引用點"
+      - path: skills/implement/scripts/validate_format.py
+        why: "docstring 與 finding 訊息內的 Rule 15/17 字樣（:29,:170,:190）"
+
+  - id: task-5
+    title: "Golden re-expression fixture＋誠實無損對照＋三代混合聚合測試"
+    status: done
+    scar_count: 5  # 1 shortcut（systemic_ref doc-vs-runtime：synthetic reader 非真 iteration runtime，accepted）+ 2 silent_failure（刪除列誤分類風險 accepted；對照表首版審計宣稱不實 — yin 抓出，resolved）+ 2 assumptions（1 verified；1 verified:false — 逐列語意分類屬 judgment 不可機械驗證，已揭露）
+    unresolved_assumptions: 1
+    depends_on: [task-2, task-3]
+    seam: write-read-boundary
+    affects:
+      - task: task-6
+        needs: "golden 與三代 fixtures 是整合驗證全套件的一部分"
+    anchors:
+      - path: changes/2026-07-02_workflow-subtraction-optimization/scar-reports/task-4-scar.yaml
+        why: "golden 重寫的 source（232 行歷史最惡劣案例）— 只讀不改"
+      - path: skills/iteration/SKILL.md
+        why: "Step 1 世代識別契約（task-1 產物）— 聚合測試斷言的成文行為"
+      - path: skills/implement/scripts/validate_format.py
+        why: "task-3 擴充後的檢查 — golden fixture 必須對其 clean"
+      - path: tests/test_skills/test_scar_schema_noise_rules.py
+        why: "doc-contract 測試檔既有結構 — 三代聚合測試可能落此檔或 test_format_validators.py，沿現有分工"
+
+  - id: task-6
+    title: "dist/ regenerate（codex/gemini）＋全套件整合驗證"
+    status: done
+    scar_count: 4  # 1 shortcut（dist gitignored 本地產物邊界，accepted）+ 1 silent_failure（md 檔 byte-diff 不可用的驗證強度差，accepted）+ 2 assumptions（均 verified）
+    unresolved_assumptions: 0
+    depends_on: [task-1, task-2, task-3, task-4, task-5]
+    seam: scar-write-contract
+    affects: []
+    anchors:
+      - path: samsara_cli/converter/skill.py
+        why: ":371,405-410 YAML companion 逐字複製機制 — regenerate 的行為依據"
+      - path: dist/codex/.agents/skills/samsara-implement/templates/scar-schema.yaml
+        why: "byte-identical 驗證對象之一（另一為 dist/gemini-cli 對應路徑）"

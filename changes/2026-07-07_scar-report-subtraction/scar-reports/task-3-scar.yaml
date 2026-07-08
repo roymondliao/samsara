@@ -1,0 +1,71 @@
+task_id: task-3
+completion_status: done_with_concerns
+
+known_shortcuts:
+  - what: "narrative 行數原用文字位置公式（key 本身那行不算內容），對「單行 inline scalar 尾字恰為折疊指示符」的邊界不精確"
+    bites_when: "narrative 寫成單行 inline scalar 且尾字恰好等於折疊指示符（如空字串）時，計法可能誤判為 block 形式"
+    where: "skills/implement/scripts/validate_format.py:_narrative_line_count"
+    status: resolved
+    resolution: "改用 yaml.compose() node marks（與 item/structural entry 同技術）：span<=0 視為單行，否則 span-1；不再依賴文字啟發式。跑過 947 全綠。"
+  - what: "_iter_items 靜默丟棄非 str/非 dict 的原始清單項目，導致其 index 與 seq_node.value 的原始位置錯位"
+    bites_when: "known_shortcuts/silent_failure_conditions 清單中混入既非字串也非 dict 的原始項目，排在真實項目之前"
+    where: "skills/implement/scripts/validate_format.py:_node_line_count"
+    status: resolved
+    resolution: "三個新檢查函式改為直接 enumerate 原始清單並逐項用 _normalize_item 正規化，index 恆對齊 seq_node.value，不再借道會丟項目的 _iter_items。"
+  - what: "legacy-form/length-budget 無 grandfather 例外，本 feature-dir 內 task-1 的第二代 description 格式 scar 被判定為 finding"
+    bites_when: "任何人對本 feature-dir 跑本 validator，且 task-1 scar 尚未機械遷移至槽位形式"
+    where: "changes/2026-07-07_scar-report-subtraction/scar-reports/task-1-scar.yaml（自檢已確認 10 筆 finding）"
+    accepted_because: "task 指示與既有 docstring 先例皆明言 handoff 時每份 report 視為新——見本報告 structural_decisions"
+    deferred_to_feature_iteration: true
+  - what: "_registry_ids() 讀錯 registry 頂層鍵：用 data.get('scars', data) 回退整份 dict，導致回傳 {'entries'} 而非真正的 id 集合，每個真實 id 皆誤判為 dangling"
+    bites_when: "任何 scar report 引用一個確實存在於 .samsara/systemic-scars.yaml（真實 entries: 格式）的 systemic_ref id"
+    where: "skills/implement/scripts/validate_format.py:_registry_ids（main agent 自檢本 feature 時發現並回報）"
+    status: resolved
+    resolution: "改讀 entries: 鍵（唯一真實/成文 schema，grep 確認 scars: 從未在任何生產檔案出現）；新增 2 條回歸測試（entries: 格式下有效 id 應零 finding／無效 id 應觸發）。"
+
+silent_failure_conditions:
+  - what: "narrative 頂層鍵若重複出現，只計首次出現的行數，與 PyYAML 讀值行為（重複 key 採最後一個）可能不一致"
+    bites_when: "report 意外寫出兩個 narrative: 頂層鍵（本身已是另一種 schema 違規）"
+    where: "skills/implement/scripts/validate_format.py:_narrative_line_count"
+    status: resolved
+    resolution: "node-mark 版改為遍歷 root.value 保留最後一個符合的 key/value pair，與 yaml.safe_load() 重複 key 取最後一個語意一致。"
+  - what: "report 總行數含 YAML 文件分隔符（---/...）尚無測試涵蓋，compose() 對多文件 YAML 行為未驗證"
+    bites_when: "未來 report 使用 --- 或 ... 文件分隔符"
+    where: "skills/implement/scripts/validate_format.py:_check_length_budget"
+    accepted_because: "schema 範例與現有 report 皆不使用文件分隔符，無現存 force 要求預先防範"
+
+assumptions_made:
+  - assumption: "schema Budget 段落措辭（六個錨點片語）維持現狀，防漂移測試 regex 才能持續匹配"
+    verified: true
+    note: "tests/test_skills/test_format_validators.py::test_implement_budget_constants_match_schema_declaration"
+  - assumption: "legacy-form 檢查不影響 assumptions_made（其形狀從未用過 description）"
+    verified: true
+    note: "_check_legacy_form 只掃兩個 section；test_implement_clean_slot_form_fixture_validates_clean 佐證零誤傷"
+  - assumption: "yaml.compose() MappingNode start/end_mark 行差＝block-style 項目的實際物理行數"
+    verified: true
+    note: "test_implement_overbudget_item_lines_is_a_length_budget_finding／…structural_entry… 對已知行數(7,11)逐一釘住並通過"
+
+debt_registered: true
+debt_location: "changes/2026-07-07_scar-report-subtraction/scar-reports/task-1-scar.yaml（Gen-2 格式，需機械遷移至槽位形式，超出本 task 檔案範圍）"
+
+narrative: |
+  本 task 對「新 report」定義選擇 (d)：本 feature-dir 內每份 report（含 task-1 第二代
+  description 格式）在 handoff 時一律視為新，legacy-form/length-budget 一律嚴格檢查，不做
+  grandfather 例外。自檢已確認 task-1 scar 因此產生 10 筆 finding（本 task 新增類別），
+  這是設計上刻意的結果，非 bug——task-1 scar 的機械遷移留給 task-6 或 main agent。另有
+  2 筆原判為 systemic-ref finding 實為 _registry_ids() 讀錯頂層鍵的既有 bug，已修正（見上）。
+
+structural_decisions:
+  - decision: "legacy-form/length-budget/slot-required 對本 feature-dir 全部 report 一律嚴格檢查，不做世代 grandfather 例外（含 task-1 第二代格式）"
+    serves_seam: "format-vs-judgment"
+    forced_by:
+      - "git: changes/2026-07-07_scar-report-subtraction/tasks/task-3.md:9（validator 只跑單一 feature-dir、無全歷史掃描，故可嚴格不需 grandfather）"
+      - "git: skills/implement/scripts/validate_format.py:27-30（既有 structural_decisions key policy 先例：at implement handoff every report is new）"
+    refused: "不做 fragile 的 sibling-scoping（僅同 task 有槽位形式手足才判 legacy-form），也不做 schema_version-free 的 feature 世代推斷——兩者皆為 dispatch 中明言駁回的選項，且 grandfather-free 已是既定設計前提，無真實 force 支持"
+    risk_if_wrong: "每次對本 feature-dir 跑 validator 都會持續回報 task-1 scar 為 legacy-form/over-budget，直到有人機械遷移它；若遷移被跳過，task-6 整合驗證會在那一步不乾淨地曝光，而非靜默通過"
+  - decision: "length-budget/legacy-form/slot-required 各寫成三個具體函式，不建可設定式 check-registry／plugin 框架"
+    serves_seam: null
+    forced_by:
+      - "git: changes/2026-07-07_scar-report-subtraction/tasks/task-3.md:37（Step 5 明列恰好三個檢查類別為封閉集合，非開放式清單）"
+    refused: "不建 pluggable check registry／per-field 設定表——目前唯一 consumer 是本檔案本身，無第二個真實需求要求可擴充性"
+    risk_if_wrong: "若未來出現第 4 類機械檢查需求，需手動新增一個具體函式（低成本）；框架化唯一好處是省下這次新增，但那是投機性一般化，非目前存在的 force"

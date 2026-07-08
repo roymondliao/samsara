@@ -16,7 +16,7 @@ Scar reports are written as YAML at `changes/<feature>/scar-reports/task-N-scar.
 
 ## Write Filter
 
-Before adding any item — to `known_shortcuts`, `silent_failure_conditions`, `assumptions_made`, or `narrative` — apply the write filter question in `templates/scar-schema.yaml` Rule 13.
+Before adding any item — to `known_shortcuts`, `silent_failure_conditions`, `assumptions_made`, or `narrative` — apply the write filter question in `templates/scar-schema.yaml`'s `write-filter` anchor.
 
 ## Anti-Pattern: The Clean Scar
 
@@ -24,4 +24,4 @@ A scar report that says "no shortcuts, no silent failures, no assumptions" is su
 
 ## Anti-Pattern: The Review Diary Narrative
 
-`narrative` is not a review-round log — see `templates/scar-schema.yaml` Rule 12.
+`narrative` is not a review-round log — see `templates/scar-schema.yaml`'s `no-review-diary` anchor.

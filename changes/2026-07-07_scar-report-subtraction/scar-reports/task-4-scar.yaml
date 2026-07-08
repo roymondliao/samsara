@@ -1,0 +1,49 @@
+task_id: task-4
+completion_status: done_with_concerns
+
+known_shortcuts:
+  - what: "dist/ 內兩份生成快照（codex、gemini-cli）仍是 task-2 之前的舊編號 schema 全文複本"
+    bites_when: "有人直接讀 dist/ 底下的 SKILL.md/scar-schema.yaml 而非 skills/ 原始檔，會看到已死的 Rule N 引用"
+    where: "dist/codex/.agents/.../scar-schema.yaml 等（30 處 / 11 檔案，_DANGLING_RULE_CITATION pattern 實測）"
+    accepted_because: "dist/ 是 build 產物，task 指示明列排除；task-6 regenerate 前的既知窗口"
+    status: resolved
+    resolution: "task-6 已 regenerate 兩平台；dist 全樹數字引用實測歸零（Mother Rule 除外）"
+  - what: ".samsara/modules/skill-implement.yaml:42 原文列舉 6 個舊規則編號（7,8,9,10,11,14）為「5 個」歷史 rule，其中 Rule 7 在新 schema 沒有對應具名錨點（其內容只留在 read-side, iteration SKILL.md）"
+    bites_when: "有人想從新版文字反推回原本 6 個編號各自對應哪個錨點——Rule 7 這格會對不上"
+    where: ".samsara/modules/skill-implement.yaml:42"
+    accepted_because: "此行是歷史複雜度敘述而非可執行引用，塌陷為錨點清單已保留原意（有多個歷史相容規則），逐一 1:1 還原無真實 force 要求"
+
+silent_failure_conditions:
+  - what: "死亡測試只抓「數字」型態的懸空引用，不驗證引用的錨點名稱本身是否還存在於 scar-schema.yaml"
+    bites_when: "未來有人把 scar-schema.yaml 的具名錨點（如 legacy-invalid）改名或刪除，但沒同步 grep 這 6 個引用點"
+    where: "tests/test_skills/test_scar_schema_noise_rules.py::test_death__no_dangling_numbered_rule_citation_in_live_surfaces"
+    accepted_because: "D4 已知並接受的殘餘風險；新增的 test_unit__rewritten_citations_name_the_correct_anchor 部分緩解——只要引用點消失（不只改名）就會變紅，但改名成另一個仍存在的錨點字串不會被抓到"
+
+assumptions_made:
+  - assumption: "舊 Rule N → 新具名錨點的對應關係，是從 task-2 實際重寫 diff（git diff HEAD -- skills/implement/templates/scar-schema.yaml）逐條核對，非猜測"
+    verified: true
+    note: "Rule 8→legacy-invalid, 9→systemic-ref, 10→verified-pointer, 11→resolved-in-place, 12→no-review-diary, 13→write-filter, 14→legacy-invalid, 15→granularity-floor, 16→dual-face, 17→forced-by-evidence"
+  - assumption: "grep pattern (?i)(schema )?rules?\\s*:?\\s*[0-9] 排除 Mother Rule 後，涵蓋 sweep 前所有已知＋新發現的引用形狀"
+    verified: true
+    note: "sweep 前後對照：tests/test_skills/test_scar_schema_noise_rules.py::test_death__no_dangling_numbered_rule_citation_in_live_surfaces 由紅轉綠，且人工讀出的 colon 列舉形（skill-implement.yaml:42）已額外納入正則"
+  - assumption: "agents/code-reviewer.md 的 'Mother Rule 1/2/3' 是獨立、永久的規則編號系統，與 scar-schema 無關，本 task 不應觸碰"
+    verified: true
+    note: "references/code-review.md、references/iac-review.md 同名系統交叉引用，非 scar-schema.yaml citation"
+
+debt_registered: true
+debt_location: "dist/（task-6 regenerate 前殘留舊引用）；.samsara/modules/skill-implement.yaml:42（塌陷式歷史列舉，非嚴格 1:1）"
+
+narrative: |
+  全量 grep 在計畫已知 5 個檔案之外，額外發現 2 個懸空點：.samsara/modules/skill-implement.yaml
+  （5 處具體引用 + 1 處 colon 列舉，共 6 處）完全不在原始 anchor 清單內；以及 skill-implement.yaml:42
+  用逗號列舉 6 個編號，原始建議正則（rules? [0-9]，空格分隔）因中間有冒號而漏抓，靠人工讀檔案才發現，
+  已同步擴充死亡測試正則涵蓋 colon 形狀。這印證了 task 前提：「全量掃描不可省」。
+
+structural_decisions:
+  - decision: "以既有 grep/regex doc-contract 死亡測試模式擋懸空數字引用，不建 schema-aware 的錨點驗證器（解析 scar-schema.yaml 的錨點清單並逐一比對每個 citation 是否可解析）"
+    serves_seam: null
+    forced_by:
+      - "seam: scar-write-contract — （L1）scar-schema.yaml 是文件而非可解析 API，本測試檔既有的所有防線都是 grep/regex 形式，非 parser"
+      - "git: tests/test_skills/test_scar_schema_noise_rules.py — 既有多個同類 grep/regex 死亡測試先例（`grep -cE '^def test_(death|unit)__'` 實測 22 個），未曾用 parser-based 驗證"
+    refused: "不建一個讀取 scar-schema.yaml 錨點清單、逐一核對每個 'schema <anchor>' citation 是否可解析的驗證器——目前只有一個消費者（本次 sweep），且數字-缺席 + 名稱-存在 兩個測試已涵蓋當前實際需要防的兩種失效形狀（懸空編號、citation 被整段刪除）"
+    risk_if_wrong: "若未來有人改名或刪除具名錨點卻沒同步 grep 這些引用點，除了人工 review 沒有機制擋下——即上面 silent_failure_conditions 記錄的殘餘風險"

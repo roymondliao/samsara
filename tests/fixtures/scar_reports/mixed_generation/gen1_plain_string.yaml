@@ -1,0 +1,16 @@
+# Gen 1 fixture (task-5, feature scar-report-subtraction): bare plain-string
+# known_shortcuts/silent_failure_conditions items. This shape carries NO
+# per-item metadata at all — there is no way to express deferred or resolved
+# at the item level, so every item here is unconditionally in the "remaining"
+# set (the documented backward-compat guarantee: missing deferred flag =
+# false, and a plain string is never itself a resolved marker).
+task_id: gen1-demo
+completion_status: done
+known_shortcuts:
+  - "Gen1 shortcut A: no deferred flag possible in plain-string form, always remaining"
+  - "Gen1 shortcut B: still counted, this is the DC3 backward-compat guarantee"
+silent_failure_conditions:
+  - "Gen1 silent failure: bare string, no per-item metadata at all, always remaining"
+assumptions_made: []
+debt_registered: true
+debt_location: "n/a - synthetic fixture for aggregation test"

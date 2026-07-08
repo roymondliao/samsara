@@ -74,13 +74,20 @@ If implementation appears complete but the Primary evaluator fails, add that eva
 Read all `scar-reports/task-N-scar.yaml` files. Collect remaining items:
 
 1. Items with `deferred_to_feature_iteration: true` — explicitly deferred by Level 1
-2. Items without `resolved_items` coverage AND without an in-place `status: resolved` marker — not addressed by Level 1. Both forms count as resolved: the newer in-place `status: resolved` + `resolution` form (`scar-schema.yaml` Rule 11), and the older separate `resolved_items` list, which remains valid per Rule 14 backward-compat extension.
+2. Items without `resolved_items` coverage AND without an in-place `status: resolved` marker — not addressed by Level 1. Both forms count as resolved: the newer in-place `status: resolved` + `resolution` form (`scar-schema.yaml` resolved-in-place), and the older separate `resolved_items` list, which remains valid per the legacy-invalid backward-compat extension.
 3. Items in non-conforming scar reports — **list as parse failures, do not skip silently**
 
-**systemic_ref resolution:** For each item written as `systemic_ref: <id>` (see `scar-schema.yaml` Rule 9), resolve `<id>` against `.samsara/systemic-scars.yaml`:
+**systemic_ref resolution:** For each item written as `systemic_ref: <id>` (see `scar-schema.yaml` systemic-ref), resolve `<id>` against `.samsara/systemic-scars.yaml`:
 - Registry exists and `<id>` is present → treat the item using the registry entry's `description` for triage context.
 - Registry exists and `<id>` is NOT present (dangling reference) → **list as a parse failure**, naming the scar report file and the dangling id explicitly. Never silently skip a dangling systemic_ref.
 - Registry file is missing or unreadable → every `systemic_ref` item is marked `unknown` and **passes through the gate** — it is still counted in `signal_lost` like any other item, it is not dropped, and it is not itself treated as a parse failure. A missing registry file must never cause systemic_ref items to silently disappear from aggregation.
+
+**Scar format generations (read-side canonical):** items are identified by field shape alone — no `schema_version` field is used. A future generation MUST keep a shape-unambiguous signature vs Gen 1-3 — shape inference is the only version signal:
+- **Gen 1 — plain string:** bare strings instead of objects. Plain string format backward compatibility — do not reject or silently skip plain string format items (the exact DC3 failure mode this guard prevents). Missing deferred flag = false; missing resolved_items = no self-iteration.
+- **Gen 2 — description dict:** the `{description, deferred_to_feature_iteration}` object form; resolution tracking (`resolved_items` list vs in-place `status: resolved`) is already described under item 2 above.
+- **Gen 3 — what/bites_when slots:** fixed-slot form; read identically to Gen 2 for triage.
+
+All three generations count toward `signal_lost` identically — `deferred_to_feature_iteration`, `status: resolved`/`resolved_items`, and `systemic_ref` semantics read the same regardless of generation. The legacy-generation reading guarantees continue to apply unchanged to every pre-existing scar report on disk; the newer forms are additive, not a replacement — an aggregator must accept old and new forms side by side in the same feature.
 
 Calculate initial `signal_lost`:
 ```
@@ -96,7 +103,7 @@ file (and, for dangling refs, the id) explicitly:
 - The scar report does not conform to `scar-schema.yaml` (e.g. markdown format
   instead of YAML). This is NOT the old plain-string
   `known_shortcuts`/`silent_failure_conditions` format —
-  Rule 8 requires counting the old plain-string format normally, never treating it as a parse failure.
+  the legacy-invalid backward-compat rule requires counting the old plain-string format normally, never treating it as a parse failure.
 - The report contains a dangling `systemic_ref`.
 
 > 「以下 scar reports 無法解析：[files]。這些 files 的 items 未被計入 signal_lost。」

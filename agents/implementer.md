@@ -141,7 +141,7 @@ This order cannot be swapped. Death test before unit test. Scar report before se
 8. Run all tests — verify they pass (green)
 9. Write scar report (see Scar Report section)
 10. Self-iteration (see Self-Iteration section)
-11. Update scar report — mark fixed items in place with `status: resolved` + one-line `resolution` (schema Rule 11), mark remaining items
+11. Update scar report — mark fixed items in place with `status: resolved` + one-line `resolution` (schema resolved-in-place), mark remaining items
 12. Run all tests again — verify no regression from self-iteration fixes
 13. Report back — do NOT commit. The main agent handles commit after review passes.
 
@@ -181,7 +181,7 @@ After implementation, produce a scar report as YAML at `changes/<feature>/scar-r
 
 **Use the exact schema provided in your dispatch prompt** (injected from `scar-schema.yaml`). Do not invent your own format. The schema defines: `task_id`, `completion_status`, `known_shortcuts`, `silent_failure_conditions`, `assumptions_made` (with `verified` flag), `debt_registered`, `debt_location`, `structural_decisions`, optional `narrative`, optional `resolved_items`, and optional `deferred_to_feature_iteration` flags.
 
-**Structural decisions are dual-face entries (schema Rules 15-17).** For every structural bet you made — a pattern choice, the creation of or deviation from a boundary/seam, an explicit refusal to abstract (NOT ordinary function splitting or naming; those are below the granularity floor) — write one `structural_decisions` entry carrying both faces:
+**Structural decisions are dual-face entries (schema granularity-floor, dual-face, forced-by-evidence).** For every structural bet you made — a pattern choice, the creation of or deviation from a boundary/seam, an explicit refusal to abstract (NOT ordinary function splitting or naming; those are below the granularity floor) — write one `structural_decisions` entry carrying both faces:
 
 - **Yang (`decision` + `serves_seam` + `forced_by`):** what you chose, which declared seam it sits on, and the evidence that forced it. `forced_by` cites only evidence that **existed when you decided**: an `affects` entry from your L2 (`affects task-N: ...`), a git/file ref (`git: file:line`), or a declared seam. Task ids and file:line refs cannot be fabricated after the fact — that is the defense against post-hoc rationalization. If you cannot cite anything checkable, the decision is either not a structural bet or it is a feeling — do not write the entry, and reconsider the decision.
 - **Yin (`refused` + `risk_if_wrong`):** what you deliberately did not build, and what breaks if the bet is wrong. This is the "say the refusal out loud" discipline given a durable, structured home — existence (yang) is responsibility (yin), one record answering both "why do you exist" and "what hurts if you are wrong".
@@ -205,7 +205,7 @@ After writing the initial scar report (step 8), review each scar item and attemp
 - Items that are genuinely accepted risks — leave as-is (no deferred flag needed)
 
 **After fixing:**
-- Mark each fixed item in place with `status: resolved` + a one-line `resolution` (schema Rule 11 — do not re-copy the item into a separate `resolved_items` list; that older form stays readable per Rule 14 but is retired for new writes)
+- Mark each fixed item in place with `status: resolved` + a one-line `resolution` (schema resolved-in-place — do not re-copy the item into a separate `resolved_items` list; that older form stays readable per legacy-invalid but is retired for new writes)
 - Re-run all tests to verify no regression
 - Update `completion_status` if fixes changed the assessment
 
@@ -252,7 +252,7 @@ It is always OK to stop and escalate. Bad work is worse than no work.
 The scar report YAML is the single carrier of scar detail. Do not restate
 known_shortcuts, silent_failure_conditions, or assumptions_made in prose —
 reference the scar report file path instead. Before writing any line anywhere,
-apply `templates/scar-schema.yaml` Rule 13: "would a future reader change their
+apply `templates/scar-schema.yaml` write-filter: "would a future reader change their
 action because they read this?" — if no, do not write it; if the scar report
 already says it, do not say it again in prose.
 

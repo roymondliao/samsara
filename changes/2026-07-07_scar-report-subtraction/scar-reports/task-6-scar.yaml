@@ -1,0 +1,34 @@
+task_id: task-6
+completion_status: done
+# Inline execution by main agent（human directive: no further review rounds）.
+
+known_shortcuts:
+  - what: "dist/ 為 gitignored 本地產物，regenerate 結果不進版控 — byte-identical 驗證只保證本機當下狀態"
+    bites_when: "另一台機器或 clean clone 的 dist 是舊的，且使用者未重跑 convert"
+    where: ".gitignore（dist/）；驗證命令見 review-record task-6 段"
+    accepted_because: "dist 本就是 install/update 流程的再生產物，非 source of truth"
+
+silent_failure_conditions:
+  - what: "dist 內 md 檔經 rules 引擎改寫（非逐字），無法 byte-diff 驗證 — 只能靠 integration 測試與 platform validate"
+    bites_when: "converter 規則對新 schema 內容產生非預期改寫而 integration fixtures 未覆蓋該模式"
+    where: "samsara_cli/converter/skill.py（md 路徑）；YAML 路徑已 byte-diff 證同"
+
+assumptions_made:
+  - assumption: "platform validate 的 12 個 live-surface findings 中，11 個等於 issue-002 已分類基線，+1（skills/pre-thinking/SKILL.md）來自另一 session 的變更，本 feature 零新增"
+    verified: true
+    note: "issue-002 task-1 scar 的殘差分類（implement ×2 = SKILL.md+dispatch-template.md）逐檔對照吻合"
+  - assumption: "regenerate 命令為 samsara-cli convert --platform {codex,gemini-cli}，無需其他旗標"
+    verified: true
+    note: "samsara-cli convert --help；兩平台輸出 Conversion complete"
+
+debt_registered: true
+debt_location: "dist md 檔的驗證強度差（byte-diff 不可用）— samsara_cli/converter/skill.py md 轉寫路徑"
+
+structural_decisions: []
+
+narrative: |
+  驗證鏈：convert 兩平台 → scar-schema.yaml 對 dist/codex 與 dist/gemini-cli
+  byte-identical → dist 全樹數字規則引用歸零（Mother Rule 除外）→
+  uv run pytest tests/ 959 passed → validate_format.py 對 feature dir clean
+  （6 reports 含本檔）→ samsara-cli validate --platform codex 12 findings
+  全數為既知基線＋外部 session 變更，本 feature 零新增。
