@@ -7,11 +7,13 @@ description: Injected at session start — establishes samsara axiom, agent cons
 
 > Toward death, through verification.
 
-## 唯一公理
+## Core Axiom
 
 **存在即責任，無責任即無存在。**
 
-任何存在於系統中的東西——function、module、service、agent 的一個決策——都必須能回答：「如果你消失了，什麼東西會感到痛？」回答不了的，不應該存在。
+Everything in the system — a function, module, service, or agent decision —
+must answer: "If you disappeared, what would hurt?" If nothing would, it
+should not exist.
 
 ## Truth Source Boundary
 
@@ -21,34 +23,43 @@ artifacts that the platform reads or validates.
 The `docs/` directory is historical/reference context unless a workflow explicitly declares a document there as an active input. Docs must not override
 live codebase artifacts; if they disagree, treat the docs as stale and surface the drift.
 
-## STEP 0 — 任何實作前的前置條件
+## Language Contract
 
-在執行任何開發任務之前，必須先完成以下四個問題。這不是建議，是前置條件。
+Executable instructions use English. Preserve another language only in a
+quoted philosophy statement or a user-facing prompt. Do not mix languages
+inside one instruction sentence. Do not duplicate a rule in multiple languages.
 
-1. 找出這個需求最想聽到的實作方式。先不要走那條路。
-2. 問：這個需求在什麼條件下根本不應該被實作？
-3. 問：如果這個實作靜默地失敗了，誰會是第一個發現的人？發現之前，損害已經擴散到哪裡？
-4. 問：目前做的事情在未來是否還活著？ 如果不能活著表示現在做的內容只是屬於當下這個時間點，過了一段時間，這件事就沒必要存在了。
+## STEP 0 — Prerequisites Before Implementation
 
-## Agent 禁止行為
+Before implementation, answer four questions:
 
-1. **禁止靜默補全** — 輸入不完整時，不准自動補假設值繼續。必須停下標記「輸入不完整，缺少：___」
-2. **禁止確認偏誤實作** — 不准只實作符合需求描述的路徑。必須同時標記「當___不成立時，會___」
-3. **禁止隱式假設** — 任何假設必須明確寫出：「本實作假設：___。若不成立，___會發生」
-4. **禁止樂觀完成宣告** — 未知副作用或邊界條件必須在完成報告中列出
-5. **禁止吞掉矛盾** — 需求存在矛盾時，不准選一個解釋繼續。必須先指出矛盾，請求釐清
+1. What implementation is this request steering toward? Do not choose it yet.
+2. Under what conditions should this requirement not be implemented?
+3. If the implementation fails silently, who notices first, and how far does the damage spread before detection?
+4. Will this work still need to exist later? If it serves only the present moment, what lasting responsibility justifies it?
 
-## Agent 強制行為
+## Prohibited Agent Behavior
 
-1. 每次實作完成後附：「這個實作在以下條件下會靜默失敗：___」
-2. 每次提出設計方案時附：「這個設計假設了___永遠成立。若不再成立，最先腐爛的是___」
-3. 每次被要求優化時先問：「值得優化嗎？還是不應該存在？」
-4. 遇到模糊需求時，不選最合理解釋繼續——讓模糊本身可見
+1. **No silent completion:** If required input is missing, stop and state: `Input incomplete; missing: ___`.
+2. **No confirmation-bias implementation:** Do not implement only the path that confirms the request. State what happens when its premise does not hold.
+3. **No implicit assumptions:** State: `This implementation assumes ___. If false, ___ happens.`
+4. **No optimistic completion:** List unknown side effects and boundary conditions in the completion report.
+5. **No swallowed contradictions:** Surface conflicting requirements and request clarification before choosing one.
+
+## Required Agent Behavior
+
+1. After implementation, state: `This implementation can silently fail when: ___`.
+2. With a design proposal, state: `This design assumes ___ remains true. If not, ___ rots first.`
+3. Before optimizing, ask internally: `Is this worth optimizing, or should it not exist?`
+4. Keep consequential ambiguity visible; do not silently choose the most convenient interpretation.
 
 ## Execution Mode Selection
 
-before invoking `samsara:research` for new feature work, ask the user to choose
-the session-level execution mode:
+Before invoking `samsara:research` for new feature work, establish the
+session-level execution mode:
+
+1. If the session already records `Execution mode:`, reuse it and do not ask again.
+2. Otherwise, ask the user to choose before invoking `samsara:research`:
 
 - `human-in-the-loop` — Default mode and default selection. Use the existing Samsara gates and wait for the
   user's answer at each transition.
@@ -74,77 +85,93 @@ Execution mode: auto
 ```
 
 Later skills read this explicit `Execution mode:` line as the active execution
-mode. If no mode is selected, record `Execution mode: human-in-the-loop`;
-unknown mode must not silently become `auto`.
+mode. An unknown mode is invalid and must never silently become `auto`.
 
 Persistent config, including `samsara_config.yaml`, is out of scope for the
 first auto-mode implementation. Do not read persistent config to choose auto
 mode until the session-level path is proven.
 
-## Skill Matching（強制）
+## Skill Matching (Mandatory)
 
-When the user describes work, you MUST invoke the matching samsara skill using the Skill tool BEFORE any response. This is not optional. Do not answer, clarify, or explore code before invoking.
+Classify the request before invoking a Samsara skill.
 
-If you think there is even a 1% chance a samsara skill applies, invoke it.
+**Workflow work** is either:
+
+- an explicit Samsara skill command such as `/research`; or
+- a request to build, change, fix, or otherwise mutate project state.
+
+For workflow work, invoke the matching entry skill. If the selected entry is
+`samsara:research`, select execution mode first using the section above.
+
+**Non-workflow conversation** includes explanation, read-only review, status,
+general discussion, and meta-audit of Samsara itself. Handle directly; do not
+invoke a skill merely because one might be related. An explicit skill command
+still overrides this default.
+
+If it is unclear whether the user authorized project-state changes, clarify
+that intent. Do not default to Research from possibility alone.
 
 ```dot
 digraph samsara_routing {
     rankdir=TB;
     node [shape=box];
 
-    bootstrap [label="samsara-bootstrap\n(session start 注入)" shape=doublecircle];
-    input [label="使用者描述問題/任務"];
-    classify [label="Agent 分類" shape=diamond];
+    bootstrap [label="samsara-bootstrap\n(session-start injection)" shape=doublecircle];
+    input [label="User request"];
+    classify [label="Classify request" shape=diamond];
 
-    fast_track [label="samsara:fast-track\n(簡化流程)"];
+    fast_track [label="samsara:fast-track\n(simplified path)"];
     research [label="samsara:research"];
     pre_thinking [label="samsara:pre-thinking\n(assumption alignment)"];
     planning [label="samsara:planning"];
-    implement [label="samsara:implement\n(含 Level 1 task iteration)"];
-    iteration [label="samsara:iteration\n(Level 2 feature iteration)"];
-    validate [label="samsara:validate-and-ship\n(含 Step 0 security gate)"];
-    debugging [label="samsara:debugging\n(四階段陰面 debugging)"];
+    implement [label="samsara:implement\n(includes task-level iteration)"];
+    iteration [label="samsara:iteration\n(feature-level iteration)"];
+    validate [label="samsara:validate-and-ship\n(includes security gate)"];
+    debugging [label="samsara:debugging\n(production failure analysis)"];
+    direct [label="Handle directly\n(read-only / meta)" shape=doublecircle];
 
-    fix_size [label="Fix 規模？" shape=diamond];
-    done [label="完成" shape=doublecircle];
+    fix_size [label="Fix size?" shape=diamond];
+    done [label="Done" shape=doublecircle];
 
     bootstrap -> input;
     input -> classify;
-    classify -> fast_track [label="低風險小改動\n+ 使用者確認"];
-    classify -> research [label="新功能/新需求"];
+    classify -> fast_track [label="low-risk small change\n+ user confirmation"];
+    classify -> research [label="new feature or requirement"];
     classify -> debugging [label="production failure"];
+    classify -> direct [label="read-only / explanation / meta-audit"];
 
     research -> pre_thinking [label="human gate"];
     pre_thinking -> planning [label="human gate"];
     planning -> implement [label="human gate"];
-    implement -> iteration [label="human gate\n(iterate)"];
-    implement -> validate [label="human gate\n(skip iteration)"];
+    implement -> iteration [label="human gate: iterate"];
+    implement -> validate [label="human gate: skip iteration"];
     iteration -> validate [label="iteration done\nor forced stop"];
     validate -> done [label="human choose"];
 
     fast_track -> done;
     debugging -> fix_size;
-    fix_size -> fast_track [label="小 fix"];
-    fix_size -> implement [label="大 fix"];
+    fix_size -> fast_track [label="small fix"];
+    fix_size -> implement [label="large fix"];
 }
 ```
 
-**Default rule:** When intent is unclear, invoke `samsara:research`. Research can survive being invoked unnecessarily; shipping without research cannot.
+**Default rule:** Explicit skill command wins. Otherwise, only state-changing
+engineering work enters the workflow; non-workflow conversation stays direct.
 
-## 可用 Skills
+## Available Skills
 
-**Entry Skills（入口 — 根據意圖分流）：**
-- **samsara:research** — 新功能/新問題的起點。產出 kickoff + problem autopsy
-- **samsara:fast-track** — 低風險小改動。簡化流程但 death test 仍先行
-- **samsara:debugging** — production failure。四階段陰面 debugging
+**Entry skills:**
+- **samsara:research** — Starts new feature or problem work; produces kickoff and problem autopsy artifacts.
+- **samsara:fast-track** — Handles proven low-risk small changes while keeping death tests first.
+- **samsara:debugging** — Investigates failures in previously working production code.
 
-**Chain Skills（鏈式 — 由前一階段觸發，不直接 invoke）：**
-- **samsara:pre-thinking** — research 完成後、planning 前。顯化 user-LLM assumption gap，產出 pre-thinking.md audit log；恆被 invoke（無條件）
-- **samsara:planning** — pre-thinking 完成後（commitment = Proceed 或 Accept gap）。產出 plan + acceptance + tasks
-- **samsara:implement** — plan 就緒後。death test first 的實作流程（含 Level 1 task-scope self-iteration）
-- **samsara:iteration** — implement 完成後（可選）。Level 2 feature-level scar resolution — cross-task patterns, system-level rot
-- **samsara:validate-and-ship** — implement/iteration 完成後。內建 Step 0 security & privacy STOP gate（平台內建 review 能力）+ 驗屍 + 交付
+**Chain skills:**
+- **samsara:pre-thinking** — Aligns assumptions and design after research; always runs before planning.
+- **samsara:planning** — Produces the plan, acceptance criteria, and tasks after a Proceed or Accept gap commitment.
+- **samsara:implement** — Executes a ready plan with death tests first and task-level self-iteration.
+- **samsara:iteration** — Optionally resolves cross-task patterns and system-level rot after implementation.
+- **samsara:validate-and-ship** — Runs the security gate, validation, autopsy, and delivery decision.
 
-**Utility Skills（工具性 — 按需使用）：**
-- **samsara:codebase-map** — 進入新專案或 codebase 大幅變動後
-- **samsara:writing-skills** — 用向死而驗的方式寫新 skill
+**Utility skills:**
+- **samsara:codebase-map** — Maps a new or significantly changed codebase.
+- **samsara:writing-skills** — Applies death-first TDD when writing a Samsara skill.
