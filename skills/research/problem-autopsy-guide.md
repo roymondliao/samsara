@@ -2,6 +2,13 @@
 
 The problem autopsy is the yin-side output of the research phase. It forces the problem to face its own death before any solution is proposed.
 
+## Ownership
+
+`problem-autopsy.md` is the sole owner of source wording, reframe, translation
+delta, kill conditions, damage recipients, and observable done state.
+`1-kickoff.md` must not duplicate this content; it points here and owns the
+decision-ready handoff instead.
+
 ## Structure
 
 The autopsy has 6 sections. Each section must be filled — no "TBD" or "N/A" allowed. If you cannot fill a section, that gap IS the finding.

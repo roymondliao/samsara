@@ -17,21 +17,21 @@ digraph research {
 
     start [label="使用者描述問題/需求" shape=doublecircle];
     interrogate [label="Interrogate\n- 問題形狀是誰給的？\n- 什麼條件下不該解決？\n- 誰會因此受損？"];
+    output_autopsy [label="產出 problem-autopsy.md"];
     essence [label="Problem Essence\n- 一兩行，需求語言\n- 剝掉實作形狀"];
     scope [label="Scope\n- 消失了什麼會痛？\n- must-have 附帶死亡條件\n- boundary scope 三清單\n(要解什麼/涉及哪些/現在不做)"];
     north_star [label="北極星指標\n- 失效條件\n- corruption signature\n- proxy confidence"];
     output_kickoff [label="產出 1-kickoff.md"];
-    output_autopsy [label="產出 problem-autopsy.md"];
     gate [label="Execution-mode gate\nhuman: confirm\nauto: gatekeeper" shape=diamond];
     next [label="invoke samsara:pre-thinking" shape=doublecircle];
 
     start -> interrogate;
-    interrogate -> essence;
+    interrogate -> output_autopsy;
+    output_autopsy -> essence;
     essence -> scope;
     scope -> north_star;
     north_star -> output_kickoff;
-    output_kickoff -> output_autopsy;
-    output_autopsy -> gate;
+    output_kickoff -> gate;
     gate -> next [label="proceed"];
     gate -> interrogate [label="revise"];
 }
@@ -84,10 +84,21 @@ Interrogation 存活下來的問題，蒸餾成一兩行的**問題本質（需�
 
 產出文件存放在目標專案的 `changes/YYYY-MM-DD_<feature-name>/` 目錄下：
 
-1. **1-kickoff.md** — 使用 `templates/kickoff.md` 模板
-2. **problem-autopsy.md** — 使用 `templates/problem-autopsy.md` 模板
+1. **problem-autopsy.md** — 使用 `templates/problem-autopsy.md` 模板
+2. **1-kickoff.md** — 使用 `templates/kickoff.md` 模板
 
-Format details: read support file `problem-autopsy.md`
+Artifact ownership is non-overlapping:
+
+- **problem-autopsy.md owns** source wording, reframe, translation delta, kill
+  conditions, damage recipients, and the observable done state.
+- **1-kickoff.md owns** the decision-ready handoff: problem essence, boundary
+  scope, evidence, risk of inaction, scoped commitments, North Star, and
+  delivery stakeholders.
+- Do not restate autopsy-owned content in the kickoff; link to
+  `problem-autopsy.md` instead.
+
+Format details: read `problem-autopsy-guide.md`; write from
+`templates/problem-autopsy.md`.
 
 ## Transition
 

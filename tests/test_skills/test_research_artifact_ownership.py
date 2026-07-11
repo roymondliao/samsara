@@ -1,0 +1,79 @@
+"""Contract tests for non-overlapping Research artifact ownership."""
+
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[2]
+RESEARCH_SKILL = ROOT / "skills" / "research" / "SKILL.md"
+KICKOFF = ROOT / "skills" / "research" / "templates" / "kickoff.md"
+AUTOPSY = ROOT / "skills" / "research" / "templates" / "problem-autopsy.md"
+AUTOPSY_GUIDE = ROOT / "skills" / "research" / "problem-autopsy-guide.md"
+AMBIGUOUS_GUIDE_NAME = ROOT / "skills" / "research" / "problem-autopsy.md"
+
+
+def _read(path: Path) -> str:
+    return path.read_text(encoding="utf-8")
+
+
+def _section(text: str, heading: str) -> str:
+    """Return one Markdown section, excluding the next same-level heading."""
+    start = text.index(f"## {heading}")
+    end = text.find("\n## ", start + 1)
+    return text[start:] if end == -1 else text[start:end]
+
+
+def test_death__research_artifacts_have_non_overlapping_problem_ownership() -> None:
+    """Kickoff references source analysis instead of rewriting it."""
+    kickoff = _read(KICKOFF)
+    autopsy = _read(AUTOPSY)
+
+    assert "## Problem Source" in kickoff
+    assert "`problem-autopsy.md`" in kickoff
+    assert "## Problem Statement" not in kickoff
+    assert "Damage recipients" not in kickoff
+
+    for owned_section in (
+        "## original_statement",
+        "## reframed_statement",
+        "## translation_delta",
+        "## kill_conditions",
+        "## damage_recipients",
+    ):
+        assert owned_section in autopsy
+
+
+def test_death__research_instructions_name_each_artifact_owner() -> None:
+    """Writers need one explicit source for source-analysis and handoff data."""
+    skill = _read(RESEARCH_SKILL).lower()
+    guide = _read(AUTOPSY_GUIDE).lower()
+
+    assert "problem-autopsy.md owns" in skill
+    assert "1-kickoff.md owns" in skill
+    assert "do not restate" in skill
+    assert "sole owner" in guide
+    assert "1-kickoff.md" in guide and "must not duplicate" in guide
+
+
+def test_death__research_guide_and_template_names_are_unambiguous() -> None:
+    """Guide, source template, and generated artifact must not share a name."""
+    skill = _read(RESEARCH_SKILL)
+
+    assert AUTOPSY_GUIDE.is_file()
+    assert AUTOPSY.is_file()
+    assert not AMBIGUOUS_GUIDE_NAME.exists()
+    assert "`problem-autopsy-guide.md`" in skill
+    assert "`templates/problem-autopsy.md`" in skill
+
+
+def test_death__research_writes_autopsy_before_kickoff() -> None:
+    """A handoff must not be generated before the source artifact it cites."""
+    skill = _read(RESEARCH_SKILL)
+
+    assert "interrogate -> output_autopsy;" in skill
+    assert "output_autopsy -> essence;" in skill
+    assert "north_star -> output_kickoff;" in skill
+    assert "output_kickoff -> gate;" in skill
+    assert "output_kickoff -> output_autopsy;" not in skill
+
+    output = _section(skill, "Output")
+    assert output.index("**problem-autopsy.md**") < output.index("**1-kickoff.md**")

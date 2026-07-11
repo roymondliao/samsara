@@ -1,7 +1,9 @@
 # Kickoff: <feature-name>
 
-## Problem Statement
-<!-- What problem are we solving? One paragraph. -->
+## Problem Source
+`problem-autopsy.md`
+<!-- Canonical source wording, reframe, translation delta, kill conditions,
+     damage recipients, and observable done state live there. Do not restate them. -->
 
 ## Problem Essence (named handoff to pre-thinking)
 <!-- One or two lines, REQUIREMENT language: what must be solved, stripped of any
@@ -57,7 +59,6 @@ sub_metrics:
     decoupling_detection: "<how to detect proxy diverging from main>"
 ```
 
-## Stakeholders
+## Delivery Stakeholders
 - **Decision maker:** <who>
 - **Impacted teams:** <who>
-- **Damage recipients:** <who bears cost of the solution>
