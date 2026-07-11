@@ -1,6 +1,8 @@
 # Pre-thinking Flow — Detailed Procedures
 
-This file expands the SKILL.md six-step descriptions into agent-executable instructions. Read this alongside SKILL.md; do not treat it as a standalone script.
+**Sole owner: executable procedure.** `SKILL.md` owns entry, routing overview,
+output, and transition; templates own shapes. If another source conflicts with
+this file's procedure, this file wins.
 
 **Cross-cutting principles (the design's load-bearing spine):**
 
@@ -32,7 +34,10 @@ The ruler has exactly one real gate: **deep thinking is the default; fast-track 
 - **fast-track**: prove *both axes approach zero* (no unresolved design question; wrong = bounded, known damage) → no thinking needed. What lets you skip is not "small change" — "small" is only the surface.
 - **deep thinking**: everything else, all through the same flow (Step 2 assume → Step 3 gather → Step 4 converge).
 - The rule is one-directional: fast-track needs proof; unsure = deep. Do not assume you can judge "this one needs no depth." Misjudging into deep only costs tokens; misjudging into fast-track drops blind spots — asymmetric cost.
-- **No "light thinking" middle tier.** Whether to dispatch searchers, and how many, is the *emergent result* of Step 2's not-confident-assumption count — 0 not-confident assumptions → 0 searchers (equivalent to the old "light" case), with no separate first-step judgment call.
+- **No "light thinking" middle tier.** Whether to dispatch searchers, and how
+  many, emerges from Step 2's not-confident assumptions and the distinct evidence
+  surfaces they require. Zero not-confident assumptions means zero searchers
+  (equivalent to the old "light" case), with no separate first-step judgment call.
 
 **Revisable (depth one-way valve + mid-flight upgrade):** if later steps surface new evidence, the main agent upgrades depth on its own (never downgrades). Not a new mechanism — the existing single-directional valve.
 
@@ -85,11 +90,22 @@ Core identity is a **design decision** and rides the Step 6 handoff channel (pla
 
 Go find evidence for the not-confident assumptions. **Why multi-lens and not the main agent alone:** the main agent only searches where it already thought to look — its blind spots decide what it can find. Independent searchers at **different lenses** hit what it didn't think to look for. This is the only reason multi-lens exists: cover blind spots.
 
+Derive the dynamic evidence strategy from decision-relevant, not-confident
+assumptions and the distinct evidence surfaces they require. This is not a
+one-to-one mapping. One lens may cover multiple assumptions when they depend on
+the same evidence surface; one assumption may require multiple lenses when its
+evidence or blind spots span different surfaces. Before dispatch, record each
+lens's assumptions, evidence surface, and independent blind-spot rationale in
+`pre-thinking.md`.
+
 - **No cap on lens count** — dispatch as many as this run needs, decided by "which kinds of places the evidence is scattered across." No cap is possible because **searchers bring back only facts, and facts don't fight — they only complement** (let them judge, and many of them return contradictory advice built on different premises — so they don't judge).
 - **Each searcher returns:** facts found (with sources), things found along the way that weren't on the list (this is the real blind-spot value), things not found. **No "recommendation" field.** (Return shape: `templates/lens-report.md`.)
 - **How to dispatch:** the lens (question to answer) + thinking scope (Step 2's box) + starting points (a few entry files, but a *start* not "only search these," else you smuggle the main agent's blind spot into the searcher) + return format.
 - A lens that fails or comes back blank → record it as an "unverified gap," do not carry on as if nothing happened.
-- **Searcher count comes from Step 2, not Step 1:** lenses dispatched = how many not-confident assumptions Step 2 had / how many kinds of places evidence is scattered across — 0 not-confident assumptions → 0 searchers, main agent looks itself. This is the direct consequence of deleting the "light thinking" tier, not a new rule.
+- **Searcher count comes from Step 2, not Step 1:** derive the uncapped lens set
+  from the many-to-many mapping above. Zero not-confident assumptions means zero
+  searchers and the main agent looks itself. This follows from deleting the
+  "light thinking" tier; it is not a separate depth rule.
 - A **default lens list** (skill-local `references/lenses.md`) serves as a reminder (not a cap): after deriving lenses, check it for known-important ones you missed; deliberately skipping one needs a written reason.
 - **codebase-map as a start, not truth:** when `.samsara/codebase-map.yaml` exists and is fresh enough, searchers take it as a starting hypothesis (saves re-digging), but **live codebase wins** — where map and reality disagree, trust reality and surface the drift. Map missing or stale → don't invent from memory; search.
 - **Sole writer:** searchers only *return results* to the main agent; they write no file. `pre-thinking.md` is written by the main agent alone (avoids many searchers writing one file at once).
@@ -178,7 +194,8 @@ Step 4 recognized and marked which decisions "need an external call"; this step 
 - **Every question is a real multiple-choice:** ≥2 options + each option's trade-off. Never ask "shall we do it the way I recommend?" (that yes/no is exactly the samsara "shall we do all of it?" disease).
 - **Answers recorded as traces**, not just the conclusion: which was chosen / why not the others / what this decision assumes / what rots first when that assumption breaks. So the next person can pick it up and change it without re-litigating the whole thing.
 
-Practice: human asks via multiple-choice; auto has the gatekeeper answer per question (mark (b)-type as guess). Ask a small batch at a time, split rounds if many. If an answer overturns a Step 4 derivation, propagate the fix downstream (decisions are interdependent).
+Ask a small batch at a time, split rounds if many. If an answer overturns a Step
+4 derivation, propagate the fix downstream because decisions are interdependent.
 
 ### Grouping and overflow
 
@@ -208,7 +225,11 @@ Do not build the seam's future abstraction now — structural-honesty rules stil
 
 ### (2) Evaluation Contract (single standard, existing format)
 
-Define one Primary evaluator — something that, when it holds, means done; the agent can actually run/inspect it, not "feels done." This is not a new thing — it's the existing Evaluation Contract. Write it in this exact structure:
+Evaluation is never optional, including fast-track.
+
+Define one agent-evaluable Primary evaluator — something that, when it holds,
+means done; the agent can actually run or inspect it, not "feels done." This is
+the existing Evaluation Contract. Write it in this exact structure:
 
 ```
 ## Evaluation Contract
@@ -231,6 +252,25 @@ Rules:
 ### (3) Commitment (one of three) + residual list
 
 **Proceed / Accept gap / Return to Research** — forces an explicit stance so no one slips into planning while pretending everything's solved. Residual list = things unsolvable here, handed to planning or later (e.g. "this step needs an operator to fill a value manually"). Auto: commitment made by the gatekeeper too; "Return to Research" is allowed (a flow redirect, not a fallback to a human).
+
+Only Proceed or Accept gap may invoke `samsara:planning`.
+
+---
+
+## Execution Mode Routing
+
+Apply this routing to every Step 5 choice, Evaluation Contract selection, and
+Step 6 commitment:
+
+- If `Execution mode: human-in-the-loop`, ask the user using the active prompt.
+- If `Execution mode: auto`, do not ask the user. Dispatch
+  `samsara:auto-gatekeeper`, append the decision to `auto-decisions.md`, and write
+  the answer to `pre-thinking.md`.
+
+- Step 5: preserve the choice trace and mark human-only answers as unconfirmed
+  guesses.
+- Evaluation Contract: record exactly one Primary evaluator.
+- Commitment: invoke planning only for Proceed or Accept gap.
 
 ---
 

@@ -10,12 +10,10 @@ namespace — DC-4/DC-5 here are unrelated to DC-4/DC-5 there):
   AND a "mark stale + reason" instruction. Absence means a failed regen silently
   leaves last_updated advanced, poisoning the freshness signal for the next session.
 
-  DC-5 (failed-autoregen deadlock / dishonest-completion): both pre-thinking/SKILL.md
-  and pre-thinking/flow.md MUST contain an explicit escape clause for when
-  auto-initiated regen fails, aborts, or is Phase-4-rejected. Without it, flow.md's
-  "do not proceed until regen completes" has no exit — the agent may deadlock,
-  loop, or dishonestly claim completion; the exact rot the fail-honest contract
-  exists to prevent.
+  DC-5 (failed-autoregen deadlock / dishonest-completion): pre-thinking/flow.md,
+  the sole executable owner, MUST contain an explicit escape clause for when
+  auto-initiated regen fails, aborts, or is Phase-4-rejected. SKILL.md points to
+  that canonical procedure instead of duplicating it.
 
 Unit tests (doc-artifact contract):
   Contract source: the SKILL/flow documented-artifact contract — the presence of
@@ -121,16 +119,16 @@ def test_death_dc5__escape_clause_for_failed_autoregen() -> None:
     """
     DC-5: failed-auto-initiated-regen deadlock / dishonest-completion guard.
 
-    Both pre-thinking/SKILL.md (Atomic Context Boundary) AND pre-thinking/flow.md
-    (step 3 atomic context procedure) must contain an explicit escape clause for
-    when auto-initiated regen fails, aborts, or is rejected at Phase 4.
+    pre-thinking/flow.md must contain the explicit escape clause for when
+    auto-initiated regen fails, aborts, or is rejected at Phase 4. SKILL.md must
+    point to flow.md as the sole executable owner instead of restating the clause.
 
     Without it:
       - flow.md's "do not proceed until regen completes" has no exit for a failed regen
       - The agent may deadlock indefinitely, loop, or dishonestly claim completion
       - This is the exact rot the Fail-Honest Contract exists to prevent
 
-    Required behavioral tokens (in close proximity, both files):
+    Required behavioral tokens in flow.md:
       - failure condition: "fails" OR "aborts" OR "rejected"
       - action: "proceed"
       - documentation: "information gap" OR "marked stale"
@@ -139,15 +137,15 @@ def test_death_dc5__escape_clause_for_failed_autoregen() -> None:
     The anti-over-fit rule does NOT apply — this is a death test, and the
     failure mode tokens ARE the contract.
     """
-    for skill_path in ("pre-thinking/SKILL.md", "pre-thinking/flow.md"):
-        content = _read_skill(skill_path)
-        assert _ESCAPE_CLAUSE_RE.search(content) is not None, (
-            f"DC-5 FAIL: {skill_path} is missing the escape clause for failed "
-            "auto-initiated regen. When auto-initiated regen fails, aborts, or is "
-            "Phase-4-rejected, the agent must NOT block indefinitely or fake completion. "
-            "Add: 'If regen fails, aborts, or is rejected → proceed with map marked "
-            "stale, record an information gap, continue planning on that basis.'"
-        )
+    flow = _read_skill("pre-thinking/flow.md")
+    skill = _read_skill("pre-thinking/SKILL.md")
+
+    assert _ESCAPE_CLAUSE_RE.search(flow) is not None, (
+        "DC-5 FAIL: pre-thinking/flow.md is missing the escape clause for failed "
+        "auto-initiated regeneration."
+    )
+    assert "`flow.md` is the sole owner of executable procedure" in skill
+    assert "If this summary conflicts with `flow.md`, `flow.md` wins." in skill
 
 
 # ---------------------------------------------------------------------------
@@ -155,43 +153,16 @@ def test_death_dc5__escape_clause_for_failed_autoregen() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_unit__pre_thinking_skill_has_auto_initiate_on_over_threshold() -> None:
+def test_unit__pre_thinking_skill_points_to_canonical_autoregen_procedure() -> None:
     """
-    Contract source: skills/pre-thinking/SKILL.md documented-artifact contract.
-
-    The Atomic Context Boundary section must contain an imperative auto-initiate
-    instruction that fires when churn exceeds staleness_churn_threshold.
-
-    Assertion is anchored: "auto-initiate" must appear in proximity to "churn",
-    "threshold", or "staleness_churn_threshold" so a misplaced token in an
-    unrelated section does not produce a false green.
-
-    Advisory wording ("consider regenerating", "may regenerate") silently degrades
-    the trigger to optional — the required wording is imperative "auto-initiate".
-    The token itself IS the contract (per scar item: "wording must be imperative").
-
-    Contract-gate:
-      - Behavior-preserving refactor that preserves proximity of "auto-initiate"
-        near "churn"/"threshold": assertion stays green.
-      - Clause deleted, moved to unrelated section, or replaced with advisory
-        wording: assertion goes red.
+    SKILL.md owns entry and points to flow.md; it must not duplicate the
+    auto-regeneration procedure owned by flow.md.
     """
     content = _read_skill("pre-thinking/SKILL.md")
 
-    # Proximity-anchored: auto-initiate must appear near churn/threshold context
-    _AUTO_INITIATE_ANCHORED = re.compile(
-        r"auto-initiate.{0,400}(churn|threshold|staleness_churn_threshold)"
-        r"|"
-        r"(churn|threshold|staleness_churn_threshold).{0,400}auto-initiate",
-        re.IGNORECASE | re.DOTALL,
-    )
-    assert _AUTO_INITIATE_ANCHORED.search(content) is not None, (
-        "pre-thinking/SKILL.md is missing the imperative 'auto-initiate' instruction "
-        "near the churn/threshold condition in the Atomic Context Boundary section. "
-        "Advisory wording ('consider', 'may') or a misplaced token in an unrelated "
-        "section will not satisfy this guard — the instruction must be co-located with "
-        "the threshold condition."
-    )
+    assert "`flow.md` is the sole owner of executable procedure" in content
+    assert "Exact procedures and write formats: `flow.md`" in content
+    assert "auto-initiate" not in content
 
 
 def test_unit__pre_thinking_flow_auto_initiate_retains_phase4_review() -> None:

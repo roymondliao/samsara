@@ -26,6 +26,7 @@ from tests.test_auto_mode.test_protocol_helpers import (
     BOOTSTRAP,
     EARLY_STAGE_SKILLS,
     LATER_STAGE_SKILLS,
+    PRE_THINKING_FLOW,
     REQUIRED_WORKFLOW_STAGES,
     read,
     section,
@@ -195,16 +196,16 @@ class TestPrimaryEvaluatorProtocol:
         decision_sections = {
             "research transition": (EARLY_STAGE_SKILLS["research"], "Transition"),
             "pre-thinking gap questions": (
-                EARLY_STAGE_SKILLS["pre-thinking"],
-                "Step 5 — Ask what must be asked",
+                PRE_THINKING_FLOW,
+                "Execution Mode Routing",
             ),
             "pre-thinking evaluation contract": (
-                EARLY_STAGE_SKILLS["pre-thinking"],
-                "Evaluation Contract",
+                PRE_THINKING_FLOW,
+                "Execution Mode Routing",
             ),
             "pre-thinking commitment": (
-                EARLY_STAGE_SKILLS["pre-thinking"],
-                "Commitment",
+                PRE_THINKING_FLOW,
+                "Execution Mode Routing",
             ),
             "planning transition": (EARLY_STAGE_SKILLS["planning"], "Transition"),
             "implement execution mode": (
