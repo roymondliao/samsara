@@ -109,3 +109,20 @@ def test_death__kill_conditions_are_evidence_backed_not_quota_driven() -> None:
     assert guide.count('  - condition: "If') == 1
     assert autopsy_section.count('- condition: "<when to abandon this>"') == 1
     assert "independently supported conditions" in autopsy_section
+
+
+def test_death__north_star_values_expose_unknowns_and_their_basis() -> None:
+    """Metric placeholders must not force unsupported baselines or targets."""
+    skill = _read(RESEARCH_SKILL)
+    north_star = _section(_read(KICKOFF), "North Star")
+
+    assert "Do not infer metric values." in skill
+    assert "Use `unknown`" in skill
+    assert "current: <value | unknown>" in north_star
+    assert "target: <value | unknown>" in north_star
+    assert north_star.count("current_basis:") == 2
+    assert north_star.count("target_basis:") == 2
+    assert north_star.count("<measurement source | missing input>") == 2
+    assert north_star.count("<decision rationale | missing input>") == 2
+    assert "current: <value>" not in north_star
+    assert "target: <value>" not in north_star

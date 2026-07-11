@@ -46,15 +46,19 @@
 metric:
   name: "<metric name>"
   definition: "<precise definition>"
-  current: <value>
-  target: <value>
+  current: <value | unknown>
+  current_basis: "<measurement source | missing input>"
+  target: <value | unknown>
+  target_basis: "<decision rationale | missing input>"
   invalidation_condition: "<when this goal itself is wrong>"
   corruption_signature: "<how to detect if metric is being gamed>"
 
 sub_metrics:
   - name: "<sub-metric>"
-    current: <value>
-    target: <value>
+    current: <value | unknown>
+    current_basis: "<measurement source | missing input>"
+    target: <value | unknown>
+    target_basis: "<decision rationale | missing input>"
     proxy_confidence: high | medium | low
     decoupling_detection: "<how to detect proxy diverging from main>"
 ```

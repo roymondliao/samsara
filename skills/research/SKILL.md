@@ -111,6 +111,9 @@ Define the North Star together with:
   degradation be detected?
 - **Proxy confidence:** Mark each proxy `high | medium | low` and define a
   mechanism that detects divergence from the main metric.
+- **Evidence boundary:** Do not infer metric values. Use `unknown` when a current
+  value or target lacks support. Record the measurement source or missing input
+  in `current_basis`, and the decision rationale or missing input in `target_basis`.
 
 ## Output
 
