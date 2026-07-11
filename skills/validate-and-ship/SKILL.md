@@ -14,9 +14,10 @@ Run yin-side validation, review failure budgets, and prepare a ship manifest tha
 Read from the feature's `changes/` directory:
 - `index.yaml` — all tasks should be `done` or `done_with_concerns`
 - `pre-thinking.md` — Evaluation Contract and Primary evaluator
+- `2-plan.md` — Planning judgments and file/task allocation
 - `acceptance.yaml` — acceptance criteria to validate against
 - `scar-reports/` — all scar reports from implementation
-- `overview.md` (Real Seams) and `index.yaml` (`seam`/`affects`/`anchors`) — inputs to the terminal format audit (Step 1)
+- `overview.md` (Real Seams Projection) and `index.yaml` refs — inputs to the terminal format audit (Step 1)
 
 The feature branch must have committed changes ahead of the base branch (typically `main`) — Step 0's diff gate depends on committed changes existing.
 
@@ -141,9 +142,10 @@ declarations is review's judgment lane, not this audit's. Re-run both
 per-skill format validators against the feature directory and paste their
 output:
 
-```bash
-python skills/planning/scripts/validate_format.py changes/<feature>/
-python skills/implement/scripts/validate_format.py changes/<feature>/ --repo-root <repo-root>
+```text
+source .venv/bin/activate
+uv run python skills/planning/scripts/validate_format.py changes/<feature>/
+uv run python skills/implement/scripts/validate_format.py changes/<feature>/ --repo-root <repo-root>
 ```
 
 - Any `FINDING` (dangling seam id, affects pointing at no task, forced_by
@@ -178,10 +180,15 @@ If the project has E2E tests, run them. Report results.
 
 ### 5. Reconciliation Check
 
-Compare the actual implementation against the spec (`2-plan.md`):
-- Did any behavior drift from what was specified?
-- Is the drift within acceptable tolerance?
-- Document any intentional deviations and their rationale
+Reconcile each concern against its authority artifact:
+
+- Behavior → `acceptance.yaml` scenarios and `PT-EVAL` in `pre-thinking.md`.
+- File/task allocation → cited `PL-D*` entries in `2-plan.md` and refs in
+  `index.yaml`.
+- Design consequences → cited `PT-*` entries in `pre-thinking.md`.
+
+Report drift by source ref. Record intentional deviations and their rationale;
+do not treat the derived Overview as authority.
 
 ### 6. Code Review
 

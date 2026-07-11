@@ -23,6 +23,7 @@
 **Confidence:** <confident (basis above) | not confident → Step 3>
 
 ### Domain core identity (codebase-craft)
+**Decision ID:** PT-CI
 **Core identity:** <one or two lines — what this system, in feature scope, essentially is>
 **Operability check:** <name one concrete structural decision this identity adjudicates; if two opposite choices both "serve" it, rewrite>
 
@@ -39,6 +40,7 @@
 ## Step 4 — Design decisions
 
 ### Decision: <dimension label>
+**Decision ID:** <PT-D1>
 **Box:** <evidence-decided | self-derived | needs-external-call>
 **Decision:** <the call made, or "→ Step 5" if needs-external-call>
 **Basis / derivation chain:** <cite source (evidence-decided) | write the chain to a named root (self-derived) | the preference the agent can't invent (needs-external-call)>
@@ -47,6 +49,7 @@
 ### Real seams (codebase-craft — a named decision category)
 
 #### Seam: <name>
+**Decision ID:** <PT-S1>
 **Box:** <evidence-decided | self-derived | needs-external-call>
 **What it is:** <the module/abstraction boundary; down to function/module/abstraction boundary, no lower>
 **Evidence tier:** <already-happened (git history) | domain-essential — pre-thinking cannot mark planned-change; planning adds that later>
@@ -60,11 +63,13 @@
 ## Step 6 — Honest handoff
 
 ### L1 (handoff to planning — Key Decisions single source)
+**Decision refs:** <PT-CI, PT-S1, ...>
 **Core identity:** <restate from Step 2>
 **Real seams:** <list from Step 4 with their evidence tiers>
 
 ### Evaluation Contract
 
+**Contract ID:** PT-EVAL
 **Primary evaluator:** <one canonical method>
 **Agent can perform it by:** <command / browser flow / artifact inspection / snapshot comparison / log check / stable rubric>
 **Pass signal:** <observable condition>

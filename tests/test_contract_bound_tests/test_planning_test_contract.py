@@ -13,6 +13,7 @@ EVALUATOR_SOURCE = (
 )
 TASK_FORMAT = ROOT / "skills" / "planning" / "task-format.md"
 PLANNING_SKILL = ROOT / "skills" / "planning" / "SKILL.md"
+PLANNING_FLOW = ROOT / "skills" / "planning" / "flow.md"
 HISTORICAL_TASK_WITHOUT_SECTION = (
     ROOT / "changes" / "2026-04-21_security-privacy-review" / "tasks" / "task-1.md"
 )
@@ -23,7 +24,12 @@ def read_task_format() -> str:
 
 
 def read_planning_skill() -> str:
-    return PLANNING_SKILL.read_text(encoding="utf-8")
+    return "\n".join(
+        (
+            PLANNING_SKILL.read_text(encoding="utf-8"),
+            PLANNING_FLOW.read_text(encoding="utf-8"),
+        )
+    )
 
 
 def test_task_template_requires_unit_test_contract_source():

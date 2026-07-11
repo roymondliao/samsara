@@ -26,6 +26,7 @@ from tests.test_auto_mode.test_protocol_helpers import (
     BOOTSTRAP,
     EARLY_STAGE_SKILLS,
     LATER_STAGE_SKILLS,
+    PLANNING_FLOW,
     PRE_THINKING_FLOW,
     REQUIRED_WORKFLOW_STAGES,
     read,
@@ -207,7 +208,7 @@ class TestPrimaryEvaluatorProtocol:
                 PRE_THINKING_FLOW,
                 "Execution Mode Routing",
             ),
-            "planning transition": (EARLY_STAGE_SKILLS["planning"], "Transition"),
+            "planning transition": (PLANNING_FLOW, "7. Transition"),
             "implement execution mode": (
                 LATER_STAGE_SKILLS["implement"],
                 "Execution Mode Selection",

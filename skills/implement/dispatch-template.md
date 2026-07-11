@@ -8,7 +8,7 @@ The dispatch prompt carries four context layers. The design rule behind them: **
 
 | Layer | Content | Source (copied, never invented) | Push/Pull |
 |---|---|---|---|
-| **L1 global position** | core identity + the seam this task sits on | `overview.md` Core Identity + Real Seams entry named by this task's `seam` in `index.yaml` | push |
+| **L1 global position** | core identity + the seam this task sits on | `overview.md` Core Identity Projection + Real Seams Projection entry named by this task's `seam` in `index.yaml` | push |
 | **L2 context projection** | this task's `affects` (who builds on my structure, what they need) + `anchors` (read-first files, path + why) | `index.yaml` task entry | push |
 | **L3 task body** | task-N.md full text | `tasks/task-N.md` | push |
 | **L4 deep reference** | actual file contents | implementer reads them itself, starting from the anchors | pull |
@@ -19,7 +19,7 @@ The dispatch prompt carries four context layers. The design rule behind them: **
 
 - `seam`/`affects`/`anchors` fields present in `index.yaml` → inject L1/L2 as below.
 - Fields absent (a plan written before the global thinking channel existed) → write `global_channel: absent` in Additional Context — explicit and visible, never silently skipped. The implementer then falls back to its own read-before-write neighbor judgment.
-- Fields present but the referenced seam does not resolve in `overview.md` Real Seams → that is a planning format failure the planning validator should have caught; do not dispatch — return to planning.
+- Fields present but the referenced seam does not resolve in `overview.md` Real Seams Projection → that is a planning format failure the planning validator should have caught; do not dispatch — return to planning.
 
 ## Model & Effort Selection
 
@@ -52,14 +52,14 @@ Agent tool:
 
     ## Architecture Context
 
-    [MUST paste RELEVANT SECTIONS of overview.md — curate for this task, don't dump the entire file.
-     Include: Goal, Tech Stack, Key Decisions that affect this task, and relevant Death Cases.]
+    [MUST paste only the relevant derived projections from overview.md. Preserve
+     every source_ref. Do not treat Overview as decision authority.]
 
     ## Global Position (L1)
 
     [COPY from planning products — never compose at dispatch time:
-     - Core identity: paste overview.md's Core Identity section verbatim
-     - This task's seam: paste the Real Seams entry named by this task's `seam`
+     - Core identity: paste overview.md's Core Identity Projection verbatim
+     - This task's seam: paste the Real Seams Projection entry named by this task's `seam`
        field in index.yaml (name, what, evidence tier, planned annotation)
      If the plan predates the global thinking channel, write `global_channel: absent`
      here and omit the L2 section below.]
@@ -96,12 +96,12 @@ Agent tool:
 ## Rules
 
 1. **Always paste full text** — `task-N.md` must be pasted in its entirety. The subagent has no context about file locations.
-2. **Curate overview.md** — Don't paste the entire overview for every task. Select sections relevant to this specific task's scope.
+2. **Curate overview.md** — Copy only relevant derived projections with their `source_ref`; resolve authoritative decision text from the cited source artifact, never from Overview.
 3. **Include death cases** — If `problem-autopsy.md` has death cases relevant to this task, paste them in Additional Context.
 4. **Include prior scars** — If this task depends on a completed task (per `index.yaml`), include relevant scar report items that might affect implementation.
 5. **Absolute paths only** — Working directory must be absolute. The subagent cannot resolve relative paths.
 6. **Measure before writing** — any quantitative value written INTO a dispatch prompt (spec line counts, entry counts, test counts) must come from a command you actually ran (`wc -l`, `grep -c`, ...) before writing it, never an estimate — reviewers inherit dispatch numbers into verdicts (precedent: an unmeasured "30 lines" estimate propagated into a durable review-record verdict when the actual count was 25).
-7. **Copy L1/L2, never compose** — the Global Position and Context Projection sections are verbatim copies of planning's products (overview.md Core Identity / Real Seams, index.yaml `seam`/`affects`/`anchors`). A dispatcher writing its own projection re-creates the hand-curation blind spot the channel exists to remove. A plan without these fields gets an explicit `global_channel: absent`, never a silent omission.
+7. **Copy L1/L2, never compose** — the Global Position and Context Projection sections are verbatim copies of planning's products (Overview projections, index.yaml `seam`/`affects`/`anchors`). A dispatcher writing its own projection re-creates the hand-curation blind spot the channel exists to remove. A plan without these fields gets an explicit `global_channel: absent`, never a silent omission.
 
 ## Anti-Patterns
 
@@ -140,23 +140,23 @@ Agent tool:
     ## Diff
     [MUST paste the unstaged diff of the implementer's changes]
 
-    ## Plan Key Decisions
-    [MUST paste the placement/ownership Key Decisions from overview.md — the
-     decisions that fix WHERE code lives and WHO owns it. These feed the
-     Architectural Placement review dimension. If the plan has no placement/
-     ownership Key Decisions, say so explicitly — do not leave this blank.]
+    ## Placement Authority
+    [Resolve this task's planning_refs and decision_refs from index.yaml. Paste
+     the cited placement/ownership entries from 2-plan.md and pre-thinking.md,
+     including their IDs. Do not source decisions from overview.md. If no cited
+     decision constrains placement/ownership, say so explicitly.]
 
     ## Task Seam (L1)
     [Paste this task's `seam` value from index.yaml and the matching Real Seams
-     entry from overview.md. If the plan has no seam fields (predates the global
+     Projection entry from overview.md, including source_ref. If the plan has no seam fields (predates the global
      thinking channel), write `global_channel: absent` — absence must be visible,
      not blank.]
 
     ## Architectural Placement Review (mandatory)
-    Using the Plan Key Decisions above, check whether the placement/ownership of
-    the changed files matches the plan. Classify each placement/ownership decision
+    Using the Placement Authority above, check whether the placement/ownership of
+    the changed files matches its cited decisions. Classify each applicable decision
     as matches / contradicts / out-of-scope. A contradiction is a finding. If no
-    Key Decisions were provided, say so — absence is a finding, not a silent pass.
+    authority refs were provided, say so — absence is a finding, not a silent pass.
     Seam placement dimension: using the Task Seam above, check whether the changed
     files actually sit on the declared seam (dangling seam ids are the planning
     validator's job — yours is whether the placement is TRUE to the declaration).
@@ -198,7 +198,7 @@ Agent tool:
 
     ## Global Position + Projection (L1/L2)
     [COPY from planning products, same as the implementer dispatch: this task's
-     seam (Real Seams entry) and its `affects` entries from index.yaml. These
+     seam (Real Seams Projection entry, including source_ref) and its `affects` entries from index.yaml. These
      feed the structural-decision cross-check: whether forced_by citations are
      real, and whether a soft seam is backed by a planned change or speculative.
      If the plan predates the channel, write `global_channel: absent`.]

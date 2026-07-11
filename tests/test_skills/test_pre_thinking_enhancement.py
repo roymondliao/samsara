@@ -30,21 +30,22 @@ def test_pre_thinking_requires_agent_evaluable_contract() -> None:
 
 
 def test_return_to_research_cannot_pass_planning_guard() -> None:
-    planning = read("skills/planning/SKILL.md")
+    planning = read("skills/planning/flow.md")
 
-    assert "Decision: Proceed" in planning
-    assert "Decision: Accept gap" in planning
-    assert "Decision: Return to Research" in planning
+    assert "Proceed or Accept gap" in planning
+    assert "return to `samsara:pre-thinking`" in planning
     assert "do not proceed" in planning.lower()
 
 
 def test_planning_consumes_design_and_evaluation_contract() -> None:
-    planning = read("skills/planning/SKILL.md")
+    flow = read("skills/planning/flow.md")
+    acceptance = read("skills/planning/templates/acceptance.yaml")
+    planning = flow + "\n" + acceptance
 
-    assert "Pre-thinking Commitments Consumed" in planning
-    assert "System design constraints" in planning
-    assert "Primary evaluator" in planning
-    assert "Feedback loop" in planning
+    for ref in ("PT-CI", "PT-D", "PT-S", "PT-EVAL"):
+        assert ref in planning
+    assert "evaluator_ref" in acceptance
+    assert "cannot replace it" in flow
 
 
 def test_downstream_skills_use_primary_evaluator_as_feedback_source() -> None:

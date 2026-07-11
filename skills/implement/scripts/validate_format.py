@@ -16,7 +16,7 @@ Checks per changes/<feature>/scar-reports/task-N-scar.yaml:
                        `task-N` ids exist in index.yaml (and when the citing
                        task's affects/depends context is available, the cited
                        task is reachable from it); `seam: <name>` resolves to
-                       overview.md Real Seams; `git:`/file refs point at paths
+                       overview.md Real Seams Projection; `git:`/file refs point at paths
                        that exist
   seam-resolves        serves_seam (non-null) resolves to a declared seam
   systemic-ref         every systemic_ref id exists in .samsara/systemic-scars.yaml
@@ -67,7 +67,10 @@ from pathlib import Path
 try:
     import yaml
 except ImportError:  # pragma: no cover - environment-dependent
-    print("CANNOT VALIDATE: PyYAML is not installed (pip install pyyaml).")
+    print(
+        "CANNOT VALIDATE: PyYAML is unavailable; declare it in pyproject.toml "
+        "and sync with uv."
+    )
     print("This is an unknown outcome, not a pass.")
     sys.exit(2)
 
@@ -110,12 +113,16 @@ def _declared_seams(feature_dir: Path) -> set[str]:
     if not overview.is_file():
         return set()
     text = overview.read_text(encoding="utf-8")
-    start = text.find("### Real Seams")
-    if start == -1:
+    marker = next(
+        (m for m in ("## Real Seams Projection", "### Real Seams") if m in text),
+        None,
+    )
+    if marker is None:
         return set()
-    rest = text[start:]
-    end = re.search(r"^#{1,3} ", rest[len("### Real Seams") :], re.MULTILINE)
-    body = rest if end is None else rest[: end.start() + len("### Real Seams")]
+    rest = text[text.find(marker) :]
+    tail = rest[len(marker) :]
+    end = re.search(r"^#{1,3} ", tail, re.MULTILINE)
+    body = rest if end is None else rest[: len(marker) + end.start()]
     return set(_SEAM_DECL_RE.findall(body))
 
 
@@ -476,7 +483,7 @@ def validate_scar(
         if seam not in (None, "null", "") and str(seam) not in seams:
             findings.append(
                 f"seam-resolves: {where} serves_seam `{seam}` is not declared "
-                "in overview.md Real Seams"
+                "in overview.md Real Seams Projection"
             )
 
         for ref in forced_by:
@@ -494,7 +501,7 @@ def validate_scar(
                 if seam_ref not in seams:
                     findings.append(
                         f"forced-by-resolves: {where} cites seam `{seam_ref}` "
-                        "not declared in overview.md Real Seams"
+                        "not declared in overview.md Real Seams Projection"
                     )
             for file_ref in _FILE_REF_RE.findall(ref_str):
                 resolved = True

@@ -115,25 +115,25 @@ owns it is a boundary assumption. A file placed in the wrong module — `samsara
 code sitting under a shared path, or a shared utility buried in a plugin-specific subtree —
 is an unlabeled, false assumption about ownership that misleads every future maintainer.
 
-Using the **plan's Key Decisions** provided in your dispatch, check whether the
-placement/ownership of the changed files matches the placement/ownership decisions the
-plan committed to. For each placement/ownership Key Decision, classify the diff as
+Using the **Placement Authority** entries provided in your dispatch, check whether the
+placement/ownership of the changed files matches the cited `PT-*` or `PL-D*` decisions.
+For each applicable placement/ownership decision, classify the diff as
 exactly one of three states:
 
 - **matches** — the changed files sit where the decision says they belong
 - **contradicts** — at least one file's location violates the decision. This is a finding:
   Important by default, Critical when it corrupts an ownership boundary (per Mother Rule 2,
   it makes every future maintainer inherit a false assumption about where things live)
-- **out of scope** — the Key Decision does not constrain file location (it is not a
+- **out of scope** — the cited decision does not constrain file location (it is not a
   placement decision). Do not force a non-placement decision (e.g. "use churn not mtime")
   into matches/contradicts
 
-This is the review-side mirror of the planning skill's **File Map Consistency Check** —
+This is the review-side mirror of the planning flow's **File Allocation Consistency** —
 the same three-state placement protocol, applied to the changed files' locations instead
 of the plan's File Map. Keep the two aligned.
 
 **Seam placement dimension.** When the dispatch carries a **Task Seam (L1)**
-section (the task's declared seam from index.yaml plus its Real Seams entry),
+section (the task's declared seam from index.yaml plus its cited Real Seams Projection entry),
 run one more placement check: do the changed files sit on the seam the plan
 declared they would sit on or create?
 
@@ -144,7 +144,7 @@ declared they would sit on or create?
 - Dispatch says `global_channel: absent` (plan predates the channel) → this
   dimension is out of scope; say so.
 - Dispatch is missing the Task Seam section entirely → report it as a finding,
-  same as missing Key Decisions: you were dispatched blind.
+  same as missing Placement Authority refs: you were dispatched blind.
 
 ### 3. Naming Honesty
 
@@ -225,7 +225,7 @@ recognition aids, not as an exhaustive checklist.
 ## Issue Classification
 
 - **Critical** (must fix): Silent failure paths, dishonest naming, deletable dead code, unmarked degradation, security issues, brittle/over-fit tests, tautological/silent-green tests, perfunctory contract labels (Clean Scar), architectural placement that corrupts an ownership boundary
-- **Important** (should fix): Missing death case test coverage, unrecorded assumptions, unclear error classification (transient vs permanent vs unknown), tests bound to the wrong contract (fix the test, not the implementation), architectural placement contradicting the plan's placement/ownership Key Decisions
+- **Important** (should fix): Missing death case test coverage, unrecorded assumptions, unclear error classification (transient vs permanent vs unknown), tests bound to the wrong contract (fix the test, not the implementation), architectural placement contradicting cited placement/ownership authority
 - **Suggestion** (nice to have): Readability improvements, structural improvements, documentation
 
 ---
@@ -251,7 +251,7 @@ recognition aids, not as an exhaustive checklist.
 
 ### Summary
 - Deletable code found: yes/no
-- Placement vs plan Key Decisions: matches / contradicts / out-of-scope / no-key-decisions-provided
+- Placement vs authority refs: matches / contradicts / out-of-scope / no-authority-provided
 - Seam placement (L1): matches / contradicts / out-of-scope / global-channel-absent / no-seam-section-provided
 - Dishonest names found: yes/no
 - Silent rot paths found: yes/no

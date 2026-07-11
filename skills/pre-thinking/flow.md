@@ -83,6 +83,8 @@ While framing, produce one more named output: the **domain core identity**.
 - **Operability test (guards against empty slogans):** the identity must be able to **adjudicate a concrete structural decision**. Test: if two opposite structural choices both "serve" your written identity, it is too vague — rewrite it. (Same "replace anything foolable with checkable" principle.)
 
 Core identity is a **design decision** and rides the Step 6 handoff channel (planning Key Decisions single source). It is feature-level, produced once here (design note 2 §4.1).
+Assign it the stable ID `PT-CI` so downstream artifacts cite it instead of
+copying it as a new decision.
 
 ---
 
@@ -147,6 +149,8 @@ Type checklist (reminder, not a cap; Step 1's type decides which rows to read):
 ### Each dimension lands in one of three boxes
 
 Core mechanism, one sentence: **every decision must land in one of three boxes — there is no fourth box called "I feel."**
+Assign each decision a unique stable ID (`PT-D1`, `PT-D2`, ...). Preserve the ID
+when revising the decision; Planning cites the ID and never allocates a `PT-*` ID.
 
 1. **Evidence-decided** — Step 3's facts forced a single answer; cite the source.
 2. **Self-derived** — evidence didn't force it, but you derive it from a **nameable root** and **write the chain out**. Root = **Samsara axiom + the problem's hard requirements + existing convention/contract (if found and confirmed not rotten)**. You don't need to first classify this change's "novelty/maturity" to decide what to check: go look for a convention/contract; not found → fall back to axiom + hard requirements. The act of looking gives the situated answer; classify-then-check and check-directly are equivalent.
@@ -164,6 +168,8 @@ Core mechanism, one sentence: **every decision must land in one of three boxes �
 ### Codebase-craft — real seams as a named decision category
 
 The domain's essential boundaries the feature **sits on or creates** (module/abstraction boundaries) are a **named decision category** in Step 4 — run through the same three boxes, **not a separate structural pass**.
+Assign each seam decision a unique stable ID (`PT-S1`, `PT-S2`, ...); the
+semantic seam name remains the human-facing resolver key.
 
 - **Where produced:** Step 3's structure/boundary/evolution lenses gathered the facts → converge here into named seam decisions.
 - **Evidence-tier marker (key) + accrues along the pipeline:** the full tier order is
@@ -220,6 +226,7 @@ Hand three things to planning; be honest about your own state.
 ### (1) L1 handoff — core identity + real seams (codebase-craft)
 
 The feature-level **core identity** (Step 2) and **real seams** (Step 4) are design decisions. They travel through the **existing "planning Key Decisions single source" channel** (the same channel Step 4's other design decisions use) — planning cites them, does **not** re-derive them and does **not** add new placement decisions. This is the **L1 contract** the implementer's global-thinking channel later consumes (design notes 1 §10, 2 §7). No new file, no new mechanism: L1 = the shared (identity + seams) + planning's per-task (position) added at decomposition.
+The L1 handoff lists the corresponding `PT-CI` and `PT-S*` IDs.
 
 Do not build the seam's future abstraction now — structural-honesty rules still govern: write the concrete first, abstract when the second real force appears. L1 says *where the joint should be soft*, it does not authorize growing the joint pre-emptively (design note 1 §6).
 
@@ -234,6 +241,7 @@ the existing Evaluation Contract. Write it in this exact structure:
 ```
 ## Evaluation Contract
 
+**Contract ID:** PT-EVAL
 **Primary evaluator:** <one canonical method>
 **Agent can perform it by:** <command, browser flow, artifact inspection, snapshot comparison, log check, or stable rubric>
 **Pass signal:** <observable condition>

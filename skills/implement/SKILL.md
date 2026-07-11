@@ -13,7 +13,7 @@ Execute implementation tasks with death tests before unit tests, and scar report
 
 Read from the feature's `changes/` directory:
 - `index.yaml` — task list with dependencies
-- `overview.md` — shared architecture context
+- `overview.md` — derived shared-context projection with source refs
 - `tasks/task-N.md` — individual task files
 
 ## Process
@@ -117,9 +117,9 @@ Use `subagent_type: "samsara:implementer"` — the agent definition (`agents/imp
 
 The prompt provides per-task context. Follow the template in `./dispatch-template.md`:
 - `task-N.md` — **paste full text**, never tell subagent to read the file
-- `overview.md` — **curate relevant sections**, not the entire file
+- `overview.md` — **copy relevant derived projections**, not the entire file
 - **Global thinking channel (L1/L2)** — COPY the task's `seam` (+ its Real
-  Seams entry and the Core Identity from overview.md) and `affects`/`anchors`
+  Seams Projection entry and the Core Identity Projection from overview.md) and `affects`/`anchors`
   from `index.yaml` into the Global Position / Context Projection sections.
   - Copy, never compose: a dispatcher improvising "what's relevant" is the
     hand-curation blind spot the channel replaces.
@@ -132,7 +132,7 @@ The prompt provides per-task context. Follow the template in `./dispatch-templat
 After each subagent completes (status DONE or DONE_WITH_CONCERNS):
 
 1. **Parallel code review** — dispatch BOTH reviewers in the **same message** to enable parallel execution:
-   - `samsara:code-reviewer` (yin) — spec compliance, deletion analysis, architectural placement (against the plan's placement/ownership Key Decisions — the yin dispatch includes them; see `./dispatch-template.md`), naming honesty, silent rot paths, correctness
+   - `samsara:code-reviewer` (yin) — spec compliance, deletion analysis, architectural placement (against placement/ownership authority resolved from the task's planning/design refs), naming honesty, silent rot paths, correctness
    - `samsara:code-quality-reviewer` (quality) — structural truth-telling: S/O/L/I/D + Cohesion/Coupling/DRY/Pattern
 
    See `./dispatch-template.md` for both dispatch templates.
@@ -249,7 +249,7 @@ These are non-negotiable:
 - Assume an absent review output means PASS — missing reviewer output is always a FAIL
 - Add a dependency without recording in the scar why the standard library or an existing dependency cannot do it — an unjustified dependency is deletable by default
 - Write death tests before reading the files you are about to touch — a death test built on assumed (not read) conventions pins the wrong contract
-- Compose the L1/L2 sections at dispatch time instead of copying them from planning's products (overview.md Core Identity / Real Seams, index.yaml `seam`/`affects`/`anchors`) — improvised projection re-creates the curation blind spot; a plan without the fields gets an explicit `global_channel: absent`, never a hand-written substitute
+- Compose the L1/L2 sections at dispatch time instead of copying them from planning's products (Overview projections with source refs, index.yaml `seam`/`affects`/`anchors`) — improvised projection re-creates the curation blind spot; a plan without the fields gets an explicit `global_channel: absent`, never a hand-written substitute
 - Commit without running implement's format validator on the scar reports, or without pasting its output — a missing validator output is a visible missing at handoff, and committing over it converts it back into a silent skip
 - Overrule a disputed Critical structural judgment yourself (either direction) — the arbitration path runs through the user (human mode) or `samsara:auto-gatekeeper` (auto mode), never reviewer-auto-wins or implementer self-exemption
 
