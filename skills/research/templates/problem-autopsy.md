@@ -22,10 +22,12 @@ translation_delta:
 
 ## kill_conditions
 
+<!-- Add entries only for independently supported conditions. Do not duplicate
+     or invent entries to satisfy a count. If none can be supported, use the
+     missing-input marker instead of this block. -->
+
 ```yaml
 kill_conditions:
-  - condition: "<when to abandon this>"
-    rationale: "<why>"
   - condition: "<when to abandon this>"
     rationale: "<why>"
 ```

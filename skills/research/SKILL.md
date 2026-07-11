@@ -57,8 +57,9 @@ beneath each prompt:
 2. User-facing prompt:
    > 這個問題在什麼條件下不應該被解決？
 
-   Identify at least two cases where implementation should be refused even if
-   technically feasible.
+   Seek independent cases where implementation should be refused even if
+   technically feasible. Record every case supported by the available evidence.
+   Do not invent cases to satisfy a count.
 3. User-facing prompt:
    > 誰會因為這個問題被解決而受損？
 

@@ -36,14 +36,14 @@ translation_delta:
 ```
 
 ### 4. kill_conditions
-At least two conditions under which this problem should be abandoned, even if technically solvable:
+Seek independent conditions under which this problem should be abandoned, even
+if technically solvable. Record every condition supported by the available
+evidence. Do not invent entries to satisfy a count.
 
 ```yaml
 kill_conditions:
   - condition: "If fewer than 5% of users encounter this issue"
     rationale: "Cost of fix exceeds impact"
-  - condition: "If the upstream auth service is being replaced within 3 months"
-    rationale: "Fix would be thrown away"
 ```
 
 ### 5. damage_recipients

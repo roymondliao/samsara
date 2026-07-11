@@ -91,3 +91,21 @@ def test_death__problem_autopsy_records_missing_input_without_inference() -> Non
     assert "Each section must be filled" not in guide
     assert marker in autopsy
     assert "Do not invent" in autopsy
+
+
+def test_death__kill_conditions_are_evidence_backed_not_quota_driven() -> None:
+    """Kill-condition rigor comes from evidence, not a fixed item count."""
+    skill = _read(RESEARCH_SKILL)
+    guide = _read(AUTOPSY_GUIDE)
+    autopsy_section = _section(_read(AUTOPSY), "kill_conditions")
+    normalized_skill = " ".join(skill.split())
+    normalized_guide = " ".join(guide.split())
+
+    assert "at least two" not in f"{skill}\n{guide}".lower()
+    assert "supported by the available evidence" in normalized_skill
+    assert "supported by the available evidence" in normalized_guide
+    assert "Do not invent" in normalized_skill and "satisfy a count" in normalized_skill
+    assert "Do not invent" in normalized_guide and "satisfy a count" in normalized_guide
+    assert guide.count('  - condition: "If') == 1
+    assert autopsy_section.count('- condition: "<when to abandon this>"') == 1
+    assert "independently supported conditions" in autopsy_section
