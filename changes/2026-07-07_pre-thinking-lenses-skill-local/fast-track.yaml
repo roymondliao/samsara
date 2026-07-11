@@ -1,0 +1,20 @@
+type: fast_track
+description: "Move lenses.md from shared root references into the pre-thinking skill-local references directory."
+death_clause: "If lenses.md appears in repo-root references/ again while only pre-thinking consumes it, this change is failed."
+acceptance:
+  - "references/lenses.md does not exist in the live source tree."
+  - "skills/pre-thinking/references/lenses.md exists and contains the default lens list."
+  - "pre-thinking instructions identify lenses.md as a skill-local reference."
+  - "pre-thinking conversion still carries lenses.md as a skill-local reference, not a shared reference."
+scar_tag: none
+scar_items: []
+files_changed:
+  - "references/lenses.md"
+  - "skills/pre-thinking/SKILL.md"
+  - "skills/pre-thinking/flow.md"
+  - "skills/pre-thinking/references/lenses.md"
+  - "tests/test_skills/test_pre_thinking_lenses_reference.py"
+  - "changes/2026-07-07_pre-thinking-lenses-skill-local/fast-track.yaml"
+quality_review:
+  reviewed_criteria: [C5, C6, C7, C8]
+  violations: []

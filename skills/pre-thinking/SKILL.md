@@ -78,7 +78,7 @@ Turn the research conclusions into a set of **explicitly written assumptions** �
 
 Send **independent searchers** at the not-confident assumptions to gather **facts only** — no "recommendation" field. Multi-lens exists for exactly one reason: to cover blind spots (the main agent only searches where it already thought to look). Lens count is emergent from Step 2's not-confident-assumption count — 0 not-confident assumptions → 0 searchers.
 
-Among the default lenses (`references/lenses.md`), the **structure / evolution / boundary** lenses gather the facts that feed the real-seam decision in Step 4: existing boundaries, coupling, existing patterns, and how this area has historically changed (the **already-happened** evidence tier). Each searcher returns facts (with sources), side-path discoveries, and gaps — never judgment (design note 2 §4.2).
+Among the default lenses (skill-local `references/lenses.md`), the **structure / evolution / boundary** lenses gather the facts that feed the real-seam decision in Step 4: existing boundaries, coupling, existing patterns, and how this area has historically changed (the **already-happened** evidence tier). Each searcher returns facts (with sources), side-path discoveries, and gaps — never judgment (design note 2 §4.2).
 
 ## Step 4 — Converge to design decisions
 

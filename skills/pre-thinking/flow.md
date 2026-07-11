@@ -90,7 +90,7 @@ Go find evidence for the not-confident assumptions. **Why multi-lens and not the
 - **How to dispatch:** the lens (question to answer) + thinking scope (Step 2's box) + starting points (a few entry files, but a *start* not "only search these," else you smuggle the main agent's blind spot into the searcher) + return format.
 - A lens that fails or comes back blank → record it as an "unverified gap," do not carry on as if nothing happened.
 - **Searcher count comes from Step 2, not Step 1:** lenses dispatched = how many not-confident assumptions Step 2 had / how many kinds of places evidence is scattered across — 0 not-confident assumptions → 0 searchers, main agent looks itself. This is the direct consequence of deleting the "light thinking" tier, not a new rule.
-- A **default lens list** (`references/lenses.md`) serves as a reminder (not a cap): after deriving lenses, check it for known-important ones you missed; deliberately skipping one needs a written reason.
+- A **default lens list** (skill-local `references/lenses.md`) serves as a reminder (not a cap): after deriving lenses, check it for known-important ones you missed; deliberately skipping one needs a written reason.
 - **codebase-map as a start, not truth:** when `.samsara/codebase-map.yaml` exists and is fresh enough, searchers take it as a starting hypothesis (saves re-digging), but **live codebase wins** — where map and reality disagree, trust reality and surface the drift. Map missing or stale → don't invent from memory; search.
 - **Sole writer:** searchers only *return results* to the main agent; they write no file. `pre-thinking.md` is written by the main agent alone (avoids many searchers writing one file at once).
 
