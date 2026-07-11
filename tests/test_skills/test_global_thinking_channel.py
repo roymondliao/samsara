@@ -317,7 +317,8 @@ def test_yin_reviewer_seam_placement_dimension() -> None:
 
 def test_research_problem_essence_is_named_product() -> None:
     skill = read("skills/research/SKILL.md")
-    assert "問題本質" in skill
+    assert "Problem Essence" in skill
+    assert "named handoff to pre-thinking" in skill
     kickoff = read("skills/research/templates/kickoff.md")
     assert "## Problem Essence" in kickoff
     assert "## Boundary Scope" in kickoff
@@ -325,5 +326,5 @@ def test_research_problem_essence_is_named_product() -> None:
 
 def test_research_boundary_scope_three_lists() -> None:
     kickoff = read("skills/research/templates/kickoff.md")
-    for token in ("真正要解什麼", "涉及哪些", "哪些現在不做"):
+    for token in ("What must be solved", "Areas involved", "Not solved now"):
         assert token in kickoff, f"boundary-scope list missing: {token}"

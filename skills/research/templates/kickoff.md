@@ -17,9 +17,9 @@
 <!-- Research frames the RANGE structural thinking happens inside — without this,
      pre-thinking cannot tell this feature's real seams from someone else's
      territory. Three lists, subtraction first: -->
-- **真正要解什麼:** <the one thing actually being solved>
-- **涉及哪些:** <areas/modules this genuinely touches>
-- **哪些現在不做:** <adjacent things explicitly NOT solved now — each with one
+- **What must be solved:** <the one thing actually being solved>
+- **Areas involved:** <areas/modules this genuinely touches>
+- **Not solved now:** <adjacent things explicitly NOT solved now — each with one
   line on why not-now (a cut with no reason silently grows back)>
 
 ## Evidence
