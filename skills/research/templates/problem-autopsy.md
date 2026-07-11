@@ -1,5 +1,10 @@
 # Problem Autopsy: <feature-name>
 
+<!-- Address every section with supported content. If a section lacks supporting
+     input, replace its content with this exact marker:
+     Input incomplete; missing: <specific information or evidence>.
+     Do not invent a value or use TBD/N/A. -->
+
 ## original_statement
 <!-- Verbatim problem statement from the user/stakeholder. Do not paraphrase. -->
 

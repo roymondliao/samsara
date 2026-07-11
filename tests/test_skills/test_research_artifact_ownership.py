@@ -77,3 +77,17 @@ def test_death__research_writes_autopsy_before_kickoff() -> None:
 
     output = _section(skill, "Output")
     assert output.index("**problem-autopsy.md**") < output.index("**1-kickoff.md**")
+
+
+def test_death__problem_autopsy_records_missing_input_without_inference() -> None:
+    """Required sections must expose evidence gaps instead of forcing claims."""
+    guide = _read(AUTOPSY_GUIDE)
+    autopsy = _read(AUTOPSY)
+    marker = "Input incomplete; missing: <specific information or evidence>."
+
+    assert "Address every section" in guide
+    assert marker in guide
+    assert "Do not infer" in guide
+    assert "Each section must be filled" not in guide
+    assert marker in autopsy
+    assert "Do not invent" in autopsy

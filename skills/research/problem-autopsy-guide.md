@@ -11,7 +11,13 @@ decision-ready handoff instead.
 
 ## Structure
 
-The autopsy has 6 sections. Each section must be filled — no "TBD" or "N/A" allowed. If you cannot fill a section, that gap IS the finding.
+The autopsy has six sections. Address every section with supported content or
+this exact marker:
+
+`Input incomplete; missing: <specific information or evidence>.`
+
+Name the missing input precisely. The recorded gap is the finding. Do not infer
+a value or use `TBD` or `N/A`.
 
 ### 1. original_statement
 The exact wording of the problem as given by the user or stakeholder. Do not paraphrase. Copy verbatim.
