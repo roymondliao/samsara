@@ -179,7 +179,7 @@ Do not soften a death test in the name of anti-brittleness.
 
 After implementation, produce a scar report as YAML at `changes/<feature>/scar-reports/task-N-scar.yaml` — inside the feature's `changes/` directory, not at the project root. The `<feature>` directory name is provided in your dispatch prompt's Working Directory or Architecture Context.
 
-**Use the exact schema provided in your dispatch prompt** (injected from `scar-schema.yaml`). Do not invent your own format. The schema defines: `task_id`, `completion_status`, `known_shortcuts`, `silent_failure_conditions`, `assumptions_made` (with `verified` flag), `debt_registered`, `debt_location`, `structural_decisions`, optional `narrative`, optional `resolved_items`, and optional `deferred_to_feature_iteration` flags.
+**Use the exact schema provided in your dispatch prompt** (injected from `scar-schema.yaml`). Do not invent your own format. Start from its minimal empty-list skeleton; add only scars that pass `write-filter` and `direct-bullets`. Current items use `what` / `bites_when` / `where`; fixed items add in-place `status: resolved` + `resolution`.
 
 **Structural decisions are dual-face entries (schema granularity-floor, dual-face, forced-by-evidence).** For every structural bet you made — a pattern choice, the creation of or deviation from a boundary/seam, an explicit refusal to abstract (NOT ordinary function splitting or naming; those are below the granularity floor) — write one `structural_decisions` entry carrying both faces:
 
@@ -205,11 +205,11 @@ After writing the initial scar report (step 8), review each scar item and attemp
 - Items that are genuinely accepted risks — leave as-is (no deferred flag needed)
 
 **After fixing:**
-- Mark each fixed item in place with `status: resolved` + a one-line `resolution` (schema resolved-in-place — do not re-copy the item into a separate `resolved_items` list; that older form stays readable per legacy-invalid but is retired for new writes)
+- Mark each fixed item in place with `status: resolved` + a one-line `resolution` (schema resolved-in-place)
 - Re-run all tests to verify no regression
 - Update `completion_status` if fixes changed the assessment
 
-**Anti-pattern: defer everything.** If all scar items are marked `deferred_to_feature_iteration` with zero resolved items (no in-place `status: resolved`, no legacy `resolved_items`), the code reviewer will flag this. Every task should resolve at least its own directly fixable items. If genuinely nothing can be fixed within task scope, explain why in each item's rationale.
+**Anti-pattern: defer everything.** If all scar items are marked `deferred_to_feature_iteration` with zero in-place `status: resolved` items, the code reviewer will flag this. Resolve task-local items. For a genuine deferral, name the concrete cross-task dependency briefly in `accepted_because`.
 
 ## Self-Review
 

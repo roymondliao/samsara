@@ -47,6 +47,7 @@ ROOT = Path(__file__).resolve().parents[2]  # tests/test_skills/ -> repo root
 SCAR_SCHEMA = ROOT / "skills" / "implement" / "templates" / "scar-schema.yaml"
 ITERATION = ROOT / "skills" / "iteration" / "SKILL.md"
 IMPLEMENTER = ROOT / "agents" / "implementer.md"
+CODE_REVIEWER = ROOT / "agents" / "code-reviewer.md"
 SCAR_REPORT_MD = ROOT / "skills" / "implement" / "scar-report.md"
 REGISTRY = ROOT / ".samsara" / "systemic-scars.yaml"
 
@@ -671,6 +672,89 @@ def test_unit__scar_schema_documents_verified_true_single_line_and_status_resolv
     )
 
 
+def test_death__scar_schema_requires_direct_single_fact_bullets() -> None:
+    """A length-bounded bullet can still hide a paragraph-sized argument.
+
+    The write contract must shape wording as well as YAML structure: one
+    actionable fact per bullet, result first, with verification history kept
+    out of the item text.
+    """
+    rules = _rules_section(read(SCAR_SCHEMA)).lower()
+
+    assert "direct-bullets" in rules, (
+        "scar-schema.yaml has no named direct-bullets writing contract"
+    )
+    assert re.search(r"one (?:actionable )?fact", rules) and "bullet" in rules, (
+        "the direct-bullets contract no longer requires one fact per bullet"
+    )
+    assert "result first" in rules or "point first" in rules, (
+        "the direct-bullets contract no longer requires the key point first"
+    )
+    assert "verification" in rules and (
+        "pointer" in rules or "go-elsewhere" in rules
+    ), (
+        "the direct-bullets contract no longer routes verification detail out "
+        "of scar item prose"
+    )
+
+
+def test_death__scar_schema_active_document_is_a_minimal_honest_default() -> None:
+    """The injected YAML must not nudge writers to populate optional scars."""
+    schema = yaml.safe_load(read(SCAR_SCHEMA))
+
+    assert schema == {
+        "task_id": "task-N",
+        "completion_status": "done",
+        "known_shortcuts": [],
+        "silent_failure_conditions": [],
+        "assumptions_made": [],
+        "debt_registered": False,
+        "debt_location": None,
+        "structural_decisions": [],
+    }, (
+        "the active scar-schema document must be the minimal valid report; "
+        "optional examples belong in comments so writers do not fill them by default"
+    )
+
+
+def test_death__scar_schema_omits_task_history_from_injected_writer_contract() -> None:
+    """Implementation history consumes attention but gives writers no action."""
+    schema = read(SCAR_SCHEMA).lower()
+    for historical_phrase in (
+        "three generations",
+        "task-3 onward",
+        "left 不動 by this task",
+    ):
+        assert historical_phrase not in schema, (
+            f"writer contract still contains task-local history: {historical_phrase!r}"
+        )
+
+
+def test_death__live_agents_use_current_scar_item_and_resolution_forms() -> None:
+    """Concrete stale agent instructions override the injected schema."""
+    implementer = read(IMPLEMENTER).lower()
+    reviewer = read(CODE_REVIEWER).lower()
+    integrity = reviewer[reviewer.index("### 6. scar report integrity") :]
+    integrity = integrity.split("\n### 7.", maxsplit=1)[0]
+
+    assert "optional `resolved_items`" not in implementer, (
+        "implementer still advertises retired resolved_items as a current write form"
+    )
+    assert "{description, deferred_to_feature_iteration}" not in integrity, (
+        "code reviewer still requires the retired description item shape"
+    )
+    for slot in ("what", "bites_when", "where"):
+        assert slot in integrity, (
+            f"code reviewer does not require the current {slot!r} scar slot"
+        )
+    assert "status: resolved" in integrity and "resolution" in integrity, (
+        "code reviewer does not validate the current in-place resolution form"
+    )
+    assert "resolved_items" not in integrity, (
+        "code reviewer still reviews the retired resolved_items carrier"
+    )
+
+
 def test_unit__implementer_report_format_avoids_duplicate_scar_carriers() -> None:
     """Contract source: agents/implementer.md Report Format section (artifact shape).
 
@@ -872,10 +956,10 @@ def test_death__schema_declares_new_slot_form_and_budget_numbers() -> None:
     schema = read(SCAR_SCHEMA).lower()
 
     slot_patterns = {
-        "what:": r"^\s*-?\s*what:",
-        "bites_when:": r"^\s*-?\s*bites_when:",
-        "where:": r"^\s*-?\s*where:",
-        "accepted_because:": r"^\s*-?\s*accepted_because:",
+        "what:": r"^\s*(?:#\s*)?-?\s*what:",
+        "bites_when:": r"^\s*(?:#\s*)?-?\s*bites_when:",
+        "where:": r"^\s*(?:#\s*)?-?\s*where:",
+        "accepted_because:": r"^\s*(?:#\s*)?-?\s*accepted_because:",
     }
     for slot, pattern in slot_patterns.items():
         assert re.search(pattern, schema, re.MULTILINE), (
@@ -916,12 +1000,12 @@ _LIVE_SURFACE_DIRS = ("skills", "agents", ".samsara")
 _LIVE_SURFACE_EXCLUDED_PARTS = {"changes", "docs", "bugfix", "dist"}
 _LIVE_SURFACE_SUFFIXES = {".md", ".py", ".yaml", ".yml"}
 
-# Single source of truth for the 10 named anchors that replaced
-# scar-schema.yaml's retired Rule 1-17 numbering (task-2). Referenced by both
+# Single source of truth for the named scar-schema anchors. Referenced by both
 # the death test's docstring/assert message and the unit test below it, so
 # the list is written out exactly once.
 _NAMED_ANCHORS = (
     "write-filter",
+    "direct-bullets",
     "verified-pointer",
     "no-review-diary",
     "granularity-floor",
@@ -1057,7 +1141,7 @@ def test_unit__rewritten_citations_name_the_correct_anchor() -> None:
     # positive contract covers every live citation surface regardless of
     # which task wrote it (a future trim here is just as silent a break).
     scar_report_md = read(SCAR_REPORT_MD)
-    for anchor in ("write-filter", "no-review-diary"):
+    for anchor in ("write-filter", "direct-bullets", "no-review-diary"):
         assert anchor in scar_report_md, (
             f"skills/implement/scar-report.md no longer names the {anchor!r} "
             "anchor at its scar-schema.yaml citation point."

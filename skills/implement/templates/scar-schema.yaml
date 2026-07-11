@@ -1,174 +1,124 @@
-# Scar Report Schema — Write Contract (Single Source of Truth)
+# Scar Report — Current Write Contract
+# Inject this file verbatim into implementer and iteration-fix prompts.
+# Write to: changes/<feature>/scar-reports/task-N-scar.yaml
+
+# --- Rules ---
 #
-# This file is the WRITE-side contract for scar reports: the current item
-# form every writer uses, the budget every field/item/report must fit
-# inside, and where content that looks scar-shaped but isn't should go
-# instead. It is injected verbatim into every implementer/iteration-fix
-# dispatch prompt (skills/implement/dispatch-template.md:38,84) — keep it
-# short enough to paste in full.
+# write-filter: before writing a scar, ask whether a future reader would
+#   change their action because of it. Empty lists are valid after inspection;
+#   never invent or inflate a scar to avoid an empty report.
 #
-# Read-side concerns — how an aggregator identifies and counts THREE
-# generations of scar report history (plain string / description blob /
-# this file's current what+bites_when slot form), and all backward-compat
-# reading rules — live SOLELY in skills/iteration/SKILL.md Step 1. This
-# file documents only the CURRENT format a writer should use; restating
-# compat reading rules here would let the write-side and read-side copies
-# drift independently (DC-C single-source drift) — do not do it.
+# direct-bullets: write one actionable fact per YAML bullet. Put the result first
+#   and name the concrete trigger and location. Do not mix rationale,
+#   review history, or verification detail into item text.
 #
-# Location: changes/<feature>/scar-reports/task-N-scar.yaml (inside the
-# feature directory, not at the project root).
+# Budget — field ≤200 chars (where ≤120) | item ≤6 lines | narrative
+#   ≤10 lines | report ≤90 lines. Capped fields: what, bites_when, where,
+#   accepted_because, resolution, assumption, and note. Structural entries
+#   have their own ≤10 lines-per-entry budget.
+#
+# legacy-invalid: new known_shortcuts and silent_failure_conditions items
+#   use what/bites_when/where slots, not description blobs or bare strings.
+#
+# verified-pointer: with verified: true, keep assumption to a single line and
+#   note to an evidence pointer (file:line or test name). Without a pointer,
+#   use verified: false and state the consequence briefly.
+#
+# resolved-in-place: a fixed item keeps its original slots and adds
+#   `status: resolved` plus a one-line `resolution`. Do not copy it elsewhere.
+#
+# no-review-diary: omit narrative unless the slots cannot carry necessary
+#   scar context. Never use it for round-by-round or review-round history.
+#
+# granularity-floor (granularity floor): structural_decisions records only a
+#   pattern, boundary, seam decision, or explicit refusal to abstract.
+#   Function splitting, naming, and ordinary control flow are not structural bets. Use
+#   `structural_decisions: []` when no structural bet was made.
+#
+# dual-face: each structural decision includes forced_by plus refused and
+#   risk_if_wrong. One face without the other is not a complete record.
+#
+# forced-by-evidence: forced_by cites evidence that existed at decision time:
+#   an affects entry, git/file ref, or declared seam. This prevents post-hoc
+#   rationalization. Use pointers, not prose.
+#
+# systemic-ref: for a recurring cross-feature fact, write systemic_ref plus
+#   one note naming this task's concrete landing point. Do not copy the
+#   registry description. Resolution lives in skills/iteration/SKILL.md.
+#
+# go-elsewhere:
+#   - review verdicts and round history -> review-record.md
+#   - verification details -> test name or file:line pointer
+#   - before/after counts -> commit message
+#   - recurring cross-feature fact -> systemic_ref
 
 # --- Schema ---
 
 task_id: task-N
 completion_status: done
-  # done = all tests pass, no unverified assumption could affect correctness
-  # done_with_concerns = tests pass, but an unverified assumption could affect correctness
-  # blocked = cannot complete due to an external dependency
+known_shortcuts: []
+silent_failure_conditions: []
+assumptions_made: []
+debt_registered: false
+debt_location: null
+structural_decisions: []
 
-known_shortcuts:
-  # A corner cut, in one line each. Apply the write-filter (below) before
-  # adding anything.
-  - what: "the scar itself, one plain-language line"              # required, <=200 chars
-    bites_when: "the condition under which it bites, one line"    # required, <=200 chars
-    where: "file:line or a section pointer"                       # required, <=120 chars
-    accepted_because: "why this was accepted as-is, one line"     # optional, <=200 chars
-    deferred_to_feature_iteration: false  # optional, default false — true only if fixing needs cross-task context
-    status: resolved                      # optional — present only once fixed in place
-    resolution: "one line describing what was done"  # required when status: resolved
-    # deferred_to_feature_iteration and status: resolved are mutually exclusive
-    # alternatives (an item is deferred OR resolved, never both) — this is what
-    # keeps a fully-populated item within the 6-line item budget.
-  - systemic_ref: <id>          # a cross-feature recurring fact — see systemic-ref below
-    note: "this task's concrete landing point, one line, <=200 chars"
+# completion_status:
+#   done = tests pass and no unverified assumption affects correctness
+#   done_with_concerns = tests pass but an unverified assumption may matter
+#   blocked = an external dependency prevents completion
 
-silent_failure_conditions:
-  # Same item form as known_shortcuts above (what/bites_when/where/
-  # accepted_because, or systemic_ref) — under what conditions does this
-  # implementation silently produce wrong results?
-  - what: "..."
-    bites_when: "..."
-    where: "..."
-
-assumptions_made:
-  - assumption: "what was assumed"          # <=200 chars
-    verified: false                          # true only if you actually tested it
-    note: "evidence pointer if verified, consequence if not"  # <=200 chars — see verified-pointer below
-    deferred_to_feature_iteration: false     # optional
-
-debt_registered: true   # true iff known_shortcuts or silent_failure_conditions is non-empty
-debt_location: "file:line or pointer"  # null if debt_registered is false
-
-narrative: |  # OPTIONAL, <=10 lines — only for scar context the fields above cannot carry.
-  Free-form text. Not a review-round diary (see no-review-diary below), and
-  not a place to restate item text already captured in the fields above.
-
-structural_decisions:  # dual-face records of STRUCTURAL BETS made in this task
-  # One entry per structural bet: a pattern choice, the creation of or deviation
-  # from a boundary/seam, or an explicit refusal to abstract. NOT for ordinary
-  # function splitting or naming — those sit below the granularity floor and
-  # never get an entry. A yang face (why this wall is here) and a yin face
-  # (what happens if the wall is wrong) together form ONE decision record:
-  # existence (yang) is responsibility (yin).
-  - decision: "what structural choice was made, one line"
-    serves_seam: "<seam-name>"  # L1 — which declared seam (overview.md Real Seams)
-                                # this decision sits on; null if the bet is a pure
-                                # refusal not tied to a declared seam
-    forced_by:                  # YANG — evidence that forced this choice. Cite ONLY
-                                # evidence that already existed at decision time:
-                                # "affects task-N: <needs>" (planned change),
-                                # "git: <file:line or ref>" (already happened), or
-                                # "seam: <name>" (domain-essential, declared).
-                                # If no checkable evidence can be cited, this is not
-                                # a structural bet — or it is a feeling; do not write it.
-      - "affects task-7: will add a second exporter (planned change)"
-    refused: "what was deliberately NOT built (e.g. no generic param for an imagined third output)"  # YIN
-    risk_if_wrong: "what breaks or must be reworked if this bet is wrong"  # YIN
-
-# --- Rules ---
+# --- Optional Item Forms ---
+# Use only the fields that apply. Do not copy every form into every report.
 #
-# Budget — validator-enforced from task-3 onward; write within these now:
-#   slot scalar field ≤200 chars (where ≤120) | item ≤6 lines | narrative
-#   ≤10 lines | whole report ≤90 lines. "slot scalar field" means what/
-#   bites_when/where/accepted_because/resolution on known_shortcuts and
-#   silent_failure_conditions items, plus assumption/note on
-#   assumptions_made — NOT structural_decisions fields.
-#   structural_decisions is governed ONLY by its own ≤10 lines-per-entry
-#   budget; the ≤200/≤120 char caps do NOT apply to decision/refused/
-#   risk_if_wrong/serves_seam/forced_by (those fields were explicitly left
-#   不動 by this task and keep their pre-existing, uncapped prose form).
+# known_shortcuts / silent_failure_conditions:
+#   - what: "one concrete scar"
+#     bites_when: "the trigger that makes it matter"
+#     where: "file:line or section pointer"
+#     accepted_because: "omit unless acceptance changes a future action"
+#     deferred_to_feature_iteration: true
 #
-# legacy-invalid: the old free-text `description:` blob, and bare
-#   plain-string list items, are NOT a valid form for anything written from
-#   this point forward — every new known_shortcuts / silent_failure_conditions
-#   item MUST use the what/bites_when/where slot form above. Reading OLD
-#   reports still on disk in these forms is a read-side concern, canonical
-#   in skills/iteration/SKILL.md Step 1 — not restated here.
+# resolved item (alternative to deferred; never use both):
+#   - what: "one concrete scar"
+#     bites_when: "the trigger that made it matter"
+#     where: "file:line or section pointer"
+#     status: resolved
+#     resolution: "the change made"
 #
-# write-filter: before adding ANY item — to known_shortcuts,
-#   silent_failure_conditions, assumptions_made, or narrative — ask: "would
-#   a future reader change their action because they read this line?" If
-#   the honest answer is no, do not write it. An empty list is honest only
-#   if you asked this question and found nothing; a list left empty
-#   because you didn't look hard enough is not honest either.
+# systemic item:
+#   - systemic_ref: <id>
+#     note: "this task's landing point"
 #
-# verified-pointer: a verified: true assumption compresses to a single line
-#   — `assumption` states what was assumed, `note` holds ONLY an evidence
-#   pointer (a file:line reference or a test name), never a paragraph. If
-#   no pointer can be named, the assumption is not actually verified —
-#   mark verified: false instead.
+# assumption:
+#   - assumption: "what was assumed"
+#     verified: true
+#     note: "test name or file:line"
+#     deferred_to_feature_iteration: false
 #
-# resolved-in-place: an item fixed during self-iteration is marked directly
-#   on the ORIGINAL item with `status: resolved` and a one-line `resolution`
-#   — do not copy it into a separate list.
+# narrative: |  # optional; omit when structured fields are sufficient
+#   Necessary context only.
 #
-# no-review-diary: `narrative` is not a round-by-round review-round log
-#   ("Round 1 修了 X, Round 2 修了 Y..."). That is review process history —
-#   see go-elsewhere below — not a scar on the code.
-#
-# granularity-floor: a structural_decisions entry is earned ONLY by a
-#   structural bet (a pattern choice, a boundary/seam created or deviated
-#   from, or an explicit refusal to abstract). Ordinary function splitting
-#   and naming sit below the floor and never get an entry.
-#   `structural_decisions: []` means "checked, no structural bet made" — a
-#   MISSING key means "never considered"; keep these two facts
-#   distinguishable.
-#
-# dual-face: every structural_decisions entry MUST carry both faces —
-#   `forced_by` (yang) AND `refused` + `risk_if_wrong` (yin). An entry with
-#   only the yang face is advertising, not a record.
-#
-# forced-by-evidence: `forced_by` cites only evidence that EXISTED at
-#   decision time — an `affects` entry, a git/file ref (file:line), or a
-#   declared seam name. A forced_by that resolves to nothing checkable is a
-#   dangling ref; this is the defense against post-hoc rationalization.
-#
-# systemic-ref: instead of restating a cross-feature recurring fact,
-#   reference it — `systemic_ref: <id>` plus a one-line `note` naming where
-#   it concretely lands in THIS task. Do NOT copy the registry's
-#   `description` text into the item. Resolution (id present / dangling /
-#   registry missing) is canonical in skills/iteration/SKILL.md Step 1 —
-#   not restated here.
-#
-# go-elsewhere: content that looks scar-shaped but belongs somewhere else —
-#   writing it into the scar report is itself a write-filter miss:
-#     - round-by-round review verdicts           -> review-record.md
-#     - how a fix was verified (test/command run) -> a file:line or test
-#                                                     name pointer, not prose
-#     - before/after counts (lines, tests, etc.)  -> the commit message
-#     - a fact recurring across unrelated features -> systemic_ref (above)
+# structural decision:
+#   - decision: "the structural choice"
+#     serves_seam: "<seam-name>"  # or null for an evidenced refusal
+#     forced_by:
+#       - "affects task-N: <planned need>"
+#     refused: "what was deliberately not built"
+#     risk_if_wrong: "what breaks or must be reworked"
 
 # --- Verbatim Example ---
 #
 # task_id: task-2
 # completion_status: done_with_concerns
 # known_shortcuts:
-#   - what: "Sort order is insertion order, not defined by spec"
-#     bites_when: "a caller depends on alphabetical order"
+#   - what: "Sort order follows insertion order"
+#     bites_when: "a caller expects alphabetical order"
 #     where: "scripts/paper_scan.py:88"
+# silent_failure_conditions: []
 # assumptions_made:
-#   - assumption: "all topic folders match [0-9]{2}_* pattern"
+#   - assumption: "topic folders match [0-9]{2}_*"
 #     verified: true
-#     note: "tests/test_paper_scan.py::test_all_folders_match_pattern"
+#     note: "tests/test_paper_scan.py::test_folder_pattern"
 # debt_registered: true
+# debt_location: "scripts/paper_scan.py:88"
 # structural_decisions: []
