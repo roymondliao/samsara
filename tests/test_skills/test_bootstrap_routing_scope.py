@@ -7,6 +7,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 BOOTSTRAP = ROOT / "skills" / "samsara-bootstrap" / "SKILL.md"
+README = ROOT / "README.md"
 
 
 def _section(text: str, heading: str) -> str:
@@ -65,3 +66,54 @@ def test_death__bootstrap_preserves_confirmation_bias_prohibition() -> None:
     assert "no confirmation-bias implementation" in prohibited
     assert "do not implement only the path that confirms the request" in prohibited
     assert "when its premise does not hold" in prohibited
+
+
+def test_death__bootstrap_uses_one_ordered_routing_contract() -> None:
+    """Ordered rules own behavior; the DOT graph is explicitly derived."""
+    text = BOOTSTRAP.read_text(encoding="utf-8")
+    routing = _section(text, "Skill Matching (Mandatory)")
+    lower = routing.lower()
+
+    assert "route requests in this order" in lower
+    assert "stop at the first match" in lower
+    ordered_markers = (
+        "1. **explicit samsara skill command",
+        "2. **non-workflow conversation",
+        "3. **production failure",
+        "4. **proven low-risk state-changing work",
+        "5. **other state-changing feature work",
+        "6. **unclear mutation authority",
+    )
+    positions = [lower.index(marker) for marker in ordered_markers]
+    assert positions == sorted(positions)
+    assert "### Derived Routing Graph" in routing
+    assert "ordered rules above are canonical" in lower
+    assert "do not infer conditions" in lower
+    assert "```dot" in routing and "digraph samsara_routing" in routing
+    assert re.search(r"\bimplement\s*->\s*validate\b", routing)
+    assert re.search(r"\bimplement\s*->\s*iteration\b", routing)
+    assert re.search(r"\biteration\s*->\s*validate\b", routing)
+
+    assert (
+        "research -> pre-thinking -> planning -> implement -> validate-and-ship"
+        in lower
+    )
+    assert (
+        "research -> pre-thinking -> planning -> implement -> iteration -> validate-and-ship"
+        in lower
+    )
+    assert "entry skills:" not in text.lower()
+    assert "chain skills:" not in text.lower()
+
+
+def test_death__readme_graph_is_a_derived_routing_overview() -> None:
+    """Human visualization must identify its canonical executable source."""
+    text = README.read_text(encoding="utf-8")
+    workflow = _section(text, "Workflow")
+    lower = workflow.lower()
+
+    assert "derived overview" in lower
+    assert "skills/samsara-bootstrap/skill.md" in lower
+    assert "if this overview disagrees" in lower
+    assert "read-only / explanation / meta-audit" in lower
+    assert "research -> pre-thinking -> planning -> implement" in lower

@@ -410,42 +410,34 @@ def test_unit__step0_auto_mode_gate_covers_sixth_semantic() -> None:
     )
 
 
-def test_unit__bootstrap_routing_graph_has_no_security_review_node() -> None:
-    """Contract source: samsara-bootstrap SKILL.md routing dot-graph node
-    set. A behavior-preserving refactor (relabel unrelated nodes, reorder
-    edges) keeps this green; reintroducing a security_review node turns it
-    red."""
+def test_unit__bootstrap_routing_has_no_security_review_stage() -> None:
+    """The ordered routing contract must not restore the folded stage."""
     text = read(BOOTSTRAP)
-    assert "security_review [label=" not in text, (
-        "samsara-bootstrap SKILL.md routing graph still declares a security_review node"
+    assert "samsara:security-privacy-review" not in text, (
+        "samsara-bootstrap routing still declares a standalone security review stage"
     )
 
 
-def test_unit__bootstrap_routing_graph_connects_implement_and_iteration_to_validate() -> (
-    None
-):
-    """Contract source: samsara-bootstrap SKILL.md routing dot-graph edge
-    set — implement and iteration must connect directly to validate."""
-    text = read(BOOTSTRAP)
-    assert re.search(r"\bimplement\s*->\s*validate\b", text), (
-        "samsara-bootstrap routing graph has no direct implement -> validate edge"
-    )
-    assert re.search(r"\biteration\s*->\s*validate\b", text), (
-        "samsara-bootstrap routing graph has no direct iteration -> validate edge"
-    )
+def test_unit__bootstrap_routing_connects_implement_and_iteration_to_validate() -> None:
+    """Both ordered workflow sequences must terminate at validate-and-ship."""
+    text = read(BOOTSTRAP).lower()
+    assert (
+        "research -> pre-thinking -> planning -> implement -> validate-and-ship" in text
+    ), "samsara-bootstrap routing has no direct implement -> validate-and-ship path"
+    assert (
+        "research -> pre-thinking -> planning -> implement -> iteration -> validate-and-ship"
+        in text
+    ), "samsara-bootstrap routing has no iteration -> validate-and-ship path"
 
 
-def test_unit__bootstrap_chain_skills_list_notes_step0_gate() -> None:
-    """Contract source: samsara-bootstrap SKILL.md Chain Skills prose list —
-    the validate-and-ship description must note it includes the security
-    gate, since the standalone skill's list entry is gone."""
+def test_unit__bootstrap_routing_notes_step0_gate() -> None:
+    """The ordered routing contract keeps security inside validation."""
     text = read(BOOTSTRAP)
-    idx = text.find("samsara:validate-and-ship")
-    assert idx != -1, "Chain Skills list has no samsara:validate-and-ship entry"
-    line = text[idx : text.find("\n", idx)]
-    assert "security" in line.lower(), (
-        "Chain Skills list's samsara:validate-and-ship entry does not "
-        "mention that it now includes the security & privacy Step 0 gate"
+    assert (
+        "`validate-and-ship` includes the security and privacy Step 0 gate." in text
+    ), (
+        "Bootstrap routing does not state that validate-and-ship includes "
+        "the security and privacy Step 0 gate"
     )
 
 

@@ -93,85 +93,76 @@ mode until the session-level path is proven.
 
 ## Skill Matching (Mandatory)
 
-Classify the request before invoking a Samsara skill.
+Route requests in this order. Stop at the first match:
 
-**Workflow work** is either:
+1. **Explicit Samsara skill command:** Invoke the named skill. For Research,
+   select execution mode first when the session has none.
+2. **Non-workflow conversation:** Explanation, read-only review, status,
+   general discussion, or Samsara meta-audit. Handle directly; do not invoke a
+   skill merely because one is related.
+3. **Production failure:** If previously working code now fails, invoke
+   `samsara:debugging`.
+4. **Proven low-risk state-changing work:** Offer `samsara:fast-track` and
+   proceed only after its entry gate and user confirmation.
+5. **Other state-changing feature work:** Select execution mode first, then
+   invoke `samsara:research`.
+6. **Unclear mutation authority:** Clarify whether the user wants project-state
+   changes. Do not default to Research from possibility alone.
 
-- an explicit Samsara skill command such as `/research`; or
-- a request to build, change, fix, or otherwise mutate project state.
+Workflow sequences:
 
-For workflow work, invoke the matching entry skill. If the selected entry is
-`samsara:research`, select execution mode first using the section above.
+- Default: `research -> pre-thinking -> planning -> implement -> validate-and-ship`.
+- With feature iteration: `research -> pre-thinking -> planning -> implement -> iteration -> validate-and-ship`.
+- `validate-and-ship` includes the security and privacy Step 0 gate.
+- Fast-track and Debugging follow their own documented transitions.
 
-**Non-workflow conversation** includes explanation, read-only review, status,
-general discussion, and meta-audit of Samsara itself. Handle directly; do not
-invoke a skill merely because one might be related. An explicit skill command
-still overrides this default.
+### Derived Routing Graph
 
-If it is unclear whether the user authorized project-state changes, clarify
-that intent. Do not default to Research from possibility alone.
+The ordered rules above are canonical. This graph visualizes topology only;
+do not infer conditions or priority that the ordered rules do not define.
 
 ```dot
 digraph samsara_routing {
     rankdir=TB;
     node [shape=box];
 
-    bootstrap [label="samsara-bootstrap\n(session-start injection)" shape=doublecircle];
-    input [label="User request"];
+    request [label="User request"];
     classify [label="Classify request" shape=diamond];
-
-    fast_track [label="samsara:fast-track\n(simplified path)"];
-    research [label="samsara:research"];
-    pre_thinking [label="samsara:pre-thinking\n(assumption alignment)"];
-    planning [label="samsara:planning"];
-    implement [label="samsara:implement\n(includes task-level iteration)"];
-    iteration [label="samsara:iteration\n(feature-level iteration)"];
-    validate [label="samsara:validate-and-ship\n(includes security gate)"];
-    debugging [label="samsara:debugging\n(production failure analysis)"];
-    direct [label="Handle directly\n(read-only / meta)" shape=doublecircle];
-
-    fix_size [label="Fix size?" shape=diamond];
+    named [label="Explicitly named skill"];
+    direct [label="Handle directly" shape=doublecircle];
+    mode [label="Select execution mode"];
+    research [label="research"];
+    prethinking [label="pre-thinking"];
+    planning [label="planning"];
+    implement [label="implement"];
+    iteration [label="iteration"];
+    validate [label="validate-and-ship\n(security gate first)"];
+    fasttrack [label="fast-track"];
+    debugging [label="debugging"];
     done [label="Done" shape=doublecircle];
 
-    bootstrap -> input;
-    input -> classify;
-    classify -> fast_track [label="low-risk small change\n+ user confirmation"];
-    classify -> research [label="new feature or requirement"];
-    classify -> debugging [label="production failure"];
+    request -> classify;
+    classify -> named [label="explicit skill command"];
     classify -> direct [label="read-only / explanation / meta-audit"];
+    classify -> debugging [label="system failure"];
+    classify -> fasttrack [label="proven low risk"];
+    classify -> mode [label="other state-changing work"];
+    mode -> research;
 
-    research -> pre_thinking [label="human gate"];
-    pre_thinking -> planning [label="human gate"];
-    planning -> implement [label="human gate"];
-    implement -> iteration [label="human gate: iterate"];
-    implement -> validate [label="human gate: skip iteration"];
-    iteration -> validate [label="iteration done\nor forced stop"];
-    validate -> done [label="human choose"];
-
-    fast_track -> done;
-    debugging -> fix_size;
-    fix_size -> fast_track [label="small fix"];
-    fix_size -> implement [label="large fix"];
+    research -> prethinking;
+    prethinking -> planning;
+    planning -> implement;
+    implement -> validate [label="skip feature iteration"];
+    implement -> iteration [label="run feature iteration"];
+    iteration -> validate;
+    validate -> done;
+    fasttrack -> done;
+    debugging -> fasttrack [label="small fix"];
+    debugging -> implement [label="large fix"];
 }
 ```
 
-**Default rule:** Explicit skill command wins. Otherwise, only state-changing
-engineering work enters the workflow; non-workflow conversation stays direct.
+## Utility Skills
 
-## Available Skills
-
-**Entry skills:**
-- **samsara:research** — Starts new feature or problem work; produces kickoff and problem autopsy artifacts.
-- **samsara:fast-track** — Handles proven low-risk small changes while keeping death tests first.
-- **samsara:debugging** — Investigates failures in previously working production code.
-
-**Chain skills:**
-- **samsara:pre-thinking** — Aligns assumptions and design after research; always runs before planning.
-- **samsara:planning** — Produces the plan, acceptance criteria, and tasks after a Proceed or Accept gap commitment.
-- **samsara:implement** — Executes a ready plan with death tests first and task-level self-iteration.
-- **samsara:iteration** — Optionally resolves cross-task patterns and system-level rot after implementation.
-- **samsara:validate-and-ship** — Runs the security gate, validation, autopsy, and delivery decision.
-
-**Utility skills:**
 - **samsara:codebase-map** — Maps a new or significantly changed codebase.
 - **samsara:writing-skills** — Applies death-first TDD when writing a Samsara skill.

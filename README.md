@@ -58,19 +58,27 @@ The converter translates skills, agents, hooks, and references into the target p
 
 ## Workflow
 
-Samsara provides a structured workflow from research to shipping. Each phase produces specific artifacts that feed into the next.
+Samsara routes state-changing engineering work through a death-first workflow.
+
+> **Derived overview.** The canonical executable routing contract lives in
+> [`skills/samsara-bootstrap/SKILL.md`](skills/samsara-bootstrap/SKILL.md).
+> If this overview disagrees with that contract, the Bootstrap contract wins.
 
 ```
-research ──> pre-thinking ──> planning ──> implement ──> iteration (optional)
-                                               │              │
-                                               v              v
-                                          validate-and-ship (Step 0: security & privacy gate)
-
-fast-track (small, low-risk changes) ──────> done
-debugging (production failures) ──> small fix: fast-track / large fix: implement
+User request
+├─ explicit Samsara skill command -> named skill
+├─ read-only / explanation / meta-audit -> handle directly
+├─ production failure -> debugging -> skill-defined transition
+├─ proven low-risk state change -> fast-track -> done
+└─ other state-changing feature work
+   └─ select execution mode
+      └─ research -> pre-thinking -> planning -> implement
+         ├─ validate-and-ship
+         └─ iteration -> validate-and-ship
 ```
 
-Each transition is a human gate (or an `auto-gatekeeper` decision in auto mode).
+`validate-and-ship` starts with the security and privacy Step 0 gate. Workflow
+transitions use a human gate or an `auto-gatekeeper` decision in auto mode.
 
 ## Auto Mode
 
