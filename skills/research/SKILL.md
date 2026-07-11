@@ -155,9 +155,8 @@ dispatch, the append-only decision log, and what `proceed`/`revise`/
 `reject`/`accept_gap` mean all live there; this section only names what
 Research adds.
 
-- `workflow_prompt` source: the transition prompt below.
-
-  > 「Research 完成。1-kickoff.md 和 problem-autopsy.md 已寫入 `changes/<feature>/`。確認後進入 Pre-thinking？」
+- `workflow_prompt` source: the exact prompt defined in `## Transition`; do not
+  restate it here.
 
 - Decision points this gate covers: the research → pre-thinking transition
   (one decision point).

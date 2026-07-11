@@ -126,3 +126,21 @@ def test_death__north_star_values_expose_unknowns_and_their_basis() -> None:
     assert north_star.count("<decision rationale | missing input>") == 2
     assert "current: <value>" not in north_star
     assert "target: <value>" not in north_star
+
+
+def test_death__research_transition_prompt_has_one_owner() -> None:
+    """Human and auto modes must reference one canonical transition prompt."""
+    skill = _read(RESEARCH_SKILL)
+    transition = _section(skill, "Transition")
+    auto_gate = " ".join(_section(skill, "Auto Mode Gate").split())
+    prompt = (
+        "「Research 完成。1-kickoff.md 和 problem-autopsy.md 已寫入 "
+        "`changes/<feature>/`。確認後進入 Pre-thinking？」"
+    )
+
+    assert skill.count(prompt) == 1
+    assert prompt in transition
+    assert "`workflow_prompt` source: the exact prompt defined in `## Transition`" in (
+        auto_gate
+    )
+    assert "do not restate it here" in auto_gate
