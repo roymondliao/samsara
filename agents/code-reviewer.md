@@ -207,7 +207,9 @@ Critical. It does not satisfy the gate.
 
 If the review includes a scar report (`changes/<feature>/scar-reports/task-N-scar.yaml`), check:
 - **Schema compliance:** Does the report follow `scar-schema.yaml`? Does each item use `what` / `bites_when` / `where`, contain one actionable fact, and lead with the result?
-- **Self-iteration honesty:** If every item is deferred and none has in-place `status: resolved`, flag as Important. Each deferral must name a concrete cross-task dependency briefly, not a defensive narrative.
+- **Self-iteration honesty:** If every item remains `status: open` and none has
+  in-place `status: resolved`, flag as Important: why was no item repairable
+  within task scope? Require concrete evidence, not a defensive narrative.
 - **Resolved item validity:** For each in-place `status: resolved` item, does its `resolution` match the diff?
 
 ### 7. Correctness (last)

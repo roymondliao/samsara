@@ -161,7 +161,9 @@ After each subagent completes (status DONE or DONE_WITH_CONCERNS):
 
 3. Review passes (both) → main agent updates `index.yaml` (status, scar_count, unresolved_assumptions).
 
-Do not proceed to next task with open Critical issues. Do not commit until all tasks complete.
+During initial task execution, do not proceed to the next task with open
+Critical issues and do not commit until all tasks complete. Iteration fix
+re-entry follows the per-fix commit contract below.
 
 ## Iteration Fix Re-entry
 
@@ -253,7 +255,9 @@ These are non-negotiable:
 - **Test Contract Gate before unit tests:** Every unit-test assertion must pass the contract gate in `references/test-contract.md` BEFORE the unit test is written. A unit test asserts a behavioral contract, not implementation details. This gate runs before unit tests, never after — a gate run after the test is already on disk cannot stop a tautological test from landing.
 - **Review before index update:** `index.yaml` is updated only after code-reviewer passes. No pre-review status changes.
 - **UNKNOWN blocks review completion:** Reviewer `UNKNOWN` is not a partial pass. It means a required reference/domain condition could not be verified; do not proceed, update `index.yaml`, or mark review complete until the condition is fixed and both reviewers are re-run.
-- **Commit after all tasks:** Do not commit per-task. Commit once after all tasks complete and all reviews pass.
+- **Commit after all tasks (initial task execution only):** Do not commit
+  per-task. Commit once after all tasks complete and all reviews pass.
+  Iteration Fix Re-entry follows its per-fix commit contract instead.
 - **Inline mode (C) loads no agent definition — the main agent owns the
   implementer constraints directly.** In modes A/B `agents/implementer.md` is
   loaded for the subagent; in mode C it is not, but its constraints still

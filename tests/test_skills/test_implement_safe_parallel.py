@@ -25,6 +25,10 @@ def test_mode_a_is_guarded_not_forbidden() -> None:
 
 def test_parallel_does_not_change_commit_granularity() -> None:
     skill = IMPLEMENT.read_text(encoding="utf-8")
+    normalized = " ".join(skill.split())
 
-    assert "Do not commit per-task" in skill
-    assert "Commit once after all tasks complete" in skill
+    assert "Do not commit per-task" in normalized
+    assert "Commit once after all tasks complete" in normalized
+    assert "initial task execution only" in normalized
+    assert "Iteration Fix Re-entry" in skill
+    assert "per-fix commit" in normalized

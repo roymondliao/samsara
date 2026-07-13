@@ -77,7 +77,8 @@ Guard both failure directions:
   structure.)
 
 **Say the refusal out loud.** When you refuse a tempting generalization, do not
-refuse it silently — record it in the scar report `narrative` or report-back:
+refuse it silently. If the refusal is a structural bet under the schema's
+granularity floor, preserve it in `structural_decisions`:
 "this could be abstracted into ___, but there is currently only 1 consumer /
 no real force, so it is not built; abstract once ___ appears." The layer you
 did NOT write is as much evidence of staff level as the layer you wrote.
@@ -146,7 +147,10 @@ This order cannot be swapped. Death test before unit test. Scar report before se
 8. Run all tests — verify they pass (green)
 9. Write scar report (see Scar Report section)
 10. Self-iteration (see Self-Iteration section)
-11. Update scar report — mark fixed items in place with `status: resolved` + one-line `resolution` (schema resolved-in-place), mark remaining items
+11. Update scar report — mark fixed items in place with `status: resolved` +
+    one-line `resolution` (schema resolved-in-place). Leave every other
+    actionable item at `status: open` with `iteration: null`; Iteration owns
+    accept/defer/block dispositions.
 12. Run all tests again — verify no regression from self-iteration fixes
 13. Report back — do NOT commit. The main agent handles commit after review passes.
 
@@ -204,17 +208,23 @@ After writing the initial scar report (step 8), review each scar item and attemp
 - `known_shortcuts` → if the fix cost is reasonable and within task scope, fix it
 - `silent_failure_conditions` → add detection, handling, or at minimum a log/warning
 
-**What NOT to fix:**
-- Items requiring changes to files outside your task scope — mark `deferred_to_feature_iteration: true`
-- Items requiring cross-task context or architectural decisions — mark `deferred_to_feature_iteration: true`
-- Items that are genuinely accepted risks — leave as-is (no deferred flag needed)
+**What remains open:**
+- Items requiring changes to files outside your task scope
+- Items requiring cross-task context or architectural decisions
+- Items that may be accepted risks but require feature-level judgment
+
+Keep each unresolved item at `status: open` with `iteration: null`. Iteration
+owns later fix/accept/defer/block disposition; Level 1 must not pre-classify it.
 
 **After fixing:**
 - Mark each fixed item in place with `status: resolved` + a one-line `resolution` (schema resolved-in-place)
 - Re-run all tests to verify no regression
 - Update `completion_status` if fixes changed the assessment
 
-**Anti-pattern: defer everything.** If all scar items are marked `deferred_to_feature_iteration` with zero in-place `status: resolved` items, the code reviewer will flag this. Resolve task-local items. For a genuine deferral, name the concrete cross-task dependency briefly in `accepted_because`.
+**Anti-pattern: leave everything open.** If every scar item remains
+`status: open` with zero in-place `status: resolved` items, the code reviewer
+will ask why no task-scope item was repairable. Resolve task-local items; do not
+write a defensive deferral narrative for Iteration.
 
 ## Self-Review
 
@@ -237,7 +247,8 @@ Before reporting back, review your own work:
 - Does each unit carry exactly one death-reason, or did I let some function accumulate several (junk drawer)? Did I split what needed splitting?
 - Are names honest — does every name describe what actually happens, including failure cases?
 - Did I attempt self-iteration on scar items, or did I skip straight to reporting?
-- Are deferred items genuinely outside my task scope, or am I being lazy?
+- Are the items left open genuinely unrepairable within my task scope, or am I
+  being lazy?
 - Did I re-run tests after self-iteration fixes?
 
 If you find issues during self-review, fix them before reporting.
@@ -271,7 +282,8 @@ When done, report:
 - What you tested (death tests and unit tests separately)
 - Files changed
 - Scar report file path — the scar YAML itself is the detail; do not re-paste or re-summarize its contents here
-- **Self-iteration summary:** counts only — items resolved / items deferred / items remaining (numbers, not restated item text)
+- **Self-iteration summary:** counts only — items resolved / items open
+  (numbers, not restated item text)
 - **Self-review findings:** ONLY new findings not already captured in the scar report — do not re-list items the scar report already names
 - "This implementation will fail silently under these conditions: ___" — this must be consistent with, not a reworded restatement of, the silent_failure_conditions already recorded in the scar report
 
