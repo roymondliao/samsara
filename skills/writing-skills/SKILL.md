@@ -31,6 +31,12 @@ digraph writing_skills {
 }
 ```
 
+## Commit Discipline
+
+If a change alters a route, gate, required field, or other observable workflow
+behavior, the commit body must state `Behavior change: <old> -> <new>`. Pure
+rewording or file movement may omit this line.
+
 ## SKILL.md Conventions
 
 ### Frontmatter
