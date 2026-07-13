@@ -62,10 +62,54 @@ def test_death__bootstrap_preserves_confirmation_bias_prohibition() -> None:
     """Translation must retain both the prohibition and its failure branch."""
     text = BOOTSTRAP.read_text(encoding="utf-8")
     prohibited = _section(text, "Prohibited Agent Behavior").lower()
+    normalized = " ".join(prohibited.split())
 
-    assert "no confirmation-bias implementation" in prohibited
-    assert "do not implement only the path that confirms the request" in prohibited
-    assert "when its premise does not hold" in prohibited
+    assert "no confirmation-bias implementation" in normalized
+    assert "do not implement only the path that confirms the request" in normalized
+    assert "when ___ does not hold, ___ happens" in normalized
+
+
+def test_death__bootstrap_preserves_original_ambiguity_and_longevity_scope() -> None:
+    text = BOOTSTRAP.read_text(encoding="utf-8")
+    required = _section(text, "Required Agent Behavior").lower()
+    step0 = _section(text, "STEP 0 — Prerequisites Before Implementation").lower()
+    required = " ".join(required.split())
+    step0 = " ".join(step0.split())
+
+    assert "keep ambiguity visible" in required
+    assert "consequential ambiguity" not in required
+    assert "belongs only to the present moment" in step0
+    assert "will no longer need to exist" in step0
+    assert "lasting responsibility" not in step0
+
+
+def test_death__bootstrap_has_explicit_human_mode_fallback() -> None:
+    mode = _section(
+        BOOTSTRAP.read_text(encoding="utf-8"), "Execution Mode Selection"
+    ).lower()
+    mode = " ".join(mode.split())
+
+    assert "if the user does not choose" in mode
+    assert "record `execution mode: human-in-the-loop` and proceed" in mode
+    assert "unknown mode" in mode and "must never silently become `auto`" in mode
+
+
+def test_death__production_failure_question_reaches_debugging() -> None:
+    routing = _section(
+        BOOTSTRAP.read_text(encoding="utf-8"), "Skill Matching (Mandatory)"
+    )
+    lower = routing.lower()
+    rule2 = lower[
+        lower.index("2. **non-workflow conversation") : lower.index(
+            "3. **production failure"
+        )
+    ]
+    rule2 = " ".join(rule2.split())
+
+    assert "previously working behavior now failing" in rule2
+    assert "production-failure report" in rule2
+    assert 'label="production failure"' in lower
+    assert 'label="system failure"' not in lower
 
 
 def test_death__bootstrap_uses_one_ordered_routing_contract() -> None:

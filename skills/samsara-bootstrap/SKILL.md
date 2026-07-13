@@ -36,12 +36,14 @@ Before implementation, answer four questions:
 1. What implementation is this request steering toward? Do not choose it yet.
 2. Under what conditions should this requirement not be implemented?
 3. If the implementation fails silently, who notices first, and how far does the damage spread before detection?
-4. Will this work still need to exist later? If it serves only the present moment, what lasting responsibility justifies it?
+4. Will this work still need to exist later? If not, it belongs only to the
+   present moment and will no longer need to exist after that moment passes.
 
 ## Prohibited Agent Behavior
 
 1. **No silent completion:** If required input is missing, stop and state: `Input incomplete; missing: ___`.
-2. **No confirmation-bias implementation:** Do not implement only the path that confirms the request. State what happens when its premise does not hold.
+2. **No confirmation-bias implementation:** Do not implement only the path
+   that confirms the request. State: `When ___ does not hold, ___ happens.`
 3. **No implicit assumptions:** State: `This implementation assumes ___. If false, ___ happens.`
 4. **No optimistic completion:** List unknown side effects and boundary conditions in the completion report.
 5. **No swallowed contradictions:** Surface conflicting requirements and request clarification before choosing one.
@@ -51,7 +53,7 @@ Before implementation, answer four questions:
 1. After implementation, state: `This implementation can silently fail when: ___`.
 2. With a design proposal, state: `This design assumes ___ remains true. If not, ___ rots first.`
 3. Before optimizing, ask internally: `Is this worth optimizing, or should it not exist?`
-4. Keep consequential ambiguity visible; do not silently choose the most convenient interpretation.
+4. Keep ambiguity visible; do not silently choose the most convenient interpretation.
 
 ## Execution Mode Selection
 
@@ -85,7 +87,8 @@ Execution mode: auto
 ```
 
 Later skills read this explicit `Execution mode:` line as the active execution
-mode. An unknown mode is invalid and must never silently become `auto`.
+mode. If the user does not choose, record `Execution mode: human-in-the-loop`
+and proceed. An unknown mode is invalid and must never silently become `auto`.
 
 Persistent config, including `samsara_config.yaml`, is out of scope for the
 first auto-mode implementation. Do not read persistent config to choose auto
@@ -99,7 +102,9 @@ Route requests in this order. Stop at the first match:
    select execution mode first when the session has none.
 2. **Non-workflow conversation:** Explanation, read-only review, status,
    general discussion, or Samsara meta-audit. Handle directly; do not invoke a
-   skill merely because one is related.
+   skill merely because one is related. A question that reports previously
+   working behavior now failing is a production-failure report, not an
+   explanation request; continue to **Production failure** below.
 3. **Production failure:** If previously working code now fails, invoke
    `samsara:debugging`.
 4. **Proven low-risk state-changing work:** Offer `samsara:fast-track` and
@@ -146,7 +151,7 @@ digraph samsara_routing {
     request -> classify;
     classify -> named [label="explicit skill command"];
     classify -> direct [label="read-only / explanation / meta-audit"];
-    classify -> debugging [label="system failure"];
+    classify -> debugging [label="production failure"];
     classify -> fasttrack [label="proven low risk"];
     classify -> mode [label="other state-changing work"];
     mode -> research;
