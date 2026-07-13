@@ -43,9 +43,7 @@ digraph implement {
     update [label="主 agent: 更新 index.yaml\n+ TaskUpdate completed"];
     more [label="還有 task？" shape=diamond];
     commit [label="主 agent: Commit\n（全部 task 完成後）"];
-    criteria [label="Iteration-entry criteria\ncross-task pattern OR\nsignal_lost>=5 ?\n(parse failure -> unknown)" shape=diamond];
-    gate [label="判準成立 / unknown\nhuman: ask\nauto: gatekeeper" shape=diamond];
-    next [label="invoke samsara:validate-and-ship\nor samsara:iteration" shape=doublecircle];
+    entry [label="invoke samsara:iteration\nEntry Triage" shape=doublecircle];
 
     start -> mode;
     mode -> step0 [label="A/B: dispatch\n(paste full text)" lhead=cluster_implementer];
@@ -65,10 +63,7 @@ digraph implement {
     update -> more;
     more -> step0 [label="yes" lhead=cluster_implementer];
     more -> commit [label="no"];
-    commit -> criteria;
-    criteria -> gate [label="成立 / 解析失敗(unknown)"];
-    criteria -> next [label="不成立 + 全部可解析\n預設 skip + 可推翻紀錄"];
-    gate -> next [label="confirmed"];
+    commit -> entry;
 }
 ```
 
@@ -111,16 +106,25 @@ for each task, then use this execution strategy prompt:
   to dispatch `samsara:auto-gatekeeper`, append the strategy decision to
   `auto-decisions.md`, and follow the recorded execution strategy.
 
+Mode A runs one safe wave at a time. A task is **DAG-ready** only after every
+`depends_on` task is complete. Tasks in the same wave must have pairwise-disjoint
+declared write scopes from their `Files` sections, must not touch a shared
+mutation surface (lockfile, migration registry, generated index, global
+manifest, or equivalent), and must not have tests or implementation that rely
+on another unfinished task in the wave. If any condition cannot be proven,
+serialize those tasks.
+
 ### Subagent Context
 
 Use `subagent_type: "samsara:implementer"` — the agent definition (`agents/implementer.md`) provides samsara constraints (STEP 0, 禁止行為, 強制行為, death test ordering, scar report format). You do NOT need to inject these into the prompt.
 
 The prompt provides per-task context. Follow the template in `./dispatch-template.md`:
 - `task-N.md` — **paste full text**, never tell subagent to read the file
-- `overview.md` — **copy relevant derived projections**, not the entire file
-- **Global thinking channel (L1/L2)** — COPY the task's `seam` (+ its Real
-  Seams Projection entry and the Core Identity Projection from overview.md) and `affects`/`anchors`
-  from `index.yaml` into the Global Position / Context Projection sections.
+- `overview.md` — **copy the complete compact Overview**; preserve all
+  projections and source refs
+- **Global thinking channel (L1/L2)** — COPY the complete compact Overview as
+  L1, identify the task's `seam` without dropping other Real Seams, and copy
+  `affects`/`anchors` from `index.yaml` into L2.
   - Copy, never compose: a dispatcher improvising "what's relevant" is the
     hand-curation blind spot the channel replaces.
   - Plans without these fields get an explicit `global_channel: absent` (see
@@ -238,7 +242,9 @@ These are non-negotiable:
 - Skip `code-quality-reviewer` dispatch — both reviewers are required; skipping one means the review is incomplete
 - Proceed to next task while code-reviewer or code-quality-reviewer has open Critical issues
 - Proceed to next task when either reviewer returned `UNKNOWN` because a reference was missing/unreadable or the execution domain was unsupported
-- Dispatch multiple implementer subagents in parallel (file conflicts)
+- Never dispatch a parallel wave without proving DAG readiness, disjoint
+  declared write scopes, independent mutation surfaces, and no reliance on an
+  unfinished task in the wave
 - Ignore subagent NEEDS_CONTEXT or BLOCKED status — provide context or escalate
 - Accept a task as DONE without a scar report
 - Skip the Test Contract Gate before writing unit tests — a unit test with no named contract is brittle or tautological by default
@@ -261,48 +267,11 @@ These are non-negotiable:
 
 ## Transition
 
-All tasks complete. Calculate the iteration-entry criteria:
-
-1. Read every `changes/<feature>/scar-reports/task-N-scar.yaml`.
-2. Compute `signal_lost` and identify parse failures using the SAME
-   definition and parse-failure semantics as iteration SKILL.md's Step 1:
-   Aggregate Remaining Scars (the signal_lost formula, and `systemic_ref`
-   dangling = parse failure) — canonical there, not restated here.
-3. Check for a **cross-task pattern**: the same item (by description or
-   `systemic_ref` id) appears in ≥2 different task scar reports.
-   已知限制：這是**字面比對**（description 全同或 id 相同）——兩個 task 用
-   不同措辭描述同一 rot 時會漏判而落入預設 skip；可推翻紀錄的存在就是這個
-   限制的補償措施。
-
-Branch into exactly one of three states:
-
-- **判準成立**（cross-task pattern found, OR `signal_lost >= 5` — this
-  threshold is a rough estimate from historical iteration-log data, not a
-  calibrated constant; adjust only by citing newer iteration-log evidence in
-  the scar report） AND every scar report parsed → 依 execution mode 過
-  gate（human: ask the user；auto: dispatch `samsara:auto-gatekeeper`，見下方
-  Auto Mode Gate）建議進入 iteration，並列出找到的 cross-task patterns 與
-  signal_lost 數值。
-- **判準不成立，且全部 scar 可解析** → 預設 skip：不經過 gate
-  （deterministic），但一律先印出這行可推翻紀錄，才能繼續：
-  > 「signal_lost=N、無 cross-task pattern，已 skip iteration（回覆可推翻）」
-
-  同一行紀錄必須同時寫入 feature 的 `index.yaml`（durable——auto mode 沒有人
-  在讀對話輸出，只印不寫等於沒有紀錄）。然後直接進入
-  `samsara:validate-and-ship`（其 Step 0 為 security/privacy gate；剩餘 items
-  由 failure budget review 處理）。
-- **任何 scar report 解析失敗** → 結果為 unknown，**不准 skip**（解析失敗代表
-  signal_lost 可能被少算，unknown 不等於「不需要 iteration」）。列出每個 parse
-  failure（file，以及懸空 `systemic_ref` 的 id），再依 execution mode 過
-  gate（human: 連同 parse failures 詢問使用者；auto: dispatch
-  `samsara:auto-gatekeeper`）決定 `samsara:iteration` 或
-  `samsara:validate-and-ship` — 絕不落回上面的預設 skip 路徑。
-
-- If `Execution mode: human-in-the-loop` and the gate above is invoked, the
-  user's answer selects `samsara:iteration` or `samsara:validate-and-ship`.
-- If `Execution mode: auto` and the gate above is invoked, do not ask the user. Use the Auto Mode Gate below to dispatch `samsara:auto-gatekeeper`,
-  record the decision, and invoke the next skill named by the recorded
-  decision.
+After all tasks pass review, the final Implement validator is clean, and the
+single feature commit exists, invoke `samsara:iteration` **Entry Triage**.
+Implement hands off the complete scar set and does not compute entry criteria,
+compare scar wording, or apply a `signal_lost` threshold. Iteration owns the
+cheap triage-only decision and whether fix rounds are necessary.
 
 ## Auto Mode Gate
 
@@ -311,16 +280,10 @@ dispatch, the append-only decision log, and what `proceed`/`revise`/
 `reject`/`accept_gap` mean all live there; this section only names what
 Implement adds.
 
-- `workflow_prompt` sources: (1) the implementation completion gate — only
-  invoked when the Transition iteration-entry criteria are met (canonical in
-  Transition above) or scar parse failures make it unknown (deterministic
-  default-skip never invokes this gate); (2) the implementation execution-mode selection — the original
-  `(A) Subagent parallel / (B) Subagent sequential / (C) Inline sequential`
-  prompt.
-- Decision points this gate covers: the completion transition (when
-  triggered) and the execution-mode selection.
-- `proceed` invokes the next skill named by the gatekeeper answer
-  (`samsara:iteration` or `samsara:validate-and-ship`) and/or applies the
-  chosen execution strategy; `revise` revises implementation artifacts or
-  scar reports then re-runs this gate; `accept_gap` continues to the
-  recorded next skill with the accepted gap visible.
+- `workflow_prompt` sources: the implementation execution-mode selection —
+  `(A) Subagent parallel / (B) Subagent sequential / (C) Inline sequential` —
+  and disputed Critical review arbitration.
+- Decision points this gate covers: execution-mode selection and arbitration.
+- `proceed` applies the chosen strategy or arbitration ruling; `revise` revises
+  implementation evidence then re-runs the relevant gate; `accept_gap` keeps
+  the accepted concern visible in the scar/review record.

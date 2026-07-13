@@ -8,13 +8,16 @@ Planning judgment owner. Upstream design authority remains in `pre-thinking.md`.
 - Design authority: `pre-thinking.md`
 - Commitment: <Proceed | Accept gap>
 - Accepted gaps: <refs and consequences | none>
-- Evaluation: `PT-EVAL`
+- Evaluation: PT-EVAL (evaluation-contract)
 
 ## Planning Decisions
 
-### PL-D1: <decision label>
+### PL-D1: <canonical planning label>
 
-Source refs: <PT-D1, PT-S1, file:line, ...>
+Source refs:
+- PT-D1 (<canonical decision label>)
+- PT-S1 (<canonical seam name>)
+- <file:line when needed>
 
 - Decision: <task boundary, file allocation, ordering, or acceptance mapping>
 - Rationale: <why the sources force this Planning judgment>
@@ -23,15 +26,15 @@ Source refs: <PT-D1, PT-S1, file:line, ...>
 
 ## File Allocation
 
-- `<path>` — owner: <task-id> — source refs: <PL-D1, PT-D1>
+- `<path>` — owner: <task-id> — source refs: PL-D1 (<canonical planning label>), PT-D1 (<canonical decision label>)
 
 ## Acceptance Mapping
 
-- `AC-1` → <task-id list> — planning ref: <PL-D1>
+- AC-1 (<canonical scenario label>) → <task-id list> — planning ref: PL-D1 (<canonical planning label>)
 
 ## Task Decomposition
 
-- `<task-id>` — boundary: <one responsibility> — refs: <PL-D1, PT-D1>
+- `<task-id>` — boundary: <one responsibility> — refs: PL-D1 (<canonical planning label>), PT-D1 (<canonical decision label>)
 
 ## Planning Assumptions
 
@@ -39,4 +42,4 @@ Source refs: <PT-D1, PT-S1, file:line, ...>
 
 ## File Allocation Consistency
 
-- <upstream decision ref> — <matches | contradicts | out of scope> — <evidence>
+- PT-D1 (<canonical decision label>) — <matches | contradicts | out of scope> — <evidence>

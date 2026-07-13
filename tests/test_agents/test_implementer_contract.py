@@ -107,6 +107,14 @@ def test_death__read_before_write_reaches_inline_mode() -> None:
     )
 
 
+def test_death__pattern_selection_is_part_of_read_before_write() -> None:
+    """Current-project and planned-task evidence must meet before generation."""
+    section = _execution_order_section(IMPLEMENTER.read_text(encoding="utf-8").lower())
+
+    for token in ("existing patterns/idioms", "deviat", "affects", "imagination"):
+        assert token in section
+
+
 # ---------------------------------------------------------------------------
 # M1 — Measured Numbers (fix-2, self-reported number inaccuracy pattern)
 #

@@ -28,8 +28,31 @@ _SOURCE_REF_RE = re.compile(
 )
 _PLANNED_LINE_RE = re.compile(r"^\s*planned:\s*(.+)$", re.MULTILINE)
 _TASK_ID_RE = re.compile(r"\btask-\d+\b")
+_WRITE_PATH_RE = re.compile(
+    r"^\s*-\s*(?:Create|Modify|Test):\s*`([^`]+)`", re.MULTILINE
+)
 _PT_ID_RE = re.compile(r"\*\*(?:Decision|Contract) ID:\*\*\s*<?(PT-[A-Z0-9-]+)>?")
 _PL_ID_RE = re.compile(r"^###\s+(PL-D\d+)\b", re.MULTILINE)
+_PT_CORE_LABEL_RE = re.compile(
+    r"\*\*Decision ID:\*\*\s*PT-CI\s*\n"
+    r"\*\*Canonical label:\*\*\s*([^\n]+)"
+)
+_PT_DECISION_LABEL_RE = re.compile(
+    r"^### Decision:\s*([^\n]+?)\s*$\s*"
+    r"\*\*Decision ID:\*\*\s*<?(PT-D\d+)>?",
+    re.MULTILINE,
+)
+_PT_SEAM_LABEL_RE = re.compile(
+    r"^#### Seam:\s*([^\n]+?)\s*$\s*"
+    r"\*\*Decision ID:\*\*\s*<?(PT-S\d+)>?",
+    re.MULTILINE,
+)
+_PT_EVAL_LABEL_RE = re.compile(
+    r"\*\*Contract ID:\*\*\s*PT-EVAL\s*\n"
+    r"\*\*Canonical label:\*\*\s*([^\n]+)"
+)
+_PL_LABEL_RE = re.compile(r"^###\s+(PL-D\d+):\s*([^\n]+?)\s*$", re.MULTILINE)
+_AUTHORITY_ID_TOKEN_RE = re.compile(r"\b(?:PT-(?:CI|EVAL|D\d+|S\d+)|PL-D\d+|AC-\d+)\b")
 
 
 def _read_yaml(path: Path) -> Any:
@@ -49,6 +72,57 @@ def _real_seams_section(overview_text: str) -> str | None:
 
 def _list(value: Any) -> list[Any]:
     return value if isinstance(value, list) else []
+
+
+def _clean_label(value: str) -> str:
+    return value.strip().strip("<>").strip()
+
+
+def _duplicates(values: list[str]) -> set[str]:
+    return {value for value in values if values.count(value) > 1}
+
+
+def _pre_thinking_labels(text: str) -> dict[str, str]:
+    labels: dict[str, str] = {}
+    core = _PT_CORE_LABEL_RE.search(text)
+    if core:
+        labels["PT-CI"] = _clean_label(core.group(1))
+    for label, decision_id in _PT_DECISION_LABEL_RE.findall(text):
+        labels[decision_id] = _clean_label(label)
+    for label, seam_id in _PT_SEAM_LABEL_RE.findall(text):
+        labels[seam_id] = _clean_label(label)
+    evaluator = _PT_EVAL_LABEL_RE.search(text)
+    if evaluator:
+        labels["PT-EVAL"] = _clean_label(evaluator.group(1))
+    return labels
+
+
+def _validate_human_ref_labels(
+    text: str, path_name: str, canonical: dict[str, str], findings: list[str]
+) -> None:
+    """Check readable refs without treating authority-definition headings as refs."""
+    for line_number, line in enumerate(text.splitlines(), start=1):
+        for match in _AUTHORITY_ID_TOKEN_RE.finditer(line):
+            authority_id = match.group(0)
+            expected = canonical.get(authority_id)
+            if expected is None:
+                continue
+            if re.match(rf"^###\s+{re.escape(authority_id)}\s*:", line):
+                continue
+            suffix = line[match.end() :]
+            rendered = re.match(r"`?\s+\(([^)\n]+)\)", suffix)
+            if rendered is None:
+                findings.append(
+                    f"ref-label-missing: {path_name}:{line_number} `{authority_id}` "
+                    f"must include `({expected})`"
+                )
+                continue
+            actual = rendered.group(1).strip()
+            if actual != expected:
+                findings.append(
+                    f"ref-label-drift: {path_name}:{line_number} `{authority_id}` "
+                    f"uses `{actual}`; canonical label is `{expected}`"
+                )
 
 
 def _dependency_cycles(graph: dict[str, list[str]]) -> list[list[str]]:
@@ -79,22 +153,55 @@ def _dependency_cycles(graph: dict[str, list[str]]) -> list[list[str]]:
 
 def _authority_ids(
     feature_dir: Path, sources: dict[str, Any], findings: list[str]
-) -> tuple[set[str], set[str], set[str]]:
+) -> tuple[dict[str, str], dict[str, str], dict[str, str]]:
     pre_path = feature_dir / str(sources.get("pre_thinking") or "")
     plan_path = feature_dir / str(sources.get("plan") or "")
     acceptance_path = feature_dir / str(sources.get("acceptance") or "")
 
+    pt_labels: dict[str, str] = {}
+    pl_labels: dict[str, str] = {}
+    acceptance_labels: dict[str, str] = {}
     pt_ids: set[str] = set()
-    pl_ids: set[str] = set()
     acceptance_ids: set[str] = set()
 
     if pre_path.is_file():
-        pt_ids = set(_PT_ID_RE.findall(pre_path.read_text(encoding="utf-8")))
+        pre_text = pre_path.read_text(encoding="utf-8")
+        pt_id_entries = _PT_ID_RE.findall(pre_text)
+        pt_ids = set(pt_id_entries)
+        for authority_id in sorted(_duplicates(pt_id_entries)):
+            findings.append(
+                f"authority-id: {pre_path.name} has duplicate `{authority_id}`"
+            )
+        pt_labels = _pre_thinking_labels(pre_text)
+        for authority_id in sorted(pt_ids - set(pt_labels)):
+            findings.append(
+                f"authority-label: {pre_path.name} `{authority_id}` has no "
+                "canonical label"
+            )
+        if pt_labels.get("PT-EVAL") not in (None, "evaluation-contract"):
+            findings.append(
+                f"authority-label: {pre_path.name} `PT-EVAL` must use fixed "
+                "label `evaluation-contract`"
+            )
     if plan_path.is_file():
         plan_text = plan_path.read_text(encoding="utf-8")
-        pl_ids = set(_PL_ID_RE.findall(plan_text))
+        pl_id_entries = _PL_ID_RE.findall(plan_text)
+        pl_ids = set(pl_id_entries)
+        for authority_id in sorted(_duplicates(pl_id_entries)):
+            findings.append(
+                f"authority-id: {plan_path.name} has duplicate `{authority_id}`"
+            )
+        pl_labels = {
+            decision_id: _clean_label(label)
+            for decision_id, label in _PL_LABEL_RE.findall(plan_text)
+        }
+        for authority_id in sorted(pl_ids - set(pl_labels)):
+            findings.append(
+                f"authority-label: {plan_path.name} `{authority_id}` has no "
+                "canonical label"
+            )
         for ref in re.findall(r"\bPT-[A-Z0-9-]+\b", plan_text):
-            if ref not in pt_ids:
+            if ref not in pt_labels:
                 findings.append(f"planning-ref: {plan_path.name} cites unknown `{ref}`")
     if acceptance_path.is_file():
         try:
@@ -115,15 +222,34 @@ def _authority_ids(
                     findings.append("acceptance-id: scenario has no `id`")
                     continue
                 scenario_id = str(scenario["id"])
+                if re.fullmatch(r"AC-\d+", scenario_id) is None:
+                    findings.append(
+                        f"acceptance-id: `{scenario_id}` must match fixed `AC-<number>` "
+                        "format"
+                    )
                 if scenario_id in acceptance_ids:
                     findings.append(f"acceptance-id: duplicate `{scenario_id}`")
                 acceptance_ids.add(scenario_id)
+                scenario_label = str(scenario.get("label") or "").strip()
+                if not scenario_label:
+                    findings.append(
+                        f"acceptance-label: {scenario_id} has no canonical `label`"
+                    )
+                else:
+                    acceptance_labels[scenario_id] = scenario_label
                 for ref in _list(scenario.get("source_refs")):
-                    if str(ref) not in pt_ids:
+                    if str(ref) not in pt_labels:
                         findings.append(
                             f"acceptance-ref: {scenario_id} cites unknown `{ref}`"
                         )
-    return pt_ids, pl_ids, acceptance_ids
+    if plan_path.is_file():
+        _validate_human_ref_labels(
+            plan_text,
+            plan_path.name,
+            pt_labels | pl_labels | acceptance_labels,
+            findings,
+        )
+    return pt_labels, pl_labels, acceptance_labels
 
 
 def validate(feature_dir: Path) -> list[str]:
@@ -174,14 +300,19 @@ def validate(feature_dir: Path) -> list[str]:
             )
     declared_seams = set(seam_sources)
 
-    pt_ids: set[str] = set()
-    pl_ids: set[str] = set()
-    acceptance_ids: set[str] = set()
+    pt_labels: dict[str, str] = {}
+    pl_labels: dict[str, str] = {}
+    acceptance_labels: dict[str, str] = {}
     if authority_mode:
         for label, relative in index["sources"].items():
             if not str(relative).strip() or not (feature_dir / str(relative)).is_file():
                 findings.append(f"source-file: {label} `{relative}` does not exist")
-        pt_ids, pl_ids, acceptance_ids = _authority_ids(feature_dir, sources, findings)
+        pt_labels, pl_labels, acceptance_labels = _authority_ids(
+            feature_dir, sources, findings
+        )
+        pt_ids = set(pt_labels)
+        pl_ids = set(pl_labels)
+        acceptance_ids = set(acceptance_labels)
         for ref in _SOURCE_REF_RE.findall(overview_text):
             owner = pt_ids if ref.startswith("PT-") else pl_ids
             if ref not in owner:
@@ -229,6 +360,11 @@ def validate(feature_dir: Path) -> list[str]:
                     findings.append(
                         f"task-file: {task_file} does not declare `{task_id}`"
                     )
+                if "## Files" not in task_text or not _WRITE_PATH_RE.findall(task_text):
+                    findings.append(
+                        f"task-write-scope: {task_file} has no declared "
+                        "Create/Modify/Test path"
+                    )
 
             for field, known, label in (
                 ("planning_refs", pl_ids, "planning-ref"),
@@ -245,6 +381,13 @@ def validate(feature_dir: Path) -> list[str]:
                         findings.append(
                             f"task-ref: {task_file} omits index reference `{ref_text}`"
                         )
+            if task_text:
+                _validate_human_ref_labels(
+                    task_text,
+                    task_file,
+                    pt_labels | pl_labels | acceptance_labels,
+                    findings,
+                )
 
         for position, entry in enumerate(_list(task.get("affects"))):
             where = f"{task_id}.affects[{position}]"

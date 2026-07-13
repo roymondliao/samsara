@@ -3,6 +3,7 @@ evaluator_ref: PT-EVAL
 
 scenarios:
   - id: AC-1
+    label: <semantic label>
     type: death_path
     source_refs: [PT-D1]
     given: "<evidence-backed precondition>"
@@ -11,6 +12,7 @@ scenarios:
       - "<observable outcome>"
 
   - id: AC-2
+    label: <semantic label>
     type: happy_path
     source_refs: [PT-D1]
     given: "<precondition>"

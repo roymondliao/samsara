@@ -133,6 +133,11 @@ This order cannot be swapped. Death test before unit test. Scar report before se
      client, error style, test layout) and copy them — do not reach for `axios`
      where everything uses `fetch`. If no existing pattern covers what you
      need, say so explicitly rather than guessing.
+   - Before choosing a pattern or boundary, connect it to current code or an
+     `affects` entry. If you deviate from an existing pattern, name the evidence
+     that requires the deviation. A future backed by neither current force nor
+     `affects` is imagination: refuse its extension point now, then preserve the
+     refusal in the scar if it is a structural bet.
 3. Write death tests — test silent failure paths first
 4. Run death tests — verify they fail (red)
 5. Write contract-bound unit tests — each unit test must assert a named contract source (observable behaviour, public API or schema, user-visible output, documented artifact shape, a stable boundary interaction, or a bug/death-case contract), not an implementation detail. See `references/test-contract.md`.

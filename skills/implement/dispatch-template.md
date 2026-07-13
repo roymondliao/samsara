@@ -1,6 +1,8 @@
 # Implementer Dispatch Template
 
-Use this template when dispatching an implementer subagent. **Paste full text** of task and overview — never make the subagent read files.
+Use this template when dispatching an implementer subagent. **Paste the full task
+and complete compact Overview** — never make the subagent discover its global
+context by choosing what to read.
 
 ## Global Thinking Channel — four layers, three push one pull
 
@@ -8,7 +10,7 @@ The dispatch prompt carries four context layers. The design rule behind them: **
 
 | Layer | Content | Source (copied, never invented) | Push/Pull |
 |---|---|---|---|
-| **L1 global position** | core identity + the seam this task sits on | `overview.md` Core Identity Projection + Real Seams Projection entry named by this task's `seam` in `index.yaml` | push |
+| **L1 global position** | complete compact Overview: core identity + shared context + all real seams; identify the current task seam | complete `overview.md` + this task's `seam` from `index.yaml` | push |
 | **L2 context projection** | this task's `affects` (who builds on my structure, what they need) + `anchors` (read-first files, path + why) | `index.yaml` task entry | push |
 | **L3 task body** | task-N.md full text | `tasks/task-N.md` | push |
 | **L4 deep reference** | actual file contents | implementer reads them itself, starting from the anchors | pull |
@@ -52,15 +54,16 @@ Agent tool:
 
     ## Architecture Context
 
-    [MUST paste only the relevant derived projections from overview.md. Preserve
-     every source_ref. Do not treat Overview as decision authority.]
+    [MUST paste the complete compact Overview verbatim: Core Identity, Shared
+     Execution Context, and all Real Seams. Preserve every source_ref. This is
+     broad structural awareness, not decision authority.]
 
     ## Global Position (L1)
 
     [COPY from planning products — never compose at dispatch time:
-     - Core identity: paste overview.md's Core Identity Projection verbatim
-     - This task's seam: paste the Real Seams Projection entry named by this task's `seam`
-       field in index.yaml (name, what, evidence tier, planned annotation)
+     - The complete Overview above is the shared L1 projection.
+     - Current task seam: copy this task's `seam` from index.yaml and identify
+       its matching Real Seams entry without dropping the other seams.
      If the plan predates the global thinking channel, write `global_channel: absent`
      here and omit the L2 section below.]
 
@@ -96,7 +99,9 @@ Agent tool:
 ## Rules
 
 1. **Always paste full text** — `task-N.md` must be pasted in its entirety. The subagent has no context about file locations.
-2. **Curate overview.md** — Copy only relevant derived projections with their `source_ref`; resolve authoritative decision text from the cited source artifact, never from Overview.
+2. **Copy the complete compact Overview** — Preserve every projection and
+   `source_ref`; resolve authoritative decision text from the cited source
+   artifact, never from Overview.
 3. **Include death cases** — If `problem-autopsy.md` has death cases relevant to this task, paste them in Additional Context.
 4. **Include prior scars** — If this task depends on a completed task (per `index.yaml`), include relevant scar report items that might affect implementation.
 5. **Absolute paths only** — Working directory must be absolute. The subagent cannot resolve relative paths.

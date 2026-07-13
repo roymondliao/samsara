@@ -128,6 +128,34 @@ def test_death__north_star_values_expose_unknowns_and_their_basis() -> None:
     assert "target: <value>" not in north_star
 
 
+def test_death__kickoff_has_one_scope_authority() -> None:
+    """Must-solve and out-of-scope facts must not drift across two sections."""
+    kickoff = _read(KICKOFF)
+
+    assert kickoff.count("## Scope Contract") == 1
+    assert "## Boundary Scope" not in kickoff
+    assert "\n## Scope\n" not in kickoff
+    for token in (
+        "What must be solved",
+        "Areas involved",
+        "Must-Have",
+        "Nice-to-Have",
+        "Not solved now",
+        "Death condition",
+    ):
+        assert token in kickoff
+
+
+def test_death__north_star_is_not_the_execution_evaluator() -> None:
+    """Research owns outcome direction; Pre-thinking owns executable evaluation."""
+    kickoff = _section(_read(KICKOFF), "North Star")
+    normalized = " ".join(kickoff.split()).lower()
+
+    assert "product outcome" in normalized
+    assert "not `pt-eval`" in normalized
+    assert "pre-thinking" in normalized
+
+
 def test_death__research_transition_prompt_has_one_owner() -> None:
     """Human and auto modes must reference one canonical transition prompt."""
     skill = _read(RESEARCH_SKILL)

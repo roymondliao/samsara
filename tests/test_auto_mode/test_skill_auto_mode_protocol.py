@@ -213,7 +213,10 @@ class TestPrimaryEvaluatorProtocol:
                 LATER_STAGE_SKILLS["implement"],
                 "Execution Mode Selection",
             ),
-            "implement transition": (LATER_STAGE_SKILLS["implement"], "Transition"),
+            "iteration entry triage": (
+                LATER_STAGE_SKILLS["iteration"],
+                "Entry Triage",
+            ),
             "iteration triage": (
                 LATER_STAGE_SKILLS["iteration"],
                 "Step 2: Triage (Human Gate)",

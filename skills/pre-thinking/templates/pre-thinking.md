@@ -24,6 +24,7 @@
 
 ### Domain core identity (codebase-craft)
 **Decision ID:** PT-CI
+**Canonical label:** <semantic label>
 **Core identity:** <one or two lines — what this system, in feature scope, essentially is>
 **Operability check:** <name one concrete structural decision this identity adjudicates; if two opposite choices both "serve" it, rewrite>
 
@@ -63,13 +64,16 @@
 ## Step 6 — Honest handoff
 
 ### L1 (handoff to planning — Key Decisions single source)
-**Decision refs:** <PT-CI, PT-S1, ...>
-**Core identity:** <restate from Step 2>
-**Real seams:** <list from Step 4 with their evidence tiers>
+**Decision refs:**
+- PT-CI (<canonical label from Step 2>)
+- PT-S1 (<canonical seam name from Step 4>)
+<!-- Refs only. Planning resolves PT-CI and PT-S* to their Step 2/4 entries;
+     do not restate Core Identity or Real Seams here. -->
 
 ### Evaluation Contract
 
 **Contract ID:** PT-EVAL
+**Canonical label:** evaluation-contract
 **Primary evaluator:** <one canonical method>
 **Agent can perform it by:** <command / browser flow / artifact inspection / snapshot comparison / log check / stable rubric>
 **Pass signal:** <observable condition>

@@ -6,7 +6,14 @@ reopening upstream design judgment.
 
 ## 1. Input Gate
 
-Read `1-kickoff.md`, `problem-autopsy.md`, and `pre-thinking.md`.
+Read `1-kickoff.md` and `problem-autopsy.md`. Read the complete
+`pre-thinking.md`; Step 6 refs are an index, not a substitute for the source.
+
+Resolve every L1 ref from Step 6 back to its original declaration before making
+Planning judgments. The handoff must resolve to exactly one `PT-CI` in Step 2
+and every cited `PT-S*` in Step 4. Missing, duplicate, or dangling refs are an
+incomplete Pre-thinking handoff; STOP and return to `samsara:pre-thinking`.
+Never replace a broken ref with copied or re-derived content.
 
 Continue only when all of these are true:
 
@@ -21,12 +28,28 @@ Otherwise STOP and return to `samsara:pre-thinking`.
 Accepted gaps remain visible as source refs; Planning must not silently resolve
 them into a convenient assumption.
 
+### Stable ID contract
+
+Planning adds two fixed ID families: `PL-D*` (Planning Decision) and `AC-*`
+(Acceptance Contract Scenario). The upstream `PT-*` meanings remain owned by
+Pre-thinking.
+
+Once referenced downstream, an ID and its canonical label are immutable: never
+renumber, reuse, or repurpose either one. A semantic replacement, split, or merge
+gets a new ID and updated refs. Human-facing Markdown writes every authority ID
+(`ID (canonical label)`) so the reader sees both the machine key and its meaning.
+Canonical labels are short semantic phrases without parentheses.
+YAML reference fields (`planning_refs`, `decision_refs`, `acceptance_refs`,
+`source_refs`, and `evaluator_ref`) keep bare IDs only. The validator checks
+reference labels against their declarations; it does not judge label quality.
+
 ## 2. Planning Judgment and Acceptance
 
 Write `2-plan.md` from `templates/plan.md`.
 
 - Allocate `PL-D*` only for Planning judgments: task boundaries, file allocation,
   ordering, and how acceptance maps to work.
+- The text after each `PL-D*` heading is its canonical label.
 - Every `PL-D*` cites the `PT-*`, research, or live-code evidence that forces it.
 - Do not copy upstream rationale as a new decision and do not allocate `PT-*` IDs.
 - Record unresolved Planning assumptions explicitly.
@@ -34,6 +57,8 @@ Write `2-plan.md` from `templates/plan.md`.
 Write `acceptance.yaml` from `templates/acceptance.yaml`:
 
 - Use stable `AC-*` IDs and cite source refs.
+- Give each scenario one semantic `label`; it is the ID's canonical human
+  resolver and cannot change while the ID remains live.
 - Put silent failure and other applicable death paths before happy paths.
 - Add degradation or unknown-outcome scenarios only when the system can actually
   enter those states. Otherwise record the type under `not_applicable` with a

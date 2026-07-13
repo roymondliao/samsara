@@ -1,5 +1,9 @@
 feature: <feature-name>
 status: pending
+iteration_entry: null
+# Iteration replaces null with:
+# {result: <skip_rounds | triage | unknown>, signal_lost: <N>,
+#  evaluator: <pass | fail | unknown>, reason: <evidence>, reversible: true}
 
 sources:
   pre_thinking: pre-thinking.md

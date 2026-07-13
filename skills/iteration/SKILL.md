@@ -16,20 +16,45 @@ Read from the feature's `changes/` directory:
 - `pre-thinking.md` — Evaluation Contract with Primary evaluator and Feedback loop
 - `scar-reports/task-N-scar.yaml` — all scar reports (post Level 1 self-iteration)
 
-## Iteration-Entry Criteria (Reference)
+## Entry Triage
 
-Whether to enter this skill is decided BEFORE it runs.
+Iteration is the **sole owner** of entry triage. Every completed implementation
+enters this cheap, triage-only pass; entering it does not start fix rounds.
 
-- The canonical entry criteria (cross-task pattern OR a `signal_lost`
-  threshold, the threshold's historical-estimate rationale, and the
-  three-state gate/default-skip/unknown branch) live in
-  `skills/implement/SKILL.md` → **Transition**. Do not redefine the entry
-  threshold here — the criteria has exactly one place to evolve.
-- Step 1 below is the canonical home for the `signal_lost` computation formula
-  and parse-failure semantics that BOTH places use.
-- If implement's Transition section is renamed or restructured, update this
-  pointer in the same change — a stale pointer silently breaks the
-  single-owner claim.
+1. Run Step 1 aggregation and parse/reference checks.
+2. Run or inspect the recorded Primary evaluator using `PT-EVAL`.
+3. Classify remaining items with full feature context:
+   - **task-local** — one task owns the repair and no shared boundary changes;
+   - **feature-level** — explicitly deferred here or requires shared authority;
+   - **cross-task/system-level** — the same underlying cause crosses tasks,
+     touches a shared boundary, or one task's scar affects another. Equivalent
+     rot remains cross-task when wording differs;
+   - **evaluator failure** — the canonical pass signal does not hold.
+
+`signal_lost` describes remaining risk, helps prioritize fixes, compares rounds,
+and detects stagnation. It never decides whether an item deserves repair.
+
+Choose one result:
+
+- **skip_rounds** — every scar/reference parses, the Primary evaluator passes,
+  and there are no actionable remaining items. Resolved items do not remain;
+  an accepted item is non-actionable only when a durable acceptance already
+  names both `re_review_signal` and `owner`. Record the result, then invoke
+  `samsara:validate-and-ship` without starting fix rounds.
+- **triage** — one or more items need classification or repair, or the Primary
+  evaluator fails. Continue to Step 2. If triage produces no fix items, write
+  the log and proceed to validation; only fix items continue to Step 3 and
+  start rounds.
+- **unknown** — a scar/reference cannot be parsed or the evaluator cannot be
+  performed. List the missing evidence and never skip by default. If
+  `Execution mode: human-in-the-loop`, ask the user to repair the input or
+  explicitly accept the visible gap. If `Execution mode: auto`, do not ask the user;
+  dispatch `samsara:auto-gatekeeper` and record its decision.
+
+Before any branch, write `index.yaml` `iteration_entry` with `result`,
+`signal_lost`, `evaluator`, `reason`, and `reversible: true`. This durable,
+reversible record is required even for `skip_rounds` and `unknown`; conversation
+output alone is not a record.
 
 ## Process
 
@@ -37,8 +62,8 @@ Whether to enter this skill is decided BEFORE it runs.
 digraph iteration {
     node [shape=box];
 
-    entry [label="Entry\n讀取 scar-reports/\n+ index.yaml\n+ pre-thinking.md\n計算 signal_lost" shape=doublecircle];
-    empty [label="有 actionable items？" shape=diamond];
+    entry [label="Entry Triage\naggregate + evaluator + semantic class" shape=doublecircle];
+    unknown [label="Unknown gate\nrepair input or accept visible gap" shape=diamond];
     triage [label="Triage（execution-mode gate）\n每個 remaining item:\nfix / accept / defer\nFocus: cross-task patterns"];
     fix [label="Fix\nbudget-aware dispatch\nper-fix commit\nscar report per fix"];
     round_check [label="Round check\nsignal_lost 下降？\n還有 fix items？" shape=diamond];
@@ -47,9 +72,11 @@ digraph iteration {
     log [label="寫 iteration-log.yaml"];
     exit [label="Exit → validate-and-ship\n(Step 0 security gate)" shape=doublecircle];
 
-    entry -> empty;
-    empty -> triage [label="yes"];
-    empty -> exit [label="no remaining items"];
+    entry -> triage [label="triage"];
+    entry -> exit [label="skip_rounds"];
+    entry -> unknown [label="unknown"];
+    unknown -> entry [label="repair"];
+    unknown -> exit [label="accept_gap"];
     triage -> fix [label="有 fix items"];
     triage -> log [label="全部 accept/defer"];
     fix -> round_check;
@@ -69,7 +96,9 @@ Read `pre-thinking.md` first and extract:
 - **Pass signal / Fail signal**
 - **Feedback loop** — the first correction path when the evaluator fails
 
-If implementation appears complete but the Primary evaluator fails, add that evaluator failure to the remaining scar set as a cross-task pattern. Do not invent a new success standard during iteration.
+If implementation appears complete but the Primary evaluator fails, add an
+`evaluator failure` item to the remaining set. Do not disguise it as a
+cross-task pattern or invent a new success standard during iteration.
 
 Read all `scar-reports/task-N-scar.yaml` files. Collect remaining items:
 
@@ -327,11 +356,12 @@ Iteration adds.
 - Decision points this gate covers — not only the final transition; each
   point appends its own `auto-decisions.md` entry before the iteration flow
   follows the recorded decision:
+  - Entry Triage `unknown` when scar/reference parsing or the evaluator is unavailable
   - triage of remaining scar items into fix / accept / defer
   - blocked-fix handling when an implementer reports BLOCKED or NEEDS_CONTEXT
   - round continuation after signal_lost changes
   - safety valve decisions when round limits or stagnation warnings trigger
-- `proceed` — invoke `samsara:validate-and-ship`; `revise` revises iteration
-  output or remaining scar classification then re-runs this gate;
-  `accept_gap` invokes `samsara:validate-and-ship` with the recorded gap
-  visible in the review context.
+- Final transition: `proceed` — invoke `samsara:validate-and-ship`; `revise`
+  revises iteration output; `accept_gap` validates with the gap visible.
+- Entry Triage `unknown`: `revise` repairs and re-runs triage; `proceed` requires
+  a resolved re-run; `accept_gap` is the durable route to validation.

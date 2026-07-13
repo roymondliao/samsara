@@ -22,16 +22,32 @@ def _write_feature(root: Path) -> None:
     (root / "pre-thinking.md").write_text(
         "\n".join(
             (
+                "### Domain core identity (codebase-craft)",
                 "**Decision ID:** PT-CI",
+                "**Canonical label:** demo-domain",
+                "### Decision: storage-boundary",
                 "**Decision ID:** PT-D1",
+                "#### Seam: demo-boundary",
                 "**Decision ID:** PT-S1",
+                "### Evaluation Contract",
                 "**Contract ID:** PT-EVAL",
+                "**Canonical label:** evaluation-contract",
             )
         ),
         encoding="utf-8",
     )
     (root / "2-plan.md").write_text(
-        "### PL-D1: boundary\n\nSource refs: PT-D1, PT-S1\n",
+        """# Plan: demo
+## Source Contract
+- Evaluation: PT-EVAL (evaluation-contract)
+## Planning Decisions
+### PL-D1: boundary
+Source refs:
+- PT-D1 (storage-boundary)
+- PT-S1 (demo-boundary)
+## Acceptance Mapping
+- AC-1 (reject-invalid-input) → task-1 — planning ref: PL-D1 (boundary)
+""",
         encoding="utf-8",
     )
     (root / "acceptance.yaml").write_text(
@@ -39,6 +55,7 @@ def _write_feature(root: Path) -> None:
 evaluator_ref: PT-EVAL
 scenarios:
   - id: AC-1
+    label: reject-invalid-input
     type: death_path
     source_refs: [PT-D1]
     given: x
@@ -91,10 +108,12 @@ tasks:
         """# Task 1: demo
 **Task ID:** task-1
 ## Source References
-- Planning: PL-D1
-- Design: PT-D1, PT-S1
-- Acceptance: AC-1
+- Planning: PL-D1 (boundary)
+- Design: PT-D1 (storage-boundary), PT-S1 (demo-boundary)
+- Acceptance: AC-1 (reject-invalid-input)
 - Seam: demo-boundary
+## Files
+- Modify: `src/demo.py`
 """,
         encoding="utf-8",
     )
@@ -155,6 +174,73 @@ def test_missing_task_file_and_acceptance_ref_are_findings(tmp_path: Path) -> No
     )
 
 
+def test_missing_declared_write_scope_is_a_finding(tmp_path: Path) -> None:
+    _write_feature(tmp_path)
+    task = tmp_path / "tasks" / "task-1.md"
+    task.write_text(
+        task.read_text(encoding="utf-8").split("## Files", 1)[0],
+        encoding="utf-8",
+    )
+
+    findings = _load_validator().validate(tmp_path)
+    assert any("task-write-scope" in finding for finding in findings)
+
+
+def test_wrong_human_label_is_a_drift_finding(tmp_path: Path) -> None:
+    _write_feature(tmp_path)
+    task = tmp_path / "tasks" / "task-1.md"
+    task.write_text(
+        task.read_text(encoding="utf-8").replace(
+            "PT-D1 (storage-boundary)", "PT-D1 (request-routing)"
+        ),
+        encoding="utf-8",
+    )
+
+    findings = _load_validator().validate(tmp_path)
+    assert any(
+        "ref-label-drift" in finding and "PT-D1" in finding for finding in findings
+    )
+
+
+def test_bare_human_ref_is_a_missing_label_finding(tmp_path: Path) -> None:
+    _write_feature(tmp_path)
+    task = tmp_path / "tasks" / "task-1.md"
+    task.write_text(
+        task.read_text(encoding="utf-8").replace("AC-1 (reject-invalid-input)", "AC-1"),
+        encoding="utf-8",
+    )
+
+    findings = _load_validator().validate(tmp_path)
+    assert any(
+        "ref-label-missing" in finding and "AC-1" in finding for finding in findings
+    )
+
+
+def test_duplicate_authority_id_is_a_finding(tmp_path: Path) -> None:
+    _write_feature(tmp_path)
+    pre_thinking = tmp_path / "pre-thinking.md"
+    pre_thinking.write_text(
+        pre_thinking.read_text(encoding="utf-8")
+        + "\n### Decision: duplicate-boundary\n**Decision ID:** PT-D1\n",
+        encoding="utf-8",
+    )
+    plan = tmp_path / "2-plan.md"
+    plan.write_text(
+        plan.read_text(encoding="utf-8") + "\n### PL-D1: duplicate-planning-boundary\n",
+        encoding="utf-8",
+    )
+
+    findings = _load_validator().validate(tmp_path)
+    assert any(
+        "authority-id" in finding and "duplicate `PT-D1`" in finding
+        for finding in findings
+    )
+    assert any(
+        "authority-id" in finding and "duplicate `PL-D1`" in finding
+        for finding in findings
+    )
+
+
 def test_dependency_cycle_is_a_finding(tmp_path: Path) -> None:
     _write_feature(tmp_path)
     index = (tmp_path / "index.yaml").read_text(encoding="utf-8")
@@ -174,7 +260,10 @@ def test_dependency_cycle_is_a_finding(tmp_path: Path) -> None:
     index = index.replace("depends_on: []", "depends_on: [task-2]") + second
     (tmp_path / "index.yaml").write_text(index, encoding="utf-8")
     (tmp_path / "tasks" / "task-2.md").write_text(
-        "**Task ID:** task-2\n- Planning: PL-D1\n- Design: PT-D1\n- Acceptance: AC-1\n",
+        "**Task ID:** task-2\n- Planning: PL-D1 (boundary)\n"
+        "- Design: PT-D1 (storage-boundary)\n"
+        "- Acceptance: AC-1 (reject-invalid-input)\n"
+        "## Files\n- Modify: `src/second.py`\n",
         encoding="utf-8",
     )
 

@@ -12,6 +12,29 @@ this file's procedure, this file wins.
 4. **Leave convergence traces.** Every decision carries "why not the others" and "what rots first" as signposts for the next person who iterates.
 5. **Prefer failures that alarm.** Choose the option that fails loudly over the one that fails silently. A guess isn't dangerous; a silent guess is.
 
+### Stable ID contract
+
+These prefixes have one fixed meaning:
+
+- `PT-CI` (Pre-thinking Core Identity)
+- `PT-D*` (Pre-thinking Design Decision)
+- `PT-S*` (Pre-thinking Real Seam)
+- `PT-EVAL` (Pre-thinking Evaluation Contract)
+
+An ID is an immutable authority key, not a label to rewrite. Once downstream
+artifacts cite an ID, never renumber it, never reuse it for another meaning, and
+never change its canonical label. A correction that preserves the same decision
+identity keeps both. A repurpose, split, merge, or semantic replacement gets a
+new ID and all consumers update their refs; retired IDs are not recycled.
+
+The canonical human resolver is the Step 2 `Canonical label` for `PT-CI`, the
+Step 4 decision label for `PT-D*`, the Step 4 seam name for `PT-S*`, and the fixed
+label `evaluation-contract` for `PT-EVAL`. Human-facing Markdown cites
+`ID (canonical label)`. Machine-facing YAML reference fields store the bare ID.
+Canonical labels are short semantic phrases without parentheses.
+The label beside a reference is a checked projection of its declaration, never a
+second place to redefine it.
+
 ---
 
 ## 1. Step 1 — Locate the work
@@ -227,6 +250,8 @@ Hand three things to planning; be honest about your own state.
 
 The feature-level **core identity** (Step 2) and **real seams** (Step 4) are design decisions. They travel through the **existing "planning Key Decisions single source" channel** (the same channel Step 4's other design decisions use) — planning cites them, does **not** re-derive them and does **not** add new placement decisions. This is the **L1 contract** the implementer's global-thinking channel later consumes (design notes 1 §10, 2 §7). No new file, no new mechanism: L1 = the shared (identity + seams) + planning's per-task (position) added at decomposition.
 The L1 handoff lists the corresponding `PT-CI` and `PT-S*` IDs.
+Each ref includes its canonical label so a human can resolve its meaning without
+copying the decision content.
 
 Do not build the seam's future abstraction now — structural-honesty rules still govern: write the concrete first, abstract when the second real force appears. L1 says *where the joint should be soft*, it does not authorize growing the joint pre-emptively (design note 1 §6).
 
@@ -242,6 +267,7 @@ the existing Evaluation Contract. Write it in this exact structure:
 ## Evaluation Contract
 
 **Contract ID:** PT-EVAL
+**Canonical label:** evaluation-contract
 **Primary evaluator:** <one canonical method>
 **Agent can perform it by:** <command, browser flow, artifact inspection, snapshot comparison, log check, or stable rubric>
 **Pass signal:** <observable condition>
@@ -323,10 +349,14 @@ Compliant headers: `"Pre-thinking"` (12), `"Lens review"` (11), `"Commitment"` (
 1. Check if `pre-thinking.md` exists in `changes/<feature>/`.
 2. **If absent:** proceed normally to Step 1.
 3. **If present AND complete:** read the `Decision:` field and Evaluation Contract.
-   - `Decision: Proceed` or `Decision: Accept gap` + complete Evaluation Contract + L1 (core identity + real seams) present = planning-ready.
+   - `Decision: Proceed` or `Decision: Accept gap` + complete Evaluation Contract
+     + L1 refs present = planning-ready only when the refs contain `PT-CI` and
+     every cited `PT-S*`, and each ref resolves to exactly one Step 2/4
+     declaration. A heading or copied L1 prose is not completion.
    - `Decision: Return to Research` = complete but NOT planning-ready. Stop and ask the user to re-invoke `samsara:research` with the unresolved gaps.
    - A Step 6 heading without one of these decisions is incomplete.
-   - Any Step 6 without Evaluation Contract, or without L1, is incomplete.
+   - Any Step 6 without Evaluation Contract, without L1 refs, or with an
+     unresolved/duplicate `PT-CI` or `PT-S*` ref is incomplete.
 4. **If present AND incomplete:** session was interrupted (K3b state).
    - Identify the last completed step (which of Steps 1–6 are written? which Step 5 groups are present?).
      - A Step 5 group is **complete** if its `### Group N:` header is followed by at least one `**A:**` answer line before the next `### Group` header or end of file.

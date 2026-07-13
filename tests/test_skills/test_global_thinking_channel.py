@@ -180,6 +180,19 @@ def test_dispatch_prompt_carries_l1_l2_sections() -> None:
     assert "## Context Projection (L2)" in dispatch
 
 
+def test_dispatch_pushes_the_complete_compact_overview() -> None:
+    """Broad awareness comes from Planning's whole projection, not curation."""
+    dispatch = read("skills/implement/dispatch-template.md")
+    implementer_part = dispatch.split("## Review Dispatch", 1)[0]
+    normalized = " ".join(implementer_part.split()).lower()
+
+    assert "complete compact overview" in normalized
+    assert "all real seams" in normalized
+    assert "current task seam" in normalized
+    assert "relevant derived projections" not in normalized
+    assert "curate overview" not in normalized
+
+
 def test_implement_skill_arbitration_path_present() -> None:
     """F6: a reviewer block must stay arguable — third-party arbitration
     (human / auto-gatekeeper), never reviewer-auto-wins or self-exemption."""
@@ -327,7 +340,7 @@ def test_research_problem_essence_is_named_product() -> None:
     assert "named handoff to pre-thinking" in skill
     kickoff = read("skills/research/templates/kickoff.md")
     assert "## Problem Essence" in kickoff
-    assert "## Boundary Scope" in kickoff
+    assert "## Scope Contract" in kickoff
 
 
 def test_research_boundary_scope_three_lists() -> None:

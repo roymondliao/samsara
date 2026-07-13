@@ -441,14 +441,14 @@ def test_unit__bootstrap_routing_notes_step0_gate() -> None:
     )
 
 
-def test_unit__implement_transition_targets_validate_and_ship() -> None:
-    """Contract source: implement SKILL.md '## Transition' section —
-    documented workflow contract naming the next skill."""
+def test_unit__implement_transition_targets_iteration_entry() -> None:
+    """Implement hands scars to Iteration before validation/security gates."""
     transition = _transition_section(read(IMPLEMENT))
-    assert "samsara:validate-and-ship" in transition, (
-        "implement SKILL.md Transition section no longer names "
-        "samsara:validate-and-ship as the next skill"
+    assert "samsara:iteration" in transition, (
+        "implement SKILL.md Transition section no longer hands off to "
+        "samsara:iteration Entry Triage"
     )
+    assert "samsara:validate-and-ship" not in transition
     assert "samsara:security-privacy-review" not in transition, (
         "implement SKILL.md Transition section still names the deleted "
         "samsara:security-privacy-review skill"

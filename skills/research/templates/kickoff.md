@@ -13,14 +13,20 @@
      Test: if the essence names a mechanism ("add a cache", "use a hook") instead
      of a need, it is a solution wearing the problem's clothes — rewrite. -->
 
-## Boundary Scope (what the seams may be drawn inside)
-<!-- Research frames the RANGE structural thinking happens inside — without this,
-     pre-thinking cannot tell this feature's real seams from someone else's
-     territory. Three lists, subtraction first: -->
+## Scope Contract (sole scope authority)
+<!-- Research frames the RANGE structural thinking happens inside. Keep all scope
+     facts here; do not create a second boundary/out-of-scope list elsewhere. -->
 - **What must be solved:** <the one thing actually being solved>
 - **Areas involved:** <areas/modules this genuinely touches>
-- **Not solved now:** <adjacent things explicitly NOT solved now — each with one
-  line on why not-now (a cut with no reason silently grows back)>
+
+### Must-Have (with death conditions)
+- **<item>** — Death condition: <when this should be removed>
+
+### Nice-to-Have
+- <item>
+
+### Not solved now
+- **<adjacent item>** — Reason: <why not now; an unexplained cut grows back>
 
 ## Evidence
 <!-- Why does this problem exist? What data or observations support it? -->
@@ -28,19 +34,10 @@
 ## Risk of Inaction
 <!-- What happens if we do nothing? Be specific. -->
 
-## Scope
-
-### Must-Have (with death conditions)
-<!-- Each must-have includes: what it is, and when it should be killed -->
-- **<item>** — Death condition: <when this should be removed>
-
-### Nice-to-Have
-- <item>
-
-### Explicitly Out of Scope
-- <item>
-
 ## North Star
+
+<!-- Product outcome direction owned by Research. This is not `PT-EVAL`;
+     Pre-thinking defines the one agent-executable Primary evaluator. -->
 
 ```yaml
 metric:

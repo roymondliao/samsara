@@ -82,7 +82,7 @@ requirement language. Strip all implementation shape from it.
   serve it. Keep them distinct.
 - If the essence names a mechanism such as a cache or hook, rewrite it as a need.
 
-## Step 3: Scope
+## Step 3: Scope Contract
 
 Ask which part of the system would hurt if the feature disappeared tomorrow.
 
@@ -92,19 +92,25 @@ Ask which part of the system would hurt if the feature disappeared tomorrow.
 - The goal of subtraction is not fewer features; it is for every retained item
   to have an owner responsible for its decay.
 
-Define the **Boundary Scope** for pre-thinking with three lists:
+Write one **Scope Contract** for pre-thinking. It is the sole scope authority:
 
 1. What must be solved
 2. Areas involved
-3. What is not solved now, with one reason per item; an unexplained cut silently
+3. Must-haves, each with its death condition
+4. Nice-to-haves
+5. What is not solved now, with one reason per item; an unexplained cut silently
    grows back
 
-Without all three lists, pre-thinking cannot distinguish this feature's real
-seams from someone else's territory.
+Do not restate these facts in a second boundary or scope section. Without the
+must-solve boundary, involved areas, and explicit not-now boundary, pre-thinking
+cannot distinguish this feature's real seams from someone else's territory.
 
 ## Step 4: North Star
 
 Define the North Star together with:
+
+- **Role boundary:** The North Star is the product outcome direction. It is not
+  `PT-EVAL`; Pre-thinking later defines the one agent-executable evaluator.
 
 - **Invalidation condition:** When is the goal itself wrong?
 - **Corruption signature:** How will metric improvement with real-world
@@ -126,8 +132,8 @@ Artifact ownership is non-overlapping:
 
 - **problem-autopsy.md owns** source wording, reframe, translation delta, kill
   conditions, damage recipients, and the observable done state.
-- **1-kickoff.md owns** the decision-ready handoff: problem essence, boundary
-  scope, evidence, risk of inaction, scoped commitments, North Star, and
+- **1-kickoff.md owns** the decision-ready handoff: problem essence, one scope
+  contract, evidence, risk of inaction, North Star, and
   delivery stakeholders.
 - Do not restate autopsy-owned content in the kickoff; link to
   `problem-autopsy.md` instead.

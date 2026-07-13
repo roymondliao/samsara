@@ -70,3 +70,47 @@ def test_death__load_bearing_procedures_exist_only_in_flow() -> None:
     ):
         owners = [name for name, text in sources.items() if phrase in text]
         assert owners == ["flow"], f"{phrase!r} owners: {owners}"
+
+
+def test_death__l1_handoff_is_refs_only() -> None:
+    """Step 6 must point at PT-CI/PT-S entries, not restate their content."""
+    template = _read(ARTIFACT_TEMPLATE)
+    start = template.index("### L1")
+    end = template.index("### Evaluation Contract", start)
+    l1 = template[start:end]
+
+    assert "**Decision refs:**" in l1
+    assert "PT-CI" in l1 and "PT-S" in l1
+    assert "**Core identity:**" not in l1
+    assert "**Real seams:**" not in l1
+
+
+def test_death__k3b_requires_resolvable_l1_refs() -> None:
+    """Heading presence is not completion; every handoff ref must resolve."""
+    recovery = _read(FLOW)[_read(FLOW).index("## 9. K3b Recovery") :]
+    normalized = " ".join(recovery.split()).lower()
+
+    assert "l1 refs" in normalized
+    assert "resolve" in normalized
+    assert "pt-ci" in normalized and "pt-s" in normalized
+
+
+def test_death__pre_thinking_ids_have_one_immutable_human_resolver() -> None:
+    """PT IDs stay machine-stable while canonical labels keep refs readable."""
+    flow = _normalized(FLOW).replace("`", "")
+    template = _read(ARTIFACT_TEMPLATE)
+
+    for expansion in (
+        "PT-CI (Pre-thinking Core Identity)",
+        "PT-D* (Pre-thinking Design Decision)",
+        "PT-S* (Pre-thinking Real Seam)",
+        "PT-EVAL (Pre-thinking Evaluation Contract)",
+    ):
+        assert expansion in flow
+    for rule in ("never renumber", "never reuse", "new ID"):
+        assert rule in flow
+
+    assert "**Canonical label:** <semantic label>" in template
+    l1 = template[template.index("### L1") : template.index("### Evaluation Contract")]
+    assert "PT-CI (<canonical label from Step 2>)" in l1
+    assert "PT-S1 (<canonical seam name from Step 4>)" in l1
