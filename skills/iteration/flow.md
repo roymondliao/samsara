@@ -1,6 +1,6 @@
 # Iteration Flow — Executable Authority
 
-This file is the sole procedural authority for Iteration. Scar reports are the item-level SSOT; read and update them in place. Do not create a normalized scar inventory.
+This file is the sole procedural authority for Iteration. Scar reports are the item-level SSOT; read and update them in place. A wound is a scar item whose status is not `resolved`. Do not create a normalized scar inventory.
 
 ## Step 0: Restore Durable State
 

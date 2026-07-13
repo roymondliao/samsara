@@ -402,6 +402,25 @@ def test_death__iteration_checkpoint_uses_yaml_structure_not_dot_notation() -> N
     } <= entry.keys()
 
 
+def test_death__derived_graph_preserves_all_canonical_routes() -> None:
+    skill = ITERATION_SKILL.read_text(encoding="utf-8")
+    graph = re.search(r"```dot\n(.*?)\n```", skill, re.DOTALL)
+    assert graph is not None
+    body = graph.group(1).lower()
+
+    for route in ("skip_rounds", "fix_rounds", "unknown"):
+        assert f'label="{route}"' in body
+    assert "actionable" not in body
+    assert "repair" in body
+    assert "blocked" in body
+
+
+def test_death__wound_term_resolves_to_scar_item_status() -> None:
+    flow = ITERATION_FLOW.read_text(encoding="utf-8").lower()
+
+    assert "a wound is a scar item whose status is not `resolved`" in flow
+
+
 def test_death__resume_uses_durable_artifacts_not_conversation_memory() -> None:
     flow = ITERATION_FLOW.read_text(encoding="utf-8").lower()
 

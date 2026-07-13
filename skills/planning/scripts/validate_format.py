@@ -16,7 +16,12 @@ import sys
 from pathlib import Path
 from typing import Any
 
-import yaml
+try:
+    import yaml
+except ImportError:  # pragma: no cover - environment-dependent
+    print("CANNOT VALIDATE: PyYAML is unavailable to the uv-run Python environment.")
+    print("This is an unknown outcome, not a pass.")
+    sys.exit(2)
 
 
 _SEAM_ENTRY_RE = re.compile(

@@ -245,7 +245,7 @@ def test_scar_schema_granularity_floor() -> None:
     """Rule 15: only structural bets earn an entry; function splitting and
     naming sit below the floor. Empty list valid, missing key distinct."""
     schema = read("skills/implement/templates/scar-schema.yaml").lower()
-    assert "granularity floor" in schema
+    assert "# granularity-floor:" in schema
     assert "structural bet" in schema
     assert "structural_decisions: []" in schema, (
         "the empty-list-vs-missing-key distinction must be spelled out"

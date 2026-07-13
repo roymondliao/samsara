@@ -238,11 +238,16 @@ This order is mandatory. Death test before unit test. Scar report before self-it
 18. **Run implement's format validator** — mechanical shape check of every scar report (parse, dual-face completeness, forced_by/seam resolution, systemic_ref dangling, debt consistency):
 
     ```bash
-    source .venv/bin/activate
-    uv run python scripts/validate_format.py changes/<feature>/ --repo-root <repo-root>
+    uv run python <installed-implement-skill-directory>/scripts/validate_format.py changes/<feature>/ --repo-root <repo-root>
     ```
 
-    (Resolve `scripts/validate_format.py` relative to this skill's directory.) Paste its output into the transition record — a missing validator output at handoff is a **visible missing**, never a silent skip. Findings are format facts: fix the scar reports (or return the underlying gap to the implementer) and re-run until clean. The validator never judges whether a decision was a good bet — that already happened in review.
+    Resolve the placeholder from this skill's installed skill directory; do
+    not assume the target repository contains Samsara's source tree. Paste its
+    output into the transition record — a missing validator output at handoff
+    is a **visible missing**, never a silent skip. Findings are format facts:
+    fix the scar reports (or return the underlying gap to the implementer) and
+    re-run until clean. The validator never judges whether a decision was a
+    good bet — that already happened in review.
 
 19. Commit all changes
 

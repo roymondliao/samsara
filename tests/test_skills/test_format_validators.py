@@ -14,6 +14,7 @@ CANNOT VALIDATE line protocol documented in each script's module docstring.
 from __future__ import annotations
 
 import importlib.util
+import subprocess
 import sys
 from pathlib import Path
 
@@ -45,6 +46,31 @@ planning_validator = _load(
 implement_validator = _load(
     ROOT / "skills/implement/scripts/validate_format.py", "implement_validate_format"
 )
+
+
+def test_death__planning_missing_pyyaml_is_visible_unknown(tmp_path: Path) -> None:
+    script = tmp_path / "validate_format.py"
+    script.write_text(
+        (ROOT / "skills/planning/scripts/validate_format.py").read_text(
+            encoding="utf-8"
+        ),
+        encoding="utf-8",
+    )
+    (tmp_path / "yaml.py").write_text(
+        "raise ImportError('simulated missing PyYAML')\n", encoding="utf-8"
+    )
+
+    result = subprocess.run(
+        [sys.executable, str(script), str(tmp_path / "feature")],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 2
+    assert "CANNOT VALIDATE" in result.stdout
+    assert "unknown outcome, not a pass" in result.stdout.lower()
 
 
 OVERVIEW = """# Overview: x

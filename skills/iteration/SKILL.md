@@ -30,12 +30,17 @@ digraph iteration {
     fix [label="Delegate fix through Implement"];
     safety [label="Show safety observations"];
     gate [label="Execution-mode gate" shape=diamond];
+    repair [label="Repair missing evidence" shape=diamond];
+    blocked [label="Blocked checkpoint" shape=doublecircle];
     commit [label="Commit dispositions + checkpoint"];
     ship [label="Validate & Ship" shape=doublecircle];
 
     start -> entry;
-    entry -> commit [label="skip rounds"];
-    entry -> classify [label="actionable"];
+    entry -> commit [label="skip_rounds"];
+    entry -> classify [label="fix_rounds"];
+    entry -> repair [label="unknown"];
+    repair -> entry [label="repair"];
+    repair -> blocked [label="cannot repair"];
     classify -> fix [label="fix"];
     classify -> commit [label="no fixes"];
     fix -> safety;

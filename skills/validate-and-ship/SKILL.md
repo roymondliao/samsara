@@ -161,12 +161,12 @@ silently skip it. This is a terminal defense, not a second classification pass.
 checks referential integrity only; whether the shipped structure honors its
 declarations is review's judgment lane, not this audit's. Re-run both
 per-skill format validators against the feature directory and paste their
-output:
+output. Resolve both paths from each validator's installed skill directory; do
+not assume the target repository contains Samsara's source tree:
 
 ```text
-source .venv/bin/activate
-uv run python skills/planning/scripts/validate_format.py changes/<feature>/
-uv run python skills/implement/scripts/validate_format.py changes/<feature>/ --repo-root <repo-root>
+uv run python <installed-planning-skill-directory>/scripts/validate_format.py changes/<feature>/
+uv run python <installed-implement-skill-directory>/scripts/validate_format.py changes/<feature>/ --repo-root <repo-root>
 ```
 
 - Any `FINDING` (dangling seam id, affects pointing at no task, forced_by

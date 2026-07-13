@@ -24,7 +24,10 @@ its original evidence.
 
 Before adding any item — to `known_shortcuts`, `silent_failure_conditions`, `assumptions_made`, or `narrative` — apply the write filter question in `templates/scar-schema.yaml`'s `write-filter` anchor.
 
-Write each scar as one YAML bullet with one actionable fact. Lead with the result, name the trigger and location directly, and move rationale or verification detail to the pointer defined by the schema's `direct-bullets` anchor.
+Under the schema's `direct-bullets` anchor, write each scar as one YAML bullet
+with one actionable fact. Lead with the result, name the trigger and location
+directly, and move rationale or verification detail to the destinations
+defined by the schema's `go-elsewhere` anchor.
 
 ## Anti-Pattern: The Clean Scar
 

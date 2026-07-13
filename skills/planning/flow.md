@@ -131,12 +131,12 @@ Generate `overview.md` only after decomposition.
 
 ## 6. Format Validation
 
-From the repository root, follow the repository's Python environment rules and
-run the validator against the feature directory. In this repository:
+Resolve the validator from Planning's installed skill directory; do not assume
+the target repository contains Samsara's source tree. Run it against the
+feature directory with `uv`:
 
 ```text
-source .venv/bin/activate
-uv run python skills/planning/scripts/validate_format.py changes/<feature>/
+uv run python <installed-planning-skill-directory>/scripts/validate_format.py changes/<feature>/
 ```
 
 Exit `0` is clean, `1` is findings, and `2` is cannot-validate/unknown. Only `0`

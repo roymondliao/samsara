@@ -44,7 +44,7 @@
 # no-review-diary: omit narrative unless the slots cannot carry necessary
 #   scar context. Never use it for round-by-round or review-round history.
 #
-# granularity-floor (granularity floor): structural_decisions records only a
+# granularity-floor: structural_decisions records only a
 #   pattern, boundary, seam decision, or explicit refusal to abstract.
 #   Function splitting, naming, and ordinary control flow are not structural bets. Use
 #   `structural_decisions: []` when no structural bet was made.
