@@ -73,8 +73,10 @@ User request
 └─ other state-changing feature work
    └─ select execution mode
       └─ research -> pre-thinking -> planning -> implement
-         ├─ validate-and-ship
-         └─ iteration -> validate-and-ship
+         -> iteration entry triage
+            ├─ skip fix rounds
+            └─ run feature-level fix rounds
+         -> validate-and-ship
 ```
 
 `validate-and-ship` starts with the security and privacy Step 0 gate. Workflow
@@ -96,7 +98,7 @@ First-cut scope is intentionally session-level: `samsara_config.yaml` is not sup
 | `samsara:pre-thinking` | After research, before planning — always invoked | Pre-thinking audit log of user–LLM assumption gaps |
 | `samsara:planning` | After pre-thinking commitment (Proceed / Accept gap) | Death-first spec + tasks with acceptance criteria |
 | `samsara:implement` | Plan with tasks is ready | Code with death tests + scar reports |
-| `samsara:iteration` | After implement (optional) — feature-level scar resolution | Iteration log of cross-task patterns + system-level rot fixes |
+| `samsara:iteration` | After every completed implement — cheap entry triage, then feature-level fixes only when needed | Final scar dispositions + index checkpoint |
 | `samsara:validate-and-ship` | Implement/iteration complete — Step 0 runs the security & privacy STOP gate first | Ship manifest with failure budget |
 | `samsara:fast-track` | Small, low-risk changes (< 100 lines) | Compressed workflow, death test still first |
 | `samsara:debugging` | Production failure in existing code | Four-phase yin-side root cause analysis |
@@ -227,7 +229,7 @@ Samsara produces structured artifacts throughout the workflow:
 | Planning | Acceptance criteria | YAML | Success + failure conditions |
 | Planning | Index | YAML | Task list with dependencies |
 | Implement | Scar report | YAML | Per-task wounds: assumptions, silent failures, edge cases |
-| Iteration | Iteration log | YAML | Feature-level scar triage + resolution record |
+| Iteration | Updated scar state + index checkpoint | YAML | Feature-level dispositions, evidence, and resume state |
 | Auto mode | Auto decisions | Markdown | Append-only gate decisions with rationale and uncertainty |
 | Fast-track | Fast-track record | YAML | Compressed workflow record for small changes |
 | Validate | Ship manifest | YAML | Delivery summary with failure budget |

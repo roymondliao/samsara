@@ -25,6 +25,7 @@ from tests.test_auto_mode.test_protocol_helpers import (
     ALL_WORKFLOW_SKILLS,
     BOOTSTRAP,
     EARLY_STAGE_SKILLS,
+    ITERATION_FLOW,
     LATER_STAGE_SKILLS,
     PLANNING_FLOW,
     PRE_THINKING_FLOW,
@@ -214,19 +215,19 @@ class TestPrimaryEvaluatorProtocol:
                 "Execution Mode Selection",
             ),
             "iteration entry triage": (
-                LATER_STAGE_SKILLS["iteration"],
+                ITERATION_FLOW,
                 "Entry Triage",
             ),
             "iteration triage": (
-                LATER_STAGE_SKILLS["iteration"],
-                "Step 2: Triage (Human Gate)",
+                ITERATION_FLOW,
+                "Step 2: Triage (Execution-Mode Gate)",
             ),
             "iteration fix handling": (
-                LATER_STAGE_SKILLS["iteration"],
+                ITERATION_FLOW,
                 "Step 3: Fix (Per-Fix Commit)",
             ),
             "iteration round gate": (
-                LATER_STAGE_SKILLS["iteration"],
+                ITERATION_FLOW,
                 "Step 4: Round Check + Safety Valve",
             ),
             "security step0 gate": (

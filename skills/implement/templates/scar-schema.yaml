@@ -12,10 +12,11 @@
 #   and name the concrete trigger and location. Do not mix rationale,
 #   review history, or verification detail into item text.
 #
-# Budget — field ≤200 chars (where ≤120) | item ≤6 lines | narrative
+# Budget — field ≤200 chars (where ≤120) | item ≤14 lines | narrative
 #   ≤10 lines | report ≤90 lines. Capped fields: what, bites_when, where,
-#   accepted_because, resolution, assumption, and note. Structural entries
-#   have their own ≤10 lines-per-entry budget.
+#   resolution, assumption, note, rationale, re_review_signal, owner, target,
+#   resume_when, blocker, and each evidence_refs entry. Structural entries have
+#   their own ≤10 lines-per-entry budget.
 #
 # legacy-invalid: new known_shortcuts and silent_failure_conditions items
 #   use what/bites_when/where slots, not description blobs or bare strings.
@@ -24,8 +25,21 @@
 #   note to an evidence pointer (file:line or test name). Without a pointer,
 #   use verified: false and state the consequence briefly.
 #
-# resolved-in-place: a fixed item keeps its original slots and adds
-#   `status: resolved` plus a one-line `resolution`. Do not copy it elsewhere.
+# stable-scar-id: every new actionable item has a file-scoped `SC-<number>`.
+#   The human-facing key is `what`; the machine key is `scar_id`.
+#   Never renumber, reuse, or edit an ID. Cite it as `<report-path>#<scar_id>`.
+#
+# immutable-wound: after creation, scar_id, what, bites_when, where,
+#   assumption, verified, note, and systemic_ref are immutable. If an original
+#   fact is wrong, append a new wound that cites it; do not rewrite history.
+#
+# lifecycle: every new actionable item starts with `status: open` and
+#   `iteration: null`. Iteration owns later status changes and the iteration
+#   map. A null iteration means Level 2 has not acted; it is not proof of safety.
+#
+# resolved-in-place: a fixed item keeps its original fields and adds
+#   `status: resolved` plus a one-line `resolution`. Level 1 leaves
+#   `iteration: null`; Level 2 also records round, action, and evidence refs.
 #
 # no-review-diary: omit narrative unless the slots cannot carry necessary
 #   scar context. Never use it for round-by-round or review-round history.
@@ -44,7 +58,7 @@
 #
 # systemic-ref: for a recurring cross-feature fact, write systemic_ref plus
 #   one note naming this task's concrete landing point. Do not copy the
-#   registry description. Resolution lives in skills/iteration/SKILL.md.
+#   registry description. Resolution lives in skills/iteration/flow.md.
 #
 # go-elsewhere:
 #   - review verdicts and round history -> review-record.md
@@ -72,28 +86,49 @@ structural_decisions: []
 # Use only the fields that apply. Do not copy every form into every report.
 #
 # known_shortcuts / silent_failure_conditions:
-#   - what: "one concrete scar"
+#   - scar_id: SC-1
+#     what: "one concrete scar"
 #     bites_when: "the trigger that makes it matter"
 #     where: "file:line or section pointer"
-#     accepted_because: "omit unless acceptance changes a future action"
-#     deferred_to_feature_iteration: true
+#     status: open
+#     iteration: null
 #
-# resolved item (alternative to deferred; never use both):
-#   - what: "one concrete scar"
+# resolved by Level 1:
+#   - scar_id: SC-2
+#     what: "one concrete scar"
 #     bites_when: "the trigger that made it matter"
 #     where: "file:line or section pointer"
 #     status: resolved
 #     resolution: "the change made"
+#     iteration: null
 #
 # systemic item:
-#   - systemic_ref: <id>
+#   - scar_id: SC-3
+#     systemic_ref: <id>
 #     note: "this task's landing point"
+#     status: open
+#     iteration: null
 #
-# assumption:
+# unverified assumption (verified assumptions need no lifecycle fields):
+#   - scar_id: SC-4
+#     assumption: "what was assumed"
+#     verified: false
+#     note: "what fails if the assumption is wrong"
+#     status: open
+#     iteration: null
+#
+# verified assumption:
 #   - assumption: "what was assumed"
 #     verified: true
 #     note: "test name or file:line"
-#     deferred_to_feature_iteration: false
+#
+# Level 2 states (add to the original item; never copy the item):
+#   open + action fix: {round, action: fix, evidence_refs}
+#   resolved: {round, action: fixed, evidence_refs}
+#   accepted: {round, action: accept, rationale, re_review_signal, owner,
+#              evidence_refs}
+#   deferred: {round, action: defer, target, resume_when, owner, evidence_refs}
+#   blocked: {round, action: block, blocker, owner, evidence_refs}
 #
 # narrative: |  # optional; omit when structured fields are sufficient
 #   Necessary context only.
@@ -111,9 +146,12 @@ structural_decisions: []
 # task_id: task-2
 # completion_status: done_with_concerns
 # known_shortcuts:
-#   - what: "Sort order follows insertion order"
+#   - scar_id: SC-1
+#     what: "Sort order follows insertion order"
 #     bites_when: "a caller expects alphabetical order"
 #     where: "scripts/paper_scan.py:88"
+#     status: open
+#     iteration: null
 # silent_failure_conditions: []
 # assumptions_made:
 #   - assumption: "topic folders match [0-9]{2}_*"

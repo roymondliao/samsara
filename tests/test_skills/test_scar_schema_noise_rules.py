@@ -45,7 +45,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[2]  # tests/test_skills/ -> repo root
 SCAR_SCHEMA = ROOT / "skills" / "implement" / "templates" / "scar-schema.yaml"
-ITERATION = ROOT / "skills" / "iteration" / "SKILL.md"
+ITERATION = ROOT / "skills" / "iteration" / "flow.md"
 IMPLEMENTER = ROOT / "agents" / "implementer.md"
 CODE_REVIEWER = ROOT / "agents" / "code-reviewer.md"
 SCAR_REPORT_MD = ROOT / "skills" / "implement" / "scar-report.md"
@@ -956,10 +956,12 @@ def test_death__schema_declares_new_slot_form_and_budget_numbers() -> None:
     schema = read(SCAR_SCHEMA).lower()
 
     slot_patterns = {
+        "scar_id:": r"^\s*(?:#\s*)?-?\s*scar_id:",
         "what:": r"^\s*(?:#\s*)?-?\s*what:",
         "bites_when:": r"^\s*(?:#\s*)?-?\s*bites_when:",
         "where:": r"^\s*(?:#\s*)?-?\s*where:",
-        "accepted_because:": r"^\s*(?:#\s*)?-?\s*accepted_because:",
+        "status:": r"^\s*(?:#\s*)?-?\s*status:",
+        "iteration:": r"^\s*(?:#\s*)?-?\s*iteration:",
     }
     for slot, pattern in slot_patterns.items():
         assert re.search(pattern, schema, re.MULTILINE), (
@@ -972,7 +974,7 @@ def test_death__schema_declares_new_slot_form_and_budget_numbers() -> None:
     budget_patterns = {
         "≤200": r"(?:≤|<=)\s*200\b",
         "≤120": r"(?:≤|<=)\s*120\b",
-        "≤6": r"(?:≤|<=)\s*6\b",
+        "≤14": r"(?:≤|<=)\s*14\b",
         "≤10": r"(?:≤|<=)\s*10\b",
         "≤90": r"(?:≤|<=)\s*90\b",
     }

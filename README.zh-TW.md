@@ -60,11 +60,16 @@ Converter 會把 skills、agents、hooks、references 轉換成目標平台的�
 
 Samsara 提供從研究到交付的結構化流程。每個階段產生特定的產出物，餵入下一階段。
 
+> **Derived overview。** 可執行的 routing contract 以
+> [`skills/samsara-bootstrap/SKILL.md`](skills/samsara-bootstrap/SKILL.md)
+> 為準；若此處圖示與該 contract 不一致，以 Bootstrap 為準。
+
 ```
-research ──> pre-thinking ──> planning ──> implement ──> iteration（可選）
-                                               │              │
-                                               v              v
-                                          validate-and-ship（Step 0：security & privacy gate）
+research ──> pre-thinking ──> planning ──> implement
+  ──> iteration entry triage
+       ├─ 跳過 fix rounds
+       └─ 執行 feature-level fix rounds
+  ──> validate-and-ship（Step 0：security & privacy gate）
 
 fast-track（小型低風險改動）──────> 完成
 debugging（production 故障）──> 小 fix 走 fast-track / 大 fix 走 implement
@@ -88,7 +93,7 @@ debugging（production 故障）──> 小 fix 走 fast-track / 大 fix 走 imp
 | `samsara:pre-thinking` | 研究完成後、planning 前——恆被 invoke | User–LLM assumption gap 的 pre-thinking audit log |
 | `samsara:planning` | Pre-thinking commitment 後（Proceed / Accept gap） | Death-first 規格 + 帶驗收條件的任務 |
 | `samsara:implement` | Plan 與 tasks 就緒 | 帶 death test 的程式碼 + scar reports |
-| `samsara:iteration` | Implement 完成後（可選）——feature-level scar resolution | Cross-task patterns + 系統級腐爛修復的 iteration log |
+| `samsara:iteration` | 每次 Implement 完成後——先做廉價 entry triage，有需要才進 feature-level fixes | Scar 最終 disposition + index checkpoint |
 | `samsara:validate-and-ship` | Implement/iteration 完成——Step 0 先跑 security & privacy STOP gate | 帶失敗預算的交付清單 |
 | `samsara:fast-track` | 小型低風險改動（< 100 行） | 簡化流程，death test 仍先行 |
 | `samsara:debugging` | 既有程式碼的 production 故障 | 四階段陰面根因分析 |
@@ -219,7 +224,7 @@ Samsara 在工作流程中產出結構化的產出物：
 | Planning | 驗收條件 | YAML | 成功 + 失敗條件 |
 | Planning | Index | YAML | 任務清單，含依賴關係 |
 | Implement | Scar report | YAML | 每個任務的傷疤：假設、靜默失敗、邊界條件 |
-| Iteration | Iteration log | YAML | Feature-level scar 分類 + 解決記錄 |
+| Iteration | 更新後的 scar state + index checkpoint | YAML | Feature-level disposition、evidence 與 resume state |
 | Auto mode | Auto decisions | Markdown | Append-only gate 決策，含 rationale 與 uncertainty |
 | Fast-track | Fast-track record | YAML | 小改動的簡化流程記錄 |
 | Validate | Ship manifest | YAML | 交付摘要，含失敗預算 |

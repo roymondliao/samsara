@@ -39,6 +39,11 @@ Checks per changes/<feature>/scar-reports/task-N-scar.yaml:
   slot-required        every non-systemic_ref, non-legacy-form item in
                        known_shortcuts/silent_failure_conditions carries
                        what/bites_when/where
+  scar-id              new lifecycle items use unique file-scoped SC-<number>
+                       identifiers
+  scar-lifecycle       new lifecycle items use a valid status and carry the
+                       mechanical fields required by that status; old items
+                       with neither scar_id nor iteration remain readable
 
 structural_decisions key policy: required for NEW reports —
 `structural_decisions: []` = checked, no structural bet; a MISSING key is
@@ -86,9 +91,9 @@ _SEAM_DECL_RE = re.compile(r"^\s*-\s*seam:\s*(\S+)", re.MULTILINE)
 # schema text and asserts equality against these; changing either side alone
 # is a red test, by design (schema is the declared source, this module is
 # the enforced gate — they must not silently diverge).
-BUDGET_FIELD_CHARS = 200  # what/bites_when/accepted_because/resolution/note/assumption
+BUDGET_FIELD_CHARS = 200  # what/bites_when/resolution/note/assumption
 BUDGET_WHERE_CHARS = 120  # `where` only
-BUDGET_ITEM_LINES = 6  # single known_shortcuts/silent_failure_conditions item
+BUDGET_ITEM_LINES = 14  # scar item including its optional iteration state
 BUDGET_STRUCTURAL_ENTRY_LINES = 10  # single structural_decisions entry
 BUDGET_NARRATIVE_LINES = 10  # narrative content lines
 BUDGET_REPORT_LINES = 90  # whole report file, physical lines incl. comments/blanks
@@ -100,12 +105,26 @@ BUDGET_REPORT_LINES = 90  # whole report file, physical lines incl. comments/bla
 # text, symmetric to the numeric drift test above: the validator enforcing a
 # field the schema never declared, or the schema declaring a field the
 # validator never caps, both go red.
-_SLOT_CHAR_FIELDS = ("what", "bites_when", "accepted_because", "resolution")  # <=200
+_SLOT_CHAR_FIELDS = ("what", "bites_when", "resolution")  # <=200
 _WHERE_FIELD = "where"  # <=120
 _ASSUMPTION_CHAR_FIELDS = ("assumption", "note")  # <=200
+_ITERATION_CHAR_FIELDS = (
+    "rationale",
+    "re_review_signal",
+    "owner",
+    "target",
+    "resume_when",
+    "blocker",
+)  # <=200
 CHAR_CAPPED_FIELD_NAMES = (
-    frozenset(_SLOT_CHAR_FIELDS) | {_WHERE_FIELD} | frozenset(_ASSUMPTION_CHAR_FIELDS)
+    frozenset(_SLOT_CHAR_FIELDS)
+    | {_WHERE_FIELD, "evidence_refs"}
+    | frozenset(_ASSUMPTION_CHAR_FIELDS)
+    | frozenset(_ITERATION_CHAR_FIELDS)
 )
+
+_SCAR_ID_RE = re.compile(r"SC-[1-9]\d*")
+_SCAR_STATUSES = {"open", "resolved", "accepted", "deferred", "blocked"}
 
 
 def _declared_seams(feature_dir: Path) -> set[str]:
@@ -265,6 +284,31 @@ def _char_cap_finding(
     return None
 
 
+def _check_iteration_char_budget(where: str, item: dict) -> list[str]:
+    findings: list[str] = []
+    iteration = item.get("iteration")
+    if not isinstance(iteration, dict):
+        return findings
+    for key in _ITERATION_CHAR_FIELDS:
+        finding = _char_cap_finding(
+            where, f"iteration.{key}", iteration.get(key), BUDGET_FIELD_CHARS
+        )
+        if finding:
+            findings.append(finding)
+    evidence_refs = iteration.get("evidence_refs")
+    if isinstance(evidence_refs, list):
+        for i, ref in enumerate(evidence_refs):
+            finding = _char_cap_finding(
+                where,
+                f"iteration.evidence_refs[{i}]",
+                ref,
+                BUDGET_FIELD_CHARS,
+            )
+            if finding:
+                findings.append(finding)
+    return findings
+
+
 def _check_length_budget(
     name: str, data: dict, text: str, root_node: object
 ) -> list[str]:
@@ -299,7 +343,10 @@ def _check_length_budget(
                     f"length-budget: {where} is {lines} lines, over the "
                     f"{BUDGET_ITEM_LINES}-line item budget"
                 )
-            if item is None or "description" in item:
+            if item is None:
+                continue
+            findings.extend(_check_iteration_char_budget(where, item))
+            if "description" in item:
                 continue  # legacy-form/malformed items carry no slot fields to cap
             if item.get("systemic_ref"):
                 finding = _char_cap_finding(
@@ -324,6 +371,7 @@ def _check_length_budget(
         if item is None:
             continue
         where = f"{name} assumptions_made[{i}]"
+        findings.extend(_check_iteration_char_budget(where, item))
         for key in _ASSUMPTION_CHAR_FIELDS:
             finding = _char_cap_finding(where, key, item.get(key), BUDGET_FIELD_CHARS)
             if finding:
@@ -384,6 +432,121 @@ def _check_required_slots(name: str, data: dict) -> list[str]:
     return findings
 
 
+def _check_scar_lifecycle(name: str, data: dict) -> list[str]:
+    """Validate only lifecycle shape, never whether a disposition is wise.
+
+    An item with neither ``scar_id`` nor ``iteration`` is a legacy read shape.
+    Once either new field appears, the complete current write contract applies.
+    This keeps old reports readable without giving partially-written new state a
+    silent compatibility escape hatch.
+    """
+    findings: list[str] = []
+    seen_ids: dict[str, str] = {}
+
+    for section_name in (
+        "known_shortcuts",
+        "silent_failure_conditions",
+        "assumptions_made",
+    ):
+        for i, item in _iter_raw_items(data, section_name):
+            if item is None:
+                continue
+            where = f"{name} {section_name}[{i}]"
+            if "scar_id" not in item and "iteration" not in item:
+                continue
+
+            scar_id = str(item.get("scar_id") or "")
+            if _SCAR_ID_RE.fullmatch(scar_id) is None:
+                findings.append(
+                    f"scar-id: {where} has invalid or missing `scar_id`; "
+                    "expected file-scoped SC-<number>"
+                )
+            elif scar_id in seen_ids:
+                findings.append(
+                    f"scar-id: {where} duplicates `{scar_id}` already used by "
+                    f"{seen_ids[scar_id]}"
+                )
+            else:
+                seen_ids[scar_id] = where
+
+            status = str(item.get("status") or "")
+            if status not in _SCAR_STATUSES:
+                findings.append(
+                    f"scar-lifecycle: {where} has invalid or missing `status`; "
+                    f"expected one of {sorted(_SCAR_STATUSES)}"
+                )
+                continue
+            if "iteration" not in item:
+                findings.append(
+                    f"scar-lifecycle: {where} has no `iteration` key; use null "
+                    "until Level 2 acts"
+                )
+                continue
+
+            iteration = item.get("iteration")
+            if status == "resolved" and not str(item.get("resolution") or "").strip():
+                findings.append(
+                    f"scar-lifecycle: {where} status `resolved` requires `resolution`"
+                )
+
+            if iteration is None:
+                if status not in {"open", "resolved"}:
+                    findings.append(
+                        f"scar-lifecycle: {where} status `{status}` requires an "
+                        "iteration map"
+                    )
+                continue
+            if not isinstance(iteration, dict):
+                findings.append(
+                    f"scar-lifecycle: {where} `iteration` must be null or a map"
+                )
+                continue
+
+            round_number = iteration.get("round")
+            if type(round_number) is not int or round_number < 1:
+                findings.append(
+                    f"scar-lifecycle: {where} iteration requires positive integer `round`"
+                )
+            evidence_refs = iteration.get("evidence_refs")
+            if (
+                not isinstance(evidence_refs, list)
+                or not evidence_refs
+                or not all(str(ref).strip() for ref in evidence_refs)
+            ):
+                findings.append(
+                    f"scar-lifecycle: {where} iteration requires non-empty `evidence_refs`"
+                )
+
+            expected_action = {
+                "open": "fix",
+                "resolved": "fixed",
+                "accepted": "accept",
+                "deferred": "defer",
+                "blocked": "block",
+            }[status]
+            if iteration.get("action") != expected_action:
+                findings.append(
+                    f"scar-lifecycle: {where} status `{status}` requires "
+                    f"iteration action `{expected_action}`"
+                )
+
+            required_by_status = {
+                "open": (),
+                "resolved": (),
+                "accepted": ("rationale", "re_review_signal", "owner"),
+                "deferred": ("target", "resume_when", "owner"),
+                "blocked": ("blocker", "owner"),
+            }
+            for field in required_by_status[status]:
+                if not str(iteration.get(field) or "").strip():
+                    findings.append(
+                        f"scar-lifecycle: {where} status `{status}` requires "
+                        f"iteration field `{field}`"
+                    )
+
+    return findings
+
+
 def validate_scar(
     scar_path: Path,
     known_ids: set[str],
@@ -402,9 +565,10 @@ def validate_scar(
 
     findings: list[str] = []
 
-    # --- legacy-form / slot-required / length-budget (task-3) ---
+    # --- current write shape / legacy read compatibility / length budget ---
     findings.extend(_check_legacy_form(name, data))
     findings.extend(_check_required_slots(name, data))
+    findings.extend(_check_scar_lifecycle(name, data))
     try:
         root_node = yaml.compose(text)
     except yaml.YAMLError:
@@ -557,7 +721,7 @@ def main(argv: list[str]) -> int:
     print(
         f"implement format validation: clean — {len(scar_files)} scar report(s) "
         "(parse / dual-face / forced-by / seam / systemic-ref / debt / "
-        "length-budget / legacy-form / slot-required)"
+        "length-budget / legacy-form / slot-required / scar-id / scar-lifecycle)"
     )
     return 0
 

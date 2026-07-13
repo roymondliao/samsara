@@ -109,10 +109,12 @@ Route requests in this order. Stop at the first match:
 6. **Unclear mutation authority:** Clarify whether the user wants project-state
    changes. Do not default to Research from possibility alone.
 
-Workflow sequences:
+Workflow sequence:
 
-- Default: `research -> pre-thinking -> planning -> implement -> validate-and-ship`.
-- With feature iteration: `research -> pre-thinking -> planning -> implement -> iteration -> validate-and-ship`.
+- `research -> pre-thinking -> planning -> implement -> iteration -> validate-and-ship`.
+- Every completed Implement enters Iteration's cheap entry triage. Iteration
+  skips fix rounds when nothing actionable remains; Implement never bypasses
+  the entry triage.
 - `validate-and-ship` includes the security and privacy Step 0 gate.
 - Fast-track and Debugging follow their own documented transitions.
 
@@ -152,8 +154,7 @@ digraph samsara_routing {
     research -> prethinking;
     prethinking -> planning;
     planning -> implement;
-    implement -> validate [label="skip feature iteration"];
-    implement -> iteration [label="run feature iteration"];
+    implement -> iteration [label="entry triage"];
     iteration -> validate;
     validate -> done;
     fasttrack -> done;

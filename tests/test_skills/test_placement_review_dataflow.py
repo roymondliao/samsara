@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 CODE_REVIEWER = "agents/code-reviewer.md"
 IMPLEMENT_DISPATCH = "skills/implement/dispatch-template.md"
-ITERATION = "skills/iteration/SKILL.md"
+ITERATION = "skills/iteration/flow.md"
 PLANNING = "skills/planning/flow.md"
 
 
@@ -71,18 +71,16 @@ def test_dc1_authority_refs_reach_implement_yin_dispatch() -> None:
     assert "placement" in lowered
 
 
-def test_dc5_authority_refs_reach_iteration_yin_dispatch() -> None:
+def test_dc5_iteration_fix_reenters_implement_with_authority_refs() -> None:
     fix_section = _iteration_fix_section(read(ITERATION))
     lowered = fix_section.lower()
 
-    assert "planning_refs" in fix_section
-    assert "decision_refs" in fix_section
-    assert "2-plan.md" in fix_section
-    assert "pre-thinking.md" in fix_section
-    assert "never source decision authority" in lowered
-    assert "placement" in lowered
-    # tie the data flow to the yin reviewer specifically, not just anywhere in Step 3
-    assert "code-reviewer" in lowered
+    assert "samsara:implement" in lowered
+    assert "pt/pl/ac refs" in lowered
+    for token in ("complete compact", "seam", "affects", "anchors"):
+        assert token in lowered
+    assert "implement owns implementation and review orchestration" in lowered
+    assert "do not curate code excerpts" in lowered
 
 
 def test_dc1_data_flow_present_in_both_paths_not_just_one() -> None:
@@ -94,8 +92,8 @@ def test_dc1_data_flow_present_in_both_paths_not_just_one() -> None:
     assert "placement authority" in implement_yin, (
         "implement yin dispatch missing Placement Authority"
     )
-    assert "planning_refs" in iteration_fix and "decision_refs" in iteration_fix, (
-        "iteration yin dispatch missing authority refs"
+    assert "samsara:implement" in iteration_fix and "pt/pl/ac refs" in iteration_fix, (
+        "iteration re-entry work order missing authority refs"
     )
 
 

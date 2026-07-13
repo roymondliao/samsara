@@ -2,13 +2,19 @@
 
 Every completed task leaves a scar report. This is the yin-side output of implementation — it records what the code cannot say about itself.
 
-> 如果 AI 完成任務後宣告「完成」但不附帶 scar report，該完成狀態標記為 `completion_unverified`。
+If implementation reports completion without a scar report, record
+`completion_unverified`, not `done`.
 
 ## Format
 
 The canonical scar report schema is defined in `templates/scar-schema.yaml`. Read that file for the full schema, rules, and a verbatim example.
 
 Scar reports are written as YAML at `changes/<feature>/scar-reports/task-N-scar.yaml` — inside the feature's `changes/` directory, not at the project root.
+
+Implement owns new wound facts and stable IDs. Iteration owns Level 2
+`status`/`iteration` updates on those items. Validate & Ship is read-only. This
+single-writer split keeps the same scar file authoritative without rewriting
+its original evidence.
 
 **For inline/cowork execution:** read `templates/scar-schema.yaml` before writing any scar report.
 

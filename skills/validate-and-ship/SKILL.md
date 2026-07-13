@@ -19,6 +19,11 @@ Read from the feature's `changes/` directory:
 - `scar-reports/` — all scar reports from implementation
 - `overview.md` (Real Seams Projection) and `index.yaml` refs — inputs to the terminal format audit (Step 1)
 
+Read `index.yaml`. The `status` field under `iteration_entry` in `index.yaml`
+must be `ready_for_validation`; `last_commit` in the same mapping must resolve,
+and the working tree must be clean. Validation is a read-only consumer of scar
+dispositions; incomplete state returns to Iteration.
+
 The feature branch must have committed changes ahead of the base branch (typically `main`) — Step 0's diff gate depends on committed changes existing.
 
 ## Process
@@ -122,19 +127,35 @@ Only after Step 0 records a pass (or a human-accepted risk in
 
 ### 1. Failure Budget Review
 
-Aggregate all scar reports. Answer:
-- How many `silent_failure_conditions` across all tasks?
-- How many `unverified assumptions`?
-- Are these within acceptable limits for shipping?
-- Any new silent failure paths discovered during implementation that weren't in the original death cases?
+Read every scar report directly. Do not create another scar inventory.
+Interpret final item state as follows:
 
-**systemic_ref resolution (mandatory when Level 2 iteration was skipped):**
+- `resolved`: exclude from the remaining failure budget. `iteration: null` is
+  valid here when Level 1 resolved the item.
+- `accepted`: include as accepted exposure; require rationale,
+  `re_review_signal`, owner, and evidence refs.
+- `deferred`: include as deferred exposure; require target, `resume_when`,
+  owner, and evidence refs.
+- `open`: include as actionable exposure. An `open` item blocks shipping until
+  Iteration resolves or classifies it.
+- `blocked`: include with its blocker and owner; it is never a silent pass.
+
+`iteration: null` means only that Level 2 has not acted; it never means resolved.
+Treat a readable legacy item without lifecycle fields as unresolved.
+Validate reports these states but never reclassifies them.
+
+Answer:
+
+- How many non-resolved `silent_failure_conditions` remain?
+- How many non-resolved unverified assumptions remain?
+- Which items are accepted, deferred, open, or blocked?
+- Did implementation or Iteration add a failure path absent from the original death cases?
+
+**systemic_ref terminal defense:**
 resolve every `systemic_ref: <id>` against `.samsara/systemic-scars.yaml` using
-the same three-branch procedure as iteration SKILL.md Step 1 (canonical there).
+the same three-branch procedure as `skills/iteration/flow.md` Step 1 (canonical there).
 A dangling id is a parse failure — list the scar file + id explicitly, never
-silently skip it. Without this check, a feature that default-skips iteration
-would carry dangling systemic_refs all the way to ship with nothing resolving
-them.
+silently skip it. This is a terminal defense, not a second classification pass.
 
 **Terminal format audit (mandatory — DC-1 terminal defense line):** this audit
 checks referential integrity only; whether the shipped structure honors its

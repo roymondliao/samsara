@@ -386,7 +386,7 @@ def _write_scar(scarred_feature: Path, text: str) -> None:
 def test_implement_overbudget_item_lines_is_a_length_budget_finding(
     scarred_feature: Path, tmp_path: Path
 ) -> None:
-    """A known_shortcuts item spanning 7 physical lines (over the 6-line item
+    """A known_shortcuts item spanning 15 physical lines (over the 14-line item
     budget) must be caught even though every field individually is tiny —
     this is the "dies silently under a pile of small lines" mode."""
     _write_scar(
@@ -394,13 +394,21 @@ def test_implement_overbudget_item_lines_is_a_length_budget_finding(
         """task_id: task-1
 completion_status: done
 known_shortcuts:
-  - what: "a"
+  - scar_id: SC-1
+    what: "a"
     bites_when: "b"
     where: "c"
-    accepted_because: "d"
-    deferred_to_feature_iteration: false
-    status: resolved
-    resolution: "e"
+    status: accepted
+    iteration:
+      round: 1
+      action: accept
+      rationale: "d"
+      re_review_signal: "e"
+      owner: "f"
+      evidence_refs:
+        - "g"
+        - "h"
+        - "i"
 silent_failure_conditions: []
 assumptions_made: []
 debt_registered: true

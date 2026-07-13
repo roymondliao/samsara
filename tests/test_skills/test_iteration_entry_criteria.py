@@ -5,7 +5,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 IMPLEMENT = ROOT / "skills" / "implement" / "SKILL.md"
-ITERATION = ROOT / "skills" / "iteration" / "SKILL.md"
+ITERATION = ROOT / "skills" / "iteration" / "flow.md"
 INDEX_TEMPLATE = ROOT / "skills" / "planning" / "templates" / "index.yaml"
 
 
@@ -38,9 +38,8 @@ def test_entry_triage_is_cheap_and_rounds_are_conditional() -> None:
     assert "every completed implementation" in entry
     assert "triage-only" in entry
     assert "does not start fix rounds" in entry
-    assert "no fix items" in entry
-    assert "samsara:validate-and-ship" in entry
-    assert "fix items" in entry and "step 3" in entry
+    assert "skip_rounds" in entry
+    assert "fix_rounds" in entry
 
 
 def test_signal_lost_is_observation_not_eligibility_gate() -> None:
@@ -75,7 +74,15 @@ def test_every_triage_outcome_leaves_a_reversible_durable_record() -> None:
     entry = " ".join(section(read(ITERATION), "## Entry Triage").split()).lower()
     index = read(INDEX_TEMPLATE)
 
-    for token in ("result", "signal_lost", "evaluator", "reason", "reversible"):
+    for token in (
+        "status: in_progress",
+        "route",
+        "round",
+        "signal_lost",
+        "evaluator",
+        "reason",
+        "reversible",
+    ):
         assert token in entry
     assert "index.yaml" in entry
     assert "iteration_entry:" in index
@@ -84,8 +91,8 @@ def test_every_triage_outcome_leaves_a_reversible_durable_record() -> None:
 def test_skip_rounds_requires_evaluator_pass_and_no_actionable_items() -> None:
     entry = " ".join(section(read(ITERATION), "## Entry Triage").split()).lower()
 
-    assert "primary evaluator passes" in entry
-    assert "no actionable remaining items" in entry
+    assert "primary evaluator" in entry and "passes" in entry
+    assert "no actionable" in entry and "remains" in entry
     assert "re_review_signal" in entry and "owner" in entry
 
 

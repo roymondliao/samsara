@@ -90,18 +90,15 @@ def test_death__bootstrap_uses_one_ordered_routing_contract() -> None:
     assert "ordered rules above are canonical" in lower
     assert "do not infer conditions" in lower
     assert "```dot" in routing and "digraph samsara_routing" in routing
-    assert re.search(r"\bimplement\s*->\s*validate\b", routing)
+    assert not re.search(r"\bimplement\s*->\s*validate\b", routing)
     assert re.search(r"\bimplement\s*->\s*iteration\b", routing)
     assert re.search(r"\biteration\s*->\s*validate\b", routing)
 
     assert (
-        "research -> pre-thinking -> planning -> implement -> validate-and-ship"
-        in lower
-    )
-    assert (
         "research -> pre-thinking -> planning -> implement -> iteration -> validate-and-ship"
         in lower
     )
+    assert "every completed implement enters iteration" in lower
     assert "entry skills:" not in text.lower()
     assert "chain skills:" not in text.lower()
 

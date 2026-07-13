@@ -1,9 +1,16 @@
 feature: <feature-name>
 status: pending
 iteration_entry: null
-# Iteration replaces null with:
-# {result: <skip_rounds | triage | unknown>, signal_lost: <N>,
-#  evaluator: <pass | fail | unknown>, reason: <evidence>, reversible: true}
+# Iteration owns this checkpoint. It replaces null with:
+# status: <in_progress | ready_for_validation | blocked>
+# route: <skip_rounds | fix_rounds | unknown>
+# round: <N>
+# evaluator: <pass | fail | unknown>
+# signal_lost: <unresolved scar count proxy>
+# stagnation_count: <N>
+# reason: <evidence-backed one-line result>
+# last_commit: <git SHA | null>
+# reversible: true
 
 sources:
   pre_thinking: pre-thinking.md

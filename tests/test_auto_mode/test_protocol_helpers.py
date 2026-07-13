@@ -15,6 +15,7 @@ AUTO_MODE_REFERENCE = REFERENCES_DIR / "auto-mode.md"
 BOOTSTRAP = SKILLS_DIR / "samsara-bootstrap" / "SKILL.md"
 PRE_THINKING_FLOW = SKILLS_DIR / "pre-thinking" / "flow.md"
 PLANNING_FLOW = SKILLS_DIR / "planning" / "flow.md"
+ITERATION_FLOW = SKILLS_DIR / "iteration" / "flow.md"
 EARLY_STAGE_SKILLS = {
     "research": SKILLS_DIR / "research" / "SKILL.md",
     "pre-thinking": SKILLS_DIR / "pre-thinking" / "SKILL.md",

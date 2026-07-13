@@ -418,16 +418,14 @@ def test_unit__bootstrap_routing_has_no_security_review_stage() -> None:
     )
 
 
-def test_unit__bootstrap_routing_connects_implement_and_iteration_to_validate() -> None:
-    """Both ordered workflow sequences must terminate at validate-and-ship."""
+def test_unit__bootstrap_routing_requires_iteration_entry_before_validate() -> None:
+    """Every full workflow reaches validation through Iteration entry triage."""
     text = read(BOOTSTRAP).lower()
-    assert (
-        "research -> pre-thinking -> planning -> implement -> validate-and-ship" in text
-    ), "samsara-bootstrap routing has no direct implement -> validate-and-ship path"
     assert (
         "research -> pre-thinking -> planning -> implement -> iteration -> validate-and-ship"
         in text
     ), "samsara-bootstrap routing has no iteration -> validate-and-ship path"
+    assert "implement -> validate" not in text
 
 
 def test_unit__bootstrap_routing_notes_step0_gate() -> None:

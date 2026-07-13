@@ -108,6 +108,39 @@ Agent tool:
 6. **Measure before writing** — any quantitative value written INTO a dispatch prompt (spec line counts, entry counts, test counts) must come from a command you actually ran (`wc -l`, `grep -c`, ...) before writing it, never an estimate — reviewers inherit dispatch numbers into verdicts (precedent: an unmeasured "30 lines" estimate propagated into a durable review-record verdict when the actual count was 25).
 7. **Copy L1/L2, never compose** — the Global Position and Context Projection sections are verbatim copies of planning's products (Overview projections, index.yaml `seam`/`affects`/`anchors`). A dispatcher writing its own projection re-creates the hand-curation blind spot the channel exists to remove. A plan without these fields gets an explicit `global_channel: absent`, never a silent omission.
 
+## Iteration Fix Variant
+
+Use the same L1/L2, Scar Report Format, Working Directory, and review sections.
+Replace only the initial task body with this work order; never improvise missing
+planning context:
+
+```text
+## Iteration Work Order
+
+scar_ref: <scar-reports/task-N-scar.yaml#SC-N>
+affected_task_ids: [<task-N>]
+expected_behavior_change: <one concrete outcome>
+round: <N>
+signal_lost: <N>
+stagnation_count: <N>
+
+## Architecture Context
+[Paste the complete compact Overview verbatim.]
+
+## Affected Planning Context
+[Copy each affected task's planning_refs, decision_refs, acceptance_refs,
+seam, affects, and anchors from index.yaml. Resolve decision authority from
+2-plan.md, pre-thinking.md, and acceptance.yaml; Overview stays derived.]
+
+## Evaluator Evidence
+[Paste PT-EVAL fail evidence and Feedback loop, or `not_applicable`.]
+```
+
+Do not paste curated code excerpts. The implementer reads live files from the
+declared anchors and follows the dependency trail. After both reviews pass,
+return evidence refs before commit so Iteration can update the original item in
+the same commit.
+
 ## Anti-Patterns
 
 - **Never** tell the subagent to "read overview.md" or "read task-N.md" — it doesn't know where they are
@@ -234,4 +267,4 @@ After a task's review rounds conclude, the MAIN AGENT excerpts each verdict's ke
 
 DC-5 discipline: an absent review-record entry for a reviewed task means "never recorded" (a finding at aggregation time), never "nothing to record" — a missing entry is not evidence that nothing happened.
 
-**Honest marker:** this convention is prose-enforced only — no aggregation-time consumer reads `review-record.md` yet to check the DC-5 discipline above actually holds. Judgment records get visibility + adversarial review, not a code gate (format-vs-judgment: only mechanical shape ever gets script teeth).
+**Honest marker:** Iteration consumes `review-record.md` as reviewer evidence for feature-level triage, but no mechanical checker decides whether the recorded judgment is sound. Judgment records get visibility + adversarial review, not a code gate (format-vs-judgment: only mechanical shape ever gets script teeth).

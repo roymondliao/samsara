@@ -53,6 +53,7 @@ _PT_EVAL_LABEL_RE = re.compile(
 )
 _PL_LABEL_RE = re.compile(r"^###\s+(PL-D\d+):\s*([^\n]+?)\s*$", re.MULTILINE)
 _AUTHORITY_ID_TOKEN_RE = re.compile(r"\b(?:PT-(?:CI|EVAL|D\d+|S\d+)|PL-D\d+|AC-\d+)\b")
+_COMMIT_REF_RE = re.compile(r"[0-9a-f]{7,40}")
 
 
 def _read_yaml(path: Path) -> Any:
@@ -149,6 +150,74 @@ def _dependency_cycles(graph: dict[str, list[str]]) -> list[list[str]]:
     for task_id in graph:
         visit(task_id)
     return cycles
+
+
+def _validate_iteration_entry(value: Any, findings: list[str]) -> None:
+    """Validate the durable Iteration checkpoint's mechanical shape only."""
+    if value is None:
+        return
+    if not isinstance(value, dict):
+        findings.append("iteration-entry: value must be null or a map")
+        return
+
+    required = {
+        "status",
+        "route",
+        "round",
+        "evaluator",
+        "signal_lost",
+        "stagnation_count",
+        "reason",
+        "last_commit",
+        "reversible",
+    }
+    for field in sorted(required - set(value)):
+        findings.append(f"iteration-entry: missing `{field}`")
+
+    if value.get("status") not in {
+        "in_progress",
+        "ready_for_validation",
+        "blocked",
+    }:
+        findings.append(
+            "iteration-entry: `status` must be in_progress, "
+            "ready_for_validation, or blocked"
+        )
+    if value.get("route") not in {"skip_rounds", "fix_rounds", "unknown"}:
+        findings.append(
+            "iteration-entry: `route` must be skip_rounds, fix_rounds, or unknown"
+        )
+    if value.get("evaluator") not in {"pass", "fail", "unknown"}:
+        findings.append("iteration-entry: `evaluator` must be pass, fail, or unknown")
+    for field in ("round", "signal_lost", "stagnation_count"):
+        number = value.get(field)
+        if type(number) is not int or number < 0:
+            findings.append(
+                f"iteration-entry: `{field}` must be a non-negative integer"
+            )
+    if not str(value.get("reason") or "").strip():
+        findings.append("iteration-entry: `reason` must be non-empty")
+    if value.get("reversible") is not True:
+        findings.append("iteration-entry: `reversible` must be true")
+
+    last_commit = value.get("last_commit")
+    if last_commit is not None and _COMMIT_REF_RE.fullmatch(str(last_commit)) is None:
+        findings.append(
+            "iteration-entry: `last_commit` must be null or a 7-40 character git SHA"
+        )
+    if value.get("status") == "ready_for_validation" and last_commit is None:
+        findings.append(
+            "iteration-entry: ready_for_validation requires a non-null `last_commit`"
+        )
+    if value.get("route") == "skip_rounds" and value.get("evaluator") != "pass":
+        findings.append("iteration-entry: skip_rounds requires evaluator `pass`")
+    if value.get("status") == "ready_for_validation" and (
+        value.get("evaluator") != "pass" or value.get("route") == "unknown"
+    ):
+        findings.append(
+            "iteration-entry: ready_for_validation requires evaluator `pass` "
+            "and a non-unknown route"
+        )
 
 
 def _authority_ids(
@@ -265,6 +334,9 @@ def validate(feature_dir: Path) -> list[str]:
         return [f"index-parse: index.yaml does not parse as YAML: {exc}"]
     if not isinstance(index, dict) or not isinstance(index.get("tasks"), list):
         return ["index-parse: index.yaml has no `tasks` list"]
+
+    if "iteration_entry" in index:
+        _validate_iteration_entry(index.get("iteration_entry"), findings)
 
     tasks = index["tasks"]
     task_ids: list[str] = []

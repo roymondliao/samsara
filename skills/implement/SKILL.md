@@ -163,6 +163,35 @@ After each subagent completes (status DONE or DONE_WITH_CONCERNS):
 
 Do not proceed to next task with open Critical issues. Do not commit until all tasks complete.
 
+## Iteration Fix Re-entry
+
+When `samsara:iteration` invokes this skill with an iteration work order,
+Implement retains its normal code/test/review authority; Iteration retains item
+selection and lifecycle authority.
+
+Require the work order fields defined by `skills/iteration/flow.md` Step 3:
+`scar_ref`, affected task IDs, the complete compact Overview, affected PT/PL/AC
+refs, seam/affects/anchors, PT-EVAL evidence when applicable, expected behavior,
+and round state. Missing fields return `NEEDS_CONTEXT`; do not reconstruct them.
+
+Treat one scar ref as one isolated work unit:
+
+1. Use the Iteration Fix Variant in `dispatch-template.md`.
+2. Run the normal death-test, Test Contract, implementation, dual-review,
+   review-record, and arbitration paths. Reviewers receive the same authority
+   refs as the implementer.
+3. Return concrete evidence refs after both reviewers pass and before commit.
+4. Let Iteration update only the original item's `status` and `iteration` map.
+5. Run the scar validator. The main agent commits code, tests, scar state, and
+   checkpoint together; the commit message cites `scar_ref`.
+
+Implement may append newly discovered wounds to the affected task scar with a
+new file-scoped ID, `status: open`, and `iteration: null`. It never rewrites an
+existing wound's ID or original fields.
+
+After the fix commit, return to the active Iteration round. Do not invoke a new
+Iteration Entry Triage from this re-entry path.
+
 ## Per-Task Execution Order
 
 This order is mandatory. Death test before unit test. Scar report before self-iteration before report.
@@ -185,7 +214,12 @@ This order is mandatory. Death test before unit test. Scar report before self-it
 8. Run all tests — verify they pass (green)
 9. Write scar report → `changes/<feature>/scar-reports/task-N-scar.yaml` (read `templates/scar-schema.yaml` for the exact format; `<feature>` = the feature directory name from `changes/`)
 10. Self-iteration (Level 1) — review scar items, fix task-scope actionable items
-11. Update scar report — mark fixed items in place with `status: resolved` + a one-line `resolution` (`scar-schema.yaml` resolved-in-place; the older separate `resolved_items` list remains readable per legacy-invalid but is retired for new writes), mark remaining items with `deferred_to_feature_iteration` flags where applicable
+11. Update scar report — every new actionable wound gets a stable file-scoped
+    `scar_id`, `status: open`, and `iteration: null`. Mark Level 1 fixes in
+    place with `status: resolved`, a one-line `resolution`, and
+    `iteration: null` (`scar-schema.yaml` `resolved-in-place`). The older
+    `resolved_items` and deferred-flag forms stay readable under
+    `legacy-invalid` but are retired for new writes.
 12. Run all tests — verify no regression from self-iteration fixes
 13. Report back (do NOT commit)
 
@@ -202,7 +236,8 @@ This order is mandatory. Death test before unit test. Scar report before self-it
 18. **Run implement's format validator** — mechanical shape check of every scar report (parse, dual-face completeness, forced_by/seam resolution, systemic_ref dangling, debt consistency):
 
     ```bash
-    python scripts/validate_format.py changes/<feature>/ --repo-root <repo-root>
+    source .venv/bin/activate
+    uv run python scripts/validate_format.py changes/<feature>/ --repo-root <repo-root>
     ```
 
     (Resolve `scripts/validate_format.py` relative to this skill's directory.) Paste its output into the transition record — a missing validator output at handoff is a **visible missing**, never a silent skip. Findings are format facts: fix the scar reports (or return the underlying gap to the implementer) and re-run until clean. The validator never judges whether a decision was a good bet — that already happened in review.
