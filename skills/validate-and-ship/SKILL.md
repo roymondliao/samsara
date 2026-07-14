@@ -1,301 +1,213 @@
 ---
 name: validate-and-ship
-description: Use when all implementation tasks are complete and you need to run validation, review failure budgets, and prepare for shipping — Step 0 is a security & privacy STOP gate that must pass before any other check
+description: Use when Iteration has committed a ready-for-validation checkpoint and one candidate must be validated, documented, and prepared for delivery
 ---
 
-# Validate and Ship — Autopsy Before Release
+# Validate and Ship — Evidence Before Delivery
 
-Run yin-side validation, review failure budgets, and prepare a ship manifest that documents what you're delivering along with its known wounds. Step 0 is a security & privacy review STOP gate — it runs first and cannot be skipped.
+Validate one committed candidate. This layer consumes upstream authority; it
+does not modify code, tests, Scar lifecycle, acceptance criteria, or design
+decisions. The LLM is the sole writer of `ship-manifest.yaml`.
+Validation is a read-only consumer of Scar dispositions.
 
-> 陽面交付功能。陰面交付功能加上它的死法清單。
+> 陽面交付功能。陰面交付功能加上它的死法與證據。
 
-## Prerequisites
+## Prerequisites and Frozen Snapshot
 
-Read from the feature's `changes/` directory:
-- `index.yaml` — all tasks should be `done` or `done_with_concerns`
-- `pre-thinking.md` — Evaluation Contract and Primary evaluator
-- `2-plan.md` — Planning judgments and file/task allocation
-- `acceptance.yaml` — acceptance criteria to validate against
-- `scar-reports/` — all scar reports from implementation
-- `overview.md` (Real Seams Projection) and `index.yaml` refs — inputs to the terminal format audit (Step 1)
+Read `index.yaml`, `pre-thinking.md`, `2-plan.md`, `acceptance.yaml`, every Scar
+report, and `review-record.md`. Read `auto-decisions.md` when auto mode was used.
 
-Read `index.yaml`. The `status` field under `iteration_entry` in `index.yaml`
-must be `ready_for_validation`; `last_commit` in the same mapping must resolve,
-and the working tree must be clean. Validation is a read-only consumer of scar
-dispositions; incomplete state returns to Iteration.
+Require all of the following before validation:
 
-The feature branch must have committed changes ahead of the base branch (typically `main`) — Step 0's diff gate depends on committed changes existing.
+- `index.yaml` tasks are complete.
+- The `status` field under `iteration_entry` in `index.yaml` is
+  `ready_for_validation`, and `last_commit` resolves.
+- The working tree is clean.
+- The branch contains committed changes ahead of the resolved base branch.
 
-## Process
+Resolve and record immutable `base_commit` and `candidate_commit`; the candidate
+is the `last_commit` value under `iteration_entry`. Every check uses this
+snapshot. Any code or test change invalidates all results and requires a new
+run from Step 0.
+
+## Derived Process Overview
+
+The executable steps below are canonical. This graph shows topology only.
 
 ```dot
 digraph validate_and_ship {
     node [shape=box];
+    start [label="Freeze candidate snapshot" shape=doublecircle];
+    validate [label="Run required validation evidence"];
+    result [label="All mandatory results pass?" shape=diamond];
+    manifest [label="Validate and commit ship manifest"];
+    delivery [label="Record and prepare delivery action" shape=doublecircle];
+    owner [label="Return finding to owning layer"];
+    blocked [label="Commit blocked manifest" shape=doublecircle];
 
-    start [label="讀取 index.yaml\n+ pre-thinking.md\n+ scar-reports/" shape=doublecircle];
-    step0 [label="Step 0: Security & Privacy Gate (STOP)\npass / fail / unknown\nunknown ≠ pass"];
-    step0_gate [label="Execution-mode gate\nhuman: fix/accept/stop\nauto: gatekeeper" shape=diamond];
-    abort [label="中止（Step 0 未過）" shape=doublecircle];
-    failure_budget [label="1. Failure budget review\n已知失敗模式仍在預算內？"];
-    acceptance [label="2. Acceptance validation\n執行 acceptance.yaml"];
-    primary_eval [label="3. Primary evaluator\nrun/inspect/apply\nEvaluation Contract"];
-    e2e [label="4. E2E 測試\n整體系統行為"];
-    reconciliation [label="5. Reconciliation check\n實際行為 vs spec 漂移量"];
-    code_review [label="6. Code Review\n(invoke code-reviewer agent)\n- 能刪嗎？\n- 命名說謊嗎？\n- 三年後詛咒點？\n- 最後才問對不對"];
-    ship [label="產出 ship-manifest.yaml\n(含 Step 0 accepted risks)"];
-    choose [label="Execution-mode gate\nhuman: choose\nauto: gatekeeper" shape=diamond];
-    merge [label="Merge to main" shape=doublecircle];
-    pr [label="Create PR" shape=doublecircle];
-    keep [label="Keep branch" shape=doublecircle];
-    discard [label="Discard" shape=doublecircle];
-
-    start -> step0;
-    step0 -> step0_gate;
-    step0_gate -> failure_budget [label="pass\nor human accepted risk"];
-    step0_gate -> step0 [label="fix → full diff re-review"];
-    step0_gate -> abort [label="stop\nor auto reject"];
-    failure_budget -> acceptance;
-    acceptance -> primary_eval;
-    primary_eval -> e2e;
-    e2e -> reconciliation;
-    reconciliation -> code_review;
-    code_review -> ship;
-    ship -> choose;
-    choose -> merge [label="merge"];
-    choose -> pr [label="PR"];
-    choose -> keep [label="keep"];
-    choose -> discard [label="discard"];
+    start -> validate;
+    validate -> result;
+    result -> manifest [label="pass"];
+    result -> owner [label="fail or unknown"];
+    owner -> blocked;
+    owner -> iteration [label="code, test, or Scar"];
+    manifest -> delivery;
 }
 ```
 
 ## Step 0: Security & Privacy Gate（STOP）
 
-This gate runs before every other validation step (Failure Budget Review, Acceptance, Primary Evaluator, E2E, Reconciliation, Code Review) and cannot be skipped, no matter how small or "safe-looking" the diff is. It replaces the standalone `samsara:security-privacy-review` skill — the semantics are unchanged, only the skill boundary is folded away so there is one gate transition instead of two.
+Security and privacy review runs before every other validation step. Unknown is never treated as pass, and no later gate can waive this step.
 
-**Entry — compute diff:**
+Resolve `<base-branch>` and `HEAD` to the frozen commits before running:
 
 ```bash
 git diff <base-branch>...HEAD
 ```
 
-Two edge cases must go through the active execution-mode gate below, never silently treated as "continue":
-- **Empty diff** — ask whether an empty diff is expected; unexpected empty diff aborts.
-- **Cannot determine base branch** — ask the user to name the comparison base (e.g. `main`, `develop`).
+- **Empty diff:** route the expected/unexpected decision through the active
+  execution-mode gate. Unexpected empty diff blocks.
+- **Cannot determine base branch:** human mode asks for the base; auto mode
+  rejects. Never guess.
+- **Review capability:** use the current platform's built-in security and
+  privacy review capability on the full diff and report its scope. This is
+  platform-agnostic; the skill does not name a tool.
+- **No capability:** this is visible degradation. Human mode may self-review
+  and accept the risk; auto mode rejects.
 
-**Review — platform capability:** use the current platform's built-in security & privacy review capability to analyze the FULL diff (every file changed vs. the base branch — the agent reports which files were included). This gate does NOT name which tool to invoke; the executing agent determines the mechanism from the platform's available capabilities (platform-agnostic — see Red Flags below).
+Record exactly one result:
 
-If the platform has no built-in review capability, this is a **visible degradation gate, never a silent skip**: ask the human to self-review and confirm before continuing, or stop.
+- **Pass** — record scope and evidence refs.
+- **Fail** — record critical, high, medium, and low findings with file and
+  location. Return the findings to `samsara:iteration`; Implement owns code and
+  test changes.
+- **Unknown** — record the missing evidence and block delivery.
 
-**Result — exactly one of three states:**
-- **Pass** — no issues. Report the file count/types reviewed, then continue to Failure Budget Review.
-- **Fail** — issues found. Report each with severity (critical / high / medium / low), file, location, description, and suggested fix — critical first. Route the fix decision (fix all / fix selected items / accept risk) through the execution-mode gate.
-- **Unknown** — review could not complete (timeout, partial result, tool error). **Unknown is never treated as pass.** Route retry / self-confirm / stop through the execution-mode gate.
+When Iteration returns a new committed candidate, rerun Step 0 against the full diff, not just the fix delta. Iteration owns the round counter and the round 3 safety valve; Validate owns neither repair nor retry policy.
 
-**Fix loop** (on fail, when issues are selected for fixing):
-1. Inline fix (no subagent dispatch) → commit → increment the round counter (one round = one `fix → commit → re-review` cycle; partial fixes that are not committed do not count)
-2. Re-run the review on the **full diff, not just the fix delta** — a fix can introduce a new issue elsewhere in the same diff
-3. Return to Result Handling above
-4. From round 3 onward, the safety-valve gate fires **every round** (not just once): continue fixing vs. accept remaining risk, routed through the execution-mode gate
+With `Execution mode: human-in-the-loop`, only the human may accept a security/privacy risk; write it to `validation.security_privacy.accepted_risks`. With `Execution mode: auto`, do not ask the user: dispatch `samsara:auto-gatekeeper`; accepted risk is invalid.
 
-**Accepted risk carries forward:** any risk a human accepts in
-`human-in-the-loop` mode — at ANY Step 0 decision point (no-capability skip,
-unknown-result skip, fail-result risk acceptance, remaining fix-loop risk) —
-must be recorded in `ship-manifest.yaml`'s `accepted_risks` field (see Output
-below). Auto mode must never accept security/privacy risk — see Auto Mode
-Gate.
+## Validation Steps
 
-- If `Execution mode: human-in-the-loop`, ask the user each prompt above (edge
-  case, capability-absent, result handling (fail or unknown), fix selection,
-  safety valve) at the point it occurs, and follow the selected action.
-- If `Execution mode: auto`, do not ask the user. Use the Auto Mode Gate below
-  to dispatch `samsara:auto-gatekeeper` for every Step 0 decision point,
-  append each decision to `auto-decisions.md`, and follow the recorded
-  decision.
+### 1. Remaining Exposure Check
 
-Only after Step 0 records a pass (or a human-accepted risk in
-`human-in-the-loop` mode) does validation continue to Failure Budget Review.
+Read Scar items directly; never create another inventory or reclassify an item.
 
-**Red Flags (Step 0):**
-- Never silently skip Step 0, even for a small or "looks safe" diff
-- Never treat unknown/partial review results as pass
-- Never re-review only the fix delta instead of the full diff
-- Never accept risk on the human's behalf — only a human in
-  `human-in-the-loop` mode can accept; auto mode must reject instead
-- Never name a specific platform tool in this gate (platform-agnostic)
+- `resolved` is excluded.
+- `accepted` and `deferred` remain visible through full Scar refs.
+- `open`, `blocked`, and unresolved legacy items block delivery.
+- `iteration: null` never means resolved.
+- Resolve `systemic_ref` through `.samsara/systemic-scars.yaml` using Iteration
+  Step 1. A dangling or unreadable ref is unknown.
 
-## Validation Steps (Yin-Side Order)
-
-### 1. Failure Budget Review
-
-Read every scar report directly. Do not create another scar inventory.
-Interpret final item state as follows:
-
-- `resolved`: exclude from the remaining failure budget. `iteration: null` is
-  valid here when Level 1 resolved the item.
-- `accepted`: include as accepted exposure; require rationale,
-  `re_review_signal`, owner, and evidence refs.
-- `deferred`: include as deferred exposure; require target, `resume_when`,
-  owner, and evidence refs.
-- `open`: include as actionable exposure. An `open` item blocks shipping until
-  Iteration resolves or classifies it.
-- `blocked`: include with its blocker and owner; it is never a silent pass.
-
-`iteration: null` means only that Level 2 has not acted; it never means resolved.
-Treat a readable legacy item without lifecycle fields as unresolved.
-Validate reports these states but never reclassifies them.
-
-Answer:
-
-- How many non-resolved `silent_failure_conditions` remain?
-- How many non-resolved unverified assumptions remain?
-- Which items are accepted, deferred, open, or blocked?
-- Did implementation or Iteration add a failure path absent from the original death cases?
-
-**systemic_ref terminal defense:**
-resolve every `systemic_ref: <id>` against `.samsara/systemic-scars.yaml` using
-the same three-branch procedure as `skills/iteration/flow.md` Step 1 (canonical there).
-A dangling id is a parse failure — list the scar file + id explicitly, never
-silently skip it. This is a terminal defense, not a second classification pass.
-
-**Terminal format audit (mandatory — DC-1 terminal defense line):** this audit
-checks referential integrity only; whether the shipped structure honors its
-declarations is review's judgment lane, not this audit's. Re-run both
-per-skill format validators against the feature directory and paste their
-output. Resolve both paths from each validator's installed skill directory; do
-not assume the target repository contains Samsara's source tree:
-
-```text
-uv run python <installed-planning-skill-directory>/scripts/validate_format.py changes/<feature>/
-uv run python <installed-implement-skill-directory>/scripts/validate_format.py changes/<feature>/ --repo-root <repo-root>
-```
-
-- Any `FINDING` (dangling seam id, affects pointing at no task, forced_by
-  resolving to nothing checkable, dangling systemic_ref) is a **blocking
-  finding** — list it explicitly, never silently pass.
-- A `CANNOT VALIDATE` exit is an unknown — not a pass, not a skip; surface it
-  through the gate like any other unknown.
-- A feature planned before the global thinking channel (no seam fields
-  anywhere) records `global_channel: absent` and skips only the planning-side
-  checks — absence is recorded, never silent.
+Run the Planning and Implement format validators. `FINDING` returns to the
+artifact owner; `CANNOT VALIDATE` is unknown. This audit checks shape and refs,
+not evidence relevance or structural judgment.
 
 ### 2. Acceptance Validation
 
-Run acceptance criteria from `acceptance.yaml`:
-- Execute death_path scenarios first
-- Then degradation scenarios
-- Then happy_path scenarios
-- Report: which passed, which failed, which could not be tested
+Execute every scenario declared in `acceptance.yaml`, preserving file order:
+`death_path`, applicable `degradation`, applicable `unknown_outcome`, then
+`happy_path`. Record each `AC-*` result and evidence. A declared scenario may
+not disappear because it could not run; record `unknown` instead.
 
 ### 3. Primary Evaluator
 
-Read the Evaluation Contract from `pre-thinking.md`. Run, inspect, or apply the **Primary evaluator** exactly as specified:
-- Report the `Pass signal` or `Fail signal`
-- If it fails, follow the documented `Feedback loop` before declaring validation complete
-- If the evaluator cannot be performed, mark validation `blocked_by_evaluator`, not passed
+Run, inspect, or apply `PT-EVAL` exactly as written in `pre-thinking.md`.
+Supporting tests do not replace it. Record pass, fail, or unknown plus evidence.
+On fail, follow its Feedback loop and return to the layer it names. If it names
+no owner for a code/test correction, return to `samsara:iteration`.
 
-Acceptance criteria, TDD, death-path tests, and E2E tests are supporting evidence. They do not replace the Primary evaluator.
+### 4. E2E
 
-### 4. E2E Testing
+Run project E2E tests when they exist. Otherwise record `not_applicable` with an
+evidence pointer showing why. Fail returns to Iteration; inability to determine
+applicability is unknown.
 
-If the project has E2E tests, run them. Report results.
+### 5. Reconciliation
 
-### 5. Reconciliation Check
+Compare behavior with `AC-*` and `PT-EVAL`, file/task allocation with `PL-D*`,
+and design consequences with `PT-*`. Record drift by source ref. Implementation
+drift returns to Iteration; stale authority returns to Planning or Pre-thinking.
+The derived Overview is not authority.
 
-Reconcile each concern against its authority artifact:
+### 6. Review Evidence Check
 
-- Behavior → `acceptance.yaml` scenarios and `PT-EVAL` in `pre-thinking.md`.
-- File/task allocation → cited `PL-D*` entries in `2-plan.md` and refs in
-  `index.yaml`.
-- Design consequences → cited `PT-*` entries in `pre-thinking.md`.
+Read `review-record.md`. Each task and Iteration fix must have both Yin and
+Quality reviewer results with reasoning. Missing output, `UNKNOWN`, or an
+unresolved Critical returns to Implement. Do not invoke the `code-reviewer`
+again or create a second review authority in this layer.
 
-Report drift by source ref. Record intentional deviations and their rationale;
-do not treat the derived Overview as authority.
+## Result Routing
 
-### 6. Code Review
+- Fail returns to the owning layer; Validate never repairs another layer's
+  artifact.
+- Unknown blocks delivery and records the exact missing evidence.
+- Code, test, or Scar findings return to `samsara:iteration`.
+- Planning shape/authority findings return to Planning; PT-EVAL definition
+  findings return to Pre-thinking.
+- Only `ready_for_delivery` may reach the delivery gate.
 
-Invoke the `code-reviewer` agent. The reviewer follows yin-side question order:
-1. Can this code be deleted?
-2. Are there dishonest names? (variable says `is_done` but unknown outcomes are also marked done)
-3. Where would a maintainer curse you in three years?
-4. Only then: is this code correct?
+Before returning, write `validation_status: blocked`, run Validate's format
+validator, and commit the manifest as durable handoff evidence.
 
-## Output
+## Output and Format Validation
 
-Write `ship-manifest.yaml` using the template. See support file `ship-manifest.md` for format details. Include Step 0's accepted risks (if any) in `accepted_risks`.
+Write `changes/<feature>/ship-manifest.yaml` from
+`templates/ship-manifest.yaml`; `ship-manifest.md` defines field meaning.
+Evidence is referenced, not restated. Empty exposure lists and absent or
+not-applicable operational controls are valid after inspection.
+
+Validate the draft with `validation_status: in_progress` and `delivery.action:
+pending`:
+
+```bash
+uv run python <installed-validate-and-ship-skill-directory>/scripts/validate_format.py changes/<feature>/ --repo-root <repo-root>
+```
+
+Resolve the placeholder from this skill's installed skill directory; do not
+assume the target repository contains Samsara's source tree.
+
+After the delivery decision, set `ready_for_delivery`, run the validator again,
+and commit the manifest. A finding blocks transition; `CANNOT VALIDATE` is
+unknown, never pass.
 
 ## Transition
 
-Ship manifest complete. Use the validation completion and delivery prompt to
-decide the final workflow path:
+Present these actions only after the final validator is clean:
 
-> 「Validation 完成。Ship manifest 已寫入。選擇交付方式：
->
-> (A) Merge to main
-> (B) Create PR
-> (C) Keep branch（不合併）
-> (D) Discard（放棄此分支）」
+- `merge`
+- `create_pr`
+- `keep_branch`
+- `discard`
 
-- If `Execution mode: human-in-the-loop`, present exactly these four options to
-  the user and execute the user's choice.
-- If `Execution mode: auto`, do not ask the user. Use the Auto Mode Gate below
-  to dispatch `samsara:auto-gatekeeper`, append the final delivery decision to
-  `auto-decisions.md`, verify the full decision trace, and prepare the recorded
-  delivery action.
+With `Execution mode: human-in-the-loop`, ask the user to select one. With
+`Execution mode: auto`, do not ask the user; dispatch
+`samsara:auto-gatekeeper` and record its answer. Write the choice to
+`delivery.action`, add preparation commands or instructions, validate, and
+commit the manifest.
+
+This skill records and prepares the action only. Do not merge, do not create the
+PR, and do not discard the branch. External execution requires separate explicit
+authority.
 
 ## Auto Mode Gate
 
-Canonical protocol: `references/auto-mode.md` Stage Gate Protocol —
-dispatch, the append-only decision log, and what `proceed`/`revise`/
-`reject`/`accept_gap` mean all live there. This section names what
-Validate & Ship adds: two `workflow_prompt` sources, the full Step 0
-decision-point list, Step 0's auto overrides (Step 0 never allows
-`accept_gap`), and the double decision-trace check around the final gate.
+Canonical protocol: `references/auto-mode.md` Stage Gate Protocol. This section
+owns only Step 0 overrides, final delivery selection, and the double trace check.
 
-- `workflow_prompt` sources: (1) each Step 0 decision point below; (2) the
-  validation completion and delivery choice, including the primary
-  evaluator result, acceptance validation result, failure budget, and ship
-  manifest status.
-- Decision points this gate covers: every Step 0 decision point (empty diff,
-  base branch, capability, result, fix selection, safety valve) plus the
-  final delivery decision (merge / PR / keep / discard).
-
-**Step 0 auto overrides** — Step 0 above describes what each case IS; this
-list states only the auto-mode decision VALUE for each case, evaluated
-before Failure Budget Review (every internal Step 0 human fallback is
-overridden):
-
-- empty diff (Step 0 Entry): `reject` unless the gatekeeper records evidence
-  the empty diff is expected.
-- base branch cannot be determined (Step 0 Entry): `reject`.
-- no built-in security review capability (Step 0 Review): `reject`.
-- unknown result, timeout, partial result, or tool error (Step 0 Result):
-  record a high-uncertainty `reject`. The gatekeeper must not proceed past Step 0
-  to Failure Budget Review unless review evidence is a concrete pass.
-- fail result (Step 0 Result): `revise` when fixable, else `reject`.
-- accepted risk (Step 0 Accepted risk carries forward): invalid in auto mode
-  — always `reject`, never `accept_gap`.
-
-Before the final validation decision, validate prior gate entries in the
-append-only decision trace at `changes/<feature>/auto-decisions.md`: every
-workflow question or confirmation before the current validation completion
-gate — including every Step 0 decision point — must have a matching entry
-with `workflow_prompt` and `gatekeeper_answer`. Missing, malformed, generic,
-or contradictory entries must fail validation before completion.
-
-after appending the final validation decision, run the trace check again:
-the second check must include the final `workflow_prompt` and
-`gatekeeper_answer`; if the final entry is missing, malformed, generic, or
-contradictory, the run must fail validation before completion.
-
-Then follow the recorded decision:
-
-- `proceed` — Step 0: continue to Failure Budget Review only when the
-  decision records concrete pass evidence. Final gate: complete validation
-  and prepare the recorded delivery action.
-- `revise` — Step 0: fix the recorded security/privacy issues, then re-run
-  Step 0. Final gate: revise validation outputs or ship manifest, then
-  re-run this gate.
-- `reject` — stop the auto run and leave the rejection in `auto-decisions.md`.
-- `accept_gap` — invalid for Step 0. Final gate: continue only if the
-  accepted gap is recorded in both `auto-decisions.md` and the ship
-  manifest.
+- `workflow_prompt` sources: each Step 0 question and final
+  validation-completion delivery selection.
+- Decision points: empty diff, base branch, capability/result handling, and
+  final delivery selection.
+- Step 0 prompts cover empty diff, base branch, no built-in security review capability, unknown result or partial result, fail result, and accepted risk.
+- Empty expected diff may proceed with evidence. Unknown result, partial result, or missing capability records a high-uncertainty `reject`; the run must not proceed past Step 0. Fail result revises through Iteration when fixable, otherwise rejects. Accepted risk is invalid in auto mode.
+- Before the final decision, validate prior gate entries in
+  `auto-decisions.md` against every workflow prompt.
+- Trace re-check: after appending the final validation decision, validate the trace again and write its ref to `delivery.decision_ref`.
+- A missing or invalid decision-log entry must fail validation before completion.
+- `accept_gap` cannot override security, Primary evaluator, format, open or
+  blocked Scar, or missing reviewer failures. The final gate selects an action;
+  it cannot rewrite a mandatory validation result.
+- A valid auto decision prepares the recorded action only. It does not execute
+  merge, PR creation, or discard.

@@ -121,6 +121,38 @@ These are advisory safety signals, not deterministic stop rules. After showing t
 
 Stopping cannot hide an item selected for fix. Resolve it or reclassify it as accepted, deferred, or blocked through the active gate.
 
+## Validation Re-entry
+
+Validate & Ship never changes code, tests, or Scar lifecycle. When it returns a
+validation finding, Iteration owns the re-entry and requires:
+
+- validation step and frozen candidate commit;
+- severity, affected path/location, and evidence refs;
+- the failed or unknown observable result;
+- the upstream Feedback loop when `PT-EVAL` produced the finding.
+
+Reject a finding that does not identify its evidence. Map a code, test, or Scar
+finding to the affected task through `index.yaml` file allocation and refs. If
+no task owns the surface, set the `status` field under `iteration_entry` in
+`index.yaml` to `blocked`, record the missing ownership evidence, and do not
+invent a feature-level Scar file.
+
+For an owned finding:
+
+1. Append a new stable `SC-*` wound to that task's Scar report, citing the
+   validation evidence. Reuse an existing open wound when it already names the
+   same fact; never duplicate it to represent a second observation.
+2. In the existing `iteration_entry` mapping, set `status` to `in_progress`,
+   route to `fix_rounds`, and run the normal Triage contract.
+3. Invoke `samsara:implement` through Step 3. Implement owns code and test
+   changes, death tests, both reviewers, and review-record evidence.
+4. Resolve or classify the wound through the normal lifecycle. Run all format
+   validators, commit the new candidate, and complete Step 5.
+
+After the new `ready_for_validation` checkpoint is committed, return to
+Validate & Ship. Validation discards results for the old candidate and reruns
+Security Step 0 against the full base-to-candidate diff.
+
 ## Step 5: Commit and Transition
 
 Before `samsara:validate-and-ship`:

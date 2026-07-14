@@ -14,7 +14,7 @@ an agent is mechanically forced to obey them).
 
 Death cases guarded (see task-3.md "Death Test Requirements"):
   DC1: Step 0 gate folded in but moved AFTER (or dropped from before)
-       Failure Budget Review — structural position, index_of comparison,
+       Remaining Exposure Check — structural position, index_of comparison,
        not label presence.
   DC2: "unknown != pass" clause disappears during the fold — unknown could
        silently become an implicit pass.
@@ -102,16 +102,16 @@ def _transition_section(text: str) -> str:
 _NEGATION_EN = re.compile(r"\bnot\b|\bnever\b|\bwithout\b|\bno longer\b")
 
 
-def step0_precedes_failure_budget(text: str) -> bool:
+def step0_precedes_remaining_exposure(text: str) -> bool:
     """True iff '## Step 0: Security & Privacy Gate' occurs (structural
-    position, index_of) strictly before '### 1. Failure Budget Review' in
+    position, index_of) strictly before '### 1. Remaining Exposure Check' in
     the same document. False if either marker is missing, or if Step 0
-    occurs at or after Failure Budget Review."""
+    occurs at or after Remaining Exposure Check."""
     step0_idx = text.find("## Step 0: Security & Privacy Gate")
-    fb_idx = text.find("### 1. Failure Budget Review")
-    if step0_idx == -1 or fb_idx == -1:
+    exposure_idx = text.find("### 1. Remaining Exposure Check")
+    if step0_idx == -1 or exposure_idx == -1:
         return False
-    return step0_idx < fb_idx
+    return step0_idx < exposure_idx
 
 
 def step0_declares_unknown_never_pass(section_lower: str) -> bool:
@@ -156,12 +156,12 @@ def names_deleted_security_skill(text: str) -> bool:
 
 # Permanent wrong-direction / hostile decoys.
 
-_FB_BEFORE_STEP0_DECOY = (
-    "## Something\n\n### 1. Failure Budget Review\nAggregate scars.\n\n"
+_EXPOSURE_BEFORE_STEP0_DECOY = (
+    "## Something\n\n### 1. Remaining Exposure Check\nRead Scar items.\n\n"
     "## Step 0: Security & Privacy Gate（STOP）\nToo late, already validating.\n"
 )
 _MISSING_STEP0_DECOY = (
-    "## Something\n\n### 1. Failure Budget Review\nAggregate scars.\n"
+    "## Something\n\n### 1. Remaining Exposure Check\nRead Scar items.\n"
 )
 
 _UNKNOWN_EVENTUALLY_PASS_DECOY = (
@@ -184,13 +184,13 @@ _FULL_DIFF_REAL = (
 
 _AUTO_LABEL_ONLY_DECOY = (
     "absent capability or an unknown review result records a high-uncertainty "
-    "`reject`, but auto mode may still continue toward failure budget review "
+    "`reject`, but auto mode may still continue toward remaining exposure "
     "while noting the gap in the ship manifest."
 )
 _AUTO_BLOCKS_REAL = (
     "unknown result, timeout, partial result, or tool error: record "
     "high-uncertainty `reject`. if review result is unknown, the gatekeeper "
-    "must not proceed past step 0 to failure budget review."
+    "must not proceed past step 0 to remaining exposure."
 )
 
 _DANGLING_SKILL_DECOY = "invoke `samsara:security-privacy-review` skill.\n"
@@ -201,25 +201,25 @@ _DANGLING_SKILL_DECOY = "invoke `samsara:security-privacy-review` skill.\n"
 # ---------------------------------------------------------------------------
 
 
-def test_death__step0_gate_precedes_failure_budget_review() -> None:
+def test_death__step0_gate_precedes_remaining_exposure_check() -> None:
     """DC1 — structural position (index_of), not label presence. If Step 0
-    is moved after Failure Budget Review, or dropped, this goes RED.
+    is moved after Remaining Exposure Check, or dropped, this goes RED.
     """
     text = read(VALIDATE)
-    assert step0_precedes_failure_budget(text), (
+    assert step0_precedes_remaining_exposure(text), (
         "validate-and-ship SKILL.md does not place '## Step 0: Security & "
-        "Privacy Gate' before '### 1. Failure Budget Review' — the STOP gate "
+        "Privacy Gate' before '### 1. Remaining Exposure Check' — the STOP gate "
         "could run after (or not run before) validation begins, silently "
         "shipping without a security review."
     )
 
 
 def test_death__step0_order_decoys_are_detected_as_wrong() -> None:
-    assert step0_precedes_failure_budget(_FB_BEFORE_STEP0_DECOY) is False, (
-        "The decoy with Failure Budget Review BEFORE Step 0 was reported as "
+    assert step0_precedes_remaining_exposure(_EXPOSURE_BEFORE_STEP0_DECOY) is False, (
+        "The decoy with Remaining Exposure Check BEFORE Step 0 was reported as "
         "correctly ordered — the structural position guard has regressed."
     )
-    assert step0_precedes_failure_budget(_MISSING_STEP0_DECOY) is False, (
+    assert step0_precedes_remaining_exposure(_MISSING_STEP0_DECOY) is False, (
         "The decoy with Step 0 entirely missing was reported as correctly "
         "ordered — a deleted gate must never pass this guard."
     )
@@ -286,7 +286,7 @@ def test_death__auto_mode_rejects_step0_uncertainty_and_blocks_progression() -> 
 def test_death__auto_reject_label_only_decoy_is_detected_as_not_blocking() -> None:
     assert auto_gate_rejects_step0_uncertainty(_AUTO_LABEL_ONLY_DECOY) is False, (
         "The decoy that records a high-uncertainty `reject` label but still "
-        "lets auto mode continue toward Failure Budget Review was reported as "
+        "lets auto mode continue toward Remaining Exposure Check was reported as "
         "correctly blocking — the label-vs-behavior guard has regressed."
     )
     assert auto_gate_rejects_step0_uncertainty(_AUTO_BLOCKS_REAL) is True, (
