@@ -5,9 +5,6 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-import yaml
-
-
 ROOT = Path(__file__).resolve().parents[2]
 ITERATION_FLOW = ROOT / "skills" / "iteration" / "flow.md"
 ITERATION_LOG_TEMPLATE = (
@@ -86,18 +83,22 @@ def test_death__ship_manifest_rule_requires_signal_and_owner_not_expiry() -> Non
     guide = read(SHIP_GUIDE)
     rule = section(
         guide,
-        "2. **accepted_risks",
-        "3. **kill_switch",
+        "## Evidence Rules",
+        "## Operational Controls",
     ).lower()
 
-    assert "must have a re-review signal and an owner" in rule
+    assert "human-only" in rule
+    for token in ("requires", "rationale", "re_review_signal", "owner"):
+        assert token in rule
+    assert "signal-driven" in rule
     assert not re.search(r"must\s+have[^.!?\n]{0,30}expir", rule)
 
 
 def test_unit__ship_manifest_template_has_signal_and_owner_fields() -> None:
-    manifest = yaml.safe_load(read(SHIP_TEMPLATE))
-    risk = manifest["accepted_risks"][0]
+    template = read(SHIP_TEMPLATE)
 
-    assert risk["re_review_signal"].strip()
-    assert risk["owner"].strip()
-    assert not {"expires", "expiry", "expiry_date"} & set(risk)
+    for token in ("finding_ref:", "rationale:", "re_review_signal:", "owner:"):
+        assert token in template
+    assert not re.search(
+        r"^\s*#?\s*(expires|expiry|expiry_date):", template, re.MULTILINE
+    )
