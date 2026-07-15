@@ -89,6 +89,7 @@ Before committing a new skill, answer:
 2. **What behavior does this skill assume will never change?** Document that assumption.
 3. **How would you know if this skill stopped working?** Define the observable signal.
 4. **Does this skill produce a persisted artifact?** If yes: who is the sole writer?
-   - LLM must be the sole writer. User interaction goes through AskUserQuestion — the LLM writes answers to the artifact, not the user directly.
-   - Dual-writer artifacts (user + LLM both write the same file) introduce K3b cross-session state. Do not design them.
-   - If you find yourself needing the user to directly edit a file: split the artifact (LLM-only part + user-editable part) or redesign as AskUserQuestion.
+   - Declare one workflow owner as the sole writer. Humans and dispatched agents may provide input, but only that owner writes the artifact.
+   - User interaction goes through a user-choice question; the workflow owner writes the answer to the artifact.
+   - Dual-writer artifacts introduce K3b cross-session state. Do not design them.
+   - If the user must directly edit content, split the artifact into owner-written and user-editable parts or redesign it as a user-choice question.

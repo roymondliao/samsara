@@ -19,7 +19,22 @@ defines field meaning only.
 - Security or privacy risk acceptance is human-only. Each accepted risk
   requires a finding ref, rationale, `re_review_signal`, and owner. Re-review
   is signal-driven; do not add calendar expiry. Auto mode leaves
-  `accepted_risks` empty.
+  `accepted_risks` empty. This rule is defined by Validate & Ship Step 0.
+
+## Validation Findings
+
+`validation.findings` is the durable handoff for every failed or unknown result
+returned to another layer. The template is the shape authority. Each finding
+inherits `snapshot.candidate_commit`; do not copy the commit into every item.
+
+- Use one stable `VF-*` ID and name the validation step, result, owner,
+  observable result, and non-empty evidence refs.
+- Use `path` and `location` for a code, test, or artifact surface. Use
+  `source_ref` for authority drift. At least one locator form is required.
+- Severity is optional. Record it only when the source evidence provides it;
+  never infer severity to fill the field.
+- A `blocked` manifest has at least one finding; a `ready_for_delivery`
+  manifest has none.
 
 ## Operational Controls
 

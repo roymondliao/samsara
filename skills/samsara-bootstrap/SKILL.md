@@ -36,8 +36,8 @@ Before implementation, answer four questions:
 1. What implementation is this request steering toward? Do not choose it yet.
 2. Under what conditions should this requirement not be implemented?
 3. If the implementation fails silently, who notices first, and how far does the damage spread before detection?
-4. Will this work still need to exist later? If not, it belongs only to the
-   present moment and will no longer need to exist after that moment passes.
+4. Will this work still need to exist later? If it is temporary, name the event
+   that retires it and why building it now is justified.
 
 ## Prohibited Agent Behavior
 
@@ -103,8 +103,8 @@ Route requests in this order. Stop at the first match:
 2. **Non-workflow conversation:** Explanation, read-only review, status,
    general discussion, or Samsara meta-audit. Handle directly; do not invoke a
    skill merely because one is related. A question that reports previously
-   working behavior now failing is a production-failure report, not an
-   explanation request; continue to **Production failure** below.
+   working behavior now failing does not match this rule; it is a
+   production-failure report handled by **Production failure** below.
 3. **Production failure:** If previously working code now fails, invoke
    `samsara:debugging`.
 4. **Proven low-risk state-changing work:** Offer `samsara:fast-track` and

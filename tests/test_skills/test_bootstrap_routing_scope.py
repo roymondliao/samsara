@@ -69,7 +69,9 @@ def test_death__bootstrap_preserves_confirmation_bias_prohibition() -> None:
     assert "when ___ does not hold, ___ happens" in normalized
 
 
-def test_death__bootstrap_preserves_original_ambiguity_and_longevity_scope() -> None:
+def test_death__bootstrap_keeps_ambiguity_visible_and_makes_lifespan_actionable() -> (
+    None
+):
     text = BOOTSTRAP.read_text(encoding="utf-8")
     required = _section(text, "Required Agent Behavior").lower()
     step0 = _section(text, "STEP 0 — Prerequisites Before Implementation").lower()
@@ -78,9 +80,10 @@ def test_death__bootstrap_preserves_original_ambiguity_and_longevity_scope() -> 
 
     assert "keep ambiguity visible" in required
     assert "consequential ambiguity" not in required
-    assert "belongs only to the present moment" in step0
-    assert "will no longer need to exist" in step0
-    assert "lasting responsibility" not in step0
+    assert "if it is temporary" in step0
+    assert "event that retires it" in step0
+    assert "why building it now is justified" in step0
+    assert "belongs only to the present moment" not in step0
 
 
 def test_death__bootstrap_has_explicit_human_mode_fallback() -> None:
@@ -107,7 +110,9 @@ def test_death__production_failure_question_reaches_debugging() -> None:
     rule2 = " ".join(rule2.split())
 
     assert "previously working behavior now failing" in rule2
+    assert "does not match this rule" in rule2
     assert "production-failure report" in rule2
+    assert "continue to **production failure**" not in rule2
     assert 'label="production failure"' in lower
     assert 'label="system failure"' not in lower
 

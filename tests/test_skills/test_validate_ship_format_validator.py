@@ -36,6 +36,7 @@ def _valid_manifest() -> dict:
         "snapshot": {"base_commit": head, "candidate_commit": head},
         "validation_status": "ready_for_delivery",
         "validation": {
+            "findings": [],
             "security_privacy": {
                 "status": "pass",
                 "scope_ref": f"{head}...{head}",
@@ -111,6 +112,9 @@ def _write_feature(tmp_path: Path, manifest: dict) -> Path:
     )
     (feature / "pre-thinking.md").write_text(
         "**Contract ID:** PT-EVAL\n", encoding="utf-8"
+    )
+    (feature / "2-plan.md").write_text(
+        "### PL-D1: Contract boundary\n", encoding="utf-8"
     )
     (feature / "index.yaml").write_text(
         yaml.safe_dump(
@@ -242,3 +246,140 @@ def test_death__ready_manifest_requires_every_mandatory_step_pass(
         result = _run(_write_feature(tmp_path / step, manifest))
         assert result.returncode == 1
         assert step in result.stdout
+
+
+def test_death__validation_finding_requires_stable_shape_and_locator(
+    tmp_path: Path,
+) -> None:
+    manifest = _valid_manifest()
+    manifest["validation_status"] = "blocked"
+    manifest["delivery"] = {
+        "action": "pending",
+        "selected_by": None,
+        "decision_ref": None,
+        "preparation": [],
+    }
+    manifest["validation"]["findings"] = [
+        {
+            "id": "VF-1",
+            "step": "acceptance",
+            "result": "fail",
+            "owner": "iteration",
+            "observable_result": "AC-1 returned the wrong value.",
+            "evidence_refs": [],
+            "severity": None,
+            "path": None,
+            "location": None,
+            "source_ref": None,
+        }
+    ]
+
+    result = _run(_write_feature(tmp_path, manifest))
+
+    assert result.returncode == 1
+    assert "evidence_refs" in result.stdout
+    assert "locator" in result.stdout
+
+
+def test_unit__validation_finding_accepts_evidence_backed_path_without_severity(
+    tmp_path: Path,
+) -> None:
+    manifest = _valid_manifest()
+    manifest["validation_status"] = "blocked"
+    manifest["validation"]["acceptance"]["status"] = "fail"
+    manifest["delivery"] = {
+        "action": "pending",
+        "selected_by": None,
+        "decision_ref": None,
+        "preparation": [],
+    }
+    manifest["validation"]["findings"] = [
+        {
+            "id": "VF-1",
+            "step": "acceptance",
+            "result": "fail",
+            "owner": "iteration",
+            "observable_result": "AC-1 returned the wrong value.",
+            "evidence_refs": ["tests/test_contract.py::test_contract"],
+            "severity": None,
+            "path": "src/contract.py",
+            "location": "validate_result",
+            "source_ref": None,
+        }
+    ]
+
+    result = _run(_write_feature(tmp_path, manifest))
+
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_death__ready_manifest_cannot_carry_return_findings(tmp_path: Path) -> None:
+    manifest = _valid_manifest()
+    manifest["validation"]["findings"] = [
+        {
+            "id": "VF-1",
+            "step": "reconciliation",
+            "result": "unknown",
+            "owner": "planning",
+            "observable_result": "PL-D1 no longer resolves.",
+            "evidence_refs": ["2-plan.md#PL-D1"],
+            "severity": None,
+            "path": None,
+            "location": None,
+            "source_ref": "PL-D1",
+        }
+    ]
+
+    result = _run(_write_feature(tmp_path, manifest))
+
+    assert result.returncode == 1
+    assert "ready-for-delivery" in result.stdout.lower()
+    assert "findings" in result.stdout
+
+
+def test_death__blocked_manifest_requires_a_durable_handoff_finding(
+    tmp_path: Path,
+) -> None:
+    manifest = _valid_manifest()
+    manifest["validation_status"] = "blocked"
+    manifest["delivery"] = {
+        "action": "pending",
+        "selected_by": None,
+        "decision_ref": None,
+        "preparation": [],
+    }
+
+    result = _run(_write_feature(tmp_path, manifest))
+
+    assert result.returncode == 1
+    assert "blocked-handoff" in result.stdout
+    assert "validation.findings" in result.stdout
+
+
+def test_death__duplicate_validation_finding_ids_are_rejected(tmp_path: Path) -> None:
+    manifest = _valid_manifest()
+    manifest["validation_status"] = "blocked"
+    finding = {
+        "id": "VF-1",
+        "step": "reconciliation",
+        "result": "unknown",
+        "owner": "planning",
+        "observable_result": "PL-D1 no longer resolves.",
+        "evidence_refs": ["2-plan.md#PL-D1"],
+        "severity": None,
+        "path": None,
+        "location": None,
+        "source_ref": "PL-D1",
+    }
+    manifest["validation"]["findings"] = [finding, copy.deepcopy(finding)]
+    manifest["delivery"] = {
+        "action": "pending",
+        "selected_by": None,
+        "decision_ref": None,
+        "preparation": [],
+    }
+
+    result = _run(_write_feature(tmp_path, manifest))
+
+    assert result.returncode == 1
+    assert "duplicate" in result.stdout.lower()

@@ -23,7 +23,7 @@ Iteration is the sole owner of this decision. Every completed implementation ent
 
 1. Read the direct scar set using Step 1. Do not persist a normalized copy.
 2. Run, inspect, or apply `PT-EVAL` exactly as written.
-3. Classify open wounds with full feature context:
+3. Classify Scar items whose current status is `open` with full feature context:
    - `task-local`: one task owns the repair; no shared boundary changes.
    - `feature-level`: the repair requires shared feature authority.
    - `cross-task/system-level`: the same underlying cause crosses tasks, touches a shared boundary, or one task harms another. Equivalent causes remain cross-task when wording differs.
@@ -124,28 +124,28 @@ Stopping cannot hide an item selected for fix. Resolve it or reclassify it as ac
 ## Validation Re-entry
 
 Validate & Ship never changes code, tests, or Scar lifecycle. When it returns a
-validation finding, Iteration owns the re-entry and requires:
+validation finding, Iteration owns the re-entry. Read the item from
+`validation.findings` in the committed manifest and resolve its candidate from
+`snapshot.candidate_commit`. The manifest template is the shape authority;
+`ship-manifest.md` defines field meaning. Run Validate's format validator and
+reject an unresolved finding ref rather than maintaining another field list.
 
-- validation step and frozen candidate commit;
-- severity, affected path/location, and evidence refs;
-- the failed or unknown observable result;
-- the upstream Feedback loop when `PT-EVAL` produced the finding.
-
-Reject a finding that does not identify its evidence. Map a code, test, or Scar
-finding to the affected task through `index.yaml` file allocation and refs. If
-no task owns the surface, set the `status` field under `iteration_entry` in
-`index.yaml` to `blocked`, record the missing ownership evidence, and do not
-invent a feature-level Scar file.
+Map a code, test, or Scar finding to the affected task through its path,
+location, `index.yaml` file allocation, and refs. Preserve the upstream Feedback
+loop when `PT-EVAL` produced the finding. If no task owns the surface, set the
+`status` field under `iteration_entry` in `index.yaml` to `blocked`, record the
+missing ownership evidence, and do not invent a feature-level Scar file.
 
 For an owned finding:
 
-1. Append a new stable `SC-*` wound to that task's Scar report, citing the
-   validation evidence. Reuse an existing open wound when it already names the
-   same fact; never duplicate it to represent a second observation.
+1. Append a new stable `SC-*` wound to that task's Scar report, citing the full
+   `ship-manifest.yaml#VF-N` finding ref. Reuse an existing open wound when it
+   already names the same fact; never duplicate it for a second observation.
 2. In the existing `iteration_entry` mapping, set `status` to `in_progress`,
    route to `fix_rounds`, and run the normal Triage contract.
-3. Invoke `samsara:implement` through Step 3. Implement owns code and test
-   changes, death tests, both reviewers, and review-record evidence.
+3. Invoke `samsara:implement` through Step 3. Implement's SKILL is canonical for
+   code, test, review, and review-record execution. This flow owns only the
+   validation work order and re-entry boundary.
 4. Resolve or classify the wound through the normal lifecycle. Run all format
    validators, commit the new candidate, and complete Step 5.
 

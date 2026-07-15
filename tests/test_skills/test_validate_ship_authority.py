@@ -13,6 +13,8 @@ MANIFEST_GUIDE = ROOT / "skills" / "validate-and-ship" / "ship-manifest.md"
 MANIFEST_TEMPLATE = (
     ROOT / "skills" / "validate-and-ship" / "templates" / "ship-manifest.yaml"
 )
+IMPLEMENTER = ROOT / "agents" / "implementer.md"
+WRITING_SKILLS = ROOT / "skills" / "writing-skills" / "SKILL.md"
 
 
 def _read(path: Path) -> str:
@@ -44,6 +46,81 @@ def test_death__iteration_owns_validation_finding_reentry() -> None:
     assert "scar" in section
     assert "samsara:implement" in section
     assert "ready_for_validation" in section
+
+
+def test_death__manifest_owns_the_validation_finding_handoff_shape() -> None:
+    manifest = yaml.safe_load(_read(MANIFEST_TEMPLATE))
+    guide = _read(MANIFEST_GUIDE).lower()
+    validate = _section(_read(VALIDATE).lower(), "## result routing")
+    iteration = _section(_read(ITERATION_FLOW).lower(), "## validation re-entry")
+
+    assert manifest["validation"]["findings"] == []
+    assert "validation.findings" in guide
+    assert "validation.findings" in validate
+    assert "validation.findings" in iteration
+    assert "template is the shape authority" in validate
+    assert "template is the shape authority" in iteration
+    assert "severity, affected path/location, and evidence refs" not in iteration
+
+
+def test_death__validation_finding_contract_does_not_force_invented_severity() -> None:
+    guide = _read(MANIFEST_GUIDE).lower()
+
+    assert "severity is optional" in guide
+    assert "never infer severity" in guide
+    assert "`path` and `location`" in guide
+    assert "source_ref" in guide
+
+
+def test_death__workflow_owner_is_the_only_manifest_writer() -> None:
+    validate = _read(VALIDATE).lower()
+    template = _read(MANIFEST_TEMPLATE).lower()
+    writing = _read(WRITING_SKILLS).lower()
+
+    for text in (validate, template, writing):
+        assert "workflow owner" in text
+        assert "llm must be the sole writer" not in text
+        assert "the llm is the sole writer" not in text
+    assert "dispatched" in validate and "must not edit" in validate
+    assert "dispatched" in template and "do not edit" in template
+
+
+def test_death__validate_prerequisite_uses_task_status_enums() -> None:
+    prerequisites = _section(
+        _read(VALIDATE).lower(), "## prerequisites and frozen snapshot"
+    )
+    prerequisites = " ".join(prerequisites.split())
+
+    assert "`done` or `done_with_concerns`" in prerequisites
+    assert "`pending` or `blocked`" in prerequisites
+    assert "tasks are complete" not in prerequisites
+
+
+def test_death__security_acceptance_projections_name_step0_authority() -> None:
+    guide = _read(MANIFEST_GUIDE).lower()
+    auto = _section(_read(VALIDATE).lower(), "## auto mode gate")
+
+    assert "defined by validate & ship step 0" in guide
+    assert "step 0 owns security risk acceptance" in auto
+
+
+def test_death__iteration_points_to_implement_authority_instead_of_restating_it() -> (
+    None
+):
+    reentry = _section(_read(ITERATION_FLOW).lower(), "## validation re-entry")
+
+    assert "implement's skill is canonical" in reentry
+    assert "this flow owns only" in reentry
+    assert "implement owns code and test changes, death tests" not in reentry
+
+
+def test_death__iteration_classifies_status_open_items_not_ambiguous_open_wounds() -> (
+    None
+):
+    flow = _read(ITERATION_FLOW).lower()
+
+    assert "classify scar items whose current status is `open`" in flow
+    assert "classify open wounds" not in flow
 
 
 def test_death__every_validation_result_has_a_non_success_route() -> None:

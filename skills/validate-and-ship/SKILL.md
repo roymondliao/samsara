@@ -7,7 +7,10 @@ description: Use when Iteration has committed a ready-for-validation checkpoint 
 
 Validate one committed candidate. This layer consumes upstream authority; it
 does not modify code, tests, Scar lifecycle, acceptance criteria, or design
-decisions. The LLM is the sole writer of `ship-manifest.yaml`.
+decisions. The Validate & Ship workflow owner—the single agent responsible for
+this layer's state and transition—is the sole writer of `ship-manifest.yaml`.
+Dispatched reviewers, gatekeepers, and other workers return evidence only; they
+must not edit the manifest.
 Validation is a read-only consumer of Scar dispositions.
 
 > 陽面交付功能。陰面交付功能加上它的死法與證據。
@@ -19,7 +22,8 @@ report, and `review-record.md`. Read `auto-decisions.md` when auto mode was used
 
 Require all of the following before validation:
 
-- `index.yaml` tasks are complete.
+- Every task status in `index.yaml` is `done` or `done_with_concerns`; `pending`
+  or `blocked` prevents validation.
 - The `status` field under `iteration_entry` in `index.yaml` is
   `ready_for_validation`, and `last_commit` resolves.
 - The working tree is clean.
@@ -85,7 +89,7 @@ Record exactly one result:
 
 When Iteration returns a new committed candidate, rerun Step 0 against the full diff, not just the fix delta. Iteration owns the round counter and the round 3 safety valve; Validate owns neither repair nor retry policy.
 
-With `Execution mode: human-in-the-loop`, only the human may accept a security/privacy risk; write it to `validation.security_privacy.accepted_risks`. With `Execution mode: auto`, do not ask the user: dispatch `samsara:auto-gatekeeper`; accepted risk is invalid.
+Step 0 owns security risk acceptance. With `Execution mode: human-in-the-loop`, only the human may accept a security/privacy risk; write it to `validation.security_privacy.accepted_risks`. With `Execution mode: auto`, do not ask the user: dispatch `samsara:auto-gatekeeper`; accepted risk is invalid.
 
 ## Validation Steps
 
@@ -139,6 +143,12 @@ unresolved Critical returns to Implement. Do not invoke the `code-reviewer`
 again or create a second review authority in this layer.
 
 ## Result Routing
+
+Persist each fail or unknown handoff in `validation.findings` before routing it.
+The manifest template is the shape authority; `ship-manifest.md` defines field
+meaning. Each finding inherits the frozen candidate from `snapshot`, uses the
+next stable `VF-*` ID, and points to durable evidence. Do not invent severity or
+duplicate this field contract in another layer.
 
 - Fail returns to the owning layer; Validate never repairs another layer's
   artifact.
@@ -195,6 +205,8 @@ authority.
 
 Canonical protocol: `references/auto-mode.md` Stage Gate Protocol. This section
 owns only Step 0 overrides, final delivery selection, and the double trace check.
+Step 0 owns security risk acceptance; this section only applies that rule to
+auto-mode routing.
 
 - `workflow_prompt` sources: each Step 0 question and final
   validation-completion delivery selection.

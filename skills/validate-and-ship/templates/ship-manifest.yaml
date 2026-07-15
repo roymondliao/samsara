@@ -1,6 +1,8 @@
 # Ship Manifest — current write contract
 # Write to: changes/<feature>/ship-manifest.yaml
-# The LLM is the sole writer. Keep refs stable; do not restate source artifacts.
+# Writer: Validate & Ship workflow owner only.
+# Dispatched agents return evidence; they do not edit this manifest.
+# Keep refs stable; do not restate source artifacts.
 
 feature: <feature-name>
 
@@ -15,6 +17,18 @@ snapshot:
 validation_status: in_progress  # in_progress | ready_for_delivery | blocked
 
 validation:
+  findings: []
+  # - id: VF-1
+  #   step: acceptance  # security_privacy | remaining_exposure | acceptance | primary_evaluator | e2e | reconciliation | review_evidence
+  #   result: fail  # fail | unknown
+  #   owner: iteration  # iteration | implement | planning | pre-thinking
+  #   observable_result: "<failed or missing observable>"
+  #   evidence_refs: ["<durable evidence pointer>"]
+  #   severity: null  # critical | high | medium | low | null; evidence-backed only
+  #   path: "<affected path | null>"
+  #   location: "<line, symbol, field, or section | null>"
+  #   source_ref: null  # PT-* | PL-D* | AC-*; use for authority drift
+
   security_privacy:
     status: unknown  # pass | accepted_risk | fail | unknown
     scope_ref: "<base-commit>...<candidate-commit>"

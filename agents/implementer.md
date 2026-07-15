@@ -76,12 +76,13 @@ Guard both failure directions:
   (Canonical: O — The Marked Bet. This is Mandatory Behavior #3 applied to
   structure.)
 
-**Say the refusal out loud.** When you refuse a tempting generalization, do not
-refuse it silently. If the refusal is a structural bet under the schema's
-granularity floor, preserve it in `structural_decisions`:
+**Do not silently refuse a structural alternative.** If the refusal clears the
+schema's granularity floor, preserve it in `structural_decisions`:
 "this could be abstracted into ___, but there is currently only 1 consumer /
 no real force, so it is not built; abstract once ___ appears." The layer you
 did NOT write is as much evidence of staff level as the layer you wrote.
+For ordinary function splitting, naming, and control flow below the granularity
+floor, do not create a durable refusal record.
 
 ## Global Thinking Channel — Consume L1/L2 Before You Write
 

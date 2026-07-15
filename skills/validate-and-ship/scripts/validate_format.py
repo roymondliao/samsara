@@ -33,6 +33,7 @@ _AUTHORITY_RE = re.compile(r"^(?:PT-(?:CI|EVAL|D\d+|S\d+)|PL-D\d+|AC-\d+)$")
 _SCAR_REF_RE = re.compile(r"^(scar-reports/[^#]+)#(SC-[1-9]\d*)$")
 _MARKDOWN_REF_RE = re.compile(r"^([^#]+)#(.+)$")
 _PLACEHOLDER_RE = re.compile(r"<[^>]+>")
+_FINDING_ID_RE = re.compile(r"^VF-[1-9]\d*$")
 
 _TOP_STATUSES = {"in_progress", "ready_for_delivery", "blocked"}
 _SECURITY_STATUSES = {"pass", "accepted_risk", "fail", "unknown"}
@@ -42,6 +43,18 @@ _E2E_STATUSES = {"pass", "fail", "not_applicable", "unknown"}
 _CONTROL_STATUSES = {"available", "absent", "not_applicable", "unknown"}
 _DELIVERY_ACTIONS = {"pending", "merge", "create_pr", "keep_branch", "discard"}
 _SELECTORS = {None, "human", "auto-gatekeeper"}
+_FINDING_STEPS = {
+    "security_privacy",
+    "remaining_exposure",
+    "acceptance",
+    "primary_evaluator",
+    "e2e",
+    "reconciliation",
+    "review_evidence",
+}
+_FINDING_RESULTS = {"fail", "unknown"}
+_FINDING_OWNERS = {"iteration", "implement", "planning", "pre-thinking"}
+_FINDING_SEVERITIES = {None, "critical", "high", "medium", "low"}
 
 
 def _read_yaml(path: Path) -> Any:
@@ -241,6 +254,91 @@ def _check_control(name: str, value: Any, findings: list[str]) -> None:
         )
 
 
+def _check_validation_findings(
+    value: Any, known_ids: set[str], findings: list[str]
+) -> list[dict[str, Any]]:
+    where = "validation.findings"
+    if not isinstance(value, list):
+        findings.append(f"shape: `{where}` must be a list")
+        return []
+
+    required = {
+        "id",
+        "step",
+        "result",
+        "owner",
+        "observable_result",
+        "evidence_refs",
+        "severity",
+        "path",
+        "location",
+        "source_ref",
+    }
+    parsed: list[dict[str, Any]] = []
+    seen_ids: set[str] = set()
+
+    for index, raw_finding in enumerate(value):
+        item_where = f"{where}[{index}]"
+        item = _map(raw_finding, item_where, findings)
+        _require(item, required, item_where, findings)
+        parsed.append(item)
+
+        finding_id = item.get("id")
+        if (
+            not isinstance(finding_id, str)
+            or _FINDING_ID_RE.fullmatch(finding_id) is None
+        ):
+            findings.append(f"finding-id: `{item_where}.id` must match `VF-N`")
+        elif finding_id in seen_ids:
+            findings.append(f"finding-id: duplicate `{finding_id}`")
+        else:
+            seen_ids.add(finding_id)
+
+        _enum(item.get("step"), _FINDING_STEPS, f"{item_where}.step", findings)
+        _enum(item.get("result"), _FINDING_RESULTS, f"{item_where}.result", findings)
+        _enum(item.get("owner"), _FINDING_OWNERS, f"{item_where}.owner", findings)
+        _enum(
+            item.get("severity"),
+            _FINDING_SEVERITIES,
+            f"{item_where}.severity",
+            findings,
+        )
+
+        if not str(item.get("observable_result") or "").strip():
+            findings.append(
+                f"finding: `{item_where}.observable_result` must be non-empty"
+            )
+        evidence_refs = _string_list(
+            item.get("evidence_refs"), f"{item_where}.evidence_refs", findings
+        )
+        if not evidence_refs or any(not ref.strip() for ref in evidence_refs):
+            findings.append(
+                f"finding: `{item_where}.evidence_refs` must contain durable evidence"
+            )
+
+        path = item.get("path")
+        location = item.get("location")
+        source_ref = item.get("source_ref")
+        has_path_locator = bool(str(path or "").strip()) and bool(
+            str(location or "").strip()
+        )
+        has_source_locator = bool(str(source_ref or "").strip())
+        if not has_path_locator and not has_source_locator:
+            findings.append(
+                f"finding-locator: `{item_where}` requires path and location or source_ref"
+            )
+        if has_source_locator and (
+            not isinstance(source_ref, str)
+            or _AUTHORITY_RE.fullmatch(source_ref) is None
+            or source_ref not in known_ids
+        ):
+            findings.append(
+                f"finding-locator: `{item_where}.source_ref` cannot resolve `{source_ref}`"
+            )
+
+    return parsed
+
+
 def validate(feature_dir: Path, repo_root: Path) -> tuple[list[str], str | None]:
     manifest_path = feature_dir / "ship-manifest.yaml"
     if not manifest_path.is_file():
@@ -321,7 +419,10 @@ def validate(feature_dir: Path, repo_root: Path) -> tuple[list[str], str | None]
         "reconciliation",
         "review_evidence",
     }
-    _require(validation, step_names, "validation", findings)
+    _require(validation, step_names | {"findings"}, "validation", findings)
+    validation_findings = _check_validation_findings(
+        validation.get("findings"), known_ids, findings
+    )
 
     delivery = _map(raw.get("delivery"), "delivery", findings)
     _require(
@@ -483,6 +584,11 @@ def validate(feature_dir: Path, repo_root: Path) -> tuple[list[str], str | None]
     _check_control("monitoring", controls.get("monitoring"), findings)
     _check_control("rollback_or_disable", controls.get("rollback_or_disable"), findings)
 
+    if top_status == "blocked" and not validation_findings:
+        findings.append(
+            "blocked-handoff: `validation.findings` must name why validation stopped"
+        )
+
     if top_status == "ready_for_delivery":
         required_pass = {
             "security_privacy": {"pass", "accepted_risk"},
@@ -503,6 +609,8 @@ def validate(feature_dir: Path, repo_root: Path) -> tuple[list[str], str | None]
         for field in ("open_refs", "blocked_refs"):
             if isinstance(exposure.get(field), list) and exposure[field]:
                 findings.append(f"ready-for-delivery: `{field}` must be empty")
+        if validation_findings:
+            findings.append("ready-for-delivery: `validation.findings` must be empty")
         if action == "pending" or selected_by is None:
             findings.append(
                 "ready-for-delivery: delivery action and selected_by must be final"

@@ -9,6 +9,7 @@ SCAR_SCHEMA = ROOT / "skills" / "implement" / "templates" / "scar-schema.yaml"
 IMPLEMENT = ROOT / "skills" / "implement" / "SKILL.md"
 PLANNING_FLOW = ROOT / "skills" / "planning" / "flow.md"
 VALIDATE = ROOT / "skills" / "validate-and-ship" / "SKILL.md"
+IMPLEMENTER = ROOT / "agents" / "implementer.md"
 
 
 def test_death__scar_guide_points_detail_to_go_elsewhere_anchor() -> None:
@@ -33,3 +34,15 @@ def test_death__validator_commands_do_not_assume_local_venv_or_source_tree() -> 
         assert "source .venv/bin/activate" not in text
         assert "uv run python" in text
         assert "installed skill directory" in text
+
+
+def test_death__implementer_records_only_refusals_that_clear_granularity_floor() -> (
+    None
+):
+    text = IMPLEMENTER.read_text(encoding="utf-8").lower()
+    normalized = " ".join(text.split())
+
+    assert "clears the schema's granularity floor" in normalized
+    assert "below the granularity floor" in normalized
+    assert "do not create a durable refusal record" in normalized
+    assert "under the schema's granularity floor" not in normalized
