@@ -11,25 +11,33 @@ def read(path: Path) -> str:
 
 
 class TestAutoModeReferenceContract:
-    def test_reference_names_decision_actions_and_output_states(self):
+    def test_reference_names_decisions_and_machine_actions(self):
         text = read(AUTO_MODE_REFERENCE)
 
         for action in ("proceed", "revise", "reject", "accept_gap"):
             assert action in text
 
-        for state in ("success", "failure", "unknown"):
-            assert state in text
+        for action_type in ("continue", "revise_and_rerun", "stop"):
+            assert action_type in text
 
     def test_reference_contains_copyable_decision_entry_template(self):
         text = read(AUTO_MODE_REFERENCE)
 
-        assert "## Decision 001" in text
-        assert "- prompt_type:" in text
-        assert "- workflow_prompt:" in text
-        assert "- gatekeeper_answer:" in text
-        assert "- decision:" in text
-        assert "- architecture_considerations:" in text
-        assert "- consequences:" in text
+        assert "## decision-001" in text
+        for field in (
+            "schema_version:",
+            "decision_id:",
+            "gate_id:",
+            "workflow_prompt:",
+            "answer:",
+            "decision:",
+            "reason:",
+            "evidence_refs:",
+            "next_action:",
+            "gap:",
+            "supersedes:",
+        ):
+            assert field in text
 
     def test_reference_treats_generic_approval_as_invalid(self):
         text = read(AUTO_MODE_REFERENCE)
@@ -48,7 +56,7 @@ class TestAutoGatekeeperAgentContract:
         assert "description:" in text
 
     def test_gatekeeper_defines_principle_level_authority(self):
-        text = read(AUTO_GATEKEEPER)
+        text = " ".join(read(AUTO_GATEKEEPER).split())
 
         required_phrases = (
             "project prior knowledge",
@@ -60,17 +68,17 @@ class TestAutoGatekeeperAgentContract:
             assert phrase in text
 
     def test_gatekeeper_requires_append_before_continuing(self):
-        text = read(AUTO_GATEKEEPER)
+        text = " ".join(read(AUTO_GATEKEEPER).split())
 
         assert "before continuing" in text
         assert "append-only" in text
         assert "auto-decisions.md" in text
         assert "workflow_prompt" in text
-        assert "gatekeeper_answer" in text
-        assert "architecture_considerations" in text
+        assert "answer" in text
+        assert "validate_auto_decisions.py" in text
 
     def test_reference_unknown_blocks_transition(self):
-        text = read(AUTO_MODE_REFERENCE)
+        text = " ".join(read(AUTO_MODE_REFERENCE).split())
 
         assert "cannot determine whether the gate can pass" in text
         assert "must not transition" in text

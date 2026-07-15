@@ -14,6 +14,32 @@ The starting point for any new work in samsara. Before building anything, interr
 Follow the Bootstrap Language Contract. Write artifact prose in the user's language.
 Keep template headings and schema keys in English.
 
+## Step 0: Execution Mode Selection
+
+Research owns the **workflow-run execution mode**. Bootstrap routes feature work
+here but does not select the mode.
+
+Before Step 1:
+
+1. Resolve `changes/YYYY-MM-DD_<feature-name>/` and create it when absent.
+2. If that feature's `1-kickoff.md` already records exactly one valid
+   `Execution mode:`, reuse it. Do not inherit a mode from another feature.
+3. Otherwise ask:
+
+   > Execution mode? Choose `human-in-the-loop` or `auto`.
+
+   - `human-in-the-loop` is the default and waits for the user at workflow gates.
+   - `auto` routes those same gates to `samsara:auto-gatekeeper`.
+4. If the user does not choose, record
+   `Execution mode: human-in-the-loop` and proceed. An unknown mode is invalid
+   and must never silently become `auto`.
+5. Initialize `1-kickoff.md` from its template and persist the exact mode before
+   interrogation. Research remains the sole writer of the kickoff artifact.
+
+Persistent config, including `samsara_config.yaml`, is out of scope. The
+mode belongs to this workflow run and feature directory, not the whole session.
+Later stages read it from `1-kickoff.md`.
+
 ## Process
 
 ```dot
@@ -21,6 +47,7 @@ digraph research {
     node [shape=box];
 
     start [label="User describes problem or request" shape=doublecircle];
+    mode [label="0. Select execution mode\npersist in 1-kickoff.md" shape=diamond];
     interrogate [label="Interrogate\n- Who shaped the problem?\n- When should it not be solved?\n- Who could be harmed?"];
     output_autopsy [label="Write problem-autopsy.md"];
     essence [label="Problem Essence\n- One or two lines\n- Requirement language\n- No implementation shape"];
@@ -30,7 +57,8 @@ digraph research {
     gate [label="Execution-mode gate\nhuman: confirm\nauto: gatekeeper" shape=diamond];
     next [label="invoke samsara:pre-thinking" shape=doublecircle];
 
-    start -> interrogate;
+    start -> mode;
+    mode -> interrogate;
     interrogate -> output_autopsy;
     output_autopsy -> essence;
     essence -> scope;
@@ -47,25 +75,28 @@ digraph research {
 Attempt to kill the problem itself. Continue only if it survives.
 
 Present these user-facing prompts **one at a time**, then apply the instruction
-beneath each prompt:
+beneath each prompt. In `Execution mode: human-in-the-loop`, ask the user. In
+`Execution mode: auto`, dispatch `samsara:auto-gatekeeper` for each Step 1 prompt,
+wait for its validated decision, and write its answer to the Research artifact.
+The stable gate IDs are listed beside each prompt.
 
-1. User-facing prompt:
+1. `research.problem-source` — User-facing prompt:
    > 問題的形狀是誰給的？
 
    Restate the problem's source. Record the original wording, your reframe, and
    every difference. Every difference is the first layer of translation loss.
-2. User-facing prompt:
+2. `research.do-not-solve` — User-facing prompt:
    > 這個問題在什麼條件下不應該被解決？
 
    Seek independent cases where implementation should be refused even if
    technically feasible. Record every case supported by the available evidence.
    Do not invent cases to satisfy a count.
-3. User-facing prompt:
+3. `research.damage-recipient` — User-facing prompt:
    > 誰會因為這個問題被解決而受損？
 
    Every solution transfers cost. Identify each recipient and the cost or harm
    they bear.
-4. User-facing prompt:
+4. `research.done-state` — User-facing prompt:
    > 「解決」狀態長什麼樣？
 
    State the observable difference between solved and unsolved in no more than
@@ -151,21 +182,20 @@ After writing both artifacts, use the same transition prompt to determine the ne
   confirmation, invoke `samsara:pre-thinking`; if the user asks for revision,
   revise the research artifacts and ask again.
 - If `Execution mode: auto`, do not ask the user. Use the Auto Mode Gate below
-  to dispatch `samsara:auto-gatekeeper`, record the decision, and follow the
-  recorded decision.
+  to dispatch `samsara:auto-gatekeeper`, wait for its validated
+  `research.transition` decision, and follow it.
 
 ## Auto Mode Gate
 
-Canonical protocol: `references/auto-mode.md` Stage Gate Protocol —
-dispatch, the append-only decision log, and what `proceed`/`revise`/
-`reject`/`accept_gap` mean all live there; this section only names what
-Research adds.
+Canonical protocol: `references/auto-mode.md` Stage Gate Protocol. The
+Gatekeeper is the sole decision-log writer; Research writes only its own
+artifacts.
 
-- `workflow_prompt` source: the exact prompt defined in `## Transition`; do not
-  restate it here.
-
-- Decision points this gate covers: the research → pre-thinking transition
-  (one decision point).
+- `workflow_prompt` sources and gate IDs: each Step 1 prompt uses its adjacent ID;
+  `research.transition` uses the exact prompt in `## Transition`; do not restate
+  it here.
+- Decision points: all four Research questions and the transition.
 - `proceed` invokes `samsara:pre-thinking`; `revise` revises the research
   artifacts (1-kickoff.md, problem-autopsy.md) then re-runs this gate;
-  `accept_gap` invokes `samsara:pre-thinking` with the gap visible.
+  `accept_gap` first records the named gap under `problem-autopsy.md` accepted
+  gaps and its ref in `1-kickoff.md`, then invokes `samsara:pre-thinking`.

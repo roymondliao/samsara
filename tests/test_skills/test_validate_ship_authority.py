@@ -214,7 +214,7 @@ def test_death__mandatory_failures_cannot_be_accepted_at_final_gate() -> None:
         "missing reviewer",
     ):
         assert blocker in gate
-    assert "`accept_gap` cannot override" in gate
+    assert "validation gates do not allow `accept_gap`" in gate
 
 
 def test_death__delivery_is_recorded_and_prepared_not_executed() -> None:

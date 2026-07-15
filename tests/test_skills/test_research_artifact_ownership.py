@@ -168,7 +168,6 @@ def test_death__research_transition_prompt_has_one_owner() -> None:
 
     assert skill.count(prompt) == 1
     assert prompt in transition
-    assert "`workflow_prompt` source: the exact prompt defined in `## Transition`" in (
-        auto_gate
-    )
+    assert "`workflow_prompt` sources and gate IDs" in auto_gate
+    assert "`research.transition` uses the exact prompt in `## Transition`" in auto_gate
     assert "do not restate it here" in auto_gate

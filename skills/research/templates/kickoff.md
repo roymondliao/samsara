@@ -1,5 +1,9 @@
 # Kickoff: <feature-name>
 
+## Execution Mode
+Execution mode: <human-in-the-loop | auto>
+<!-- Research Step 0 writes exactly one value for this workflow run. -->
+
 ## Problem Source
 `problem-autopsy.md`
 <!-- Canonical source wording, reframe, translation delta, kill conditions,
@@ -33,6 +37,9 @@
 
 ## Risk of Inaction
 <!-- What happens if we do nothing? Be specific. -->
+
+## Accepted Research Gaps
+<!-- Refs to problem-autopsy.md accepted_gaps plus downstream consequences, or "none". -->
 
 ## North Star
 

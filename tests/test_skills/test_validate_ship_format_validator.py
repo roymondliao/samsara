@@ -155,6 +155,42 @@ def _write_feature(tmp_path: Path, manifest: dict) -> Path:
     return feature
 
 
+def _auto_decision(
+    number: int,
+    *,
+    gate_id: str = "validation.delivery",
+    answer: str = "keep_branch",
+    supersedes: str = "null",
+) -> str:
+    decision_id = f"decision-{number:03d}"
+    return f"""## {decision_id} — {gate_id}
+
+```yaml
+schema_version: 1
+decision_id: {decision_id}
+timestamp: "2026-07-15T12:00:00+08:00"
+decided_by: auto-gatekeeper
+stage: validation
+gate_id: {gate_id}
+workflow_prompt: "Choose the delivery action."
+answer: "{answer}"
+decision: proceed
+reason:
+  - "Validation is complete."
+evidence_refs:
+  - "ship-manifest.yaml#validation_status"
+uncertainty:
+  level: low
+  notes: none
+next_action:
+  type: continue
+  target: "{answer}"
+gap: null
+supersedes: {supersedes}
+```
+"""
+
+
 def _run(feature: Path, repo_root: Path = ROOT) -> subprocess.CompletedProcess[str]:
     assert VALIDATOR.is_file(), "Validate & Ship must own a format validator"
     return subprocess.run(
@@ -207,6 +243,89 @@ def test_death__auto_delivery_requires_decision_ref(tmp_path: Path) -> None:
 
     assert result.returncode == 1
     assert "decision_ref" in result.stdout
+
+
+def test_unit__auto_delivery_ref_matches_current_decision(tmp_path: Path) -> None:
+    manifest = _valid_manifest()
+    manifest["delivery"] = {
+        "action": "keep_branch",
+        "selected_by": "auto-gatekeeper",
+        "decision_ref": "auto-decisions.md#decision-001",
+        "preparation": [],
+    }
+    feature = _write_feature(tmp_path, manifest)
+    (feature / "auto-decisions.md").write_text(_auto_decision(1), encoding="utf-8")
+
+    result = _run(feature)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_death__auto_delivery_ref_rejects_answer_action_drift(
+    tmp_path: Path,
+) -> None:
+    manifest = _valid_manifest()
+    manifest["delivery"] = {
+        "action": "merge",
+        "selected_by": "auto-gatekeeper",
+        "decision_ref": "auto-decisions.md#decision-001",
+        "preparation": [],
+    }
+    feature = _write_feature(tmp_path, manifest)
+    (feature / "auto-decisions.md").write_text(
+        _auto_decision(1, answer="keep_branch"), encoding="utf-8"
+    )
+
+    result = _run(feature)
+
+    assert result.returncode == 1
+    assert "delivery-decision" in result.stdout
+    assert "answer" in result.stdout
+
+
+def test_death__auto_delivery_ref_rejects_wrong_gate(tmp_path: Path) -> None:
+    manifest = _valid_manifest()
+    manifest["delivery"] = {
+        "action": "keep_branch",
+        "selected_by": "auto-gatekeeper",
+        "decision_ref": "auto-decisions.md#decision-001",
+        "preparation": [],
+    }
+    feature = _write_feature(tmp_path, manifest)
+    (feature / "auto-decisions.md").write_text(
+        _auto_decision(1, gate_id="validation.security-result"), encoding="utf-8"
+    )
+
+    result = _run(feature)
+
+    assert result.returncode == 1
+    assert "delivery-decision" in result.stdout
+    assert "validation.delivery" in result.stdout
+
+
+def test_death__auto_delivery_ref_rejects_superseded_decision(
+    tmp_path: Path,
+) -> None:
+    manifest = _valid_manifest()
+    manifest["delivery"] = {
+        "action": "keep_branch",
+        "selected_by": "auto-gatekeeper",
+        "decision_ref": "auto-decisions.md#decision-001",
+        "preparation": [],
+    }
+    feature = _write_feature(tmp_path, manifest)
+    (feature / "auto-decisions.md").write_text(
+        _auto_decision(1)
+        + "\n"
+        + _auto_decision(2, answer="merge", supersedes="decision-001"),
+        encoding="utf-8",
+    )
+
+    result = _run(feature)
+
+    assert result.returncode == 1
+    assert "delivery-decision" in result.stdout
+    assert "superseded" in result.stdout
 
 
 def test_death__dangling_authority_and_scar_refs_are_findings(tmp_path: Path) -> None:

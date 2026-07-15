@@ -52,7 +52,11 @@ iteration_entry:
   reversible: true
 ```
 
-For `unknown`, `Execution mode: human-in-the-loop` asks the user to repair the input or record the visible gap. With `Execution mode: auto`, do not ask the user; dispatch `samsara:auto-gatekeeper` and append its decision. Recording a gap does not turn unknown format/evaluator evidence into pass; the transition remains blocked until its gate is satisfied.
+For `unknown`, `Execution mode: human-in-the-loop` asks the user to repair the
+input or stop. With `Execution mode: auto`, do not ask the user; dispatch
+`samsara:auto-gatekeeper` with `iteration.entry-unknown` and wait for its
+validated `revise` or `reject` decision. Unknown format/evaluator evidence cannot
+be accepted as a gap and never transitions as pass.
 
 ## Step 1: Aggregate Remaining Scars
 
@@ -85,7 +89,11 @@ For every `open` current item or unresolved legacy item, choose one disposition:
 - `defer`: intentionally outside this delivery. Set `status: deferred`; require target, `resume_when`, owner, and evidence refs.
 - `blocked`: use only after a selected fix cannot proceed. Require blocker, owner, and evidence refs.
 
-With `Execution mode: human-in-the-loop`, present concise bullets and let the user decide. With `Execution mode: auto`, do not ask the user; dispatch `samsara:auto-gatekeeper`, append the decision, then apply it.
+With `Execution mode: human-in-the-loop`, present concise bullets and let the
+user decide. With `Execution mode: auto`, do not ask the user; dispatch
+`samsara:auto-gatekeeper` once per item with
+`iteration.disposition.<scar-id>`, wait for the validated decision, then apply
+the concrete disposition in its answer. The Gatekeeper alone appends the log.
 
 Write each disposition immediately to the original item. Preserve `scar_id` and every original wound field; they are immutable. If an original fact is wrong, append a new item that cites the old one. Do not attach lifecycle state to `structural_decisions`; create a wound that references the decision instead.
 
@@ -105,7 +113,13 @@ Do not curate code excerpts or paste a second scar inventory. Implement pulls li
 
 After both Implement reviewers pass, update the original wound to `status: resolved`, add one-line `resolution`, and set iteration action to `fixed` with round and evidence refs. Run the scar validator, then commit code, tests, scar state, and checkpoint together. The commit message cites the full scar ref.
 
-If the fix returns `BLOCKED` or `NEEDS_CONTEXT`, do not retry silently. Record `status: blocked`. With `Execution mode: human-in-the-loop`, ask whether to supply context or defer. With `Execution mode: auto`, do not ask the user; dispatch `samsara:auto-gatekeeper` and record the decision. A fix that reveals another wound appends it to the affected task scar with a new ID, `status: open`, and `iteration: null`.
+If the fix returns `BLOCKED` or `NEEDS_CONTEXT`, do not retry silently. Record
+`status: blocked`. With `Execution mode: human-in-the-loop`, ask whether to
+supply context or defer. With `Execution mode: auto`, do not ask the user;
+dispatch `samsara:auto-gatekeeper` with
+`iteration.blocked-fix.<scar-id>` and wait for its validated decision. A fix that
+reveals another wound appends it to the affected task scar with a new ID,
+`status: open`, and `iteration: null`.
 
 ## Step 4: Round Check + Safety Valve
 
@@ -117,7 +131,12 @@ Show these observations before the continuation decision:
 - Two consecutive rounds without lower signal_lost.
 - More new wounds than resolved wounds in the round.
 
-These are advisory safety signals, not deterministic stop rules. After showing them, run the execution-mode gate. With `Execution mode: human-in-the-loop`, ask continue/stop. With `Execution mode: auto`, do not ask the user; dispatch `samsara:auto-gatekeeper` and record the decision. Never gate repair eligibility on a signal_lost threshold.
+These are advisory safety signals, not deterministic stop rules. After showing
+them, run the execution-mode gate. With `Execution mode: human-in-the-loop`, ask
+continue/stop. With `Execution mode: auto`, do not ask the user; dispatch
+`samsara:auto-gatekeeper` with `iteration.round.<n>` and wait for its validated
+`proceed` or `reject` decision. Never gate repair eligibility on a signal_lost
+threshold.
 
 Stopping cannot hide an item selected for fix. Resolve it or reclassify it as accepted, deferred, or blocked through the active gate.
 

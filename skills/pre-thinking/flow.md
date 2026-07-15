@@ -221,6 +221,9 @@ You may declare "no gaps" only when **every dimension that grew (including check
 Step 4 recognized and marked which decisions "need an external call"; this step actually asks and records the answers. The most dangerous thing: **how you ask decides whether you get a real decision or a rubber stamp.** So two rules:
 
 - **Every question is a real multiple-choice:** ≥2 options + each option's trade-off. Never ask "shall we do it the way I recommend?" (that yes/no is exactly the samsara "shall we do all of it?" disease).
+- Give every question a stable slug and dispatch it as
+  `pre-thinking.step5.<group-slug>.<question-slug>`. A rewrite keeps the same ID;
+  a different question gets a new ID.
 - **Answers recorded as traces**, not just the conclusion: which was chosen / why not the others / what this decision assumes / what rots first when that assumption breaks. So the next person can pick it up and change it without re-litigating the whole thing.
 
 Ask a small batch at a time, split rounds if many. If an answer overturns a Step
@@ -298,13 +301,16 @@ Step 6 commitment:
 
 - If `Execution mode: human-in-the-loop`, ask the user using the active prompt.
 - If `Execution mode: auto`, do not ask the user. Dispatch
-  `samsara:auto-gatekeeper`, append the decision to `auto-decisions.md`, and write
-  the answer to `pre-thinking.md`.
+  `samsara:auto-gatekeeper` with the active stable gate ID, wait for its validated
+  decision, and write the answer to `pre-thinking.md`. The Gatekeeper alone
+  appends `auto-decisions.md`.
 
 - Step 5: preserve the choice trace and mark human-only answers as unconfirmed
   guesses.
 - Evaluation Contract: record exactly one Primary evaluator.
-- Commitment: invoke planning only for Proceed or Accept gap.
+- Evaluation Contract uses `pre-thinking.evaluator`.
+- Commitment uses `pre-thinking.commitment`; invoke planning only for Proceed or
+  Accept gap.
 
 ---
 

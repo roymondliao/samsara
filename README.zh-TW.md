@@ -79,11 +79,13 @@ debugging（production 故障）──> 小 fix 走 fast-track / 大 fix 走 imp
 
 ## Auto Mode
 
-在 `samsara:research` 之前，Samsara 會先詢問 execution mode：`human-in-the-loop` 或 `auto`。`human-in-the-loop` 保留現有的 human gate；`auto` 仍然完整跑同一條 workflow：`research -> pre-thinking -> planning -> implement -> iteration -> validate-and-ship`，但原本要問 human 的問題與確認，會交給 `samsara:auto-gatekeeper` 回答。
+Research Step 0 會選擇這次 workflow run 的 execution mode：`human-in-the-loop` 或 `auto`，並寫入該 feature 的 `1-kickoff.md`。Bootstrap 只注入全域準則並將 feature work 路由到 Research，不代替 Research 選擇 mode。`human-in-the-loop` 保留現有的 human gate；`auto` 仍然完整跑同一條 workflow：`research -> pre-thinking -> planning -> implement -> iteration -> validate-and-ship`，但原本要問 human 的問題與確認，會交給 `samsara:auto-gatekeeper` 回答。
 
-這個 gatekeeper 是可重用的 principle-level reviewer，帶有 project context、architecture judgment、first-principles reasoning。每一個 auto decision 都會 append 到 `changes/<feature>/auto-decisions.md`，這是一份 append-only 記錄，保留原始 `workflow_prompt`、`gatekeeper_answer`、rationale、uncertainty、consequences。
+Gatekeeper 是 Staff-level workflow decision authority：在 gate judgment 上與 human 對稱，但不取得 human consent 或外部執行權。它以 Codebase Map 取得整體結構認知、以 feature artifacts 取得變更 authority，再用定向 live evidence 確認當下事實。
 
-第一版 scope 刻意只做 session-level：不支援 `samsara_config.yaml`。Auto run 啟動後，同一輪 run 不會重新請 user 接手 gate；不確定性會記錄在 `auto-decisions.md`，security/privacy unknown 會成為 high-uncertainty reject decision。
+Gatekeeper 是 `changes/<feature>/auto-decisions.md` 的唯一 writer。每筆 append-only decision 以經過驗證的 compact YAML block 保存 exact prompt、具體 answer、改變裁決的理由、evidence refs、uncertainty 與 next action；calling workflow 只等待並套用，不改寫 decision。
+
+Execution mode 以 feature 與 workflow run 為範圍，不支援 `samsara_config.yaml`，不同 feature 不會繼承目前 feature 的 mode。Auto run 啟動後，同一輪 run 不會重新請 user 接手 gate；不確定性會記錄在 `auto-decisions.md`，security/privacy unknown 會成為 high-uncertainty reject decision。
 
 ### Skills
 

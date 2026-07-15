@@ -82,6 +82,9 @@ Follow `flow.md` §7. A clean reference graph may proceed to
 Canonical protocol: `references/auto-mode.md` Stage Gate Protocol.
 
 - `workflow_prompt` source: the Planning completion prompt defined in `flow.md`.
-- Decision points: Planning completion after clean validation.
+- Gate ID: `planning.transition`.
+- Decision points: Planning completion after clean validation. The Gatekeeper is
+  the sole decision-log writer.
 - `proceed` invokes `samsara:implement`; `revise` updates artifacts and re-runs
-  validation; `accept_gap` proceeds only with the gap visible.
+  validation; `accept_gap` proceeds only after the plan's Source Contract names
+  its durable ref and consequence.

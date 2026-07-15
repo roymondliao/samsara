@@ -18,7 +18,7 @@ Every workflow question or confirmation in auto mode must be answered by an
 append-only decision entry in `changes/<feature>/auto-decisions.md` before
 continuing.
 
-Each decision entry must preserve `workflow_prompt`, `gatekeeper_answer`,
+Each decision entry must preserve `workflow_prompt`, `answer`,
 evidence checked, uncertainty, and the consequence for the next workflow step.
 
 Use exactly one decision: `proceed`, `revise`, `reject`, or `accept_gap`.

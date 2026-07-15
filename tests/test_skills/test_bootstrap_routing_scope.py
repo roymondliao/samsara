@@ -7,6 +7,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 BOOTSTRAP = ROOT / "skills" / "samsara-bootstrap" / "SKILL.md"
+RESEARCH = ROOT / "skills" / "research" / "SKILL.md"
 README = ROOT / "README.md"
 
 
@@ -28,16 +29,18 @@ def test_death__bootstrap_does_not_route_every_conversation_into_workflow() -> N
     assert re.search(r"handle directly;\s+do not\s+invoke", matching)
 
 
-def test_death__bootstrap_selects_mode_before_first_research_invocation() -> None:
-    """Research entry has one order and reuses an existing session mode."""
-    text = BOOTSTRAP.read_text(encoding="utf-8")
-    mode = _section(text, "Execution Mode Selection").lower()
-    matching = _section(text, "Skill Matching (Mandatory)").lower()
+def test_death__bootstrap_routes_and_research_selects_workflow_mode() -> None:
+    """Bootstrap routes; Research owns feature-scoped mode initialization."""
+    bootstrap = BOOTSTRAP.read_text(encoding="utf-8")
+    research = RESEARCH.read_text(encoding="utf-8")
+    matching = _section(bootstrap, "Skill Matching (Mandatory)").lower()
+    mode = _section(research, "Step 0: Execution Mode Selection").lower()
 
-    assert "before invoking `samsara:research`" in mode
-    assert "already records `execution mode:`" in mode
-    assert "do not ask again" in mode
-    assert "select execution mode first" in matching
+    assert "## Execution Mode Selection" not in bootstrap
+    assert "invoke `samsara:research`" in matching
+    assert "research owns" in mode
+    assert "workflow-run execution mode" in mode
+    assert "do not inherit a mode from another feature" in mode
 
 
 def test_death__bootstrap_separates_executable_language_from_philosophy() -> None:
@@ -86,9 +89,9 @@ def test_death__bootstrap_keeps_ambiguity_visible_and_makes_lifespan_actionable(
     assert "belongs only to the present moment" not in step0
 
 
-def test_death__bootstrap_has_explicit_human_mode_fallback() -> None:
+def test_death__research_has_explicit_human_mode_fallback() -> None:
     mode = _section(
-        BOOTSTRAP.read_text(encoding="utf-8"), "Execution Mode Selection"
+        RESEARCH.read_text(encoding="utf-8"), "Step 0: Execution Mode Selection"
     ).lower()
     mode = " ".join(mode.split())
 
@@ -162,4 +165,5 @@ def test_death__readme_graph_is_a_derived_routing_overview() -> None:
     assert "skills/samsara-bootstrap/skill.md" in lower
     assert "if this overview disagrees" in lower
     assert "read-only / explanation / meta-audit" in lower
-    assert "research -> pre-thinking -> planning -> implement" in lower
+    assert "step 0: select and persist" in lower
+    assert "interrogate -> pre-thinking -> planning -> implement" in lower

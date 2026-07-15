@@ -19,17 +19,19 @@ def section(text: str, heading: str) -> str:
 
 
 class TestReadmeAutoModeContractDeath:
-    def test_english_readme_documents_session_auto_mode_without_config_support(self):
+    def test_english_readme_documents_research_owned_workflow_mode(self):
         auto_section = section(read(README_EN), "Auto Mode")
 
         required = (
             "human-in-the-loop",
             "`auto`",
-            "before `samsara:research`",
+            "Research Step 0",
+            "1-kickoff.md",
             "samsara:auto-gatekeeper",
             "research -> pre-thinking -> planning -> implement -> iteration -> validate-and-ship",
             "changes/<feature>/auto-decisions.md",
             "append-only",
+            "workflow-run-specific",
             "`samsara_config.yaml` is not supported",
         )
         missing = [term for term in required if term not in auto_section]
@@ -38,7 +40,7 @@ class TestReadmeAutoModeContractDeath:
             f"without the first-cut session contract. Missing: {missing}"
         )
 
-    def test_traditional_chinese_readme_documents_session_auto_mode_without_config_support(
+    def test_traditional_chinese_readme_documents_research_owned_workflow_mode(
         self,
     ):
         auto_section = section(read(README_ZH), "Auto Mode")
@@ -46,7 +48,8 @@ class TestReadmeAutoModeContractDeath:
         required = (
             "human-in-the-loop",
             "`auto`",
-            "`samsara:research` 之前",
+            "Research Step 0",
+            "1-kickoff.md",
             "samsara:auto-gatekeeper",
             "research -> pre-thinking -> planning -> implement -> iteration -> validate-and-ship",
             "changes/<feature>/auto-decisions.md",

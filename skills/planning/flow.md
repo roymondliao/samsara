@@ -156,7 +156,9 @@ Use one canonical prompt:
 
 - If `Execution mode: human-in-the-loop`, ask the user this prompt.
 - If `Execution mode: auto`, do not ask the user. Dispatch
-  `samsara:auto-gatekeeper` with this exact prompt and append the decision to
+  `samsara:auto-gatekeeper` with gate ID `planning.transition` and this exact
+  prompt, then wait for its validated decision. The Gatekeeper alone appends
   `auto-decisions.md`.
 - Proceed invokes `samsara:implement`; revise updates artifacts and re-runs
-  validation; accept-gap keeps the gap visible to Implement.
+  validation; accept-gap first records its ref and consequence in the plan's
+  Source Contract, then keeps it visible to Implement.

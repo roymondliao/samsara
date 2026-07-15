@@ -12,6 +12,7 @@ Execute implementation tasks with death tests before unit tests, and scar report
 ## Prerequisites
 
 Read from the feature's `changes/` directory:
+- `1-kickoff.md` — workflow-run execution mode
 - `index.yaml` — task list with dependencies
 - `overview.md` — derived shared-context projection with source refs
 - `tasks/task-N.md` — individual task files
@@ -82,7 +83,7 @@ After each task's review passes:
 
 index.yaml 是唯一真實狀態（source of truth）；TaskCreate/TaskUpdate 是盡力而為的 UI 投影，投影未更新不構成流程錯誤，但 index.yaml 未更新是。
 
-## Execution Mode Selection
+## Execution Strategy Selection
 
 On entry, analyze `index.yaml` for task dependencies, create TaskCreate items
 for each task, then use this execution strategy prompt:
@@ -103,8 +104,9 @@ for each task, then use this execution strategy prompt:
 - If `Execution mode: human-in-the-loop`, ask the user this question and follow
   the selected strategy.
 - If `Execution mode: auto`, do not ask the user. Use the Auto Mode Gate below
-  to dispatch `samsara:auto-gatekeeper`, append the strategy decision to
-  `auto-decisions.md`, and follow the recorded execution strategy.
+  to dispatch `samsara:auto-gatekeeper` with gate ID
+  `implementation.strategy`, wait for its validated decision, and follow the
+  recorded execution strategy.
 
 Mode A runs one safe wave at a time. A task is **DAG-ready** only after every
 `depends_on` task is complete. Tasks in the same wave must have pairwise-disjoint
@@ -150,8 +152,9 @@ After each subagent completes (status DONE or DONE_WITH_CONCERNS):
      1. The implementer disputes the Critical → it must refute **with
         evidence** (forced_by refs, live code, plan citations).
      2. The dispute goes to the arbiter: the **user** in human mode,
-        **`samsara:auto-gatekeeper`** in auto mode (decision appended to
-        `auto-decisions.md`).
+        **`samsara:auto-gatekeeper`** in auto mode. Use
+        `implementation.review-arbitration.<task>.<round>` and wait for the
+        Gatekeeper's validated decision.
      3. Neither side auto-wins: the reviewer cannot force the fix, the
         implementer cannot self-exempt. A block with a third-party arbitration
         path is arguable (healthy); a deterministic block with no arbiter is a
@@ -319,15 +322,17 @@ cheap triage-only decision and whether fix rounds are necessary.
 
 ## Auto Mode Gate
 
-Canonical protocol: `references/auto-mode.md` Stage Gate Protocol —
-dispatch, the append-only decision log, and what `proceed`/`revise`/
-`reject`/`accept_gap` mean all live there; this section only names what
-Implement adds.
+Canonical protocol: `references/auto-mode.md` Stage Gate Protocol. The
+Gatekeeper is the sole decision-log writer; Implement owns code, tests, review,
+and implementation evidence.
 
-- `workflow_prompt` sources: the implementation execution-mode selection —
+- `workflow_prompt` sources: the implementation strategy selection —
   `(A) Subagent parallel / (B) Subagent sequential / (C) Inline sequential` —
   and disputed Critical review arbitration.
-- Decision points this gate covers: execution-mode selection and arbitration.
+- Gate IDs: `implementation.strategy` and
+  `implementation.review-arbitration.<task>.<round>`.
+- Decision points this gate covers: strategy selection and arbitration.
 - `proceed` applies the chosen strategy or arbitration ruling; `revise` revises
-  implementation evidence then re-runs the relevant gate; `accept_gap` keeps
-  the accepted concern visible in the scar/review record.
+  implementation evidence then re-runs the relevant gate. `accept_gap` is
+  allowed only for arbitration and keeps the accepted concern visible in the
+  scar/review record; strategy selection allows only proceed/revise/reject.

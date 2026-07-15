@@ -99,6 +99,7 @@ def test_skip_rounds_requires_evaluator_pass_and_no_actionable_items() -> None:
 def test_implement_auto_gate_no_longer_owns_iteration_entry() -> None:
     auto = section(read(IMPLEMENT), "## Auto Mode Gate")
 
-    assert "implementation execution-mode selection" in auto
+    assert "implementation strategy selection" in auto
+    assert "implementation.strategy" in auto
     assert "implementation completion gate" not in auto
     assert "iteration-entry criteria" not in auto

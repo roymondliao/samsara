@@ -88,9 +88,12 @@ Canonical protocol: `references/auto-mode.md` Stage Gate Protocol.
 
 - `workflow_prompt` source: the exact Step 5 choice, Evaluation Contract
   question, or Step 6 commitment prompt defined by `flow.md`.
+- Gate IDs: `pre-thinking.step5.<group>.<question>`,
+  `pre-thinking.evaluator`, and `pre-thinking.commitment`.
 - Decision points: Step 5 external calls, Evaluation Contract selection, and
-  Step 6 commitment.
-- Write each answer to `pre-thinking.md` as well as the append-only decision log.
+  Step 6 commitment. The Gatekeeper is the sole decision-log writer.
+- Pre-thinking writes each answer to `pre-thinking.md`; the Gatekeeper records
+  the matching append-only decision.
 - `proceed` continues or invokes planning after `Decision: Proceed`; `revise`
   updates the artifact and re-runs the gate; `accept_gap` invokes planning only
   after `Decision: Accept gap`.

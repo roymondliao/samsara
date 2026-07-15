@@ -41,17 +41,21 @@ def _content_line_count(section_text: str) -> int:
     return len([line for line in section_text.splitlines() if line.strip()])
 
 
-class TestBootstrapExecutionModeProtocol:
-    def test_bootstrap_declares_two_execution_modes(self):
-        mode_section = section(read(BOOTSTRAP), "Execution Mode Selection")
+class TestResearchExecutionModeProtocol:
+    def test_research_declares_two_execution_modes(self):
+        mode_section = section(
+            read(EARLY_STAGE_SKILLS["research"]),
+            "Step 0: Execution Mode Selection",
+        )
+        normalized = mode_section.lower()
 
         assert "`human-in-the-loop`" in mode_section
         assert "`auto`" in mode_section
-        assert "Default" in mode_section
-        assert "session-level" in mode_section
+        assert "default" in normalized
+        assert "workflow-run" in mode_section
         assert "Execution mode:" in mode_section
         assert "Execution mode? Choose `human-in-the-loop` or `auto`." in mode_section
-        assert 'subagent_type: "samsara:auto-gatekeeper"' in mode_section
+        assert "1-kickoff.md" in mode_section
 
 
 class TestStageGateProtocolCanonicalContract:
@@ -78,7 +82,7 @@ class TestStageGateProtocolCanonicalContract:
         Fields / Entry Template sections above it, not re-declare the field
         list — the field list has exactly one home (Required Fields)."""
         protocol = self._protocol()
-        assert "Required Fields" in protocol or "Decision Log Contract" in protocol
+        assert "Entry Shape" in protocol or "Decision Log Contract" in protocol
 
     def test_protocol_defines_all_four_decision_values_with_meaning(self):
         protocol = self._protocol()
@@ -131,7 +135,8 @@ class TestStageSpecificInlineBehaviorPreserved:
 
     def test_implement_names_execution_strategy_and_completion_prompts(self):
         auto_section = section(read(LATER_STAGE_SKILLS["implement"]), "Auto Mode Gate")
-        assert "implementation execution-mode selection" in auto_section
+        assert "implementation strategy selection" in auto_section
+        assert "implementation.strategy" in auto_section
         assert "Subagent parallel" in auto_section
         assert "Inline sequential" in auto_section
 
@@ -156,7 +161,7 @@ class TestStageSpecificInlineBehaviorPreserved:
             "unknown result",
             "accepted risk",
             "prior gate entries",
-            "after appending the final validation decision",
+            "after the Gatekeeper appends the final validation decision",
         ):
             assert term in auto_section
 
@@ -210,9 +215,9 @@ class TestPrimaryEvaluatorProtocol:
                 "Execution Mode Routing",
             ),
             "planning transition": (PLANNING_FLOW, "7. Transition"),
-            "implement execution mode": (
+            "implement execution strategy": (
                 LATER_STAGE_SKILLS["implement"],
-                "Execution Mode Selection",
+                "Execution Strategy Selection",
             ),
             "iteration entry triage": (
                 ITERATION_FLOW,
@@ -241,7 +246,7 @@ class TestPrimaryEvaluatorProtocol:
         }
 
         for label, (path, heading) in decision_sections.items():
-            decision_section = section(read(path), heading)
+            decision_section = " ".join(section(read(path), heading).split())
             assert "`Execution mode: human-in-the-loop`" in decision_section, label
             assert "`Execution mode: auto`" in decision_section, label
             assert "do not ask the user" in decision_section, label

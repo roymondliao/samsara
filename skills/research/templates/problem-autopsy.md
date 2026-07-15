@@ -42,3 +42,7 @@ damage_recipients:
 
 ## observable_done_state
 <!-- Three sentences max. What is the observable difference between "solved" and "not solved"? -->
+
+## accepted_gaps
+<!-- Auto/HITL accepted gaps from the four Research questions. Use decision refs,
+     consequences, owner, and recheck signal; write "none" when empty. -->

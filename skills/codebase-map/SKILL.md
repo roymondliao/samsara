@@ -34,7 +34,7 @@ digraph codebase_map {
     explore_parallel [label="Phase 1: 平行探索\nAgent 1 (結構) + Agent 3 (基礎設施)\n同時派出"];
     explore_yin [label="Phase 2: 陰面探索\nAgent 2 拿到 Phase 1 結果\n分析 rot risks + hidden coupling"];
     synthesize [label="Phase 3: 合成\n匯總三個 explorer 的產出\n生成 codebase-map.yaml + modules/*.yaml"];
-    review [label="Human Review\n呈現摘要，確認或修正\n（特別是 confidence: low 的項目）" shape=diamond];
+    review [label="Execution-mode review\nhuman or auto-gatekeeper\nchecks confidence: low" shape=diamond];
     write [label="寫入 .samsara/\ncodebase-map.yaml + modules/*.yaml"];
     done [label="完成" shape=doublecircle];
 
@@ -77,14 +77,22 @@ After all three agents report back:
 4. Generate `codebase-map.yaml` (Layer 1+2) from templates
 5. Generate one `modules/<name>.yaml` (Layer 3) per module from templates
 
-## Phase 4: Human Review
+## Phase 4: Execution-Mode Review
 
-Present to user:
+Prepare:
 - Summary: module count, silent failure surface, top 3 rot hotspots
-- List all `confidence: low` items — ask user to confirm or correct
-- Ask: "Anything missing or wrong?"
+- Every `confidence: low` item
+- Prompt: "Anything missing or wrong?"
 
-After user confirms → write files to `.samsara/`
+- With `Execution mode: human-in-the-loop`, present the material to the user and
+  ask for confirmation or correction.
+- With `Execution mode: auto`, dispatch `samsara:auto-gatekeeper` with gate ID
+  `codebase-map.review`, the draft refs, churn evidence, and the exact prompt.
+  Wait for its validated decision; do not ask the user.
+
+Only `proceed` or a durable `accept_gap` writes the draft to `.samsara/`.
+`revise` regenerates the affected analysis and re-runs the same gate. `reject`
+marks the existing map stale and stops this regeneration path.
 
 ## Fail-Honest Write Contract
 
@@ -109,11 +117,28 @@ review confirms. Anything short of that must not advance `last_updated`.
 
 ## Update Modes
 
-When `.samsara/codebase-map.yaml` already exists, ask user:
+When `.samsara/codebase-map.yaml` already exists, use gate ID
+`codebase-map.update-strategy` with this prompt:
 
 > 「Codebase map 已存在（上次更新：YYYY-MM-DD）。選擇更新方式：
 > (A) Full regenerate — 重跑三個 agent，完整重建
 > (B) Incremental update — 只重跑陰面分析，保留結構不變」
+
+- With `Execution mode: human-in-the-loop`, ask the user.
+- With `Execution mode: auto`, dispatch `samsara:auto-gatekeeper` with map age,
+  churn, affected paths, and this exact prompt. Wait for its validated answer.
+
+## Auto Mode Gate
+
+Canonical protocol: `references/auto-mode.md` Stage Gate Protocol. The
+Gatekeeper is the sole writer of `auto-decisions.md`; Codebase Map owns only its
+map artifacts.
+
+- `codebase-map.update-strategy` selects full or incremental regeneration when
+  a map exists.
+- `codebase-map.review` reviews the draft and every low-confidence item.
+- Accepted gaps remain explicit in the map's assumptions/confidence evidence;
+  they never turn an unverifiable claim into high confidence.
 
 ## Output
 

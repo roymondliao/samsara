@@ -71,8 +71,9 @@ User request
 ├─ production failure -> debugging -> skill-defined transition
 ├─ proven low-risk state change -> fast-track -> done
 └─ other state-changing feature work
-   └─ select execution mode
-      └─ research -> pre-thinking -> planning -> implement
+   └─ research
+      ├─ Step 0: select and persist this workflow run's execution mode
+      └─ interrogate -> pre-thinking -> planning -> implement
          -> iteration entry triage
             ├─ skip fix rounds
             └─ run feature-level fix rounds
@@ -84,11 +85,13 @@ transitions use a human gate or an `auto-gatekeeper` decision in auto mode.
 
 ## Auto Mode
 
-The selection happens before `samsara:research`: Samsara asks for an execution mode, either `human-in-the-loop` or `auto`. `human-in-the-loop` keeps the existing workflow gates. In `auto`, the same workflow still runs from `research -> pre-thinking -> planning -> implement -> iteration -> validate-and-ship`, but former human questions and confirmations are routed to `samsara:auto-gatekeeper`.
+Research Step 0 selects the workflow-run execution mode: `human-in-the-loop` or `auto`. It persists that mode in the feature's `1-kickoff.md`; Bootstrap only injects global policy and routes feature work to Research. `human-in-the-loop` keeps the existing workflow gates. In `auto`, the same workflow still runs from `research -> pre-thinking -> planning -> implement -> iteration -> validate-and-ship`, but former human questions and confirmations are routed to `samsara:auto-gatekeeper`.
 
-The gatekeeper answers as a reusable principle-level reviewer with project context, architecture judgment, and first-principles reasoning. Every auto decision is appended to `changes/<feature>/auto-decisions.md` as an append-only record that preserves the original `workflow_prompt`, the `gatekeeper_answer`, rationale, uncertainty, and consequences.
+The gatekeeper is the Staff-level workflow decision authority: symmetric with the human for gate judgment, but not for external execution authority or consent. It uses the Codebase Map for broad structural awareness, feature artifacts for change authority, and targeted live evidence for current truth.
 
-First-cut scope is intentionally session-level: `samsara_config.yaml` is not supported. After an auto run starts, it does not reintroduce user gates during that run; uncertainty is recorded in `auto-decisions.md`, and security/privacy unknowns become high-uncertainty reject decisions.
+The gatekeeper is the sole writer of `changes/<feature>/auto-decisions.md`. Each append-only entry preserves the exact prompt, concise answer, decision-changing reasons, evidence refs, uncertainty, and next action in a validated compact YAML block. Calling workflows wait for that decision; they do not rewrite it.
+
+The mode is feature-scoped and workflow-run-specific; `samsara_config.yaml` is not supported. A separate feature does not inherit the current feature's mode. After an auto run starts, it does not reintroduce user gates during that run; uncertainty is recorded in `auto-decisions.md`, and security/privacy unknowns become high-uncertainty reject decisions.
 
 ### Skills
 

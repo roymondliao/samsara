@@ -17,8 +17,9 @@ Validation is a read-only consumer of Scar dispositions.
 
 ## Prerequisites and Frozen Snapshot
 
-Read `index.yaml`, `pre-thinking.md`, `2-plan.md`, `acceptance.yaml`, every Scar
-report, and `review-record.md`. Read `auto-decisions.md` when auto mode was used.
+Read `1-kickoff.md` for the workflow-run execution mode. Then read `index.yaml`,
+`pre-thinking.md`, `2-plan.md`, `acceptance.yaml`, every Scar report, and
+`review-record.md`. Read `auto-decisions.md` when auto mode was used.
 
 Require all of the following before validation:
 
@@ -89,7 +90,12 @@ Record exactly one result:
 
 When Iteration returns a new committed candidate, rerun Step 0 against the full diff, not just the fix delta. Iteration owns the round counter and the round 3 safety valve; Validate owns neither repair nor retry policy.
 
-Step 0 owns security risk acceptance. With `Execution mode: human-in-the-loop`, only the human may accept a security/privacy risk; write it to `validation.security_privacy.accepted_risks`. With `Execution mode: auto`, do not ask the user: dispatch `samsara:auto-gatekeeper`; accepted risk is invalid.
+Step 0 owns security risk acceptance. With `Execution mode: human-in-the-loop`,
+only the human may accept a security/privacy risk; write it to
+`validation.security_privacy.accepted_risks`. With `Execution mode: auto`, do
+not ask the user: dispatch `samsara:auto-gatekeeper` with
+`validation.security-risk`; only `revise` or `reject` is valid, and accepted
+risk remains invalid.
 
 ## Validation Steps
 
@@ -196,9 +202,10 @@ Present these actions only after the final validator is clean:
 
 With `Execution mode: human-in-the-loop`, ask the user to select one. With
 `Execution mode: auto`, do not ask the user; dispatch
-`samsara:auto-gatekeeper` and record its answer. Write the choice to
-`delivery.action`, add preparation commands or instructions, validate, and
-commit the manifest.
+`samsara:auto-gatekeeper` with `validation.delivery`, require its `answer` to be
+exactly one delivery action, and wait for the validated decision. Write the
+choice and `auto-decisions.md#<decision-id>` ref to `delivery`, add preparation
+commands or instructions, rerun this skill's validator, and commit the manifest.
 
 This skill records and prepares the action only. Do not merge, do not create the
 PR, and do not discard the branch. External execution requires separate explicit
@@ -213,16 +220,22 @@ auto-mode routing.
 
 - `workflow_prompt` sources: each Step 0 question and final
   validation-completion delivery selection.
+- Gate IDs: `validation.empty-diff`, `validation.base-branch`,
+  `validation.security-capability`, `validation.security-result`,
+  `validation.security-risk`, and `validation.delivery`.
 - Decision points: empty diff, base branch, capability/result handling, and
-  final delivery selection.
+  final delivery selection. The Gatekeeper is the sole decision-log writer.
 - Step 0 prompts cover empty diff, base branch, no built-in security review capability, unknown result or partial result, fail result, and accepted risk.
 - Empty expected diff may proceed with evidence. Unknown result, partial result, or missing capability records a high-uncertainty `reject`; the run must not proceed past Step 0. Fail result revises through Iteration when fixable, otherwise rejects. Accepted risk is invalid in auto mode.
-- Before the final decision, validate prior gate entries in
-  `auto-decisions.md` against every workflow prompt.
-- Trace re-check: after appending the final validation decision, validate the trace again and write its ref to `delivery.decision_ref`.
+- Before the final decision, confirm prior gate entries in `auto-decisions.md`
+  resolve to every workflow prompt. The Gatekeeper companion owns their shape
+  validation and append history.
+- Trace re-check: after the Gatekeeper appends the final validation decision,
+  write its ref to `delivery.decision_ref`; this skill's validator must resolve
+  that current decision and match its answer to `delivery.action`.
 - A missing or invalid decision-log entry must fail validation before completion.
-- `accept_gap` cannot override security, Primary evaluator, format, open or
-  blocked Scar, or missing reviewer failures. The final gate selects an action;
-  it cannot rewrite a mandatory validation result.
+- Validation gates do not allow `accept_gap`. They cannot override security,
+  Primary evaluator, format, open or blocked Scar, or missing reviewer failures.
+  The final gate selects an action; it cannot rewrite a mandatory result.
 - A valid auto decision prepares the recorded action only. It does not execute
   merge, PR creation, or discard.

@@ -9,6 +9,8 @@ Scar reports are the item-level SSOT. Iteration reads them directly, applies fea
 
 ## Authority
 
+- `1-kickoff.md` supplies the workflow-run execution mode; never infer it from
+  another feature or unscoped session context.
 - Implement owns initial task wounds, wounds found during fix execution, and code/test/review execution.
 - Iteration solely owns Level 2 entry triage and `status`/`iteration` updates.
 - Iteration may append evaluator/triage-discovered wounds to the affected task scar.
@@ -68,6 +70,12 @@ Invoke `samsara:validate-and-ship` only after `flow.md`'s format, commit, and cl
 Canonical protocol: `references/auto-mode.md` Stage Gate Protocol.
 
 - `workflow_prompt` sources: entry triage, item disposition, blocked-fix handling, round continuation, and safety valve observations.
-- Decision points: repair/accept visible input gaps; fix/accept/defer; retry/defer a blocked fix; continue/stop after the safety valve.
+- Gate IDs: `iteration.entry-unknown`, `iteration.disposition.<scar-id>`,
+  `iteration.blocked-fix.<scar-id>`, and `iteration.round.<n>`.
+- Decision points: repair or stop on unknown input; fix/accept/defer an item;
+  retry/defer a blocked fix; continue/stop after the safety valve. The
+  Gatekeeper is the sole decision-log writer.
 - `proceed` — invoke `samsara:validate-and-ship` only when the committed transition gate is satisfied.
-- `revise` repairs evidence or continues the recorded fix path; `reject` stops; `accept_gap` must remain visible on the scar item and in `auto-decisions.md`.
+- `revise` repairs evidence or continues the recorded fix path; `reject` stops.
+  Iteration gates do not allow `accept_gap`; accepted/deferred Scar dispositions
+  already provide the durable lifecycle vocabulary.

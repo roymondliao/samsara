@@ -6,19 +6,21 @@ AUTO_MODE_REFERENCE = ROOT / "references" / "auto-mode.md"
 AUTO_GATEKEEPER = ROOT / "agents" / "auto-gatekeeper.md"
 
 REQUIRED_DECISION_FIELDS = (
+    "schema_version",
     "decision_id",
-    "stage",
-    "prompt_type",
-    "workflow_prompt",
-    "gatekeeper_answer",
-    "decision",
-    "rationale",
-    "principles_used",
-    "architecture_considerations",
-    "evidence_checked",
-    "uncertainty",
-    "consequences",
     "timestamp",
+    "decided_by",
+    "stage",
+    "gate_id",
+    "workflow_prompt",
+    "answer",
+    "decision",
+    "reason",
+    "evidence_refs",
+    "uncertainty",
+    "next_action",
+    "gap",
+    "supersedes",
 )
 
 
@@ -86,15 +88,20 @@ class TestAutoGatekeeperContractDeath:
         )
 
     def test_gatekeeper_must_write_auto_decisions_before_continuing(self):
-        text = AUTO_GATEKEEPER.read_text(encoding="utf-8")
+        text = " ".join(AUTO_GATEKEEPER.read_text(encoding="utf-8").split())
 
         assert "auto-decisions.md" in text
         assert "before continuing" in text
         assert "workflow_prompt" in text
-        assert "gatekeeper_answer" in text
+        assert "answer" in text
+        assert "sole writer" in text.lower()
 
     def test_gatekeeper_records_revise_without_mutating_artifacts(self):
         text = AUTO_GATEKEEPER.read_text(encoding="utf-8")
+        normalized = " ".join(text.split())
 
-        assert "owning workflow or main agent must change" in text
-        assert "Do not implement tasks." in text
+        assert "owning artifact or evidence" in AUTO_MODE_REFERENCE.read_text(
+            encoding="utf-8"
+        )
+        assert "Do not implement tasks" in text
+        assert "Do not edit code, tests, or stage artifacts" in normalized

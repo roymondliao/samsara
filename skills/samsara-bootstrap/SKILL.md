@@ -55,51 +55,12 @@ Before implementation, answer four questions:
 3. Before optimizing, ask internally: `Is this worth optimizing, or should it not exist?`
 4. Keep ambiguity visible; do not silently choose the most convenient interpretation.
 
-## Execution Mode Selection
-
-Before invoking `samsara:research` for new feature work, establish the
-session-level execution mode:
-
-1. If the session already records `Execution mode:`, reuse it and do not ask again.
-2. Otherwise, ask the user to choose before invoking `samsara:research`:
-
-- `human-in-the-loop` — Default mode and default selection. Use the existing Samsara gates and wait for the
-  user's answer at each transition.
-- `auto` — Run the same workflow, but route each later workflow question or
-  confirmation through `samsara:auto-gatekeeper` and append the decision to
-  `changes/<feature>/auto-decisions.md`.
-  Source dispatch target: `subagent_type: "samsara:auto-gatekeeper"`.
-
-Use this prompt before research:
-
-> Execution mode? Choose `human-in-the-loop` or `auto`.
-
-Record the selected mode as an explicit session context line before research:
-
-```text
-Execution mode: human-in-the-loop
-```
-
-or:
-
-```text
-Execution mode: auto
-```
-
-Later skills read this explicit `Execution mode:` line as the active execution
-mode. If the user does not choose, record `Execution mode: human-in-the-loop`
-and proceed. An unknown mode is invalid and must never silently become `auto`.
-
-Persistent config, including `samsara_config.yaml`, is out of scope for the
-first auto-mode implementation. Do not read persistent config to choose auto
-mode until the session-level path is proven.
-
 ## Skill Matching (Mandatory)
 
 Route requests in this order. Stop at the first match:
 
-1. **Explicit Samsara skill command:** Invoke the named skill. For Research,
-   select execution mode first when the session has none.
+1. **Explicit Samsara skill command:** Invoke the named skill. Research owns its
+   workflow-run execution mode at entry.
 2. **Non-workflow conversation:** Explanation, read-only review, status,
    general discussion, or Samsara meta-audit. Handle directly; do not invoke a
    skill merely because one is related. A question that reports previously
@@ -109,8 +70,8 @@ Route requests in this order. Stop at the first match:
    `samsara:debugging`.
 4. **Proven low-risk state-changing work:** Offer `samsara:fast-track` and
    proceed only after its entry gate and user confirmation.
-5. **Other state-changing feature work:** Select execution mode first, then
-   invoke `samsara:research`.
+5. **Other state-changing feature work:** Invoke `samsara:research`; Research
+   selects and persists the workflow-run execution mode before interrogation.
 6. **Unclear mutation authority:** Clarify whether the user wants project-state
    changes. Do not default to Research from possibility alone.
 
@@ -137,7 +98,6 @@ digraph samsara_routing {
     classify [label="Classify request" shape=diamond];
     named [label="Explicitly named skill"];
     direct [label="Handle directly" shape=doublecircle];
-    mode [label="Select execution mode"];
     research [label="research"];
     prethinking [label="pre-thinking"];
     planning [label="planning"];
@@ -153,8 +113,7 @@ digraph samsara_routing {
     classify -> direct [label="read-only / explanation / meta-audit"];
     classify -> debugging [label="production failure"];
     classify -> fasttrack [label="proven low risk"];
-    classify -> mode [label="other state-changing work"];
-    mode -> research;
+    classify -> research [label="other state-changing work"];
 
     research -> prethinking;
     prethinking -> planning;

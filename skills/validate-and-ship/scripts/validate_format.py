@@ -32,6 +32,7 @@ except ImportError:  # pragma: no cover - environment-dependent
 _AUTHORITY_RE = re.compile(r"^(?:PT-(?:CI|EVAL|D\d+|S\d+)|PL-D\d+|AC-\d+)$")
 _SCAR_REF_RE = re.compile(r"^(scar-reports/[^#]+)#(SC-[1-9]\d*)$")
 _MARKDOWN_REF_RE = re.compile(r"^([^#]+)#(.+)$")
+_AUTO_DECISION_REF_RE = re.compile(r"^auto-decisions\.md#(decision-\d+)$")
 _PLACEHOLDER_RE = re.compile(r"<[^>]+>")
 _FINDING_ID_RE = re.compile(r"^VF-[1-9]\d*$")
 
@@ -186,6 +187,79 @@ def _check_markdown_refs(
             or match.group(2).lower() not in path.read_text(encoding="utf-8").lower()
         ):
             findings.append(f"evidence-ref: `{where}` cannot resolve `{ref}`")
+
+
+def _check_delivery_decision(
+    feature_dir: Path,
+    decision_ref: str,
+    action: Any,
+    findings: list[str],
+) -> None:
+    match = _AUTO_DECISION_REF_RE.fullmatch(decision_ref)
+    if match is None:
+        findings.append(
+            "delivery-decision: decision_ref must use `auto-decisions.md#decision-NNN`"
+        )
+        return
+
+    log_path = feature_dir / "auto-decisions.md"
+    if not log_path.is_file():
+        findings.append(f"delivery-decision: cannot resolve `{decision_ref}`")
+        return
+    text = log_path.read_text(encoding="utf-8")
+    decision_id = match.group(1)
+    section_re = re.compile(
+        rf"^## {re.escape(decision_id)} — (?P<heading_gate>[a-z0-9.-]+)\s*$"
+        rf"(?P<body>.*?)(?=^## decision-\d+ — |\Z)",
+        re.MULTILINE | re.DOTALL,
+    )
+    section = section_re.search(text)
+    if section is None:
+        findings.append(f"delivery-decision: cannot resolve `{decision_ref}`")
+        return
+    block = re.fullmatch(
+        r"\s*```yaml\s*\n(?P<yaml>.*?)\n```\s*", section.group("body"), re.DOTALL
+    )
+    if block is None:
+        findings.append(f"delivery-decision: `{decision_ref}` has invalid shape")
+        return
+    try:
+        entry = yaml.safe_load(block.group("yaml"))
+    except yaml.YAMLError:
+        entry = None
+    if not isinstance(entry, dict):
+        findings.append(f"delivery-decision: `{decision_ref}` has invalid YAML")
+        return
+
+    superseded = re.search(
+        rf"^\s*supersedes:\s*[\"']?{re.escape(decision_id)}[\"']?\s*$",
+        text,
+        re.MULTILINE,
+    )
+    if superseded is not None:
+        findings.append(f"delivery-decision: `{decision_ref}` is superseded")
+    if (
+        section.group("heading_gate") != "validation.delivery"
+        or entry.get("gate_id") != "validation.delivery"
+        or entry.get("stage") != "validation"
+    ):
+        findings.append(
+            f"delivery-decision: `{decision_ref}` must resolve to validation.delivery"
+        )
+    if entry.get("decision_id") != decision_id:
+        findings.append(
+            f"delivery-decision: `{decision_ref}` does not match its decision_id"
+        )
+    if entry.get("decided_by") != "auto-gatekeeper":
+        findings.append(
+            f"delivery-decision: `{decision_ref}` was not decided by auto-gatekeeper"
+        )
+    if entry.get("decision") != "proceed":
+        findings.append(f"delivery-decision: `{decision_ref}` must be proceed")
+    if entry.get("answer") != action:
+        findings.append(
+            f"delivery-decision: `{decision_ref}` answer must equal delivery.action"
+        )
 
 
 def _check_security(
@@ -512,9 +586,7 @@ def validate(feature_dir: Path, repo_root: Path) -> tuple[list[str], str | None]
         if not isinstance(decision_ref, str) or not decision_ref.strip():
             findings.append("delivery: auto-gatekeeper requires non-empty decision_ref")
         else:
-            _check_markdown_refs(
-                feature_dir, [decision_ref], "delivery.decision_ref", findings
-            )
+            _check_delivery_decision(feature_dir, decision_ref, action, findings)
 
     security = _map(
         validation.get("security_privacy"), "validation.security_privacy", findings

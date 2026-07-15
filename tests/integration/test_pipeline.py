@@ -503,7 +503,7 @@ class TestGeminiPipelineOutputStructure:
         content = agent_file.read_text(encoding="utf-8")
         assert "auto-decisions.md" in content
         assert "workflow_prompt" in content
-        assert "gatekeeper_answer" in content
+        assert "answer" in content
 
     def test_gemini_settings_json_exists_and_parses(
         self, pipeline_output: Path
