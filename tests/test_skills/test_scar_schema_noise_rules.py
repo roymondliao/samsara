@@ -1010,6 +1010,7 @@ _NAMED_ANCHORS = (
     "forced-by-evidence",
     "systemic-ref",
     "resolved-in-place",
+    "validation-finding-ref",
     "legacy-invalid",
     "go-elsewhere",
 )

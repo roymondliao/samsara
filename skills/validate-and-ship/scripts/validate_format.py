@@ -255,7 +255,10 @@ def _check_control(name: str, value: Any, findings: list[str]) -> None:
 
 
 def _check_validation_findings(
-    value: Any, known_ids: set[str], findings: list[str]
+    value: Any,
+    next_finding_number: Any,
+    known_ids: set[str],
+    findings: list[str],
 ) -> list[dict[str, Any]]:
     where = "validation.findings"
     if not isinstance(value, list):
@@ -293,6 +296,15 @@ def _check_validation_findings(
             findings.append(f"finding-id: duplicate `{finding_id}`")
         else:
             seen_ids.add(finding_id)
+            finding_number = int(finding_id.removeprefix("VF-"))
+            if (
+                type(next_finding_number) is int
+                and finding_number >= next_finding_number
+            ):
+                findings.append(
+                    "finding-id: `validation.next_finding_number` must be greater "
+                    f"than current `{finding_id}`"
+                )
 
         _enum(item.get("step"), _FINDING_STEPS, f"{item_where}.step", findings)
         _enum(item.get("result"), _FINDING_RESULTS, f"{item_where}.result", findings)
@@ -337,6 +349,45 @@ def _check_validation_findings(
             )
 
     return parsed
+
+
+def _previous_finding_number(feature_dir: Path, repo_root: Path) -> int | None:
+    """Read the last committed counter when the feature lives in this repo."""
+    try:
+        manifest_path = (
+            feature_dir.resolve().relative_to(repo_root.resolve())
+            / "ship-manifest.yaml"
+        )
+    except ValueError:
+        return None
+    history = subprocess.run(
+        ["git", "log", "-1", "--format=%H", "--", manifest_path.as_posix()],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    commit = history.stdout.strip()
+    if history.returncode != 0 or not commit:
+        return None
+    previous = subprocess.run(
+        ["git", "show", f"{commit}:{manifest_path.as_posix()}"],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if previous.returncode != 0:
+        return None
+    try:
+        data = yaml.safe_load(previous.stdout)
+    except yaml.YAMLError:
+        return None
+    validation = data.get("validation") if isinstance(data, dict) else None
+    value = (
+        validation.get("next_finding_number") if isinstance(validation, dict) else None
+    )
+    return value if type(value) is int and value >= 1 else None
 
 
 def validate(feature_dir: Path, repo_root: Path) -> tuple[list[str], str | None]:
@@ -419,9 +470,29 @@ def validate(feature_dir: Path, repo_root: Path) -> tuple[list[str], str | None]
         "reconciliation",
         "review_evidence",
     }
-    _require(validation, step_names | {"findings"}, "validation", findings)
+    _require(
+        validation,
+        step_names | {"findings", "next_finding_number"},
+        "validation",
+        findings,
+    )
+    next_finding_number = validation.get("next_finding_number")
+    if type(next_finding_number) is not int or next_finding_number < 1:
+        findings.append(
+            "finding-id: `validation.next_finding_number` must be a positive integer"
+        )
+    previous_finding_number = _previous_finding_number(feature_dir, repo_root)
+    if (
+        type(next_finding_number) is int
+        and previous_finding_number is not None
+        and next_finding_number < previous_finding_number
+    ):
+        findings.append(
+            "finding-id: `validation.next_finding_number` must not decrease "
+            f"from committed `{previous_finding_number}` to `{next_finding_number}`"
+        )
     validation_findings = _check_validation_findings(
-        validation.get("findings"), known_ids, findings
+        validation.get("findings"), next_finding_number, known_ids, findings
     )
 
     delivery = _map(raw.get("delivery"), "delivery", findings)

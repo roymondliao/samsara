@@ -36,6 +36,7 @@ def _valid_manifest() -> dict:
         "snapshot": {"base_commit": head, "candidate_commit": head},
         "validation_status": "ready_for_delivery",
         "validation": {
+            "next_finding_number": 1,
             "findings": [],
             "security_privacy": {
                 "status": "pass",
@@ -154,7 +155,7 @@ def _write_feature(tmp_path: Path, manifest: dict) -> Path:
     return feature
 
 
-def _run(feature: Path) -> subprocess.CompletedProcess[str]:
+def _run(feature: Path, repo_root: Path = ROOT) -> subprocess.CompletedProcess[str]:
     assert VALIDATOR.is_file(), "Validate & Ship must own a format validator"
     return subprocess.run(
         [
@@ -162,7 +163,7 @@ def _run(feature: Path) -> subprocess.CompletedProcess[str]:
             str(VALIDATOR),
             str(feature),
             "--repo-root",
-            str(ROOT),
+            str(repo_root),
         ],
         capture_output=True,
         text=True,
@@ -273,6 +274,7 @@ def test_death__validation_finding_requires_stable_shape_and_locator(
             "source_ref": None,
         }
     ]
+    manifest["validation"]["next_finding_number"] = 2
 
     result = _run(_write_feature(tmp_path, manifest))
 
@@ -307,6 +309,7 @@ def test_unit__validation_finding_accepts_evidence_backed_path_without_severity(
             "source_ref": None,
         }
     ]
+    manifest["validation"]["next_finding_number"] = 2
 
     result = _run(_write_feature(tmp_path, manifest))
 
@@ -329,6 +332,7 @@ def test_death__ready_manifest_cannot_carry_return_findings(tmp_path: Path) -> N
             "source_ref": "PL-D1",
         }
     ]
+    manifest["validation"]["next_finding_number"] = 2
 
     result = _run(_write_feature(tmp_path, manifest))
 
@@ -372,6 +376,7 @@ def test_death__duplicate_validation_finding_ids_are_rejected(tmp_path: Path) ->
         "source_ref": "PL-D1",
     }
     manifest["validation"]["findings"] = [finding, copy.deepcopy(finding)]
+    manifest["validation"]["next_finding_number"] = 2
     manifest["delivery"] = {
         "action": "pending",
         "selected_by": None,
@@ -383,3 +388,100 @@ def test_death__duplicate_validation_finding_ids_are_rejected(tmp_path: Path) ->
 
     assert result.returncode == 1
     assert "duplicate" in result.stdout.lower()
+
+
+def test_death__finding_number_must_advance_past_every_current_id(
+    tmp_path: Path,
+) -> None:
+    manifest = _valid_manifest()
+    manifest["validation_status"] = "blocked"
+    manifest["validation"]["findings"] = [
+        {
+            "id": "VF-2",
+            "step": "reconciliation",
+            "result": "unknown",
+            "owner": "planning",
+            "observable_result": "PL-D1 no longer resolves.",
+            "evidence_refs": ["2-plan.md#PL-D1"],
+            "severity": None,
+            "path": None,
+            "location": None,
+            "source_ref": "PL-D1",
+        }
+    ]
+    manifest["validation"]["next_finding_number"] = 2
+    manifest["delivery"] = {
+        "action": "pending",
+        "selected_by": None,
+        "decision_ref": None,
+        "preparation": [],
+    }
+
+    result = _run(_write_feature(tmp_path, manifest))
+
+    assert result.returncode == 1
+    assert "next_finding_number" in result.stdout
+    assert "VF-2" in result.stdout
+
+
+def test_death__finding_number_cannot_reset_after_findings_clear(
+    tmp_path: Path,
+) -> None:
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    subprocess.run(
+        ["git", "config", "user.email", "validator@example.com"],
+        cwd=tmp_path,
+        check=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "Validator Test"],
+        cwd=tmp_path,
+        check=True,
+    )
+    (tmp_path / "README.md").write_text("fixture\n", encoding="utf-8")
+    subprocess.run(["git", "add", "README.md"], cwd=tmp_path, check=True)
+    subprocess.run(
+        ["git", "commit", "-q", "-m", "fixture base"], cwd=tmp_path, check=True
+    )
+    base = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.strip()
+
+    manifest = _valid_manifest()
+    manifest["snapshot"] = {"base_commit": base, "candidate_commit": base}
+    manifest["validation"]["security_privacy"]["scope_ref"] = f"{base}...{base}"
+    manifest["validation"]["next_finding_number"] = 5
+    feature = _write_feature(tmp_path, manifest)
+    (feature / "index.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "iteration_entry": {
+                    "status": "ready_for_validation",
+                    "last_commit": base,
+                }
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+    subprocess.run(["git", "add", "feature"], cwd=tmp_path, check=True)
+    subprocess.run(
+        ["git", "commit", "-q", "-m", "preserve finding sequence"],
+        cwd=tmp_path,
+        check=True,
+    )
+
+    manifest["validation"]["next_finding_number"] = 1
+    (feature / "ship-manifest.yaml").write_text(
+        yaml.safe_dump(manifest, sort_keys=False), encoding="utf-8"
+    )
+
+    result = _run(feature, tmp_path)
+
+    assert result.returncode == 1
+    assert "must not decrease" in result.stdout
+    assert "5" in result.stdout and "1" in result.stdout

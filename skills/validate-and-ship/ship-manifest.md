@@ -27,6 +27,9 @@ defines field meaning only.
 returned to another layer. The template is the shape authority. Each finding
 inherits `snapshot.candidate_commit`; do not copy the commit into every item.
 
+- Allocate the ID from `next_finding_number`, then increment the counter. The
+  counter is feature-scoped: preserve it when findings clear and never reset or
+  reuse a number across candidates.
 - Use one stable `VF-*` ID and name the validation step, result, owner,
   observable result, and non-empty evidence refs.
 - Use `path` and `location` for a code, test, or artifact surface. Use
@@ -35,6 +38,12 @@ inherits `snapshot.candidate_commit`; do not copy the commit into every item.
   never infer severity to fill the field.
 - A `blocked` manifest has at least one finding; a `ready_for_delivery`
   manifest has none.
+
+A Scar cites a finding as
+`ship-manifest.yaml@<manifest-commit>#VF-N`. Resolve the file from that blocked
+manifest commit, not `snapshot.candidate_commit` or the working tree. The
+manifest commit preserves the finding after a later candidate clears the
+current list.
 
 ## Operational Controls
 

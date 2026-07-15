@@ -230,10 +230,124 @@ def _validate_scars(feature_dir: Path, repo_root: Path) -> list[str]:
     return findings
 
 
+def _git(repo_root: Path, *args: str) -> str:
+    result = subprocess.run(
+        ["git", *args],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return result.stdout.strip()
+
+
+def _historical_vf_fixture(scarred_feature: Path, repo_root: Path) -> tuple[Path, str]:
+    _git(repo_root, "init", "-q")
+    _git(repo_root, "config", "user.email", "validator@example.com")
+    _git(repo_root, "config", "user.name", "Validator Test")
+
+    manifest = scarred_feature / "ship-manifest.yaml"
+    manifest.write_text(
+        """validation_status: blocked
+validation:
+  next_finding_number: 2
+  findings:
+    - id: VF-1
+      observable_result: "contract mismatch"
+""",
+        encoding="utf-8",
+    )
+    _git(repo_root, "add", ".")
+    _git(repo_root, "commit", "-q", "-m", "record blocked validation")
+    manifest_commit = _git(repo_root, "rev-parse", "HEAD")
+
+    manifest.write_text(
+        """validation_status: ready_for_delivery
+validation:
+  next_finding_number: 2
+  findings: []
+""",
+        encoding="utf-8",
+    )
+    _write_scar(
+        scarred_feature,
+        f"""task_id: task-1
+completion_status: done
+known_shortcuts:
+  - scar_id: SC-1
+    what: "validation found a contract mismatch"
+    bites_when: "the affected acceptance path executes"
+    where: "src/parser.py:10"
+    status: resolved
+    resolution: "aligned behavior with the contract"
+    iteration:
+      round: 1
+      action: fixed
+      evidence_refs:
+        - "ship-manifest.yaml@{manifest_commit}#VF-1"
+silent_failure_conditions: []
+assumptions_made: []
+debt_registered: true
+debt_location: "src/parser.py:10"
+structural_decisions: []
+""",
+    )
+    return manifest, manifest_commit
+
+
 def test_implement_clean_scar_validates_clean(
     scarred_feature: Path, tmp_path: Path
 ) -> None:
     assert _validate_scars(scarred_feature, tmp_path) == []
+
+
+def test_implement_historical_manifest_finding_ref_survives_worktree_clear(
+    scarred_feature: Path, tmp_path: Path
+) -> None:
+    manifest, manifest_commit = _historical_vf_fixture(scarred_feature, tmp_path)
+
+    assert "findings: []" in manifest.read_text(encoding="utf-8")
+    assert len(manifest_commit) == 40
+    assert _validate_scars(scarred_feature, tmp_path) == []
+
+
+def test_implement_unqualified_manifest_finding_ref_is_a_finding(
+    scarred_feature: Path, tmp_path: Path
+) -> None:
+    _, manifest_commit = _historical_vf_fixture(scarred_feature, tmp_path)
+    scar_path = scarred_feature / "scar-reports" / "task-1-scar.yaml"
+    scar = scar_path.read_text(encoding="utf-8")
+    scar_path.write_text(
+        scar.replace(
+            f"ship-manifest.yaml@{manifest_commit}#VF-1",
+            "ship-manifest.yaml#VF-1",
+        ),
+        encoding="utf-8",
+    )
+
+    findings = _validate_scars(scarred_feature, tmp_path)
+
+    assert any("manifest-finding-ref" in finding for finding in findings)
+
+
+def test_implement_manifest_ref_must_resolve_finding_in_cited_commit(
+    scarred_feature: Path, tmp_path: Path
+) -> None:
+    manifest, manifest_commit = _historical_vf_fixture(scarred_feature, tmp_path)
+    _git(tmp_path, "add", str(manifest.relative_to(tmp_path)))
+    _git(tmp_path, "commit", "-q", "-m", "clear current findings")
+    cleared_commit = _git(tmp_path, "rev-parse", "HEAD")
+    scar_path = scarred_feature / "scar-reports" / "task-1-scar.yaml"
+    scar = scar_path.read_text(encoding="utf-8")
+    scar_path.write_text(
+        scar.replace(manifest_commit, cleared_commit), encoding="utf-8"
+    )
+
+    findings = _validate_scars(scarred_feature, tmp_path)
+
+    assert any(
+        "manifest-finding-ref" in finding and "VF-1" in finding for finding in findings
+    )
 
 
 def test_implement_missing_structural_decisions_key_is_a_finding(

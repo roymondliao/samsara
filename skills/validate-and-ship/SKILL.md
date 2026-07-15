@@ -147,8 +147,10 @@ again or create a second review authority in this layer.
 Persist each fail or unknown handoff in `validation.findings` before routing it.
 The manifest template is the shape authority; `ship-manifest.md` defines field
 meaning. Each finding inherits the frozen candidate from `snapshot`, uses the
-next stable `VF-*` ID, and points to durable evidence. Do not invent severity or
-duplicate this field contract in another layer.
+number in `next_finding_number`, increments it, and points to durable evidence.
+Preserve the counter when findings clear; never reset or reuse it across
+candidates. Do not invent severity or duplicate this field contract in another
+layer.
 
 - Fail returns to the owning layer; Validate never repairs another layer's
   artifact.
@@ -159,7 +161,8 @@ duplicate this field contract in another layer.
 - Only `ready_for_delivery` may reach the delivery gate.
 
 Before returning, write `validation_status: blocked`, run Validate's format
-validator, and commit the manifest as durable handoff evidence.
+validator, and commit the manifest as durable handoff evidence. Return the full
+manifest commit SHA with each `VF-*` handoff; it is not the candidate commit.
 
 ## Output and Format Validation
 

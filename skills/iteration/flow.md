@@ -138,9 +138,12 @@ missing ownership evidence, and do not invent a feature-level Scar file.
 
 For an owned finding:
 
-1. Append a new stable `SC-*` wound to that task's Scar report, citing the full
-   `ship-manifest.yaml#VF-N` finding ref. Reuse an existing open wound when it
-   already names the same fact; never duplicate it for a second observation.
+1. Append a new stable `SC-*` wound with `status: open`, `iteration: null`, and
+   the affected locator in `where`. When Triage writes the iteration map, put
+   `ship-manifest.yaml@<manifest-commit>#VF-N` in `iteration.evidence_refs`.
+   Use the commit returned by Validate & Ship, not `snapshot.candidate_commit`
+   or the working tree. Reuse an existing open wound when it already names the
+   same fact; never duplicate it for a second observation.
 2. In the existing `iteration_entry` mapping, set `status` to `in_progress`,
    route to `fix_rounds`, and run the normal Triage contract.
 3. Invoke `samsara:implement` through Step 3. Implement's SKILL is canonical for

@@ -55,12 +55,34 @@ def test_death__manifest_owns_the_validation_finding_handoff_shape() -> None:
     iteration = _section(_read(ITERATION_FLOW).lower(), "## validation re-entry")
 
     assert manifest["validation"]["findings"] == []
+    assert manifest["validation"]["next_finding_number"] == 1
     assert "validation.findings" in guide
     assert "validation.findings" in validate
     assert "validation.findings" in iteration
     assert "template is the shape authority" in validate
     assert "template is the shape authority" in iteration
     assert "severity, affected path/location, and evidence refs" not in iteration
+
+
+def test_death__scar_uses_manifest_commit_qualified_finding_refs() -> None:
+    guide = _read(MANIFEST_GUIDE).lower()
+    iteration = _section(_read(ITERATION_FLOW).lower(), "## validation re-entry")
+
+    expected = "ship-manifest.yaml@<manifest-commit>#vf-n"
+    assert expected in guide
+    assert expected in iteration
+    assert "ship-manifest.yaml#vf-n" not in iteration
+    assert "manifest commit, not `snapshot.candidate_commit`" in guide
+
+
+def test_death__finding_ids_never_reset_when_current_findings_clear() -> None:
+    guide = _read(MANIFEST_GUIDE).lower()
+    validate = _section(_read(VALIDATE).lower(), "## result routing")
+
+    for text in (guide, validate):
+        assert "next_finding_number" in text
+        assert "never reset" in text
+    assert "across candidate" in guide
 
 
 def test_death__validation_finding_contract_does_not_force_invented_severity() -> None:

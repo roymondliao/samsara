@@ -41,6 +41,11 @@
 #   `status: resolved` plus a one-line `resolution`. Level 1 leaves
 #   `iteration: null`; Level 2 also records round, action, and evidence refs.
 #
+# validation-finding-ref: when validation created the wound, the Iteration
+#   evidence uses `ship-manifest.yaml@<40-char-manifest-commit>#VF-N`. The
+#   commit is the blocked manifest commit, not the candidate commit or working
+#   tree. This keeps the ref resolvable after current findings clear.
+#
 # no-review-diary: omit narrative unless the slots cannot carry necessary
 #   scar context. Never use it for round-by-round or review-round history.
 #

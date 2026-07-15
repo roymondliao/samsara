@@ -17,6 +17,7 @@ snapshot:
 validation_status: in_progress  # in_progress | ready_for_delivery | blocked
 
 validation:
+  next_finding_number: 1  # feature-scoped; increment after allocation, never reset
   findings: []
   # - id: VF-1
   #   step: acceptance  # security_privacy | remaining_exposure | acceptance | primary_evaluator | e2e | reconciliation | review_evidence

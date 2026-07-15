@@ -44,6 +44,8 @@ Checks per changes/<feature>/scar-reports/task-N-scar.yaml:
   scar-lifecycle       new lifecycle items use a valid status and carry the
                        mechanical fields required by that status; old items
                        with neither scar_id nor iteration remain readable
+  manifest-finding-ref qualified VF refs in iteration evidence resolve to a
+                       finding in the cited blocked manifest commit
 
 structural_decisions key policy: required for NEW reports —
 `structural_decisions: []` = checked, no structural bet; a MISSING key is
@@ -65,6 +67,7 @@ Usage:
 from __future__ import annotations
 
 import re
+import subprocess
 import sys
 from collections.abc import Iterator
 from pathlib import Path
@@ -125,6 +128,9 @@ CHAR_CAPPED_FIELD_NAMES = (
 
 _SCAR_ID_RE = re.compile(r"SC-[1-9]\d*")
 _SCAR_STATUSES = {"open", "resolved", "accepted", "deferred", "blocked"}
+_MANIFEST_FINDING_REF_RE = re.compile(
+    r"^ship-manifest\.yaml@([0-9a-f]{40})#(VF-[1-9]\d*)$"
+)
 
 
 def _declared_seams(feature_dir: Path) -> set[str]:
@@ -547,6 +553,97 @@ def _check_scar_lifecycle(name: str, data: dict) -> list[str]:
     return findings
 
 
+def _check_manifest_finding_refs(
+    name: str, data: dict, feature_dir: Path, repo_root: Path
+) -> list[str]:
+    """Resolve immutable validation-finding refs from Scar iteration evidence."""
+    findings: list[str] = []
+    try:
+        feature_relative = feature_dir.resolve().relative_to(repo_root.resolve())
+    except ValueError:
+        feature_relative = None
+    manifest_path = (
+        feature_relative / "ship-manifest.yaml" if feature_relative else None
+    )
+    manifest_cache: dict[str, dict | None] = {}
+
+    for section_name in (
+        "known_shortcuts",
+        "silent_failure_conditions",
+        "assumptions_made",
+    ):
+        for index, item in _iter_raw_items(data, section_name):
+            if item is None or not isinstance(item.get("iteration"), dict):
+                continue
+            evidence_refs = item["iteration"].get("evidence_refs")
+            if not isinstance(evidence_refs, list):
+                continue
+            for ref_index, raw_ref in enumerate(evidence_refs):
+                ref = str(raw_ref)
+                if not ref.startswith("ship-manifest.yaml"):
+                    continue
+                where = (
+                    f"{name} {section_name}[{index}] "
+                    f"iteration.evidence_refs[{ref_index}]"
+                )
+                match = _MANIFEST_FINDING_REF_RE.fullmatch(ref)
+                if match is None:
+                    findings.append(
+                        "manifest-finding-ref: "
+                        f"{where} must use ship-manifest.yaml@<40-char-manifest-commit>#VF-N"
+                    )
+                    continue
+                commit, finding_id = match.groups()
+                if manifest_path is None:
+                    findings.append(
+                        f"manifest-finding-ref: {where} cannot resolve outside repo root"
+                    )
+                    continue
+                if commit not in manifest_cache:
+                    result = subprocess.run(
+                        ["git", "show", f"{commit}:{manifest_path.as_posix()}"],
+                        cwd=repo_root,
+                        capture_output=True,
+                        text=True,
+                        check=False,
+                    )
+                    if result.returncode != 0:
+                        manifest_cache[commit] = None
+                    else:
+                        try:
+                            parsed = yaml.safe_load(result.stdout)
+                        except yaml.YAMLError:
+                            parsed = None
+                        manifest_cache[commit] = (
+                            parsed if isinstance(parsed, dict) else None
+                        )
+                manifest = manifest_cache[commit]
+                if manifest is None:
+                    findings.append(
+                        f"manifest-finding-ref: {where} cannot read manifest at `{commit}`"
+                    )
+                    continue
+                validation = manifest.get("validation")
+                historical_findings = (
+                    validation.get("findings") if isinstance(validation, dict) else None
+                )
+                resolved_ids = {
+                    str(entry.get("id"))
+                    for entry in historical_findings or []
+                    if isinstance(entry, dict) and entry.get("id")
+                }
+                if manifest.get("validation_status") != "blocked":
+                    findings.append(
+                        f"manifest-finding-ref: {where} cites a non-blocked manifest"
+                    )
+                if finding_id not in resolved_ids:
+                    findings.append(
+                        f"manifest-finding-ref: {where} cannot resolve `{finding_id}`"
+                    )
+
+    return findings
+
+
 def validate_scar(
     scar_path: Path,
     known_ids: set[str],
@@ -569,6 +666,9 @@ def validate_scar(
     findings.extend(_check_legacy_form(name, data))
     findings.extend(_check_required_slots(name, data))
     findings.extend(_check_scar_lifecycle(name, data))
+    findings.extend(
+        _check_manifest_finding_refs(name, data, scar_path.parent.parent, repo_root)
+    )
     try:
         root_node = yaml.compose(text)
     except yaml.YAMLError:
@@ -721,7 +821,8 @@ def main(argv: list[str]) -> int:
     print(
         f"implement format validation: clean — {len(scar_files)} scar report(s) "
         "(parse / dual-face / forced-by / seam / systemic-ref / debt / "
-        "length-budget / legacy-form / slot-required / scar-id / scar-lifecycle)"
+        "length-budget / legacy-form / slot-required / scar-id / scar-lifecycle / "
+        "manifest-finding-ref)"
     )
     return 0
 
