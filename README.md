@@ -105,7 +105,7 @@ The mode is feature-scoped and workflow-run-specific; `samsara_config.yaml` is n
 | `samsara:validate-and-ship` | Implement/iteration complete — Step 0 runs the security & privacy STOP gate first | Ship manifest with failure budget |
 | `samsara:fast-track` | Small, low-risk changes (< 100 lines) | Compressed workflow, death test still first |
 | `samsara:debugging` | Production failure in existing code | Four-phase yin-side root cause analysis |
-| `samsara:codebase-map` | Entering a new project or after significant changes | Structural map + silent failure surface assessment |
+| `samsara:codebase-map` | Entering a new project or after significant source changes | Project knowledge graph: responsibilities, capabilities, relationships, flows, and silent failure surfaces |
 | `samsara:writing-skills` | Creating or modifying samsara skills | Death-first TDD applied to skill development |
 
 ### Agents

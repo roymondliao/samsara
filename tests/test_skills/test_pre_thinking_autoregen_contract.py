@@ -12,7 +12,7 @@ namespace — DC-4/DC-5 here are unrelated to DC-4/DC-5 there):
 
   DC-5 (failed-autoregen deadlock / dishonest-completion): pre-thinking/flow.md,
   the sole executable owner, MUST contain an explicit escape clause for when
-  auto-initiated regen fails, aborts, or is Phase-4-rejected. SKILL.md points to
+  auto-initiated regen fails or aborts. SKILL.md points to
   that canonical procedure instead of duplicating it.
 
 Unit tests (doc-artifact contract):
@@ -120,7 +120,7 @@ def test_death_dc5__escape_clause_for_failed_autoregen() -> None:
     DC-5: failed-auto-initiated-regen deadlock / dishonest-completion guard.
 
     pre-thinking/flow.md must contain the explicit escape clause for when
-    auto-initiated regen fails, aborts, or is rejected at Phase 4. SKILL.md must
+    auto-initiated regen fails or aborts. SKILL.md must
     point to flow.md as the sole executable owner instead of restating the clause.
 
     Without it:
@@ -165,18 +165,17 @@ def test_unit__pre_thinking_skill_points_to_canonical_autoregen_procedure() -> N
     assert "auto-initiate" not in content
 
 
-def test_unit__pre_thinking_flow_auto_initiate_retains_phase4_review() -> None:
+def test_unit__pre_thinking_flow_auto_initiate_uses_project_map_review() -> None:
     """
     Contract source: skills/pre-thinking/flow.md documented-artifact contract.
 
     Section 1 atomic context procedure step 3 must:
       (a) Contain an imperative 'auto-initiate' instruction in proximity to the
           churn/threshold condition (context-anchored, not whole-file).
-      (b) Explicitly retain Phase 4 human review or "human review" in HITL mode,
-          anchored near the auto-initiate instruction.
+      (b) Keep Codebase Map regeneration project-scoped: no feature execution
+          mode or human/auto gate is introduced by the caller.
 
-    KD2: auto-initiate WITHOUT losing Phase 4 review — both must be present
-    in the same context (not just anywhere in the file).
+    Codebase Map owns its evidence review; Pre-thinking only triggers refresh.
 
     Contract-gate:
       - Prose rewording that preserves both tokens in proximity: assertions stay green.
@@ -197,19 +196,12 @@ def test_unit__pre_thinking_flow_auto_initiate_retains_phase4_review() -> None:
         "A token in an unrelated section does not satisfy this guard."
     )
 
-    # (b) Phase 4 / human review retained near the auto-initiate instruction
-    _PHASE4_NEAR_AUTO = re.compile(
-        r"auto-initiate.{0,400}(phase.?4|human.?review)"
-        r"|"
-        r"(phase.?4|human.?review).{0,400}auto-initiate",
-        re.IGNORECASE | re.DOTALL,
-    )
-    assert _PHASE4_NEAR_AUTO.search(content) is not None, (
-        "pre-thinking/flow.md is missing 'Phase 4' or 'human review' near the "
-        "'auto-initiate' instruction. KD2 requires Phase 4 review to be explicitly "
-        "retained in HITL mode when auto-initiation triggers regeneration — a token "
-        "elsewhere in the file does not satisfy this guard."
-    )
+    context = content[
+        content.index("3. If present but stale") : content.index("4. If missing")
+    ]
+    assert "Codebase Map's project-scoped evidence review" in context
+    assert "human-in-the-loop" not in context
+    assert "auto-gatekeeper" not in context
 
 
 def test_unit__codebase_map_skill_documents_auto_initiated_trigger() -> None:

@@ -1,156 +1,106 @@
 ---
 name: codebase-map
-description: Use when entering a new project for the first time, or when the codebase has changed significantly — generates a yin-side codebase map with structural analysis and silent failure surface assessment
+description: Use when entering a project for the first time or when its live code structure has changed enough that existing architectural context may be stale
 ---
 
-# Codebase Map — Yin-Side Project Analysis
+# Codebase Map — Project Knowledge Graph
 
-Generate a map of the project that answers both "what is this system?" (yang) and "where is this system pretending to be healthy?" (yin).
+Build a project-scoped, evidence-backed map of what exists, what each part
+provides, why it exists, and how parts relate. It is derived context, not feature
+authority; live code wins whenever the map drifts.
 
-> 一般的 codebase map 是陽面的 —「系統長什麼樣」。Samsara 的 codebase map 回答「系統在哪裡假裝健康」。
+## Scan Scope
+
+The main agent resolves scope once, before dispatch, by content role, not a fixed
+folder name. Default `roots` to the project root unless the user supplies a
+narrower scope. Record every user-supplied scope choice.
+
+- Always exclude workflow artifacts under `changes/`, prior map output under
+  `.samsara/`, VCS internals, caches, and temporary files. Do not read secret
+  values or binary payloads; record only their verified role or config source.
+- Classify generated code, vendored code, build output, docs, fixtures, and data
+  by project behavior. Include them when they are built, shipped, imported,
+  maintained, or affect runtime, tests, or schemas. Docs may explain semantics
+  but never override live code.
+- Record a referenced path outside `roots` or inside an exclusion as a
+  `coverage_gap`; unscanned does not mean nonexistent.
+
+Pass the same resolved scan scope to both explorers. Never use a feature plan or
+decision log to describe what the codebase currently is.
 
 ## Triggers
 
-1. **User-invoked:** `samsara:codebase-map` is invoked directly by the user.
-2. **Auto-initiated:** `samsara:pre-thinking` auto-initiates regeneration when
-   the map is present but stale and churn exceeds the threshold.
-   - Churn = changed source files since `last_updated`, excluding paths under
-     `changes/`, `docs/`, `bugfix/`.
-   - Threshold = the `staleness_churn_threshold` field (default 30) in
-     `.samsara/codebase-map.yaml`.
-   - In human-in-the-loop mode, Phase 4 human review is retained for
-     auto-initiated runs.
+- User invokes `samsara:codebase-map`.
+- Pre-thinking auto-initiates refresh when source churn since `last_updated`
+  exceeds `staleness_churn_threshold` (default 30). Churn excludes `changes/`,
+  `docs/`, and `bugfix/`.
 
 ## Process
 
 ```dot
 digraph codebase_map {
     node [shape=box];
+    start [label="Inspect live project" shape=doublecircle];
+    exists [label="Map exists?" shape=diamond];
+    full [label="Full structural scan"];
+    changed [label="Scan changed source nodes"];
+    semantic [label="Explain responsibilities, capabilities, flows"];
+    yin [label="Find hidden coupling and silent failure surfaces"];
+    review [label="Evidence and referential-integrity review"];
+    clean [label="Graph resolves?" shape=diamond];
+    repair [label="Re-analyze affected nodes"];
+    write [label="Write .samsara map"];
+    done [label="Map ready" shape=doublecircle];
 
-    start [label="使用者執行 /samsara:codebase-map\n或 bootstrap 提醒後觸發" shape=doublecircle];
-    check [label="檢查 .samsara/codebase-map.yaml\n是否已存在？" shape=diamond];
-    mode [label="生成 or 更新？" shape=diamond];
-
-    explore_parallel [label="Phase 1: 平行探索\nAgent 1 (結構) + Agent 3 (基礎設施)\n同時派出"];
-    explore_yin [label="Phase 2: 陰面探索\nAgent 2 拿到 Phase 1 結果\n分析 rot risks + hidden coupling"];
-    synthesize [label="Phase 3: 合成\n匯總三個 explorer 的產出\n生成 codebase-map.yaml + modules/*.yaml"];
-    review [label="Execution-mode review\nhuman or auto-gatekeeper\nchecks confidence: low" shape=diamond];
-    write [label="寫入 .samsara/\ncodebase-map.yaml + modules/*.yaml"];
-    done [label="完成" shape=doublecircle];
-
-    start -> check;
-    check -> mode [label="exists"];
-    check -> explore_parallel [label="not exists"];
-    mode -> explore_parallel [label="full regenerate"];
-    mode -> explore_yin [label="incremental update\n(結構沒大變，只更新陰面)"];
-    explore_parallel -> explore_yin;
-    explore_yin -> synthesize;
-    synthesize -> review;
-    review -> write [label="confirmed"];
-    review -> synthesize [label="revise"];
+    start -> exists;
+    exists -> full [label="no / explicit full refresh"];
+    exists -> changed [label="yes"];
+    full -> semantic;
+    changed -> semantic;
+    semantic -> yin -> review -> clean;
+    clean -> repair [label="no"];
+    repair -> review;
+    clean -> write [label="yes"];
     write -> done;
 }
 ```
 
-## Phase 1: Parallel Exploration
+## Build the Graph
 
-Dispatch two agents simultaneously:
+1. Resolve Scan Scope, then dispatch `structure-explorer` and `infra-explorer`
+   in parallel with that scope. Extract
+   modules, files, significant functions/classes, entry points, provided
+   interfaces, build/config sources, and evidence-backed dependency edges.
+2. Dispatch `yin-explorer` with both results. Add hidden coupling, assumptions,
+   death impact, and silent failure surfaces without replacing structural facts.
+3. Synthesize:
+   - `codebase-map.yaml`: project purpose, capabilities, module index, global
+     nodes, relationships, business flows, infrastructure, and risk summary.
+   - `modules/<name>.yaml`: module-local nodes, interfaces, relationships, and
+     yin findings.
+4. Check that every path and edge endpoint resolves or is disclosed as a
+   `coverage_gap`, every relationship has an evidence ref, structural facts
+   match live code, and unsupported semantics stay `unknown`. Re-analyze only
+   failing nodes.
 
-1. **structure-explorer** — modules, paths, dependencies, interfaces
-2. **infra-explorer** — build system, config sources, data flow, external services
-
-These two agents have no dependencies on each other. Dispatch in parallel.
-
-## Phase 2: Yin-Side Exploration
-
-After Phase 1 completes, dispatch:
-
-3. **yin-explorer** — receives Phase 1 results as context. Analyzes rot risks, hidden coupling, assumptions, death impact for each module.
-
-## Phase 3: Synthesis
-
-After all three agents report back:
-
-1. Merge structure-explorer output (modules, deps) + infra-explorer output (build, config, data flow) + yin-explorer output (rot risks, coupling, assumptions)
-2. Generate summary: count rot_hotspots (top 3 by failure_level), count high_risk_coupling, count assumptions
-3. Compute `silent_failure_surface`: low (<3 rot risks), medium (3-7), high (>7 or any level 4)
-4. Generate `codebase-map.yaml` (Layer 1+2) from templates
-5. Generate one `modules/<name>.yaml` (Layer 3) per module from templates
-
-## Phase 4: Execution-Mode Review
-
-Prepare:
-- Summary: module count, silent failure surface, top 3 rot hotspots
-- Every `confidence: low` item
-- Prompt: "Anything missing or wrong?"
-
-- With `Execution mode: human-in-the-loop`, present the material to the user and
-  ask for confirmation or correction.
-- With `Execution mode: auto`, dispatch `samsara:auto-gatekeeper` with gate ID
-  `codebase-map.review`, the draft refs, churn evidence, and the exact prompt.
-  Wait for its validated decision; do not ask the user.
-
-Only `proceed` or a durable `accept_gap` writes the draft to `.samsara/`.
-`revise` regenerates the affected analysis and re-runs the same gate. `reject`
-marks the existing map stale and stops this regeneration path.
+Deterministic source facts—paths, symbols, imports, calls, and config references—
+must come from code inspection. LLM analysis may explain responsibility,
+capability, business flow, and risk, but must cite those facts.
 
 ## Fail-Honest Write Contract
 
-`last_updated` must not be advanced unless new content was actually written and
-(in HITL) reviewed. If regeneration is abandoned, aborted, or fails partway
-through:
-
-1. **Do not advance `last_updated`.** The existing timestamp must be preserved.
-   The corruption signature this contract guards against is `last_updated`
-   bumped without a real content refresh — which makes a stale map appear fresh
-   to the next pre-thinking session.
-2. **Mark the map stale.** Write a `stale_reason` field to
-   `.samsara/codebase-map.yaml` recording why the regen did not complete
-   (e.g., `"regen aborted — Phase 4 review rejected"`,
-   `"regen failed — explorer agent error"`).
-3. **Do not bump `last_updated` on partial regen.** If the write step is
-   reached but the user rejects the content in Phase 4 review, leave
-   `last_updated` untouched and mark the map stale with the rejection reason.
-
-A regen run is complete only when all three phases finish AND (in HITL) Phase 4
-review confirms. Anything short of that must not advance `last_updated`.
-
-## Update Modes
-
-When `.samsara/codebase-map.yaml` already exists, use gate ID
-`codebase-map.update-strategy` with this prompt:
-
-> 「Codebase map 已存在（上次更新：YYYY-MM-DD）。選擇更新方式：
-> (A) Full regenerate — 重跑三個 agent，完整重建
-> (B) Incremental update — 只重跑陰面分析，保留結構不變」
-
-- With `Execution mode: human-in-the-loop`, ask the user.
-- With `Execution mode: auto`, dispatch `samsara:auto-gatekeeper` with map age,
-  churn, affected paths, and this exact prompt. Wait for its validated answer.
-
-## Auto Mode Gate
-
-Canonical protocol: `references/auto-mode.md` Stage Gate Protocol. The
-Gatekeeper is the sole writer of `auto-decisions.md`; Codebase Map owns only its
-map artifacts.
-
-- `codebase-map.update-strategy` selects full or incremental regeneration when
-  a map exists.
-- `codebase-map.review` reviews the draft and every low-confidence item.
-- Accepted gaps remain explicit in the map's assumptions/confidence evidence;
-  they never turn an unverifiable claim into high confidence.
+Write only after the evidence review succeeds. If refresh fails or aborts, do
+not advance `last_updated`; preserve the prior map and mark it stale with a
+recorded `stale_reason`. Partial output must not appear fresh.
 
 ## Output
 
-Files written to target project:
-
-```
-project/.samsara/
-├── codebase-map.yaml      # Layer 1+2: summary + module index + infrastructure
-└── modules/               # Layer 3: per-module detail (yang + yin)
-    ├── <module-1>.yaml
-    ├── <module-2>.yaml
-    └── ...
+```text
+.samsara/
+├── codebase-map.yaml
+└── modules/<module>.yaml
 ```
 
-Use templates at `templates/codebase-map.yaml` and `templates/module.yaml`.
+Use `templates/codebase-map.yaml` and `templates/module.yaml`. The main agent is
+the sole writer; explorers return evidence only. This skill creates no
+`changes/` artifact and no auto-mode decision.

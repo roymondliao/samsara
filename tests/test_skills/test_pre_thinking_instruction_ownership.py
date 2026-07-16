@@ -66,7 +66,7 @@ def test_death__load_bearing_procedures_exist_only_in_flow() -> None:
         "No cap on lens count",
         "not a one-to-one mapping",
         "adding a lens is free",
-        "fails, aborts, or is rejected",
+        "fails or aborts",
     ):
         owners = [name for name, text in sources.items() if phrase in text]
         assert owners == ["flow"], f"{phrase!r} owners: {owners}"

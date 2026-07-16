@@ -21,6 +21,9 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
 TEMPLATE_PATH = ROOT / "skills" / "codebase-map" / "templates" / "codebase-map.yaml"
+SKILL_PATH = ROOT / "skills" / "codebase-map" / "SKILL.md"
+STRUCTURE_EXPLORER = ROOT / "agents" / "structure-explorer.md"
+INFRA_EXPLORER = ROOT / "agents" / "infra-explorer.md"
 
 # Live source directories asserted to be the COMPLETE set of dirs where a
 # consumer of staleness_threshold_days could live.  docs/ and changes/ are
@@ -165,3 +168,42 @@ def test_unit__template_staleness_churn_threshold_is_int() -> None:
         f"staleness_churn_threshold must be an int for bash arithmetic compatibility; "
         f"got {type(value).__name__!r} = {value!r}"
     )
+
+
+def test_death__map_exposes_structural_nodes_and_evidence_edges() -> None:
+    parsed = yaml.safe_load(TEMPLATE_PATH.read_text(encoding="utf-8"))
+
+    assert "nodes" in parsed
+    assert "relationships" in parsed
+    node = parsed["nodes"][0]
+    edge = parsed["relationships"][0]
+    assert {"id", "kind", "path", "responsibility", "provides", "evidence_ref"} <= set(
+        node
+    )
+    assert {"from", "to", "type", "evidence_ref"} <= set(edge)
+
+
+def test_death__scan_scope_has_one_authority_and_shared_consumers() -> None:
+    skill = " ".join(SKILL_PATH.read_text(encoding="utf-8").split())
+    explorers = [
+        STRUCTURE_EXPLORER.read_text(encoding="utf-8"),
+        INFRA_EXPLORER.read_text(encoding="utf-8"),
+    ]
+
+    assert "## Scan Scope" in skill
+    assert "content role, not a fixed folder name" in skill
+    assert "user-supplied scope" in skill
+    for explorer in explorers:
+        assert "resolved scan scope" in explorer
+        assert "Do not add or remove scope" in explorer
+        assert "`changes/`" not in explorer
+        assert "`.samsara/`" not in explorer
+
+
+def test_death__map_discloses_scope_and_unscanned_boundaries() -> None:
+    parsed = yaml.safe_load(TEMPLATE_PATH.read_text(encoding="utf-8"))
+    scope = parsed["scan_scope"]
+
+    assert {"roots", "exclusions", "coverage_gaps"} <= set(scope)
+    assert {"path", "reason"} <= set(scope["exclusions"][0])
+    assert {"path", "referenced_by", "reason"} <= set(scope["coverage_gaps"][0])

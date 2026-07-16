@@ -2,14 +2,28 @@ project: "<project name>"
 last_updated: "YYYY-MM-DD"
 # stale_reason: "<reason>"  # OPTIONAL — present ONLY when regen failed/aborted; omitted on a successful run.
 #   Written by the Fail-Honest Write Contract (see SKILL.md) when a regeneration is
-#   abandoned, aborted, or Phase-4-rejected.  Examples: "regen aborted — Phase 4 review
-#   rejected", "regen failed — explorer agent error".  A later successful full regen
+#   abandoned, aborted, or fails evidence review. Examples: "regen aborted — source
+#   scan incomplete", "regen failed — dangling relationship". A later successful refresh
 #   overwrites this file and this field is not written, so its absence signals success.
 staleness_churn_threshold: 30  # changed source files since last_updated (exclude changes/ docs/ bugfix/)
 generated_by: "samsara:codebase-map"
 
+scan_scope:
+  roots:
+    - "."
+  exclusions:
+    - path: "<excluded repository-relative path>"
+      reason: "<content-role reason or user-supplied exclusion>"
+  coverage_gaps:
+    - path: "<referenced but unscanned path>"
+      referenced_by: "<scanned node id or config path>"
+      reason: "<outside roots or excluded by resolved scope>"
+
 # --- Layer 1: Summary ---
 summary:
+  purpose: "<what this project exists to provide | unknown>"
+  capabilities:
+    - "<externally or internally provided capability>"
   module_count: 0
   silent_failure_surface: low  # low | medium | high
   rot_hotspots:
@@ -26,6 +40,29 @@ modules:
     rot_risk_count: 0
     hidden_coupling_count: 0
     dependencies: []
+
+# --- Structural Knowledge Graph ---
+nodes:
+  - id: "<stable node id: path or path#symbol>"
+    kind: "<module | file | function | class | interface | command | config | schema>"
+    path: "<repository-relative path>"
+    responsibility: "<what this node does | unknown>"
+    provides:
+      - "<capability, interface, data, or command>"
+    evidence_ref: "<file:line or file#symbol>"
+
+relationships:
+  - from: "<node id>"
+    to: "<node id>"
+    type: "<contains | imports | calls | implements | configures | reads | writes | emits | consumes>"
+    evidence_ref: "<file:line or file#symbol>"
+
+business_flows:
+  - name: "<flow name>"
+    purpose: "<observable outcome | unknown>"
+    steps:
+      - node: "<node id>"
+        action: "<what this node contributes>"
 
 # --- Infrastructure ---
 infrastructure:

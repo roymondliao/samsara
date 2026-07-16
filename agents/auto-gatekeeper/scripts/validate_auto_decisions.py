@@ -32,7 +32,6 @@ _DECISIONS = {"proceed", "revise", "reject", "accept_gap"}
 _ACTORS = {"auto-gatekeeper", "human"}
 _STAGES = {
     "research",
-    "codebase-map",
     "pre-thinking",
     "planning",
     "implementation",
@@ -66,11 +65,6 @@ _GATE_RULES: tuple[tuple[re.Pattern[str], str, set[str]], ...] = (
             r"research\.(problem-source|do-not-solve|damage-recipient|done-state|transition)"
         ),
         "research",
-        _DECISIONS,
-    ),
-    (
-        re.compile(r"codebase-map\.(update-strategy|review)"),
-        "codebase-map",
         _DECISIONS,
     ),
     (

@@ -1,6 +1,8 @@
 name: "<module name>"
 path: "<directory path>"
 responsibility: "<one sentence>"
+provides:
+  - "<capability, interface, data, or command>"
 last_analyzed: "YYYY-MM-DD"
 
 # --- Yang side ---
@@ -9,6 +11,19 @@ interfaces:
   - "<public API / entry point>"
 key_files:
   - "<most important file>"
+
+nodes:
+  - id: "<path or path#symbol>"
+    kind: "<file | function | class | interface | command | config | schema>"
+    responsibility: "<what this node does | unknown>"
+    provides: []
+    evidence_ref: "<file:line or file#symbol>"
+
+relationships:
+  - from: "<node id>"
+    to: "<node id>"
+    type: "<contains | imports | calls | implements | configures | reads | writes | emits | consumes>"
+    evidence_ref: "<file:line or file#symbol>"
 
 # --- Yin side ---
 death_impact: "<what breaks if this module disappears>"

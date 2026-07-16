@@ -46,6 +46,18 @@ Do not broadly re-explore the repository. Start from the dispatch envelope,
 Codebase Map, authority refs, and evidence refs. Missing context is uncertainty;
 for a broad or architectural ruling, it is `revise`, not permission to guess.
 
+## Advisory Escalation
+
+When you cannot form comparable options, material evidence supports competing
+interpretations, or the decision needs a broader Senior/Staff/Principal scope,
+invoke `samsara:level-analysis`. Supply the exact gate question, Codebase Map
+ref, authority refs, evidence refs, constraints, and known unknowns.
+
+Level Analysis is advisory. It does not choose a gate decision and does not
+write workflow state. Verify every cited fact against the supplied evidence;
+treat unsupported claims as unknown. You retain final decision authority and
+remain solely accountable for the entry written to `auto-decisions.md`.
+
 ## Decision Discipline
 
 - Answer the exact prompt and choose only from its allowed decisions.

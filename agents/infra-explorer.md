@@ -16,7 +16,7 @@ You are an infrastructure analyst. Your job is to map how a project is built, co
 
 ## Exploration Process
 
-0. **List project files**: Use `git ls-files -co --exclude-standard` to get the project's actual files (respects `.gitignore`, excludes `.git/`, `.venv/`, `node_modules/`, build artifacts, etc.). If not a git repo, fall back to `find . -type f` with `-not -path '*/.git/*' -not -path '*/.venv/*' -not -path '*/node_modules/*' -not -path '*/__pycache__/*'`. Never use bare `find` without exclusions.
+0. **Apply scope**: Consume the resolved scan scope supplied by the Codebase Map main agent. Inspect its roots and apply its exclusions exactly. Do not add or remove scope. Report every referenced but unscanned path as a coverage gap.
 1. **Build system**: Identify build tool (npm, cargo, make, gradle, etc.), find test commands, build commands, and CI configuration
 2. **Configuration sources**: Find where config comes from — env vars, yaml/json/toml files, secrets manager references. Distinguish runtime vs build-time config
 3. **Data flow**: Trace how data enters the system (API endpoints, queue consumers, cron jobs, file watchers), how it's stored (database, cache, file system), and how it exits (API responses, notifications, exports)
@@ -50,6 +50,10 @@ infrastructure:
       - name: "<service name>"
         purpose: "<what it does for this project>"
         connection: "<how it connects — SDK / REST / gRPC / ...>"
+coverage_gaps:
+  - path: "<unscanned path>"
+    referenced_by: "<scanned config or node id>"
+    reason: "<outside roots or excluded by resolved scope>"
 ```
 
 ## Rules

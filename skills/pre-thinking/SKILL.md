@@ -12,7 +12,9 @@ keeping future change possible. Minimize human input without hiding uncertainty.
 
 ## Prerequisites
 
-Read `1-kickoff.md` and `problem-autopsy.md` from `changes/<feature>/`.
+Read `1-kickoff.md` and `problem-autopsy.md` from `changes/<feature>/`. When the
+autopsy contains non-null `decision_refs`, resolve them from `auto-decisions.md`
+before framing; the autopsy conclusion remains Research's stage-owned content.
 
 ## Instruction Ownership
 

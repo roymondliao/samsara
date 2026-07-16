@@ -5,13 +5,15 @@ The problem autopsy is the yin-side output of the research phase. It forces the 
 ## Ownership
 
 `problem-autopsy.md` is the sole owner of source wording, reframe, translation
-delta, kill conditions, damage recipients, and observable done state.
+delta, kill conditions, damage recipients, observable done state, and the
+decision refs that sourced auto-mode conclusions.
 `1-kickoff.md` must not duplicate this content; it points here and owns the
 decision-ready handoff instead.
 
 ## Structure
 
-The autopsy has six sections. Address every section with supported content or
+The autopsy has six content sections plus `decision_refs` and `accepted_gaps`.
+Address every content section with supported content or
 this exact marker:
 
 `Input incomplete; missing: <specific information or evidence>.`
@@ -57,6 +59,12 @@ damage_recipients:
 
 ### 6. observable_done_state
 In three sentences or fewer: what is the observable difference between "solved" and "not solved"? If you cannot describe this, the problem is not yet understood.
+
+### decision_refs
+In auto mode, map each Research Step 1 gate ID to the corresponding
+`auto-decisions.md#decision-NNN`. Research writes the conclusion in its content
+section and stores only the source ref here. Do not duplicate Gatekeeper reason,
+uncertainty, or decision metadata. In human-in-the-loop mode, use null.
 
 ## Example
 

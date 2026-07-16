@@ -99,7 +99,7 @@ Execution mode 以 feature 與 workflow run 為範圍，不支援 `samsara_confi
 | `samsara:validate-and-ship` | Implement/iteration 完成——Step 0 先跑 security & privacy STOP gate | 帶失敗預算的交付清單 |
 | `samsara:fast-track` | 小型低風險改動（< 100 行） | 簡化流程，death test 仍先行 |
 | `samsara:debugging` | 既有程式碼的 production 故障 | 四階段陰面根因分析 |
-| `samsara:codebase-map` | 進入新專案或程式碼大幅變動後 | 結構地圖 + 靜默失敗面評估 |
+| `samsara:codebase-map` | 進入新專案或 source code 大幅變動後 | Project knowledge graph：責任、能力、關係、流程與靜默失敗面 |
 | `samsara:writing-skills` | 建立或修改 samsara skills | 以 death-first TDD 開發 skill |
 
 ### Agents

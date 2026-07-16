@@ -61,7 +61,7 @@ description: Use when [triggering conditions — symptoms, not workflow summary]
 
 ### Content Structure
 
-1. **Core principle** — 1-2 sentences
+1. **Core principle** — 3-5 sentences
 2. **Process** — Graphviz digraph showing decision points and steps
 3. **Steps** — concrete instructions with yin-side constraints inline
 4. **Output** — what files are produced, where they go

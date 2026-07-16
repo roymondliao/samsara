@@ -66,13 +66,14 @@ def test_research_routes_all_four_human_prompts_through_auto_gatekeeper() -> Non
     assert "samsara:auto-gatekeeper" in research
 
 
-def test_codebase_map_has_human_and_auto_review_paths() -> None:
+def test_codebase_map_is_project_scoped_not_an_auto_mode_stage() -> None:
     codebase_map = read(CODEBASE_MAP)
 
-    assert "codebase-map.update-strategy" in codebase_map
-    assert "codebase-map.review" in codebase_map
-    assert "`Execution mode: auto`" in codebase_map
-    assert "samsara:auto-gatekeeper" in codebase_map
+    assert "project-scoped" in codebase_map
+    assert "live code" in codebase_map
+    assert "workflow artifacts under `changes/`" in codebase_map
+    assert "## Auto Mode Gate" not in codebase_map
+    assert "samsara:auto-gatekeeper" not in codebase_map
 
 
 def test_implement_separates_execution_mode_from_execution_strategy() -> None:
@@ -92,7 +93,6 @@ def test_stage_projections_use_the_canonical_stable_gate_ids() -> None:
             "research.done-state",
             "research.transition",
         ),
-        CODEBASE_MAP: ("codebase-map.update-strategy", "codebase-map.review"),
         PRE_THINKING: (
             "pre-thinking.step5.<group>.<question>",
             "pre-thinking.evaluator",

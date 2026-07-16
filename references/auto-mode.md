@@ -150,7 +150,6 @@ condition rather than inventing a new semantic family.
 
 - Research: `research.problem-source`, `research.do-not-solve`,
   `research.damage-recipient`, `research.done-state`, `research.transition`.
-- Codebase Map: `codebase-map.update-strategy`, `codebase-map.review`.
 - Pre-thinking: `pre-thinking.step5.<group>.<question>`,
   `pre-thinking.evaluator`, `pre-thinking.commitment`.
 - Planning: `planning.transition`.

@@ -77,7 +77,11 @@ Attempt to kill the problem itself. Continue only if it survives.
 Present these user-facing prompts **one at a time**, then apply the instruction
 beneath each prompt. In `Execution mode: human-in-the-loop`, ask the user. In
 `Execution mode: auto`, dispatch `samsara:auto-gatekeeper` for each Step 1 prompt,
-wait for its validated decision, and write its answer to the Research artifact.
+then wait for its validated decision. Gatekeeper writes only
+`auto-decisions.md`. Research applies the returned conclusion to the section it
+owns and records `auto-decisions.md#decision-NNN` under `decision_refs`; Research
+remains the sole writer of its artifacts. It does not copy `reason`,
+`uncertainty`, or decision metadata. Resolve the ref when that detail is needed.
 The stable gate IDs are listed beside each prompt.
 
 1. `research.problem-source` — User-facing prompt:
@@ -162,7 +166,8 @@ Write these files under `changes/YYYY-MM-DD_<feature-name>/` in the target proje
 Artifact ownership is non-overlapping:
 
 - **problem-autopsy.md owns** source wording, reframe, translation delta, kill
-  conditions, damage recipients, and the observable done state.
+  conditions, damage recipients, the observable done state, and source refs for
+  auto-mode conclusions.
 - **1-kickoff.md owns** the decision-ready handoff: problem essence, one scope
   contract, evidence, risk of inaction, North Star, and
   delivery stakeholders.

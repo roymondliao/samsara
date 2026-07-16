@@ -85,7 +85,7 @@ def test_death__problem_autopsy_records_missing_input_without_inference() -> Non
     autopsy = _read(AUTOPSY)
     marker = "Input incomplete; missing: <specific information or evidence>."
 
-    assert "Address every section" in guide
+    assert "Address every content section" in guide
     assert marker in guide
     assert "Do not infer" in guide
     assert "Each section must be filled" not in guide
@@ -171,3 +171,20 @@ def test_death__research_transition_prompt_has_one_owner() -> None:
     assert "`workflow_prompt` sources and gate IDs" in auto_gate
     assert "`research.transition` uses the exact prompt in `## Transition`" in auto_gate
     assert "do not restate it here" in auto_gate
+
+
+def test_death__auto_research_conclusions_keep_decision_provenance() -> None:
+    skill = _read(RESEARCH_SKILL)
+    normalized = " ".join(skill.split())
+    autopsy = _section(_read(AUTOPSY), "decision_refs")
+
+    assert "Gatekeeper writes only `auto-decisions.md`" in normalized
+    assert "Research remains the sole writer" in normalized
+    assert "auto-decisions.md#decision-NNN" in normalized
+    for gate_id in (
+        "research.problem-source",
+        "research.do-not-solve",
+        "research.damage-recipient",
+        "research.done-state",
+    ):
+        assert gate_id in autopsy
