@@ -40,7 +40,7 @@ def test_death__fast_track_review_uses_domain_authority_and_evidence() -> None:
 
     assert "domain router" in normalized
     assert "domain reference" in normalized
-    assert "fixed c5-c8 subset" in normalized
+    assert "c5-c8" not in normalized
     assert "evidence refs" in normalized
     assert "unknown" in normalized
 

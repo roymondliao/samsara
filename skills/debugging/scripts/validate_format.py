@@ -2,7 +2,8 @@
 """Validate Debugging diagnosis artifacts.
 
 FORMAT only: this script checks YAML shape, enums, phase linkage, and declared
-route consistency. It never judges whether the diagnosis or route is correct.
+route consistency. It never judges whether the diagnosis, route, or free-text
+content is adequate.
 """
 
 from __future__ import annotations
@@ -57,17 +58,6 @@ def _load(path: Path, label: str, errors: list[str]) -> dict[str, Any]:
         errors.append(f"{label}: YAML parse error: {exc}")
         return {}
     return _mapping(data, label, errors)
-
-
-def _find_placeholders(value: Any, path: str, errors: list[str]) -> None:
-    if isinstance(value, str) and "<" in value and ">" in value:
-        errors.append(f"{path}: unresolved placeholder")
-    elif isinstance(value, dict):
-        for key, child in value.items():
-            _find_placeholders(child, f"{path}.{key}", errors)
-    elif isinstance(value, list):
-        for index, child in enumerate(value):
-            _find_placeholders(child, f"{path}[{index}]", errors)
 
 
 def validate_debugging(directory: Path) -> list[str]:
@@ -226,8 +216,6 @@ def validate_debugging(directory: Path) -> list[str]:
         if repair.get("scope") != "bounded":
             errors.append("root-cause.repair: fast_track requires bounded scope")
 
-    _find_placeholders(report, "bug-report", errors)
-    _find_placeholders(cause, "root-cause", errors)
     return errors
 
 

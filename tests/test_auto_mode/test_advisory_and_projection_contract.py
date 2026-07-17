@@ -10,6 +10,8 @@ GATEKEEPER = ROOT / "agents" / "auto-gatekeeper.md"
 LEVEL_ANALYSIS = ROOT / "skills" / "level-analysis" / "SKILL.md"
 RESEARCH = ROOT / "skills" / "research" / "SKILL.md"
 AUTOPSY = ROOT / "skills" / "research" / "templates" / "problem-autopsy.md"
+README = ROOT / "README.md"
+README_ZH = ROOT / "README.zh-TW.md"
 
 
 def read(path: Path) -> str:
@@ -80,6 +82,11 @@ def test_death__level_analysis_frontmatter_matches_skill_contract() -> None:
 
     assert set(frontmatter) == {"name", "description"}
     assert frontmatter["description"].startswith("Use when")
+
+
+def test_death__level_analysis_is_visible_in_public_overviews() -> None:
+    for overview in (read(README), read(README_ZH)):
+        assert "`samsara:level-analysis`" in overview
 
 
 def test_death__research_projects_decisions_without_copying_the_log() -> None:

@@ -108,6 +108,7 @@ The mode is feature-scoped and workflow-run-specific; `samsara_config.yaml` is n
 | `samsara:fast-track` | Evidence proves bounded damage, no unresolved design, and deterministic verification | Bounded implementation, review, validation, and commit record |
 | `samsara:debugging` | Production failure in existing code | Diagnosis artifacts plus repair routing; no implementation |
 | `samsara:codebase-map` | Entering a new project or after significant source changes | Project knowledge graph: responsibilities, capabilities, relationships, flows, and silent failure surfaces |
+| `samsara:level-analysis` | Auto Gatekeeper needs comparable engineering perspectives before a difficult judgment | Advisory Senior/Staff/Principal analysis; no gate decision |
 | `samsara:writing-skills` | Creating or modifying samsara skills | Death-first TDD applied to skill development |
 
 ### Agents
@@ -206,9 +207,10 @@ samsara/
 │   ├── implement/               # Subagent orchestration + scar reports
 │   ├── iteration/               # Feature-level scar resolution
 │   ├── validate-and-ship/       # Step 0 security & privacy gate + validation + ship manifest
-│   ├── fast-track/              # Compressed workflow for small changes
-│   ├── debugging/               # Four-phase yin-side debugging
+│   ├── fast-track/              # Evidence-bounded direct implementation path
+│   ├── debugging/               # Yin-side diagnosis + repair routing
 │   ├── codebase-map/            # Project structural + failure surface mapping
+│   ├── level-analysis/          # Advisory Senior/Staff/Principal analysis
 │   └── writing-skills/          # TDD for skill development
 ├── references/                  # Domain checklists loaded by review agents
 ├── samsara_cli/                 # Release tooling + multi-platform converter/installer
@@ -236,7 +238,7 @@ Samsara produces structured artifacts throughout the workflow:
 | Implement | Scar report | YAML | Per-task wounds: assumptions, silent failures, edge cases |
 | Iteration | Updated scar state + index checkpoint | YAML | Feature-level dispositions, evidence, and resume state |
 | Auto mode | Auto decisions | Markdown | Append-only gate decisions with rationale and uncertainty |
-| Fast-track | Fast-track record | YAML | Compressed workflow record for small changes |
+| Fast-track | Fast-track record | YAML | Evidence-bounded implementation, review, and validation record |
 | Validate | Ship manifest | YAML | Delivery summary with failure budget |
 
 All artifacts live under `changes/<feature>/` — per-feature directories are the authoritative workflow record.

@@ -129,6 +129,16 @@ def test_fast_track_validator_accepts_valid_record(tmp_path: Path) -> None:
     assert module.validate_fast_track(path) == []
 
 
+def test_fast_track_validator_does_not_judge_free_text(tmp_path: Path) -> None:
+    module = _load(FAST_VALIDATOR, "fast_track_validator_free_text")
+    value = _valid_fast_track()
+    value["description"] = "Preserve std::vector<int> at the public boundary"
+    path = tmp_path / "fast-track.yaml"
+    _write(path, value)
+
+    assert module.validate_fast_track(path) == []
+
+
 def test_fast_track_validator_rejects_retired_scar_fields(tmp_path: Path) -> None:
     module = _load(FAST_VALIDATOR, "fast_track_validator_retired")
     value = _valid_fast_track()
@@ -142,6 +152,18 @@ def test_fast_track_validator_rejects_retired_scar_fields(tmp_path: Path) -> Non
 def test_debugging_validator_accepts_valid_diagnosis(tmp_path: Path) -> None:
     module = _load(DEBUG_VALIDATOR, "debugging_validator")
     _write(tmp_path / "bug-report.yaml", _valid_bug_report())
+    _write(tmp_path / "root-cause.yaml", _valid_root_cause())
+
+    assert module.validate_debugging(tmp_path) == []
+
+
+def test_debugging_validator_does_not_judge_free_text(tmp_path: Path) -> None:
+    module = _load(DEBUG_VALIDATOR, "debugging_validator_free_text")
+    report = _valid_bug_report()
+    report["bug"]["observable_result"] = (  # type: ignore[index]
+        "Response exposes Map<String, Value> unchanged"
+    )
+    _write(tmp_path / "bug-report.yaml", report)
     _write(tmp_path / "root-cause.yaml", _valid_root_cause())
 
     assert module.validate_debugging(tmp_path) == []

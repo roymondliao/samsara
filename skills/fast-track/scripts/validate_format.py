@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """Validate Fast-track artifact shape.
 
-FORMAT only: this script checks YAML shape, enums, lifecycle consistency, and
-placeholders. It never judges whether risk is truly low or review evidence is
-persuasive.
+FORMAT only: this script checks YAML shape, enums, and lifecycle consistency.
+It never judges whether risk is truly low or free-text content is adequate.
 """
 
 from __future__ import annotations
@@ -62,17 +61,6 @@ def _required(
     for key in keys:
         if key not in mapping:
             errors.append(f"{path}.{key}: missing")
-
-
-def _find_placeholders(value: Any, path: str, errors: list[str]) -> None:
-    if isinstance(value, str) and "<" in value and ">" in value:
-        errors.append(f"{path}: unresolved placeholder")
-    elif isinstance(value, dict):
-        for key, child in value.items():
-            _find_placeholders(child, f"{path}.{key}", errors)
-    elif isinstance(value, list):
-        for index, child in enumerate(value):
-            _find_placeholders(child, f"{path}[{index}]", errors)
 
 
 def validate_fast_track(path: Path) -> list[str]:
@@ -177,7 +165,6 @@ def validate_fast_track(path: Path) -> list[str]:
             )
         _nonempty(reason, "fast-track.escalation.reason", errors)
 
-    _find_placeholders(root, "fast-track", errors)
     return errors
 
 

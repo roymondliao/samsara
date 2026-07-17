@@ -76,7 +76,7 @@ digraph fast_track {
    test, and record the observed failing pre-change result.
 3. Implement only the bounded change. If scope expands, stop and escalate.
 4. Use the reviewer domain router and domain reference (`code` or `iac`). Select
-   principles from evidence, not a fixed C5-C8 subset. Record reference and
+   applicable principles from evidence; do not assume a fixed subset. Record reference and
    evidence refs, findings, and unknowns; anything breaking the proof escalates.
 5. Run project verification and:
 

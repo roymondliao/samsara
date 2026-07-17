@@ -102,6 +102,7 @@ Execution mode 以 feature 與 workflow run 為範圍，不支援 `samsara_confi
 | `samsara:fast-track` | 有證據證明 damage 有界、沒有未決設計且可 deterministic 驗證 | 有界實作、review、驗證與 commit 紀錄 |
 | `samsara:debugging` | 既有程式碼的 production 故障 | 診斷 artifacts 與 repair routing；不負責實作 |
 | `samsara:codebase-map` | 進入新專案或 source code 大幅變動後 | Project knowledge graph：責任、能力、關係、流程與靜默失敗面 |
+| `samsara:level-analysis` | Auto Gatekeeper 在困難判斷前需要可比較的工程觀點 | Senior／Staff／Principal advisory analysis；不作 gate decision |
 | `samsara:writing-skills` | 建立或修改 samsara skills | 以 death-first TDD 開發 skill |
 
 ### Agents
@@ -200,9 +201,10 @@ samsara/
 │   ├── implement/               # Subagent 協調 + scar reports
 │   ├── iteration/               # Feature-level scar resolution
 │   ├── validate-and-ship/       # Step 0 security & privacy gate + 驗證 + 交付清單
-│   ├── fast-track/              # 小改動的簡化流程
-│   ├── debugging/               # 四階段陰面 debugging
+│   ├── fast-track/              # 證據有界的直接實作路徑
+│   ├── debugging/               # 陰面診斷 + 修復路由
 │   ├── codebase-map/            # 專案結構 + 失敗面掃描
+│   ├── level-analysis/          # Senior／Staff／Principal advisory analysis
 │   └── writing-skills/          # Skill 開發的 TDD
 ├── references/                  # Review agents 載入的 domain checklists
 ├── samsara_cli/                 # Release 工具 + 多平台 converter/installer
@@ -230,7 +232,7 @@ Samsara 在工作流程中產出結構化的產出物：
 | Implement | Scar report | YAML | 每個任務的傷疤：假設、靜默失敗、邊界條件 |
 | Iteration | 更新後的 scar state + index checkpoint | YAML | Feature-level disposition、evidence 與 resume state |
 | Auto mode | Auto decisions | Markdown | Append-only gate 決策，含 rationale 與 uncertainty |
-| Fast-track | Fast-track record | YAML | 小改動的簡化流程記錄 |
+| Fast-track | Fast-track record | YAML | 證據有界的實作、review 與驗證紀錄 |
 | Validate | Ship manifest | YAML | 交付摘要，含失敗預算 |
 
 所有產出物都存放在 `changes/<feature>/` 之下——per-feature 目錄是 workflow 的 authoritative record。
