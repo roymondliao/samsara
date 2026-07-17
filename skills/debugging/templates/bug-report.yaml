@@ -1,6 +1,26 @@
-title: "<bug description>"
-reported_by: "<source — user / monitoring / internal>"
-failure_level: 1  # 1: visible crash | 2: degradation disguise | 3: false success | 4: silent rot
-impact_scope: "<how many users/requests affected>"
-duration_undetected: "<time from breaking to discovery>"
-reproduction: "<can reproduce locally? steps>"
+schema_version: 1
+
+bug:
+  title: "<observed production failure>"
+  reported_by: "<user | monitoring | internal>"
+  observable_result: "<what was observed without inferring cause>"
+  evidence_refs:
+    - "<log, alert, request, file:line, or other observable evidence>"
+
+failure:
+  level: 1  # 1: visible crash | 2: degradation disguise | 3: false success | 4: silent rot
+  rationale: "<why the observed result fits this level>"
+
+impact:
+  scope: unknown
+  duration: unknown
+  detection_delay: unknown
+  evidence_refs: []
+
+containment:
+  required: unknown  # yes | no | unknown
+  action: null
+  authorization: not_requested  # not_requested | requested | approved | applied
+
+unknowns:
+  - "<missing fact and evidence needed to resolve it>"

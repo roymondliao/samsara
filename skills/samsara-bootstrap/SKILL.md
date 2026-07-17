@@ -82,7 +82,10 @@ Workflow sequence:
   skips fix rounds when nothing actionable remains; Implement never bypasses
   the entry triage.
 - `validate-and-ship` includes the security and privacy Step 0 gate.
-- Fast-track and Debugging follow their own documented transitions.
+- Debugging owns diagnosis. An authorized bounded repair transitions to
+  Fast-track; a structural, wide, or unknown repair transitions to Research.
+  Fast-track owns the bounded implementation and escalates when its entry proof
+  stops holding.
 
 ### Derived Routing Graph
 
@@ -122,8 +125,8 @@ digraph samsara_routing {
     iteration -> validate;
     validate -> done;
     fasttrack -> done;
-    debugging -> fasttrack [label="small fix"];
-    debugging -> implement [label="large fix"];
+    debugging -> fasttrack [label="bounded repair"];
+    debugging -> research [label="structural / wide / unknown"];
 }
 ```
 

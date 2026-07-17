@@ -24,7 +24,7 @@ digraph level_analysis {
 }
 ```
 
-### 🎯 Domain and Role Identified
+## 🎯 Domain and Role Identified
 
 Select every material domain; name one primary domain and preserve cross-domain
 effects.

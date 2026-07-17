@@ -68,7 +68,9 @@ Samsara routes state-changing engineering work through a death-first workflow.
 User request
 ├─ explicit Samsara skill command -> named skill
 ├─ read-only / explanation / meta-audit -> handle directly
-├─ production failure -> debugging -> skill-defined transition
+├─ production failure -> debugging
+│  ├─ bounded authorized repair -> fast-track -> done
+│  └─ structural / wide / unknown repair -> research
 ├─ proven low-risk state change -> fast-track -> done
 └─ other state-changing feature work
    └─ research
@@ -103,8 +105,8 @@ The mode is feature-scoped and workflow-run-specific; `samsara_config.yaml` is n
 | `samsara:implement` | Plan with tasks is ready | Code with death tests + scar reports |
 | `samsara:iteration` | After every completed implement — cheap entry triage, then feature-level fixes only when needed | Final scar dispositions + index checkpoint |
 | `samsara:validate-and-ship` | Implement/iteration complete — Step 0 runs the security & privacy STOP gate first | Ship manifest with failure budget |
-| `samsara:fast-track` | Small, low-risk changes (< 100 lines) | Compressed workflow, death test still first |
-| `samsara:debugging` | Production failure in existing code | Four-phase yin-side root cause analysis |
+| `samsara:fast-track` | Evidence proves bounded damage, no unresolved design, and deterministic verification | Bounded implementation, review, validation, and commit record |
+| `samsara:debugging` | Production failure in existing code | Diagnosis artifacts plus repair routing; no implementation |
 | `samsara:codebase-map` | Entering a new project or after significant source changes | Project knowledge graph: responsibilities, capabilities, relationships, flows, and silent failure surfaces |
 | `samsara:writing-skills` | Creating or modifying samsara skills | Death-first TDD applied to skill development |
 

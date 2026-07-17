@@ -40,6 +40,14 @@ Persistent config, including `samsara_config.yaml`, is out of scope. The
 mode belongs to this workflow run and feature directory, not the whole session.
 Later stages read it from `1-kickoff.md`.
 
+### Debugging Handoff
+
+When Debugging routes a repair here, consume
+`bugfix/<bug>/bug-report.yaml` and `bugfix/<bug>/root-cause.yaml` as diagnosis
+evidence. Record their refs in Research artifacts and do not restate the
+diagnosis. Research still owns execution mode, Problem Essence, Scope Contract,
+and every downstream feature artifact.
+
 ## Process
 
 ```dot

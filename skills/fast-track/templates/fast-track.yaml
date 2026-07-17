@@ -1,16 +1,44 @@
 type: fast_track
-description: "<one-sentence scope>"
-death_clause: "<if ___ happens, this change is failed>"
+status: completed  # completed | escalated
+description: "<one-sentence bounded change>"
+source_refs: []  # debugging handoff refs when applicable
+
+entry:
+  authority: "<explicit invocation | user confirmation | debugging handoff>"
+  risk_evidence:
+    - claim: "<why the change is bounded and low risk>"
+      evidence_ref: "<file:line, command output, or debugging artifact ref>"
+  affected_surfaces:
+    - path: "<repository-relative path>"
+      role: "<why this surface is affected>"
+  structural_impact: none  # none | present | unknown
+  unknowns: []
+
 acceptance:
-  - "<acceptance criterion>"
-scar_tag: none  # none | N (item count)
-scar_items: []
+  - "<observable acceptance criterion>"
+
+death_evidence:
+  clause: "<if ___ happens, this change failed>"
+  pre_change:
+    command: "<existing or new deterministic check>"
+    result: "<observed failing result before implementation>"
+
+verification:
+  - command: "<verification command>"
+    result: "<observed result>"
+
+review:
+  domains: ["<code | iac>"]
+  reference_refs:
+    - "<references/<domain>-review.md or references/<domain>-quality.md>"
+  evidence_refs:
+    - "<file:line>"
+  findings: []
+  unknowns: []
+
 files_changed:
-  - "<file path>"
-quality_review:
-  reviewed_criteria: [C5, C6, C7, C8]  # required — declares the review happened (enforcement rule: SKILL.md Step 4)
-  violations: []  # only record violations; empty = reviewed and clean
-  # when violations exist, replace the empty list above with entries, e.g.:
-  # violations:
-  #   - criterion: C5
-  #     finding: "<concrete observation>"
+  - "<repository-relative path>"
+
+escalation:
+  route: null  # null | research
+  reason: null

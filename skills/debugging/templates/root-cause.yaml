@@ -1,11 +1,31 @@
-hypothesis: "<root cause hypothesis>"
-evidence:
-  - "<evidence supporting hypothesis>"
-root_cause: "<confirmed root cause>"
-why_hidden: "<why did the system let it hide>"
-accomplices:
-  - component: "<which fallback/catch/default helped it hide>"
-    role: "<what it did to make the bug invisible>"
-timeline:
-  last_known_good: "<last confirmed working timestamp>"
-  suspected_introduction: "<commit/deploy suspected of introducing bug>"
+schema_version: 1
+bug_report_ref: "bug-report.yaml"
+
+root_cause:
+  status: unknown  # hypothesized | confirmed | unknown
+  hypothesis: "<candidate cause or unknown>"
+  evidence_refs:
+    - "<file:line, log, diff, or reproduction evidence>"
+  refuting_evidence: []
+  why_hidden: "<system behavior that delayed detection | unknown>"
+
+reproduction:
+  status: unknown  # reproduced | not_reproduced | unknown
+  evidence_ref: null
+
+rot_path:
+  - from: "<failure entry point>"
+    to: "<detection point or next layer>"
+    failed_guard: "<guard that did not stop or expose the failure>"
+    evidence_ref: "<file:line or observable evidence>"
+
+death_test:
+  status: specified  # failing | specified | unavailable
+  evidence_ref: null
+  specification: "<executable failure condition for the repair owner>"
+
+repair:
+  authorized: false
+  scope: unknown  # bounded | structural | wide | unknown
+  route: diagnosis_only  # diagnosis_only | fast_track | research
+  rationale: "<evidence-backed routing reason>"

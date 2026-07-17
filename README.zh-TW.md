@@ -71,8 +71,10 @@ research ──> pre-thinking ──> planning ──> implement
        └─ 執行 feature-level fix rounds
   ──> validate-and-ship（Step 0：security & privacy gate）
 
-fast-track（小型低風險改動）──────> 完成
-debugging（production 故障）──> 小 fix 走 fast-track / 大 fix 走 implement
+fast-track（有證據證明風險有界）──────> 完成
+debugging（production 故障）
+  ├─ 已授權且範圍有界的修復 ──> fast-track
+  └─ 結構性、廣泛或未知修復 ──> research
 ```
 
 每個階段轉換都是 human gate（auto mode 下則由 `auto-gatekeeper` 決策）。
@@ -97,8 +99,8 @@ Execution mode 以 feature 與 workflow run 為範圍，不支援 `samsara_confi
 | `samsara:implement` | Plan 與 tasks 就緒 | 帶 death test 的程式碼 + scar reports |
 | `samsara:iteration` | 每次 Implement 完成後——先做廉價 entry triage，有需要才進 feature-level fixes | Scar 最終 disposition + index checkpoint |
 | `samsara:validate-and-ship` | Implement/iteration 完成——Step 0 先跑 security & privacy STOP gate | 帶失敗預算的交付清單 |
-| `samsara:fast-track` | 小型低風險改動（< 100 行） | 簡化流程，death test 仍先行 |
-| `samsara:debugging` | 既有程式碼的 production 故障 | 四階段陰面根因分析 |
+| `samsara:fast-track` | 有證據證明 damage 有界、沒有未決設計且可 deterministic 驗證 | 有界實作、review、驗證與 commit 紀錄 |
+| `samsara:debugging` | 既有程式碼的 production 故障 | 診斷 artifacts 與 repair routing；不負責實作 |
 | `samsara:codebase-map` | 進入新專案或 source code 大幅變動後 | Project knowledge graph：責任、能力、關係、流程與靜默失敗面 |
 | `samsara:writing-skills` | 建立或修改 samsara skills | 以 death-first TDD 開發 skill |
 

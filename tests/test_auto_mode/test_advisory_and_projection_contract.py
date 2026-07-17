@@ -55,9 +55,9 @@ def test_death__level_analysis_preserves_domain_and_level_guidance() -> None:
         assert role in analysis
 
     for heading in (
-        "### Senior Level",
-        "### Staff Level",
-        "### Principal Level",
+        "Senior Level Perspective",
+        "Staff Level Perspective",
+        "Principal Level Perspective",
     ):
         assert heading in analysis
     for criterion in (
