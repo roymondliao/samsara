@@ -1,106 +1,197 @@
 ---
 name: codebase-map
-description: Use when entering a project for the first time or when its live code structure has changed enough that existing architectural context may be stale
+description: Use when entering a Git project for the first time or when its committed HEAD no longer matches the recorded codebase map
 ---
 
-# Codebase Map — Project Knowledge Graph
+# Codebase Map — Committed Project Knowledge Graph
 
-Build a project-scoped, evidence-backed map of what exists, what each part
-provides, why it exists, and how parts relate. It is derived context, not feature
-authority; live code wins whenever the map drifts.
+Map one committed Git snapshot: what exists, what each part provides, why it
+exists, and how parts relate. Git owns repository facts; this skill owns the
+structural and semantic graph for `source.commit`. The map is derived context,
+not feature authority.
 
-## Scan Scope
+## Entry Contract
 
-The main agent resolves scope once, before dispatch, by content role, not a fixed
-folder name. Default `roots` to the project root unless the user supplies a
-narrower scope. Record every user-supplied scope choice.
+1. Require a Git repository with a valid `HEAD`. Do not map an unborn branch or
+   non-Git directory.
+2. Verify `.samsara/codebase-map.yaml` and
+   `.samsara/codebase-map/<HEAD>/` are ignored with `git check-ignore`. Stop if
+   either path could be committed; do not edit ignore rules automatically.
+3. Resolve scan scope once by content role, not fixed folder names. Default
+   `roots` to the project root unless the user supplies a narrower scope.
+4. Exclude workflow artifacts under `changes/`, prior map output under
+   `.samsara/`, VCS internals, caches, temporary files, binary payloads, and
+   secret values. Record excluded or referenced-but-unscanned paths.
 
-- Always exclude workflow artifacts under `changes/`, prior map output under
-  `.samsara/`, VCS internals, caches, and temporary files. Do not read secret
-  values or binary payloads; record only their verified role or config source.
-- Classify generated code, vendored code, build output, docs, fixtures, and data
-  by project behavior. Include them when they are built, shipped, imported,
-  maintained, or affect runtime, tests, or schemas. Docs may explain semantics
-  but never override live code.
-- Record a referenced path outside `roots` or inside an exclusion as a
-  `coverage_gap`; unscanned does not mean nonexistent.
+Codebase Map describes committed `HEAD` only. Never read or persist uncommitted
+working-tree content. Feature workflows inspect their own working changes.
 
-Pass the same resolved scan scope to both explorers. Never use a feature plan or
-decision log to describe what the codebase currently is.
+## Git Snapshot State
 
-## Triggers
+Read `source.commit` from `.samsara/codebase-map.yaml` and compare it with
+`git rev-parse HEAD`:
 
-- User invokes `samsara:codebase-map`.
-- Pre-thinking auto-initiates refresh when source churn since `last_updated`
-  exceeds `staleness_churn_threshold` (default 30). Churn excludes `changes/`,
-  `docs/`, and `bugfix/`.
+- `CURRENT`: equal.
+- `UPDATE_REQUIRED`: different.
+- `MISSING`: no root manifest.
+- `UNKNOWN`: Git, HEAD, schema, or recorded commit cannot be resolved.
+
+Do not persist changed paths, commit lists, churn counts, thresholds, or state.
+Git computes them when needed. A legacy map without `schema_version: 2` and
+`source.commit` requires a Level 3 rebuild.
+
+For every generation, create a detached temporary worktree at the captured
+HEAD. Pass its root, the same resolved scan scope, and the captured commit to
+every explorer. If HEAD changes before publish, reject the candidate.
+
+```text
+git rev-parse HEAD
+git worktree add --detach <temporary-snapshot-root> <captured-HEAD>
+```
+
+Remove the temporary worktree after validation or failure:
+
+```text
+git worktree remove --force <temporary-snapshot-root>
+```
+
+Do not fall back to the working tree when worktree creation or cleanup fails.
+
+## Update Level
+
+Inspect the cumulative Git diff from the recorded commit to HEAD. File count
+never selects the level.
+
+```text
+git merge-base --is-ancestor <recorded-commit> <captured-HEAD>
+git diff --name-status --find-renames <recorded-commit>..<captured-HEAD>
+git diff --find-renames <recorded-commit>..<captured-HEAD> -- <affected-paths>
+```
+
+Git reports paths, renames, and content changes. The workflow owner classifies
+which recorded map surfaces those changes affect; it does not copy Git output
+into the map.
+
+- **Level 0 — Snapshot checkpoint:** no mapped structure, semantics, evidence,
+  config, schema, flow, or risk changed. Reuse all module files.
+- **Level 1 — Targeted refresh:** existing local nodes changed without module,
+  public-interface, dependency, config, schema, or flow topology changes. The
+  main agent refreshes affected nodes and evidence.
+- **Level 2 — Structural incremental:** mapped topology or meaning changed.
+  Dispatch only the Structure or Infrastructure explorer required by the diff,
+  then Yin Explorer when failure surfaces may change. Refresh the affected
+  dependency closure.
+- **Level 3 — Full rebuild:** map missing or legacy, base commit invalid or not
+  an ancestor, scope changed, module boundaries were broadly reorganized,
+  impact cannot be classified, or incremental validation cannot recover.
+
+Comments or formatting in a referenced file require Level 1 when line evidence
+moves. Stable `path#symbol` evidence may allow Level 0 when it still resolves.
 
 ## Process
 
 ```dot
 digraph codebase_map {
     node [shape=box];
-    start [label="Inspect live project" shape=doublecircle];
-    exists [label="Map exists?" shape=diamond];
-    full [label="Full structural scan"];
-    changed [label="Scan changed source nodes"];
-    semantic [label="Explain responsibilities, capabilities, flows"];
-    yin [label="Find hidden coupling and silent failure surfaces"];
-    review [label="Evidence and referential-integrity review"];
-    clean [label="Graph resolves?" shape=diamond];
-    repair [label="Re-analyze affected nodes"];
-    write [label="Write .samsara map"];
-    done [label="Map ready" shape=doublecircle];
 
-    start -> exists;
-    exists -> full [label="no / explicit full refresh"];
-    exists -> changed [label="yes"];
-    full -> semantic;
-    changed -> semantic;
-    semantic -> yin -> review -> clean;
-    clean -> repair [label="no"];
-    repair -> review;
-    clean -> write [label="yes"];
-    write -> done;
+    start [label="Capture committed HEAD" shape=doublecircle];
+    usable [label="Valid v2 map at ancestor commit?" shape=diamond];
+    diff [label="Inspect cumulative Git diff"];
+    impact [label="Which map surface changed?" shape=diamond];
+    checkpoint [label="Level 0\nReuse verified modules"];
+    targeted [label="Level 1\nRefresh affected nodes"];
+    structural [label="Level 2\nRefresh affected closure"];
+    full [label="Level 3\nRebuild full graph"];
+    validate [label="Validate candidate snapshot"];
+    valid [label="Candidate resolves?" shape=diamond];
+    repair [label="Repair or raise update level"];
+    publish [label="Publish root manifest last"];
+    done [label="Map matches committed HEAD" shape=doublecircle];
+
+    start -> usable;
+    usable -> full [label="no"];
+    usable -> diff [label="yes"];
+    diff -> impact;
+    impact -> checkpoint [label="no mapped impact"];
+    impact -> targeted [label="local evidence"];
+    impact -> structural [label="topology or meaning"];
+    checkpoint -> validate;
+    targeted -> validate;
+    structural -> validate;
+    full -> validate;
+    validate -> valid;
+    valid -> repair [label="no"];
+    repair -> validate;
+    valid -> publish [label="yes"];
+    publish -> done;
 }
 ```
 
-## Build the Graph
+## Artifact Authority
 
-1. Resolve Scan Scope, then dispatch `structure-explorer` and `infra-explorer`
-   in parallel with that scope. Extract
-   modules, files, significant functions/classes, entry points, provided
-   interfaces, build/config sources, and evidence-backed dependency edges.
-2. Dispatch `yin-explorer` with both results. Add hidden coupling, assumptions,
-   death impact, and silent failure surfaces without replacing structural facts.
-3. Synthesize:
-   - `codebase-map.yaml`: project purpose, capabilities, module index, global
-     nodes, relationships, business flows, infrastructure, and risk summary.
-   - `modules/<name>.yaml`: module-local nodes, interfaces, relationships, and
-     yin findings.
-4. Check that every path and edge endpoint resolves or is disclosed as a
-   `coverage_gap`, every relationship has an evidence ref, structural facts
-   match live code, and unsupported semantics stay `unknown`. Re-analyze only
-   failing nodes.
+`codebase-map.yaml` owns the source commit, scan scope, project summary, module
+index, global nodes, cross-module relationships, business flows, and
+infrastructure overview. Each `modules/<id>.yaml` owns only that module's local
+nodes, internal relationships, interfaces, and yin findings.
 
-Deterministic source facts—paths, symbols, imports, calls, and config references—
-must come from code inspection. LLM analysis may explain responsibility,
-capability, business flow, and risk, but must cite those facts.
+- Every module index entry has one stable `id` and one `detail_ref`.
+- Every node belongs to one module or `global_nodes`.
+- Cross-module dependency exists only in `cross_module_relationships`.
+- Business-flow steps cite node IDs and evidence.
+- Structural facts use `path#symbol` when available; line refs are fallback.
+- Unsupported responsibility, capability, flow, or risk stays `unknown`.
+- Counts and Git diff metadata are derived on demand and are not stored.
 
-## Fail-Honest Write Contract
+## Build by Level
 
-Write only after the evidence review succeeds. If refresh fails or aborts, do
-not advance `last_updated`; preserve the prior map and mark it stale with a
-recorded `stale_reason`. Partial output must not appear fresh.
+- Level 0 copies the prior module files into the new candidate generation and
+  updates `source.commit`, generation metadata, and module `detail_ref` values.
+  It does not rewrite semantic map content.
+- Level 1 reads affected files from the detached worktree, updates their module
+  fragments, and copies unaffected modules.
+- Level 2 supplies the same snapshot scope to the relevant explorers. Their
+  output matches template fragments; the main agent merges and de-duplicates
+  without flattening structured evidence.
+- Level 3 dispatches Structure and Infrastructure explorers in parallel, then
+  Yin Explorer with both results and the same scope.
+
+Deterministic paths, symbols, imports, calls, config refs, and Git state come
+from the detached snapshot. LLM analysis may explain responsibility,
+capability, flow, and risk only with cited snapshot evidence.
+
+## Validate and Publish
+
+Build a candidate directory containing `codebase-map.yaml` and `modules/`, then
+run:
+
+```text
+uv run python <installed-codebase-map-skill-directory>/scripts/validate_codebase_map.py \
+  --candidate <candidate-directory> \
+  --project-root <project-root> \
+  --snapshot-root <detached-worktree> \
+  --expected-commit <captured-HEAD> \
+  --publish
+```
+
+The companion checks schema, Git commit identity, ignored output paths, unique
+IDs, module refs, edge endpoints, flow nodes, and evidence paths. It never
+judges semantic quality. On success it publishes an immutable
+`.samsara/codebase-map/<HEAD>/` generation and atomically replaces the root
+manifest last. The publisher normalizes the root to block-style YAML so the
+session hook can read `schema_version` and `source.commit` deterministically.
+
+If validation, publication, or worktree cleanup fails, do not advance
+`source.commit`. Preserve the previous root manifest and report the failure.
+The main agent is the workflow owner; explorers return evidence only, and the
+companion performs the owner's mechanical publish.
 
 ## Output
 
 ```text
 .samsara/
 ├── codebase-map.yaml
-└── modules/<module>.yaml
+└── codebase-map/<HEAD>/
+    └── modules/<module-id>.yaml
 ```
 
-Use `templates/codebase-map.yaml` and `templates/module.yaml`. The main agent is
-the sole writer; explorers return evidence only. This skill creates no
-`changes/` artifact and no auto-mode decision.
+This skill creates no `changes/` artifact and no Auto Mode gate.

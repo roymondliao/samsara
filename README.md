@@ -107,7 +107,7 @@ The mode is feature-scoped and workflow-run-specific; `samsara_config.yaml` is n
 | `samsara:validate-and-ship` | Implement/iteration complete — Step 0 runs the security & privacy STOP gate first | Ship manifest with failure budget |
 | `samsara:fast-track` | Evidence proves bounded damage, no unresolved design, and deterministic verification | Bounded implementation, review, validation, and commit record |
 | `samsara:debugging` | Production failure in existing code | Diagnosis artifacts plus repair routing; no implementation |
-| `samsara:codebase-map` | Entering a new project or after significant source changes | Project knowledge graph: responsibilities, capabilities, relationships, flows, and silent failure surfaces |
+| `samsara:codebase-map` | No map exists, or its source commit differs from committed Git HEAD | Committed-snapshot graph: responsibilities, capabilities, relationships, flows, and silent failure surfaces |
 | `samsara:level-analysis` | Auto Gatekeeper needs comparable engineering perspectives before a difficult judgment | Advisory Senior/Staff/Principal analysis; no gate decision |
 | `samsara:writing-skills` | Creating, revising, or reviewing Samsara skills | Skill authoring and proportional verification guidance |
 
@@ -198,7 +198,7 @@ samsara/
 ├── hooks/
 │   ├── hooks.json               # SessionStart hook registration
 │   ├── session-start            # Injects samsara-bootstrap at session start
-│   └── check-codebase-map       # Reminds to generate codebase map if missing/stale
+│   └── check-codebase-map       # Compares map source commit with Git HEAD
 ├── skills/
 │   ├── samsara-bootstrap/       # Session initialization (axiom + constraints)
 │   ├── research/                # Problem investigation + kickoff

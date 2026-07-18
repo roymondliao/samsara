@@ -1,282 +1,62 @@
-"""
-Doc-contract guard and artifact-contract tests for Task 3:
-pre-thinking auto-regen + codebase-map fail-honest contract.
+"""Boundary tests for Pre-thinking consumption of Codebase Map state."""
 
-Death tests (DC-N numbers are FILE-LOCAL to this contract suite; the hook test
-suite tests/test_hooks/test_check_codebase_map.py uses its own independent DC-N
-namespace — DC-4/DC-5 here are unrelated to DC-4/DC-5 there):
-  DC-4 (regen failure silent reuse): codebase-map/SKILL.md write/regen section
-  MUST contain an explicit "do not advance last_updated on failure/abort" clause
-  AND a "mark stale + reason" instruction. Absence means a failed regen silently
-  leaves last_updated advanced, poisoning the freshness signal for the next session.
-
-  DC-5 (failed-autoregen deadlock / dishonest-completion): pre-thinking/flow.md,
-  the sole executable owner, MUST contain an explicit escape clause for when
-  auto-initiated regen fails or aborts. SKILL.md points to
-  that canonical procedure instead of duplicating it.
-
-Unit tests (doc-artifact contract):
-  Contract source: the SKILL/flow documented-artifact contract — the presence of
-  the prescribed behavioral instructions in each skill doc file.
-  Assertions are anchored to proximity context (not whole-file substring) so a
-  misplaced token in an unrelated section does not produce a false green.
-"""
-
-import re
 from pathlib import Path
 
-# parents[2] bet: this file lives at tests/test_skills/<name>.py, so
-# parents[0]=test_skills/, parents[1]=tests/, parents[2]=repo root.
-# If the test layout changes (e.g., a new nesting level), this path breaks.
+
 ROOT = Path(__file__).resolve().parents[2]
-
-# ---------------------------------------------------------------------------
-# Module-level compiled patterns (hoisted to avoid per-test recompilation)
-# ---------------------------------------------------------------------------
-
-# DC-4 / fail-honest: "do not advance|bump last_updated" (backtick-tolerant)
-_NO_BUMP_RE = re.compile(
-    r"(do not|not) (advance|bump) `?last_updated`?",
-    re.IGNORECASE,
-)
-
-# DC-4 / fail-honest: "mark ... stale" instruction
-_MARK_STALE_RE = re.compile(r"mark.{0,30}stale", re.IGNORECASE)
-
-# DC-5 / escape clause: failure condition → proceed → documentation
-# Matches the escape paragraph: "fails/aborts/rejected ... proceed ... information gap / marked stale"
-_ESCAPE_CLAUSE_RE = re.compile(
-    r"(fails|aborts|rejected).{0,600}"
-    r"proceed.{0,300}"
-    r"(information.{0,3}gap|marked.{0,3}stale)",
-    re.IGNORECASE | re.DOTALL,
-)
+FLOW = ROOT / "skills" / "pre-thinking" / "flow.md"
+MAP_SKILL = ROOT / "skills" / "codebase-map" / "SKILL.md"
 
 
-def _read_skill(relative_path: str) -> str:
-    return (ROOT / "skills" / relative_path).read_text(encoding="utf-8")
+def read(path: Path) -> str:
+    return path.read_text(encoding="utf-8")
 
 
-# ---------------------------------------------------------------------------
-# Death tests
-# ---------------------------------------------------------------------------
+def normalized(path: Path) -> str:
+    return " ".join(read(path).split())
 
 
-def test_death_dc4__fail_honest_clause_guards_last_updated() -> None:
-    """
-    DC-4: regen-failure silent-reuse guard.
+def test_pre_thinking_refreshes_on_sha_mismatch_without_a_feature_gate() -> None:
+    flow = normalized(FLOW)
 
-    codebase-map/SKILL.md must contain:
-      1. An explicit prohibition on advancing last_updated when regen fails
-         or is aborted ("do not advance last_updated" or "do not bump
-         last_updated").
-      2. A "mark stale + reason" instruction so the failure is surfaced rather
-         than silently swallowed.
-
-    Without (1): a partial or aborted regen silently preserves an advanced
-    timestamp that pre-thinking trusts as fresh next session — the exact
-    DC-4 failure mode.
-    Without (2): the failure disappears with no audit trail.
-
-    This test MUST be red before the skill doc is edited and green after.
-    The anti-over-fit rule does NOT apply here — this is a death test, and the
-    exact failure mode (the token "do not advance/bump last_updated") IS its
-    contract.
-    """
-    content = _read_skill("codebase-map/SKILL.md")
-
-    # Behavioral token 1: explicit prohibition on advancing last_updated on failure.
-    assert _NO_BUMP_RE.search(content) is not None, (
-        "DC-4 FAIL: codebase-map/SKILL.md is missing the fail-honest clause. "
-        "The write step must explicitly state 'do not advance last_updated' (or "
-        "'do not bump last_updated') when regen fails or is aborted. "
-        "Without this guard, a partial regen silently poisons the freshness signal."
-    )
-
-    # Behavioral token 2: mark-stale instruction.
-    assert _MARK_STALE_RE.search(content) is not None, (
-        "DC-4 FAIL: codebase-map/SKILL.md is missing the 'mark stale' instruction. "
-        "A failed/aborted regen must mark the map stale (not silently continue). "
-        "Add a clause: 'mark the map stale with a recorded reason'."
-    )
-
-    # Behavioral token 3: reason must accompany the stale mark.
-    has_reason = bool(
-        re.search(
-            r"stale.{0,120}reason|reason.{0,120}stale",
-            content,
-            re.IGNORECASE | re.DOTALL,
-        )
-    )
-    assert has_reason, (
-        "DC-4 FAIL: codebase-map/SKILL.md marks stale but does not require recording "
-        "a reason. The mark-stale instruction must require WHY the regen failed, so "
-        "the next session can surface it instead of silently treating the map as fresh."
-    )
+    assert "source.commit" in flow
+    assert "committed Git `HEAD`" in flow
+    assert "If `UPDATE_REQUIRED`, **auto-initiate** `samsara:codebase-map`" in flow
+    assert "do not add a feature execution-mode gate" in flow
+    assert "churn" not in flow.lower()
+    assert "staleness_churn_threshold" not in flow
 
 
-def test_death_dc5__escape_clause_for_failed_autoregen() -> None:
-    """
-    DC-5: failed-auto-initiated-regen deadlock / dishonest-completion guard.
+def test_failed_refresh_keeps_old_snapshot_identity_and_visible_gap() -> None:
+    flow = normalized(FLOW)
 
-    pre-thinking/flow.md must contain the explicit escape clause for when
-    auto-initiated regen fails or aborts. SKILL.md must
-    point to flow.md as the sole executable owner instead of restating the clause.
-
-    Without it:
-      - flow.md's "do not proceed until regen completes" has no exit for a failed regen
-      - The agent may deadlock indefinitely, loop, or dishonestly claim completion
-      - This is the exact rot the Fail-Honest Contract exists to prevent
-
-    Required behavioral tokens in flow.md:
-      - failure condition: "fails" OR "aborts" OR "rejected"
-      - action: "proceed"
-      - documentation: "information gap" OR "marked stale"
-
-    This test MUST be red (tokens absent) before the doc edit and green after.
-    The anti-over-fit rule does NOT apply — this is a death test, and the
-    failure mode tokens ARE the contract.
-    """
-    flow = _read_skill("pre-thinking/flow.md")
-    skill = _read_skill("pre-thinking/SKILL.md")
-
-    assert _ESCAPE_CLAUSE_RE.search(flow) is not None, (
-        "DC-5 FAIL: pre-thinking/flow.md is missing the escape clause for failed "
-        "auto-initiated regeneration."
-    )
-    assert "`flow.md` is the sole owner of executable procedure" in skill
-    assert "If this summary conflicts with `flow.md`, `flow.md` wins." in skill
+    assert "If regeneration fails or aborts" in flow
+    assert "do not claim completion" in flow
+    assert "old map identified by its source commit" in flow
+    assert "information gap" in flow
+    assert "committed `HEAD`" in flow
 
 
-# ---------------------------------------------------------------------------
-# Unit tests (doc-artifact contract)
-# ---------------------------------------------------------------------------
+def test_missing_or_unknown_map_requires_targeted_evidence_not_memory() -> None:
+    flow = normalized(FLOW)
+
+    assert "If `MISSING` or `UNKNOWN`" in flow
+    assert "do not invent a map from memory" in flow
+    assert "inspect affected files" in flow
 
 
-def test_unit__pre_thinking_skill_points_to_canonical_autoregen_procedure() -> None:
-    """
-    SKILL.md owns entry and points to flow.md; it must not duplicate the
-    auto-regeneration procedure owned by flow.md.
-    """
-    content = _read_skill("pre-thinking/SKILL.md")
+def test_map_never_claims_authority_over_working_feature_changes() -> None:
+    flow = normalized(FLOW)
+    skill = normalized(MAP_SKILL)
 
-    assert "`flow.md` is the sole owner of executable procedure" in content
-    assert "Exact procedures and write formats: `flow.md`" in content
-    assert "auto-initiate" not in content
+    assert "The map describes committed code only" in flow
+    assert "current working changes own the proposed feature" in flow
+    assert "Never read or persist uncommitted" in skill
+    assert "Feature workflows inspect their own working changes" in skill
 
 
-def test_unit__pre_thinking_flow_auto_initiate_uses_project_map_review() -> None:
-    """
-    Contract source: skills/pre-thinking/flow.md documented-artifact contract.
+def test_codebase_map_failure_does_not_advance_source_commit() -> None:
+    skill = normalized(MAP_SKILL)
 
-    Section 1 atomic context procedure step 3 must:
-      (a) Contain an imperative 'auto-initiate' instruction in proximity to the
-          churn/threshold condition (context-anchored, not whole-file).
-      (b) Keep Codebase Map regeneration project-scoped: no feature execution
-          mode or human/auto gate is introduced by the caller.
-
-    Codebase Map owns its evidence review; Pre-thinking only triggers refresh.
-
-    Contract-gate:
-      - Prose rewording that preserves both tokens in proximity: assertions stay green.
-      - Either token deleted or moved out of context: corresponding assertion goes red.
-    """
-    content = _read_skill("pre-thinking/flow.md")
-
-    # (a) auto-initiate near churn/threshold context
-    _AUTO_INITIATE_NEAR_THRESHOLD = re.compile(
-        r"auto-initiate.{0,300}(churn|threshold|staleness_churn_threshold)"
-        r"|"
-        r"(churn|threshold|staleness_churn_threshold).{0,300}auto-initiate",
-        re.IGNORECASE | re.DOTALL,
-    )
-    assert _AUTO_INITIATE_NEAR_THRESHOLD.search(content) is not None, (
-        "pre-thinking/flow.md section 1 atomic context procedure step 3 is missing "
-        "the imperative 'auto-initiate' instruction near the threshold/churn condition. "
-        "A token in an unrelated section does not satisfy this guard."
-    )
-
-    context = content[
-        content.index("3. If present but stale") : content.index("4. If missing")
-    ]
-    assert "Codebase Map's project-scoped evidence review" in context
-    assert "human-in-the-loop" not in context
-    assert "auto-gatekeeper" not in context
-
-
-def test_unit__codebase_map_skill_documents_auto_initiated_trigger() -> None:
-    """
-    Contract source: skills/codebase-map/SKILL.md documented-artifact contract.
-
-    The SKILL must document that samsara:pre-thinking can auto-initiate it (not
-    only user-invoked). The token is anchored: "auto-initiat" must appear in
-    proximity to "staleness_churn_threshold" so a misplaced mention in an
-    unrelated section does not produce a false green.
-
-    Contract-gate:
-      - Triggers section present with both tokens in proximity: assertion stays green.
-      - Trigger section deleted or the tokens separated: assertion goes red.
-    """
-    content = _read_skill("codebase-map/SKILL.md")
-
-    _AUTO_NEAR_THRESHOLD = re.compile(
-        r"auto-initiat.{0,400}staleness_churn_threshold"
-        r"|"
-        r"staleness_churn_threshold.{0,400}auto-initiat",
-        re.IGNORECASE | re.DOTALL,
-    )
-    assert _AUTO_NEAR_THRESHOLD.search(content) is not None, (
-        "codebase-map/SKILL.md does not document the auto-initiated trigger in "
-        "proximity to staleness_churn_threshold. A Triggers section must co-locate "
-        "both: the auto-initiation trigger and the field that controls the threshold."
-    )
-
-
-def test_unit__codebase_map_skill_documents_staleness_churn_threshold() -> None:
-    """
-    Contract source: skills/codebase-map/SKILL.md documented-artifact contract.
-
-    The SKILL must reference staleness_churn_threshold so the auto-initiation
-    threshold is self-documenting. Without this, the field controlling the trigger
-    is invisible to anyone reading the skill doc.
-
-    Contract-gate:
-      - Field name present (even in a comment or note): assertion stays green.
-      - Field name absent: assertion goes red.
-    """
-    content = _read_skill("codebase-map/SKILL.md")
-
-    assert "staleness_churn_threshold" in content, (
-        "codebase-map/SKILL.md does not mention staleness_churn_threshold. "
-        "The field controlling auto-initiation must be documented in the skill "
-        "that is triggered by it, so the threshold is self-documenting."
-    )
-
-
-def test_unit__codebase_map_skill_documents_fail_honest_contract() -> None:
-    """
-    Contract source: skills/codebase-map/SKILL.md documented-artifact contract.
-
-    Positive artifact assertion: the SKILL must contain the fail-honest write
-    contract clauses:
-      - last_updated must not be advanced on failed/aborted regen
-      - The map must be marked stale with a recorded reason
-
-    This is a presence test confirming the fail-honest contract is documented
-    as a positive artifact. DC-4 guards the same clauses as a death test
-    (fails loudly when absent); both serve their distinct roles.
-
-    Contract-gate:
-      - Both clauses present: assertions stay green.
-      - Either clause deleted: corresponding assertion goes red.
-    """
-    content = _read_skill("codebase-map/SKILL.md")
-
-    assert _NO_BUMP_RE.search(content) is not None, (
-        "codebase-map/SKILL.md is missing the 'do not advance/bump last_updated' "
-        "clause. The fail-honest write contract must be explicit in the skill doc."
-    )
-    assert _MARK_STALE_RE.search(content) is not None, (
-        "codebase-map/SKILL.md is missing the 'mark stale' instruction in the "
-        "fail-honest write contract section."
-    )
+    assert "do not advance `source.commit`" in skill
+    assert "Preserve the previous root manifest" in skill

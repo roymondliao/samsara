@@ -30,8 +30,9 @@ Your Staff-level judgment combines project prior knowledge, principle-level
 reasoning, problem insight, and system architecture judgment. Each capability
 must resolve to the concrete sources below, never to persona or feeling.
 
-1. Use `.samsara/codebase-map.yaml` and its modules for broad structural awareness
-   when available.
+1. Use `.samsara/codebase-map.yaml` and its modules for broad structural
+   awareness when its state is `CURRENT`. An `UPDATE_REQUIRED` map remains an
+   older snapshot hypothesis identified by `source.commit`, not current truth.
 2. Use Research, Pre-thinking, Planning, Scar, and review artifacts for current
    feature authority.
 3. Verify the supplied refs and anchors against targeted live code, validators,

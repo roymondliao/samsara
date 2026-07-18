@@ -91,11 +91,25 @@ Assumptions then split naturally: **confident** → used to frame scope; **not c
 
 Framing needs live system facts (module boundaries, entrypoints, config/env sources, external services, data flow, existing tests). Derive them from live codebase artifacts:
 
-1. Check `.samsara/codebase-map.yaml`.
-2. If present and fresh, read it as derived context for module boundaries, entrypoints, config sources, external services, data flow, hidden coupling, and assumptions.
-3. If present but stale and churn (changed source files since `last_updated`, excluding paths under `changes/`, `docs/`, `bugfix/`) exceeds `staleness_churn_threshold` (canonical definition: codebase-map SKILL.md Triggers): **auto-initiate** `samsara:codebase-map` regeneration before continuing. Codebase Map's project-scoped evidence review owns map verification; do not add a feature execution-mode gate. Do not proceed past this step until regeneration completes. **If auto-initiated regeneration fails or aborts, do NOT treat it as completed and do NOT block indefinitely: proceed with the map explicitly marked stale, record an information gap noting the failed regeneration, and continue planning on that basis.** If present but stale and churn is at or below `staleness_churn_threshold`: use it only as a starting hypothesis. Verify any fact needed for planning against live codebase artifacts; record stale or unverifiable facts as information gaps.
-4. If missing, do not invent a map from memory. For a small, localized task, run targeted local inspection of the affected files and their immediate entrypoints/config/external interactions. For broad or unclear scope, record an information gap recommending `samsara:codebase-map`.
-5. If the map and live codebase disagree, live codebase artifacts win. Surface the drift as an information gap or update requirement; do not silently trust the map.
+1. Check `.samsara/codebase-map.yaml` and compare its `source.commit` with
+   committed Git `HEAD`.
+2. If `CURRENT`, read the map as derived context for module boundaries,
+   entrypoints, config sources, external services, data flow, hidden coupling,
+   and assumptions.
+3. If `UPDATE_REQUIRED`, **auto-initiate** `samsara:codebase-map` before
+   continuing. Codebase Map owns its snapshot verification; do not add a
+   feature execution-mode gate. If regeneration fails or aborts, do not claim
+   completion and do not block indefinitely. Keep the old map identified by
+   its source commit, record the failed refresh as an information gap, and
+   verify every planning-critical fact against committed `HEAD`.
+4. If `MISSING` or `UNKNOWN`, do not invent a map from memory. For a localized
+   task, inspect affected files and their immediate entrypoints, config, and
+   external interactions. For broad or unclear scope, record an information
+   gap recommending `samsara:codebase-map`.
+5. The map describes committed code only. Current feature artifacts and
+   targeted working-tree evidence own the proposed change. If the map
+   conflicts with its recorded Git snapshot, or an old map conflicts with
+   committed `HEAD`, the Git evidence wins and the drift remains visible.
 
 ### Codebase-craft — distil the domain core identity
 
@@ -132,7 +146,11 @@ lens's assumptions, evidence surface, and independent blind-spot rationale in
   searchers and the main agent looks itself. This follows from deleting the
   "light thinking" tier; it is not a separate depth rule.
 - A **default lens list** (skill-local `references/lenses.md`) serves as a reminder (not a cap): after deriving lenses, check it for known-important ones you missed; deliberately skipping one needs a written reason.
-- **codebase-map as a start, not truth:** when `.samsara/codebase-map.yaml` exists and is fresh enough, searchers take it as a starting hypothesis (saves re-digging), but **live codebase wins** — where map and reality disagree, trust reality and surface the drift. Map missing or stale → don't invent from memory; search.
+- **codebase-map as a start, not truth:** a `CURRENT` map is a starting
+  hypothesis for committed project structure. `UPDATE_REQUIRED`, `MISSING`, or
+  `UNKNOWN` means searchers verify needed facts from targeted evidence instead
+  of inventing from memory. Feature artifacts and current working changes own
+  the proposed feature; the map does not.
 - **Sole writer:** searchers only *return results* to the main agent; they write no file. `pre-thinking.md` is written by the main agent alone (avoids many searchers writing one file at once).
 
 ### Codebase-craft — which lenses gather seam facts

@@ -1,48 +1,48 @@
-name: "<module name>"
-path: "<directory path>"
-responsibility: "<one sentence>"
-provides:
-  - "<capability, interface, data, or command>"
-last_analyzed: "YYYY-MM-DD"
+schema_version: 2
+id: "<stable module id>"
 
-# --- Yang side ---
-dependencies: []
 interfaces:
-  - "<public API / entry point>"
-key_files:
-  - "<most important file>"
+  - name: "<public API, command, event, or exported symbol>"
+    node: "<node id>"
+    evidence_refs:
+      - "<path#symbol or path:line>"
 
 nodes:
   - id: "<path or path#symbol>"
     kind: "<file | function | class | interface | command | config | schema>"
+    path: "<repository-relative path>"
     responsibility: "<what this node does | unknown>"
-    provides: []
-    evidence_ref: "<file:line or file#symbol>"
+    provides:
+      - "<capability, interface, data, or command>"
+    evidence_refs:
+      - "<path#symbol or path:line>"
 
-relationships:
+internal_relationships:
   - from: "<node id>"
     to: "<node id>"
     type: "<contains | imports | calls | implements | configures | reads | writes | emits | consumes>"
-    evidence_ref: "<file:line or file#symbol>"
-
-# --- Yin side ---
-death_impact: "<what breaks if this module disappears>"
+    evidence_refs:
+      - "<path#symbol or path:line>"
 
 rot_risks:
-  - zone: "<file:function or file:line-range>"
-    failure_level: 1  # 1: visible crash | 2: degradation disguise | 3: false success | 4: silent rot
-    description: "<what happens silently>"
+  - id: "<stable module-local risk id>"
+    failure_level: 1  # 1 visible | 2 disguised | 3 false success | 4 silent rot
+    description: "<what fails and how it stays hidden>"
     confidence: medium  # high | medium | low
-    last_verified: "YYYY-MM-DD"
+    evidence_refs:
+      - "<path#symbol or path:line>"
 
 hidden_coupling:
-  - type: "<shared_table / shared_config / event_bus / shared_filesystem / implicit_ordering>"
-    with: "<coupled module>"
-    risk: "<what breaks silently when one side changes>"
+  - id: "<stable module-local coupling id>"
+    type: "<shared-table | shared-config | event-bus | shared-filesystem | implicit-ordering>"
+    with_node: "<node id or coverage-gap path>"
+    risk: "<what breaks silently when either side changes>"
     confidence: medium  # high | medium | low
+    evidence_refs:
+      - "<path#symbol or path:line>"
 
 assumptions:
-  - assumption: "<what is assumed>"
-    evidence: "<file:line>"
-    owner: "<who made this assumption>"
-    verified: false
+  - statement: "<what the code assumes>"
+    status: unverified  # verified | unverified
+    evidence_refs:
+      - "<path#symbol or path:line>"

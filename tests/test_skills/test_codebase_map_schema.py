@@ -1,209 +1,106 @@
-"""
-Tests for codebase-map schema integrity.
-
-Death tests:
-  - DC (dead-field resurrection): staleness_threshold_days has no live consumer in
-    hooks/, skills/, samsara_cli/ after removal from the template.
-  - One-threshold-key contract: all top-level keys containing "threshold" in the
-    parsed template equal exactly {"staleness_churn_threshold"}. Catches both the
-    dead-field still present and a future rogue threshold field being added.
-
-Unit tests:
-  - Contract source: the rendered template artifact shape — the documented YAML schema
-    (a public artifact contract). Asserts parsed dict has staleness_churn_threshold
-    with an int value.
-"""
+"""Contract tests for Codebase Map schema v2 and authority boundaries."""
 
 from pathlib import Path
-import subprocess
+
 import yaml
 
 
 ROOT = Path(__file__).resolve().parents[2]
-TEMPLATE_PATH = ROOT / "skills" / "codebase-map" / "templates" / "codebase-map.yaml"
-SKILL_PATH = ROOT / "skills" / "codebase-map" / "SKILL.md"
-STRUCTURE_EXPLORER = ROOT / "agents" / "structure-explorer.md"
-INFRA_EXPLORER = ROOT / "agents" / "infra-explorer.md"
-
-# Live source directories asserted to be the COMPLETE set of dirs where a
-# consumer of staleness_threshold_days could live.  docs/ and changes/ are
-# excluded — they may mention the field historically.
-#
-# INCLUSION BET: if a new top-level consumer directory is added to this repo
-# (e.g. plugins/, extensions/), it MUST be added here, or the dead-field
-# resurrection guard will silently miss it.  The returncode-2 check below
-# catches a listed dir that has gone missing, but NOT a new dir that was
-# never listed.
-LIVE_SOURCE_DIRS = [
-    ROOT / "hooks",
-    ROOT / "skills",
-    ROOT / "samsara_cli",
-]
+SKILL = ROOT / "skills" / "codebase-map" / "SKILL.md"
+ROOT_TEMPLATE = ROOT / "skills" / "codebase-map" / "templates" / "codebase-map.yaml"
+MODULE_TEMPLATE = ROOT / "skills" / "codebase-map" / "templates" / "module.yaml"
+EXPLORERS = (
+    ROOT / "agents" / "structure-explorer.md",
+    ROOT / "agents" / "infra-explorer.md",
+    ROOT / "agents" / "yin-explorer.md",
+)
 
 
-# ---------------------------------------------------------------------------
-# Death tests
-# ---------------------------------------------------------------------------
+def read(path: Path) -> str:
+    return path.read_text(encoding="utf-8")
 
 
-def test_death__dead_field_has_no_live_consumer() -> None:
-    """
-    DC — dead-field resurrection guard.
+def test_root_schema_records_snapshot_identity_without_reimplementing_git() -> None:
+    template = yaml.safe_load(read(ROOT_TEMPLATE))
 
-    After removing staleness_threshold_days from the template, no file in
-    hooks/, skills/, or samsara_cli/ should reference it.  A match here means
-    a live consumer would silently lose its configured threshold.
-
-    Returncode contract for `grep -rl`:
-      0  — matches found (bad: a consumer still exists)
-      1  — no matches found (good: field is dead)
-      2+ — grep error, e.g. directory missing or permission denied (fail loudly —
-           guarding nothing is worse than a red test)
-    """
-    matches: list[str] = []
-    for directory in LIVE_SOURCE_DIRS:
-        result = subprocess.run(
-            ["grep", "-rl", "staleness_threshold_days", str(directory)],
-            capture_output=True,
-            text=True,
-        )
-        assert result.returncode in (0, 1), (
-            f"grep exited with returncode {result.returncode} while scanning "
-            f"{directory} — directory missing or permission denied. "
-            f"stderr: {result.stderr!r}. "
-            "This guard is now blind; fix the directory or update LIVE_SOURCE_DIRS."
-        )
-        if result.stdout.strip():
-            matches.extend(result.stdout.strip().splitlines())
-
-    assert matches == [], (
-        "staleness_threshold_days is still referenced in live source — removing it "
-        f"would break a silent consumer. Files: {matches}"
-    )
+    assert template["schema_version"] == 2
+    assert set(template["source"]) == {"commit"}
+    forbidden = {
+        "last_updated",
+        "staleness_threshold_days",
+        "staleness_churn_threshold",
+        "changed_files",
+        "changed_file_count",
+        "commit_list",
+        "update_state",
+    }
+    assert forbidden.isdisjoint(template)
 
 
-def test_death__template_threshold_keys_are_exactly_the_live_contract() -> None:
-    """
-    One-threshold-key contract guard.
+def test_root_and_module_files_have_distinct_authority() -> None:
+    root = yaml.safe_load(read(ROOT_TEMPLATE))
+    module = yaml.safe_load(read(MODULE_TEMPLATE))
 
-    All top-level keys in the parsed template that contain the substring
-    "threshold" must equal exactly {"staleness_churn_threshold"}.
-
-    This catches three failure modes simultaneously:
-      - staleness_threshold_days still present (two sources of truth)
-      - staleness_churn_threshold missing (hook contract broken)
-      - a future rogue threshold-like key added without review
-
-    This test MUST fail (red) before the template is edited and pass (green)
-    after.
-    """
-    parsed = yaml.safe_load(TEMPLATE_PATH.read_text(encoding="utf-8"))
-    threshold_keys = {k for k in parsed if "threshold" in k}
-
-    expected = {"staleness_churn_threshold"}
-    assert threshold_keys == expected, (
-        f"Template top-level threshold keys {threshold_keys!r} != "
-        f"expected {expected!r}. "
-        "Either the hook contract field is missing, the dead field is still present, "
-        "or an unreviewed threshold field was added."
-    )
-
-
-# ---------------------------------------------------------------------------
-# Unit tests (artifact shape contract)
-# ---------------------------------------------------------------------------
+    assert {
+        "summary",
+        "modules",
+        "global_nodes",
+        "cross_module_relationships",
+        "business_flows",
+        "infrastructure",
+    }.issubset(root)
+    assert {
+        "interfaces",
+        "nodes",
+        "internal_relationships",
+        "rot_risks",
+        "hidden_coupling",
+        "assumptions",
+    }.issubset(module)
+    assert {
+        "name",
+        "path",
+        "responsibility",
+        "provides",
+        "death_impact",
+    }.isdisjoint(module)
 
 
-def test_death__stale_reason_is_documented_but_not_a_default_key() -> None:
-    """
-    Cross-task contract consistency guard.
+def test_skill_uses_sha_equality_and_impact_levels_not_file_counts() -> None:
+    skill = read(SKILL)
+    normalized = " ".join(skill.split())
 
-    The SKILL.md Fail-Honest Write Contract instructs: on a failed/aborted regen,
-    write a `stale_reason` field to .samsara/codebase-map.yaml.  Without template
-    documentation, an agent following that contract writes a schema-undocumented
-    (ghost) field, and a later successful full regen could silently drop it.
-
-    Two poles guarded simultaneously:
-      - DOCUMENTED pole: `stale_reason` must appear somewhere in the template TEXT
-        (as a comment / optional field marker), confirming the schema acknowledges it.
-      - NOT-FABRICATED pole: the parsed YAML dict must NOT contain `stale_reason`
-        as a populated key — it must be absent on a fresh/successful map.
-
-    This test is RED before the template edit (no `stale_reason` in text) and
-    GREEN after the commented-optional field is added.
-    """
-    template_text = TEMPLATE_PATH.read_text(encoding="utf-8")
-    parsed = yaml.safe_load(template_text)
-
-    # Pole 1: the field is documented (appears in the file text, even if commented)
-    assert "stale_reason" in template_text, (
-        "stale_reason is not documented in the template.  "
-        "SKILL.md Fail-Honest Write Contract requires agents to write this field "
-        "on a failed regen, but the template schema does not acknowledge it — "
-        "making every agent-written stale_reason a ghost field invisible to schema "
-        "consumers.  Add a commented-optional stale_reason to the template."
-    )
-
-    # Pole 2: the field is NOT a mandatory/default-present key in the parsed YAML
-    assert "stale_reason" not in parsed, (
-        "stale_reason is a populated key in the parsed template dict.  "
-        "Every generated map would carry a stale_reason it never had — a fabricated "
-        "failure marker on maps that succeeded.  stale_reason must be absent from "
-        "the parsed YAML (commented-only or optional) — written ONLY on actual regen failure."
-    )
+    for state in ("CURRENT", "UPDATE_REQUIRED", "MISSING", "UNKNOWN"):
+        assert state in skill
+    for level in ("Level 0", "Level 1", "Level 2", "Level 3"):
+        assert level in skill
+    assert "source.commit" in skill
+    assert "git rev-parse HEAD" in skill
+    assert "File count never selects the level" in normalized
 
 
-def test_unit__template_staleness_churn_threshold_is_int() -> None:
-    """
-    Contract source: the documented YAML schema (public artifact contract).
+def test_skill_maps_detached_committed_snapshot_and_ignored_output() -> None:
+    skill = read(SKILL)
 
-    The rendered template must expose staleness_churn_threshold as an integer.
-    The bash hook (later task) will read this field and treat it as a numeric
-    count of changed files.  A non-integer value would silently produce wrong
-    comparison behavior in bash arithmetic.
-    """
-    parsed = yaml.safe_load(TEMPLATE_PATH.read_text(encoding="utf-8"))
-    value = parsed.get("staleness_churn_threshold")
-    assert isinstance(value, int), (
-        f"staleness_churn_threshold must be an int for bash arithmetic compatibility; "
-        f"got {type(value).__name__!r} = {value!r}"
-    )
+    assert "git worktree add --detach" in skill
+    assert "git worktree remove --force" in skill
+    assert "Never read or persist uncommitted" in skill
+    assert "git check-ignore" in skill
+    assert "Publish root manifest last" in skill
 
 
-def test_death__map_exposes_structural_nodes_and_evidence_edges() -> None:
-    parsed = yaml.safe_load(TEMPLATE_PATH.read_text(encoding="utf-8"))
-
-    assert "nodes" in parsed
-    assert "relationships" in parsed
-    node = parsed["nodes"][0]
-    edge = parsed["relationships"][0]
-    assert {"id", "kind", "path", "responsibility", "provides", "evidence_ref"} <= set(
-        node
-    )
-    assert {"from", "to", "type", "evidence_ref"} <= set(edge)
+def test_explorers_share_snapshot_and_scope_contract() -> None:
+    for path in EXPLORERS:
+        agent = read(path)
+        assert "snapshot_root" in agent
+        assert "source_commit" in agent
+        assert "scan_scope" in agent
+        assert "working tree" in agent
+        assert "coverage gap" in agent.lower()
 
 
-def test_death__scan_scope_has_one_authority_and_shared_consumers() -> None:
-    skill = " ".join(SKILL_PATH.read_text(encoding="utf-8").split())
-    explorers = [
-        STRUCTURE_EXPLORER.read_text(encoding="utf-8"),
-        INFRA_EXPLORER.read_text(encoding="utf-8"),
-    ]
+def test_repository_ignores_the_snapshot_map_output() -> None:
+    ignore = read(ROOT / ".gitignore")
 
-    assert "## Scan Scope" in skill
-    assert "content role, not a fixed folder name" in skill
-    assert "user-supplied scope" in skill
-    for explorer in explorers:
-        assert "resolved scan scope" in explorer
-        assert "Do not add or remove scope" in explorer
-        assert "`changes/`" not in explorer
-        assert "`.samsara/`" not in explorer
-
-
-def test_death__map_discloses_scope_and_unscanned_boundaries() -> None:
-    parsed = yaml.safe_load(TEMPLATE_PATH.read_text(encoding="utf-8"))
-    scope = parsed["scan_scope"]
-
-    assert {"roots", "exclusions", "coverage_gaps"} <= set(scope)
-    assert {"path", "reason"} <= set(scope["exclusions"][0])
-    assert {"path", "referenced_by", "reason"} <= set(scope["coverage_gaps"][0])
+    assert ".samsara/*" in ignore
+    assert "!.samsara/systemic-scars.yaml" in ignore

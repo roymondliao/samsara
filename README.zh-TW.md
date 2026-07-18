@@ -101,7 +101,7 @@ Execution mode 以 feature 與 workflow run 為範圍，不支援 `samsara_confi
 | `samsara:validate-and-ship` | Implement/iteration 完成——Step 0 先跑 security & privacy STOP gate | 帶失敗預算的交付清單 |
 | `samsara:fast-track` | 有證據證明 damage 有界、沒有未決設計且可 deterministic 驗證 | 有界實作、review、驗證與 commit 紀錄 |
 | `samsara:debugging` | 既有程式碼的 production 故障 | 診斷 artifacts 與 repair routing；不負責實作 |
-| `samsara:codebase-map` | 進入新專案或 source code 大幅變動後 | Project knowledge graph：責任、能力、關係、流程與靜默失敗面 |
+| `samsara:codebase-map` | 尚無地圖，或地圖的 source commit 與已 commit 的 Git HEAD 不同 | Committed snapshot graph：責任、能力、關係、流程與靜默失敗面 |
 | `samsara:level-analysis` | Auto Gatekeeper 在困難判斷前需要可比較的工程觀點 | Senior／Staff／Principal advisory analysis；不作 gate decision |
 | `samsara:writing-skills` | 建立、修訂或 review Samsara skills | Skill 撰寫與適度驗證準則 |
 
@@ -192,7 +192,7 @@ samsara/
 ├── hooks/
 │   ├── hooks.json               # SessionStart hook 註冊
 │   ├── session-start            # 注入 samsara-bootstrap
-│   └── check-codebase-map       # 提醒生成 / 更新過期的 codebase map
+│   └── check-codebase-map       # 比對地圖 source commit 與 Git HEAD
 ├── skills/
 │   ├── samsara-bootstrap/       # Session 初始化（公理 + 約束）
 │   ├── research/                # 問題調查 + kickoff

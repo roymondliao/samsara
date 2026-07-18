@@ -57,7 +57,8 @@ Every dispatch supplies:
 - `allowed_decisions`
 - `authority_refs` and `evidence_refs`
 - `mandatory_constraints`
-- Codebase Map ref and state: `fresh | stale | missing`
+- Codebase Map source commit and state:
+  `CURRENT | UPDATE_REQUIRED | MISSING | UNKNOWN`
 - prior decision ref when the same gate is re-run
 
 The Codebase Map provides broad structural awareness. Feature artifacts provide

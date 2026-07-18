@@ -132,5 +132,5 @@ digraph samsara_routing {
 
 ## Utility Skills
 
-- **samsara:codebase-map** — Maps a new or significantly changed codebase.
+- **samsara:codebase-map** — Maps one committed Git snapshot.
 - **samsara:writing-skills** — Applies death-first TDD when writing a Samsara skill.

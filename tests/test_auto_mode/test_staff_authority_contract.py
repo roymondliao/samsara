@@ -42,7 +42,7 @@ def test_gatekeeper_keeps_write_edit_but_only_for_decision_log_and_candidate() -
 
 
 def test_gatekeeper_uses_map_for_breadth_and_live_code_for_truth() -> None:
-    gatekeeper = read(GATEKEEPER).lower()
+    gatekeeper = " ".join(read(GATEKEEPER).lower().split())
 
     assert "codebase-map" in gatekeeper
     assert "broad structural awareness" in gatekeeper
@@ -66,11 +66,12 @@ def test_research_routes_all_four_human_prompts_through_auto_gatekeeper() -> Non
     assert "samsara:auto-gatekeeper" in research
 
 
-def test_codebase_map_is_project_scoped_not_an_auto_mode_stage() -> None:
+def test_codebase_map_is_committed_snapshot_context_not_an_auto_mode_stage() -> None:
     codebase_map = read(CODEBASE_MAP)
 
-    assert "project-scoped" in codebase_map
-    assert "live code" in codebase_map
+    assert "committed Git snapshot" in codebase_map
+    assert "detached temporary worktree" in codebase_map
+    assert "Never read or persist uncommitted" in codebase_map
     assert "workflow artifacts under `changes/`" in codebase_map
     assert "## Auto Mode Gate" not in codebase_map
     assert "samsara:auto-gatekeeper" not in codebase_map
