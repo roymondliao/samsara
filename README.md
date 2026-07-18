@@ -109,7 +109,7 @@ The mode is feature-scoped and workflow-run-specific; `samsara_config.yaml` is n
 | `samsara:debugging` | Production failure in existing code | Diagnosis artifacts plus repair routing; no implementation |
 | `samsara:codebase-map` | Entering a new project or after significant source changes | Project knowledge graph: responsibilities, capabilities, relationships, flows, and silent failure surfaces |
 | `samsara:level-analysis` | Auto Gatekeeper needs comparable engineering perspectives before a difficult judgment | Advisory Senior/Staff/Principal analysis; no gate decision |
-| `samsara:writing-skills` | Creating or modifying samsara skills | Death-first TDD applied to skill development |
+| `samsara:writing-skills` | Creating, revising, or reviewing Samsara skills | Skill authoring and proportional verification guidance |
 
 ### Agents
 
@@ -211,7 +211,7 @@ samsara/
 │   ├── debugging/               # Yin-side diagnosis + repair routing
 │   ├── codebase-map/            # Project structural + failure surface mapping
 │   ├── level-analysis/          # Advisory Senior/Staff/Principal analysis
-│   └── writing-skills/          # TDD for skill development
+│   └── writing-skills/          # Skill authoring + proportional verification
 ├── references/                  # Domain checklists loaded by review agents
 ├── samsara_cli/                 # Release tooling + multi-platform converter/installer
 ├── tests/                       # Plugin test suite (pytest)

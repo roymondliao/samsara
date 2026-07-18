@@ -103,7 +103,7 @@ Execution mode 以 feature 與 workflow run 為範圍，不支援 `samsara_confi
 | `samsara:debugging` | 既有程式碼的 production 故障 | 診斷 artifacts 與 repair routing；不負責實作 |
 | `samsara:codebase-map` | 進入新專案或 source code 大幅變動後 | Project knowledge graph：責任、能力、關係、流程與靜默失敗面 |
 | `samsara:level-analysis` | Auto Gatekeeper 在困難判斷前需要可比較的工程觀點 | Senior／Staff／Principal advisory analysis；不作 gate decision |
-| `samsara:writing-skills` | 建立或修改 samsara skills | 以 death-first TDD 開發 skill |
+| `samsara:writing-skills` | 建立、修訂或 review Samsara skills | Skill 撰寫與適度驗證準則 |
 
 ### Agents
 
@@ -205,7 +205,7 @@ samsara/
 │   ├── debugging/               # 陰面診斷 + 修復路由
 │   ├── codebase-map/            # 專案結構 + 失敗面掃描
 │   ├── level-analysis/          # Senior／Staff／Principal advisory analysis
-│   └── writing-skills/          # Skill 開發的 TDD
+│   └── writing-skills/          # Skill 撰寫 + 適度驗證
 ├── references/                  # Review agents 載入的 domain checklists
 ├── samsara_cli/                 # Release 工具 + 多平台 converter/installer
 ├── tests/                       # 插件測試（pytest）

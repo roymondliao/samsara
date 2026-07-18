@@ -1,0 +1,65 @@
+// Graphviz conventions for Samsara skills.
+//
+// Adapted from:
+// https://github.com/obra/superpowers/blob/main/skills/writing-skills/graphviz-conventions.dot
+// Copyright (c) 2025 Jesse Vincent, used under the MIT License.
+// See LICENSE.superpowers in this directory.
+//
+// This is an optional reference for non-obvious decisions and loops. Do not
+// add a graph to a linear procedure or use this file as a mandatory template.
+
+digraph skill_graph_conventions {
+    graph [label="SKILL GRAPH CONVENTIONS", labelloc=top];
+    node [shape=box];
+
+    subgraph cluster_shapes {
+        label="SEMANTIC SHAPES";
+
+        entry [label="Process starts", shape=doublecircle];
+        state [label="Observed state", shape=ellipse];
+        decision [label="Is a decision required?", shape=diamond];
+        action [label="Take a concrete action", shape=box];
+        command [label="run exact-command", shape=plaintext];
+        stop [
+            label="STOP: Contract cannot proceed",
+            shape=octagon,
+            style=filled,
+            fillcolor=red,
+            fontcolor=white
+        ];
+        complete [label="Process complete", shape=doublecircle];
+
+        entry -> state -> decision;
+        decision -> action [label="yes"];
+        decision -> complete [label="no"];
+        action -> command -> complete;
+        decision -> stop [label="invalid or unknown"];
+    }
+
+    subgraph cluster_naming {
+        label="SEMANTIC LABELS";
+
+        observed [label="Input is incomplete", shape=ellipse];
+        ask [label="Which required field is missing?", shape=diamond];
+        repair [label="Request the missing field", shape=box];
+        proceed [label="Continue with verified input", shape=box];
+
+        observed -> ask;
+        ask -> repair [label="one or more"];
+        ask -> proceed [label="none"];
+    }
+
+    subgraph cluster_edges {
+        label="EDGE RULES";
+
+        choice [label="Which route applies?", shape=diamond];
+        route_a [label="Use bounded route", shape=box];
+        route_b [label="Use structural route", shape=box];
+        owner_done [label="Owner completes work", shape=doublecircle];
+        consumer_start [label="Consumer starts", shape=doublecircle];
+
+        choice -> route_a [label="bounded and known"];
+        choice -> route_b [label="structural or unknown"];
+        owner_done -> consumer_start [label="hands off", style=dotted];
+    }
+}
