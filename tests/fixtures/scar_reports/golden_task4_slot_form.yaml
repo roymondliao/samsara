@@ -53,7 +53,7 @@ assumptions_made:
     note: "grep -rn 'Auto Mode Gate' skills/{fast-track,debugging,codebase-map,writing-skills}/ -> 0 matches"
   - assumption: "integration tests mentioning auto-decisions.md/Auto Mode Gate target the converted gatekeeper agent output, not any workflow skill's full text"
     verified: true
-    note: "tests/integration/test_smoke_gemini_cli.py:92-102, test_pipeline.py:493-506"
+    note: "tests/integration/test_codex_runtime_contract.py::test_death__auto_gatekeeper_companion_is_shipped"
   - assumption: "test_auto_mode_docs_death.py asserts only README/overview text, not any individual skill's Auto Mode Gate section"
     verified: true
     note: "grep 'Auto Mode Gate' tests/test_auto_mode/test_auto_mode_docs_death.py -> 0 matches"

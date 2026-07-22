@@ -12,6 +12,7 @@ paths:
   plugin_manifest: null
   skills_dir: ".agents/skills"
   agents_dir: ".codex/agents"
+  agent_resources_dir: ".codex/agent-resources"
   hooks_file: "hooks.json"
   references_dir: ".agents/references"
 
@@ -29,16 +30,20 @@ formats:
       body: developer_instructions
     optional_fields:
       - model
+      - model_reasoning_effort
       - sandbox_mode
       - mcp_servers
       - "skills.config"
   hook_output:
-    context_injection_field: "systemMessage"
+    context_injection_field: "hookSpecificOutput.additionalContext"
     session_start_matchers:
       - "startup"
       - "resume"
+      - "clear"
+      - "compact"
     template: "hooks.json.j2"
     script_template: "hook.sh.j2"
+    codebase_map_script_template: "check-codebase-map.sh.j2"
   manifest:
     enabled: false
     template: "manifest.json.j2"
@@ -69,14 +74,14 @@ transformations:
     scope: body
     type: regex
     match: 'invoke `samsara:([\w-]+)`'
-    replace: 'use the `$samsara-\1` skill'
+    replace: 'use the `$\1` skill'
     priority: high
 
   - id: skill_invocation_variant
     scope: body
     type: regex
     match: 'invoke `samsara:([\w-]+)` skill'
-    replace: 'use the `$samsara-\1` skill'
+    replace: 'use the `$\1` skill'
     priority: high
 
   - id: skill_tool_reference
@@ -91,6 +96,20 @@ transformations:
     type: regex
     match: 'subagent_type: "samsara:([\w-]+)"'
     replace: 'agent named "samsara-\1"'
+    priority: high
+
+  - id: agent_namespace_reference
+    scope: body
+    type: regex
+    match: 'samsara:(auto-gatekeeper|code-quality-reviewer|code-reviewer|implementer|infra-explorer|structure-explorer|yin-explorer)'
+    replace: 'samsara-\1'
+    priority: high
+
+  - id: companion_runtime
+    scope: body
+    type: regex
+    match: 'uv run python (<installed-[^>]+>)'
+    replace: 'samsara-cli run-companion \1'
     priority: high
 
   - id: agent_tool_reference
@@ -180,15 +199,13 @@ transformations:
     priority: medium
 
   # --- MUST STAY LAST: generic namespace fallback ---
-  # Catches every colon-form `samsara:X` the specific rules above did not
-  # rewrite (dispatch `samsara:X`, dot-graph labels without backticks,
-  # descriptive mentions inside references/). The target platform names
-  # everything `samsara-X`, so the plain hyphen form is correct in every
-  # remaining context. Rules run in list order — keep this entry last so
-  # the specific phrasings above win first.
+  # Catches remaining skill-qualified `samsara:X` references after agent
+  # references were handled above. Codex skill identity is SKILL.md.name, so
+  # the plugin namespace is removed rather than converted into a name prefix.
+  # Rules run in list order — keep this entry last.
   - id: samsara_namespace_fallback
     scope: body
     type: regex
     match: 'samsara:([\w-]+)'
-    replace: 'samsara-\1'
+    replace: '\1'
     priority: low

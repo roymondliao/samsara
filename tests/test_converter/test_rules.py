@@ -96,10 +96,10 @@ class TestRegexRules:
         rule = make_rule(
             type="regex",
             match=r"invoke `samsara:([\w-]+)`",
-            replace=r"use the `$samsara-\1` skill",
+            replace=r"use the `$\1` skill",
         )
         result = engine.apply("invoke `samsara:my-skill`", [rule], scope="body")
-        assert result == "use the `$samsara-my-skill` skill"
+        assert result == "use the `$my-skill` skill"
 
     def test_regex_word_boundary_prevents_partial_match(self):
         r"""Regex with \b word boundary prevents partial word matching."""

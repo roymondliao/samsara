@@ -179,23 +179,6 @@ class TestSuccessfulConversion:
                 f"Missing top-level developer_instructions in {toml_file.name}"
             )
 
-    def test_gemini_engine_produces_markdown_agents(self, tmp_path: Path):
-        """Gemini engine produces markdown subagent files, never TOML agents."""
-        from samsara_cli.converter.engine import ConversionEngine
-
-        source = make_source_structure(tmp_path, agent_names=["implementer"])
-        output = tmp_path / "output"
-
-        engine = ConversionEngine(platform="gemini-cli")
-        engine.run(source_dir=source, output_dir=output)
-
-        agents_output = output / ".gemini" / "agents"
-        assert agents_output.exists(), "Gemini agents directory not created"
-        assert list(agents_output.glob("*.md")), "No Gemini .md agent files in output"
-        assert not list(agents_output.glob("*.toml")), (
-            "Gemini must not emit TOML agents"
-        )
-
     def test_codex_references_are_shared_and_skill_localized(self, tmp_path: Path):
         """Codex conversion gives referenced skills local refs and keeps shared refs."""
         from samsara_cli.converter.engine import ConversionEngine
@@ -226,39 +209,6 @@ class TestSuccessfulConversion:
         )
         assert shared_ref.exists(), "Codex shared reference pool missing"
         assert skill_ref.exists(), "Codex skill-local reference copy missing"
-
-    def test_gemini_references_are_shared_and_skill_localized(self, tmp_path: Path):
-        """Gemini conversion uses Gemini-native shared and skill-local refs."""
-        from samsara_cli.converter.engine import ConversionEngine
-
-        source = make_source_structure(
-            tmp_path, skill_names=["implement"], agent_names=["code-reviewer"]
-        )
-        (source / "references" / "code-review.md").write_text("# Code Review\n")
-        (source / "skills" / "implement" / "SKILL.md").write_text(
-            "---\n"
-            "name: implement\n"
-            "description: implement skill\n"
-            "---\n\n"
-            "Read `references/code-review.md` before dispatch.\n"
-        )
-
-        output = tmp_path / "output"
-        ConversionEngine(platform="gemini-cli").run(
-            source_dir=source, output_dir=output
-        )
-
-        shared_ref = output / ".gemini" / "references" / "code-review.md"
-        skill_ref = (
-            output
-            / ".gemini"
-            / "skills"
-            / "samsara-implement"
-            / "references"
-            / "code-review.md"
-        )
-        assert shared_ref.exists(), "Gemini shared reference pool missing"
-        assert skill_ref.exists(), "Gemini skill-local reference copy missing"
 
     def test_codex_agents_get_reference_resolver_not_bare_paths(self, tmp_path: Path):
         """Codex agents resolve reference ids via platform paths, not cwd refs."""
@@ -319,31 +269,6 @@ class TestSuccessfulConversion:
             / "code-review.md"
         )
         assert skill_ref.read_text(encoding="utf-8") == "# Skill Ref\n"
-
-    def test_gemini_agents_get_reference_resolver_not_bare_paths(self, tmp_path: Path):
-        """Gemini agents resolve reference ids via platform paths, not cwd refs."""
-        from samsara_cli.converter.engine import ConversionEngine
-
-        source = make_source_structure(
-            tmp_path, skill_names=["implement"], agent_names=["code-reviewer"]
-        )
-        (source / "agents" / "code-reviewer.md").write_text(
-            "# Code Reviewer\n\nRead `references/code-review.md` before review.\n"
-        )
-        output = tmp_path / "output"
-
-        ConversionEngine(platform="gemini-cli").run(
-            source_dir=source, output_dir=output
-        )
-
-        instructions = (
-            output / ".gemini" / "agents" / "samsara-code-reviewer.md"
-        ).read_text(encoding="utf-8")
-        assert "Reference Resolution Protocol" in instructions
-        assert ".gemini/references" in instructions
-        assert ".gemini/skills" in instructions
-        assert "references/code-review.md" not in instructions
-        assert "reference id `code-review.md`" in instructions
 
 
 # ---------------------------------------------------------------------------

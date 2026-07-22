@@ -62,7 +62,7 @@ def make_transition_rule() -> TransformationRule:
         scope="body",
         type="regex",
         match=r"invoke `samsara:([\w-]+)`",
-        replace=r"use the `$samsara-\1` skill",
+        replace=r"use the `$\1` skill",
         priority="high",
     )
 
@@ -73,7 +73,7 @@ CODEX_RULES = [
         scope="body",
         type="regex",
         match=r"invoke `samsara:([\w-]+)`",
-        replace=r"use the `$samsara-\1` skill",
+        replace=r"use the `$\1` skill",
         priority="high",
     ),
     TransformationRule(
@@ -81,7 +81,7 @@ CODEX_RULES = [
         scope="body",
         type="regex",
         match=r"invoke `samsara:([\w-]+)` skill",
-        replace=r"use the `$samsara-\1` skill",
+        replace=r"use the `$\1` skill",
         priority="high",
     ),
     TransformationRule(
@@ -159,8 +159,8 @@ class TestDCSK1TransitionStatementMustBeConverted:
             "SILENT FAILURE [DC-SK-1]: Source pattern 'invoke `samsara:planning`' "
             "remains in converted SKILL.md body. Chain is broken for Codex users."
         )
-        assert "$samsara-planning" in skill_content, (
-            "Expected converted reference '$samsara-planning' not found in body. "
+        assert "$planning" in skill_content, (
+            "Expected converted reference '$planning' not found in body. "
             "Transition rule did not apply."
         )
 

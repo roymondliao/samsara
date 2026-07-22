@@ -8,6 +8,11 @@
             "type": "command",
             "command": "{{ hooks_dir }}/samsara-session-start.sh",
             "statusMessage": "Injecting Samsara bootstrap context"
+          },
+          {
+            "type": "command",
+            "command": "{{ hooks_dir }}/check-codebase-map.sh",
+            "statusMessage": "Checking Samsara Codebase Map freshness"
           }
         ]
       }

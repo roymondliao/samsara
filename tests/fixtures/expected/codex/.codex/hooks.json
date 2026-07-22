@@ -2,12 +2,17 @@
   "hooks": {
     "SessionStart": [
       {
-        "matcher": "startup|resume",
+        "matcher": "startup|resume|clear|compact",
         "hooks": [
           {
             "type": "command",
             "command": ".codex/hooks/samsara-session-start.sh",
             "statusMessage": "Injecting Samsara bootstrap context"
+          },
+          {
+            "type": "command",
+            "command": ".codex/hooks/check-codebase-map.sh",
+            "statusMessage": "Checking Samsara Codebase Map freshness"
           }
         ]
       }

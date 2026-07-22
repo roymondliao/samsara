@@ -14,14 +14,13 @@ residue survives in the instruction surface the target platform will execute.
 import re
 from pathlib import Path
 
-import pytest
 
 from samsara_cli.converter.engine import ConversionEngine
 
 REPO_ROOT = Path(__file__).parent.parent.parent
 
-# Colon-form namespace residue. The target platforms name everything
-# `samsara-X`; any surviving `samsara:X` is a dead reference on that platform.
+# Colon-form namespace residue. Codex uses SKILL.md.name for skills and a
+# generated hyphenated name for agents; neither target identity uses a colon.
 _RESIDUE = re.compile(r"samsara:[\w-]+")
 
 # Instruction-surface extensions the target platform actually executes.
@@ -29,10 +28,10 @@ _RESIDUE = re.compile(r"samsara:[\w-]+")
 _SCAN_SUFFIXES = {".md", ".txt", ".toml"}
 
 
-@pytest.mark.parametrize("platform", ["codex", "gemini-cli"])
 def test_death__live_repo_converts_with_no_namespace_residue(
-    tmp_path: Path, platform: str
+    tmp_path: Path,
 ) -> None:
+    platform = "codex"
     output_dir = tmp_path / platform
     engine = ConversionEngine(platform)
     # Raises on target-validation failure — that alone is a death signal here.

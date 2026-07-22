@@ -3,7 +3,7 @@
 # Platform: codex
 
 name = "samsara-implementer"
-description = "Samsara Implementer"
+description = "Death-test-first implementer \u2014 writes death tests before unit tests, produces scar reports"
 developer_instructions = """
 
 # Samsara Implementer
@@ -29,3 +29,5 @@ Use update_plan at the start of each task.
 Use update_plan when a task completes.
 
 """
+model_reasoning_effort = "high"
+sandbox_mode = "workspace-write"

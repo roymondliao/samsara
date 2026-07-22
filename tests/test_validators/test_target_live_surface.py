@@ -306,25 +306,3 @@ class TestLiveSurfaceExclusionDoesNotOverreach:
             "at top level) was wrongly excluded. Only the top-level "
             "changes/ prefix is in scope for exclusion."
         )
-
-
-class TestLiveSurfaceExclusionAppliesRegardlessOfPlatform:
-    def test_exclusion_holds_for_gemini_platform_too(self, tmp_path: Path):
-        """
-        The live-surface scan boundary is platform-independent — it governs
-        which files are scanned for source patterns, not platform-specific
-        layout. Noise under changes/ must be excluded for gemini-cli too.
-
-        Note: gemini-cli triggers additional Gemini-layout checks unrelated
-        to pattern scanning (e.g. missing .gemini/skills). This test asserts
-        only the pattern-scan contract — that no reported issue mentions the
-        changes/ noise file — not the full error list, since layout checks
-        are out of scope for the live-surface exclusion boundary.
-        """
-        noise_file = plant_noise_in_changes(tmp_path)
-        validator = TargetValidator()
-        errors = validator.validate(output_dir=tmp_path, platform="gemini-cli")
-        error_text = " ".join(errors)
-        assert noise_file.name not in error_text and "changes" not in error_text, (
-            f"changes/ noise was not excluded for platform=gemini-cli: {errors}"
-        )

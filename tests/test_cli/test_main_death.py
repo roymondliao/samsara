@@ -86,10 +86,6 @@ class TestCLIConvertInvalidPlatform:
             f"DC-8-5: error output must list available platforms (should include 'codex'). "
             f"Got: {result.output!r}"
         )
-        assert "gemini-cli" in output, (
-            "DC-8-5: error output must list available platforms and include 'gemini-cli'. "
-            f"Got: {result.output!r}"
-        )
 
 
 # ---------------------------------------------------------------------------
@@ -183,7 +179,7 @@ class TestCLIProjectDirDestination:
             source_cwd = Path.cwd()
             result = runner.invoke(
                 app,
-                ["update", "gemini-cli", "--project-dir", str(project_dir)],
+                ["update", "codex", "--project-dir", str(project_dir)],
             )
 
         assert result.exit_code == 0, result.output

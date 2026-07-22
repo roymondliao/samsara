@@ -126,8 +126,8 @@ class TestConvertScript:
             platform_config=codex_config,
             template=template,
         )
-        assert "{{" not in result, "Unfilled template variable found in output."
-        assert "}}" not in result, "Unfilled template variable found in output."
+        assert "{{ " not in result, "Unfilled template variable found in output."
+        assert "{%" not in result, "Unfilled template block found in output."
 
     def test_check_codebase_map_script(self, converter, codex_config, codex_env):
         """convert_script works for check-codebase-map hook name."""
@@ -160,8 +160,9 @@ class TestConvertScript:
         )
 
         payload = json.loads(result.stdout)
-        assert "BOOTSTRAP_FROM_project-install" in payload["systemMessage"]
-        assert "Error reading samsara-bootstrap skill" not in payload["systemMessage"]
+        context = payload["hookSpecificOutput"]["additionalContext"]
+        assert "BOOTSTRAP_FROM_project-install" in context
+        assert "Error reading samsara-bootstrap skill" not in context
 
     def test_script_reads_global_bootstrap_from_script_root(
         self, tmp_path, converter, codex_config, codex_env
@@ -182,9 +183,10 @@ class TestConvertScript:
         )
 
         payload = json.loads(result.stdout)
-        assert "BOOTSTRAP_FROM_home" in payload["systemMessage"]
-        assert "cat: .agents/skills" not in payload["systemMessage"]
-        assert "Error reading samsara-bootstrap skill" not in payload["systemMessage"]
+        context = payload["hookSpecificOutput"]["additionalContext"]
+        assert "BOOTSTRAP_FROM_home" in context
+        assert "cat: .agents/skills" not in context
+        assert "Error reading samsara-bootstrap skill" not in context
 
 
 def _write_rendered_session_start_script(
@@ -274,7 +276,9 @@ class TestConvertHooksJson:
             platform_config=codex_config,
             template=template,
         )
-        assert result["hooks"]["SessionStart"][0]["matcher"] == "startup|resume"
+        assert result["hooks"]["SessionStart"][0]["matcher"] == (
+            "startup|resume|clear|compact"
+        )
 
     def test_command_path_contains_hook_script_name(
         self, converter, codex_config, codex_env
@@ -290,7 +294,7 @@ class TestConvertHooksJson:
             f"Command '{command}' does not reference samsara-session-start.sh"
         )
 
-    def test_default_system_message_is_string(self, converter, codex_config, codex_env):
+    def test_status_message_is_string(self, converter, codex_config, codex_env):
         """Command hook has a statusMessage."""
         template = codex_env.get_template("hooks.json.j2")
         result = converter.convert_hooks_json(
@@ -345,7 +349,7 @@ class TestConvertCheckCodebaseMapScript:
 
     def test_returns_string(self, converter, codex_config, codex_env):
         """convert_check_codebase_map_script returns a string."""
-        template = codex_env.get_template("hook.sh.j2")
+        template = codex_env.get_template("check-codebase-map.sh.j2")
         result = converter.convert_check_codebase_map_script(
             event="session_start",
             platform_config=codex_config,
@@ -355,7 +359,7 @@ class TestConvertCheckCodebaseMapScript:
 
     def test_hook_name_is_check_codebase_map(self, converter, codex_config, codex_env):
         """Rendered script identifies as check-codebase-map hook."""
-        template = codex_env.get_template("hook.sh.j2")
+        template = codex_env.get_template("check-codebase-map.sh.j2")
         result = converter.convert_check_codebase_map_script(
             event="session_start",
             platform_config=codex_config,
@@ -367,7 +371,7 @@ class TestConvertCheckCodebaseMapScript:
         self, converter, codex_config, codex_env
     ):
         """Rendered script does not reference ${CLAUDE_PLUGIN_ROOT}."""
-        template = codex_env.get_template("hook.sh.j2")
+        template = codex_env.get_template("check-codebase-map.sh.j2")
         result = converter.convert_check_codebase_map_script(
             event="session_start",
             platform_config=codex_config,
@@ -375,16 +379,19 @@ class TestConvertCheckCodebaseMapScript:
         )
         assert "CLAUDE_PLUGIN_ROOT" not in result
 
-    def test_outputs_system_message_json(self, converter, codex_config, codex_env):
-        """Rendered script outputs systemMessage (not hookSpecificOutput)."""
-        template = codex_env.get_template("hook.sh.j2")
+    def test_outputs_model_visible_additional_context(
+        self, converter, codex_config, codex_env
+    ):
+        """Rendered script emits Codex SessionStart model context."""
+        template = codex_env.get_template("check-codebase-map.sh.j2")
         result = converter.convert_check_codebase_map_script(
             event="session_start",
             platform_config=codex_config,
             template=template,
         )
-        assert "systemMessage" in result
-        assert "hookSpecificOutput" not in result
+        assert "hookSpecificOutput" in result
+        assert "additionalContext" in result
+        assert "systemMessage" not in result
 
 
 # ---------------------------------------------------------------------------
@@ -473,7 +480,7 @@ class TestHookConverterErrorHandling:
             ),
             formats=FormatsConfig(
                 hook_output={
-                    "context_injection_field": "systemMessage",
+                    "context_injection_field": "hookSpecificOutput.additionalContext",
                     "session_start_matchers": ["startup", "resume"],
                     "template": "hooks.json.j2",
                     "script_template": "hook.sh.j2",

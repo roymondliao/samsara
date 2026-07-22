@@ -13,4 +13,4 @@ Read research artifacts, ask user questions, write pre-thinking.md.
 
 ## Transition
 
-After valid commitment, use the `$samsara-planning` skill skill.
+After valid commitment, use the `$planning` skill skill.

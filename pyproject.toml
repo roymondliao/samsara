@@ -41,8 +41,7 @@ filterwarnings = [
 minversion = "9.0"
 markers = [
   "integration: marks tests as integration tests (require API key and --model)",
-  "requires_codex: marks tests that require a local Codex CLI installation",
-  "requires_gemini: marks tests that require a local Gemini CLI installation"
+  "requires_codex: marks tests that require a local Codex CLI installation"
 ]
 
 [tool.uv.build-backend]

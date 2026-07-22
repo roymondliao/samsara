@@ -360,7 +360,7 @@ Step 6 commitment:
 
 ## 8. AskUserQuestion Header Constraint
 
-All `AskUserQuestion` calls in this skill must use a `header` field of **≤ 12 characters** for broadest client compatibility (Codex CLI, Gemini CLI v0.29.0+).
+All `AskUserQuestion` calls in this skill must use a `header` field of **≤ 12 characters** for broad client compatibility.
 
 Compliant headers: `"Pre-thinking"` (12), `"Lens review"` (11), `"Commitment"` (10), `"Resume?"` (7).
 

@@ -32,12 +32,15 @@ import json
 import logging
 import os
 import re
+import shlex
 import shutil
 import tomllib
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Literal
 
 import tomli_w
+import yaml
 
 from samsara_cli.config.loader import load_platform_config
 from samsara_cli.config.schema import PlatformConfig
@@ -48,6 +51,8 @@ logger = logging.getLogger(__name__)
 
 Scope = Literal["project", "global"]
 DEPRECATED_FEATURE_FLAGS = {"codex_hooks": "hooks"}
+_INSTALL_MANIFEST_SCHEMA = 1
+_SHARED_CONFIG_PATHS = {".codex/config.toml", ".codex/hooks.json"}
 
 
 class InstallerError(Exception):
@@ -134,7 +139,7 @@ class Installer:
         if scope == "project":
             return self._install_project(converted_dir=converted_dir, cwd=cwd)
         elif scope == "global":
-            return self._install_global(converted_dir=converted_dir)
+            return self._install_global(converted_dir=converted_dir, cwd=cwd)
         else:
             raise InstallerError(
                 f"Unknown scope: {scope!r}. Valid scopes are: 'project', 'global'."
@@ -220,14 +225,32 @@ class Installer:
         Returns:
             Post-install instructions string.
         """
+        old_manifest = self._read_install_manifest(cwd, expected_scope="project")
         self._install_native_tree(converted_dir=converted_dir, target_root=cwd)
+        self._rewrite_companion_placeholders(
+            converted_dir=converted_dir,
+            target_root=cwd,
+        )
+        self._rewrite_hook_commands_for_scope(install_root=cwd)
+        manifest = self._prepare_install_state(
+            converted_dir=converted_dir,
+            target_root=cwd,
+            scope="project",
+            old_manifest=old_manifest,
+        )
+        self._write_install_manifest(cwd, manifest)
 
         logger.info("Installed %s native files to: %s", self._platform, cwd)
 
         # Build post-install instructions
-        return self._project_install_instructions(cwd)
+        return self._project_install_instructions(
+            cwd,
+            scope_note=self._scope_overlap_note(scope="project", cwd=cwd),
+        )
 
-    def _project_install_instructions(self, plugin_dir: Path) -> str:
+    def _project_install_instructions(
+        self, plugin_dir: Path, *, scope_note: str = ""
+    ) -> str:
         """Build post-install instructions for project scope install."""
         feature_flags_section = self._format_feature_flags_instructions()
 
@@ -235,9 +258,11 @@ class Installer:
             f"samsara native {self._platform} files installed to: {plugin_dir}\n\n"
             "Next steps:\n"
             f"  1. Ensure your {self._platform} project is trusted.\n"
-            f"  2. Restart {self._platform} to load the skills, agents, and hooks.\n"
-            f"  3. Required feature flags are present in the project config:\n"
+            "  2. Open /hooks and review/trust the generated Samsara hooks.\n"
+            f"  3. Restart {self._platform} to load the skills, agents, and hooks.\n"
+            f"  4. Required feature flags are present in the project config:\n"
             f"{feature_flags_section}\n"
+            f"{scope_note}"
         )
         return instructions
 
@@ -259,11 +284,12 @@ class Installer:
 
         return "\n".join(lines)
 
-    def _install_global(self, converted_dir: Path) -> str:
+    def _install_global(self, converted_dir: Path, cwd: Path) -> str:
         """Global scope install — copy native platform files under the user's home.
 
         Args:
             converted_dir: Path to converted output directory.
+            cwd: Active project directory, used only to disclose overlapping scope.
 
         Returns:
             Post-install instructions string.
@@ -284,6 +310,7 @@ class Installer:
         # Path.expanduser() also reads HOME from os.environ — both are equivalent,
         # but explicit home resolution makes test patching clearer.
         home = Path(os.environ.get("HOME", str(Path.home())))
+        old_manifest = self._read_install_manifest(home, expected_scope="global")
 
         config_path_raw = global_cfg.config_path
         if not config_path_raw:
@@ -292,8 +319,6 @@ class Installer:
                 "'config_path'. Cannot determine which config file to update."
             )
         config_path = Path(config_path_raw.replace("~", str(home)))
-
-        config_is_json = config_path.suffix == ".json"
 
         # --- Step 1: Ensure config file exists ---
         config_path.parent.mkdir(parents=True, exist_ok=True)
@@ -314,21 +339,26 @@ class Installer:
 
         # --- Step 3: Copy native output into the user's home directories ---
         self._install_native_tree(converted_dir=converted_dir, target_root=home)
+        self._rewrite_companion_placeholders(
+            converted_dir=converted_dir,
+            target_root=home,
+        )
 
         # --- Step 3b: Rewrite samsara's relative hook commands to absolute ---
         # The converter bakes a scope-agnostic RELATIVE command. Relative paths
         # resolve correctly for project scope (script lives under <project>/),
-        # but for global scope the script lives under $HOME while Codex/Gemini
+        # but for global scope the script lives under $HOME while Codex
         # resolve the command against the PROJECT cwd — so the hook silently
         # never fires. Rewriting here (per scope) keeps that decision out of the
         # scope-agnostic converter.
-        self._rewrite_global_hook_commands(install_root=home)
+        self._rewrite_hook_commands_for_scope(install_root=home)
 
-        if config_is_json:
-            return self._global_install_instructions(
-                install_root=home,
-                config_path=config_path,
-            )
+        manifest = self._prepare_install_state(
+            converted_dir=converted_dir,
+            target_root=home,
+            scope="global",
+            old_manifest=old_manifest,
+        )
 
         # --- Step 4: DC-8-4 Modify config.toml (idempotent) ---
         try:
@@ -356,9 +386,11 @@ class Installer:
                 f"A backup is available at {backup_path}."
             ) from e
 
+        self._write_install_manifest(home, manifest)
         return self._global_install_instructions(
             install_root=home,
             config_path=config_path,
+            scope_note=self._scope_overlap_note(scope="global", cwd=cwd),
         )
 
     def _install_native_tree(self, converted_dir: Path, target_root: Path) -> None:
@@ -378,14 +410,267 @@ class Installer:
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(item, dest)
 
-    def _rewrite_global_hook_commands(self, install_root: Path) -> None:
-        """Rewrite samsara's relative hook commands to absolute under install_root.
+    def _install_manifest_path(self, install_root: Path) -> Path:
+        """Return platform-scoped installer state outside shared Codex config."""
+        return install_root / ".samsara" / f"install-manifest.{self._platform}.json"
+
+    def _read_install_manifest(
+        self, install_root: Path, *, expected_scope: Scope
+    ) -> dict:
+        """Read the sole record of paths this installer may later delete."""
+        path = self._install_manifest_path(install_root)
+        if not path.exists():
+            return {}
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise InstallerError(
+                f"Cannot read Samsara install ownership manifest {path}: {exc}. "
+                "Refusing update because stale-file ownership is unknown."
+            ) from exc
+        if not isinstance(data, dict) or data.get("schema_version") != 1:
+            raise InstallerError(
+                f"Unsupported Samsara install ownership manifest: {path}."
+            )
+        if data.get("platform") != self._platform:
+            raise InstallerError(
+                f"Install ownership manifest platform mismatch in {path}: "
+                f"expected {self._platform!r}, got {data.get('platform')!r}."
+            )
+        if data.get("scope") != expected_scope:
+            raise InstallerError(
+                f"Install ownership manifest scope mismatch in {path}: "
+                f"expected {expected_scope!r}, got {data.get('scope')!r}."
+            )
+        for field in ("owned_paths", "hook_commands", "shared_paths"):
+            values = data.get(field)
+            if not isinstance(values, list) or not all(
+                isinstance(value, str) for value in values
+            ):
+                raise InstallerError(
+                    f"Install ownership manifest field {field!r} must be a list "
+                    f"of strings: {path}."
+                )
+        return data
+
+    def _owned_paths_from_converted(self, converted_dir: Path) -> set[str]:
+        """List generated files safe to remove; shared Codex configs are excluded."""
+        owned: set[str] = set()
+        for path in converted_dir.rglob("*"):
+            if not path.is_file():
+                continue
+            relative = path.relative_to(converted_dir).as_posix()
+            if relative not in _SHARED_CONFIG_PATHS:
+                owned.add(relative)
+        return owned
+
+    def _rewrite_companion_placeholders(
+        self, *, converted_dir: Path, target_root: Path
+    ) -> None:
+        """Resolve scope-agnostic companion paths after their install root is known."""
+        replacements: dict[str, str] = {}
+        skills_dir = converted_dir / ".agents/skills"
+        for skill_md in skills_dir.glob("*/SKILL.md"):
+            content = skill_md.read_text(encoding="utf-8")
+            parts = content.split("---", 2)
+            if len(parts) != 3:
+                raise InstallerError(
+                    f"Cannot resolve companion path; invalid skill frontmatter: {skill_md}."
+                )
+            try:
+                frontmatter = yaml.safe_load(parts[1]) or {}
+            except yaml.YAMLError as exc:
+                raise InstallerError(
+                    f"Cannot resolve companion path; invalid skill YAML: {skill_md}: {exc}."
+                ) from exc
+            skill_name = (
+                frontmatter.get("name") if isinstance(frontmatter, dict) else None
+            )
+            if not isinstance(skill_name, str) or not skill_name:
+                raise InstallerError(
+                    f"Cannot resolve companion path; skill name is missing: {skill_md}."
+                )
+            installed_dir = target_root / skill_md.parent.relative_to(converted_dir)
+            replacements[f"<installed-{skill_name}-skill-directory>"] = shlex.quote(
+                str(installed_dir)
+            )
+
+        agent_resources = target_root / ".codex/agent-resources"
+        replacements["<installed-auto-gatekeeper-companion-directory>"] = shlex.quote(
+            str(agent_resources / "samsara-auto-gatekeeper")
+        )
+
+        unresolved = re.compile(r"<installed-[a-z0-9-]+-(?:skill|companion)-directory>")
+        for relative in self._owned_paths_from_converted(converted_dir):
+            source = converted_dir / relative
+            if source.suffix.lower() not in {".md", ".toml", ".txt"}:
+                continue
+            target = target_root / relative
+            content = target.read_text(encoding="utf-8")
+            for placeholder, installed_path in replacements.items():
+                content = content.replace(placeholder, installed_path)
+            remaining = sorted(set(unresolved.findall(content)))
+            if remaining:
+                raise InstallerError(
+                    f"Installed companion path cannot be resolved in {target}: {remaining}."
+                )
+            target.write_text(content, encoding="utf-8")
+
+    def _prepare_install_state(
+        self,
+        *,
+        converted_dir: Path,
+        target_root: Path,
+        scope: Scope,
+        old_manifest: dict,
+    ) -> dict:
+        """Reconcile only paths previously declared as Samsara-owned."""
+        new_owned = self._owned_paths_from_converted(converted_dir)
+        old_owned = {
+            value
+            for value in old_manifest.get("owned_paths", [])
+            if isinstance(value, str)
+        }
+        for relative in sorted(old_owned - new_owned):
+            self._remove_owned_path(target_root, relative)
+
+        new_hook_commands = self._installed_hook_commands(
+            converted_dir=converted_dir,
+            target_root=target_root,
+        )
+        old_hook_commands = {
+            value
+            for value in old_manifest.get("hook_commands", [])
+            if isinstance(value, str)
+        }
+        self._remove_stale_hook_commands(
+            target_root,
+            stale_commands=old_hook_commands - new_hook_commands,
+        )
+
+        try:
+            package_version = version("samsara")
+        except PackageNotFoundError:
+            package_version = "unknown"
+        return {
+            "schema_version": _INSTALL_MANIFEST_SCHEMA,
+            "platform": self._platform,
+            "scope": scope,
+            "samsara_version": package_version,
+            "owned_paths": sorted(new_owned),
+            "hook_commands": sorted(new_hook_commands),
+            "shared_paths": sorted(_SHARED_CONFIG_PATHS),
+        }
+
+    def _remove_owned_path(self, install_root: Path, relative: str) -> None:
+        relative_path = Path(relative)
+        if relative_path.is_absolute() or ".." in relative_path.parts:
+            raise InstallerError(
+                f"Unsafe owned path in install manifest: {relative!r}."
+            )
+        target = install_root / relative_path
+        try:
+            target.relative_to(install_root)
+        except ValueError as exc:
+            raise InstallerError(
+                f"Owned path escapes install root: {relative!r}."
+            ) from exc
+        if target.is_file() or target.is_symlink():
+            target.unlink()
+        parent = target.parent
+        while parent != install_root:
+            try:
+                parent.rmdir()
+            except OSError:
+                break
+            parent = parent.parent
+
+    def _installed_hook_commands(
+        self, *, converted_dir: Path, target_root: Path
+    ) -> set[str]:
+        hook_file = converted_dir / ".codex/hooks.json"
+        if not hook_file.exists():
+            return set()
+        data = json.loads(hook_file.read_text(encoding="utf-8"))
+        hooks = data.get("hooks", {}) if isinstance(data, dict) else {}
+        entries = [
+            entry
+            for event_entries in hooks.values()
+            if isinstance(event_entries, list)
+            for entry in event_entries
+        ]
+        commands = {
+            command for _hook_type, command in self._hook_entry_identities(entries)
+        }
+        return {
+            str(target_root / command) if not os.path.isabs(command) else command
+            for command in commands
+        }
+
+    def _remove_stale_hook_commands(
+        self, install_root: Path, *, stale_commands: set[str]
+    ) -> None:
+        """Remove only hook handlers recorded as owned by the prior manifest."""
+        if not stale_commands:
+            return
+        hook_file = install_root / ".codex/hooks.json"
+        if not hook_file.exists():
+            return
+        data = json.loads(hook_file.read_text(encoding="utf-8"))
+        hooks = data.get("hooks") if isinstance(data, dict) else None
+        if not isinstance(hooks, dict):
+            return
+        changed = False
+        for event, entries in list(hooks.items()):
+            if not isinstance(entries, list):
+                continue
+            kept_entries = []
+            for entry in entries:
+                if not isinstance(entry, dict):
+                    kept_entries.append(entry)
+                    continue
+                handlers = entry.get("hooks")
+                if not isinstance(handlers, list):
+                    kept_entries.append(entry)
+                    continue
+                kept_handlers = [
+                    handler
+                    for handler in handlers
+                    if not (
+                        isinstance(handler, dict)
+                        and handler.get("command") in stale_commands
+                    )
+                ]
+                changed |= len(kept_handlers) != len(handlers)
+                if kept_handlers:
+                    updated = dict(entry)
+                    updated["hooks"] = kept_handlers
+                    kept_entries.append(updated)
+            hooks[event] = kept_entries
+        if changed:
+            hook_file.write_text(
+                json.dumps(data, indent=2, ensure_ascii=False) + "\n",
+                encoding="utf-8",
+            )
+
+    def _write_install_manifest(self, install_root: Path, manifest: dict) -> None:
+        path = self._install_manifest_path(install_root)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = path.with_suffix(path.suffix + ".tmp")
+        temporary.write_text(
+            json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+        temporary.replace(path)
+
+    def _rewrite_hook_commands_for_scope(self, install_root: Path) -> None:
+        """Rewrite Samsara's relative hook commands for the selected install root.
 
         Only commands that point into our own plugin hooks dir (prefix
         '<plugin_dir>/') are rewritten — a user's pre-existing foreign hook
         command (e.g. 'my-own-tool.sh') is left untouched. If the rewrite scope
         were broader it could mangle unrelated commands; if narrower it would
-        silently leave the global hook unresolvable.
+        silently leave the installed hook unresolvable.
 
         No-op (not an error) when the platform has no plugin_dir/hooks_file or the
         hook config file is absent — some platforms may not ship a hooks file.
@@ -430,9 +715,8 @@ class Installer:
     ) -> bool:
         """Recursively rewrite relative 'command' values that start with prefix.
 
-        Returns True if any command was rewritten. The recursion is structure-
-        agnostic so it works for both Codex hooks.json and Gemini settings.json,
-        which nest commands differently.
+        Returns True if any command was rewritten. The traversal stays
+        structure-agnostic so a target adapter may choose its own nesting.
         """
         changed = False
         if isinstance(node, dict):
@@ -515,8 +799,6 @@ class Installer:
             target_item.parent.mkdir(parents=True, exist_ok=True)
             if source_item.name == "hooks.json" and target_item.exists():
                 self._merge_hooks_json(source_item, target_item)
-            elif source_item.name == "settings.json" and target_item.exists():
-                self._merge_settings_json(source_item, target_item)
             elif source_item.name == "config.toml" and target_item.exists():
                 self._merge_config_toml(source_item, target_item)
             else:
@@ -553,74 +835,11 @@ class Installer:
             encoding="utf-8",
         )
 
-    def _read_json_object(self, path: Path, *, empty_ok: bool = False) -> dict:
-        """Read a JSON object config file.
-
-        Empty files are allowed only for newly-created global settings files. Invalid
-        non-empty JSON must fail loudly so installs do not overwrite user settings.
-        """
-        text = path.read_text(encoding="utf-8")
-        if not text.strip() and empty_ok:
-            return {}
-        try:
-            data = json.loads(text)
-        except json.JSONDecodeError as e:
-            raise InstallerError(
-                f"Cannot merge JSON settings because {path} is not valid JSON: {e}"
-            ) from e
-        if not isinstance(data, dict):
-            raise InstallerError(
-                f"Cannot merge JSON settings because root is not an object: {path}"
-            )
-        return data
-
-    def _merge_settings_json(self, source_path: Path, target_path: Path) -> None:
-        """Merge Gemini settings.json without duplicating hook entries."""
-        source = self._read_json_object(source_path)
-        target = self._read_json_object(target_path, empty_ok=True)
-
-        for key, value in source.items():
-            if key != "hooks":
-                target.setdefault(key, value)
-
-        source_hooks = source.get("hooks", {})
-        target_hooks = target.setdefault("hooks", {})
-        if not isinstance(source_hooks, dict) or not isinstance(target_hooks, dict):
-            raise InstallerError(
-                f"Cannot merge Gemini settings because 'hooks' is not an object: {target_path}"
-            )
-
-        for event_name, entries in source_hooks.items():
-            if not isinstance(entries, list):
-                raise InstallerError(
-                    f"Cannot merge Gemini hooks event {event_name!r}: expected list."
-                )
-            existing = target_hooks.setdefault(event_name, [])
-            if not isinstance(existing, list):
-                raise InstallerError(
-                    f"Cannot merge Gemini hooks event {event_name!r}: target is not a list."
-                )
-            existing_identities = self._hook_entry_identities(existing)
-            for entry in entries:
-                entry_identities = self._hook_entry_identities([entry])
-                if not entry_identities:
-                    if entry not in existing:
-                        existing.append(entry)
-                    continue
-                if existing_identities.isdisjoint(entry_identities):
-                    existing.append(entry)
-                    existing_identities.update(entry_identities)
-
-        target_path.write_text(
-            json.dumps(target, indent=2, ensure_ascii=False) + "\n",
-            encoding="utf-8",
-        )
-
     def _hook_entry_identities(self, entries: list) -> set[tuple[str, str]]:
         """Return semantic identities for hook commands inside entries.
 
-        Gemini hook entries can differ in matcher/status metadata while still
-        invoking the same command. Command identity is the stable duplicate guard.
+        Hook entries can differ in matcher/status metadata while still invoking
+        the same command. Command identity is the stable duplicate guard.
         """
         identities: set[tuple[str, str]] = set()
         for entry in entries:
@@ -790,12 +1009,32 @@ class Installer:
         self,
         install_root: Path,
         config_path: Path,
+        *,
+        scope_note: str = "",
     ) -> str:
         """Build post-install instructions for global scope install."""
         return (
             f"samsara native {self._platform} files installed under: {install_root}\n"
             f"Config updated: {config_path}\n\n"
             "Next steps:\n"
-            f"  1. Restart {self._platform} to load the skills, agents, and hooks.\n"
-            f"  2. A backup of your previous config is at: {config_path}.bak\n"
+            "  1. Open /hooks and review/trust the generated Samsara hooks.\n"
+            f"  2. Restart {self._platform} to load the skills, agents, and hooks.\n"
+            f"  3. A backup of your previous config is at: {config_path}.bak\n"
+            f"{scope_note}"
+        )
+
+    def _scope_overlap_note(self, *, scope: Scope, cwd: Path) -> str:
+        """Disclose when Codex can load both project and global Samsara installs."""
+        home = Path(os.environ.get("HOME", str(Path.home())))
+        other_root = home if scope == "project" else cwd
+        other_manifest = self._install_manifest_path(other_root)
+        if not other_manifest.exists():
+            return ""
+        other_scope = "global" if scope == "project" else "project"
+        return (
+            "\nScope note:\n"
+            f"  A {other_scope} Samsara install also exists at {other_manifest}.\n"
+            "  Codex can load both scopes; project configuration takes precedence. "
+            "Review /hooks in the active project before assuming both installs behave "
+            "the same.\n"
         )

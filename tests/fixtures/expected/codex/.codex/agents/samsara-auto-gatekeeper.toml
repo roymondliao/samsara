@@ -3,7 +3,7 @@
 # Platform: codex
 
 name = "samsara-auto-gatekeeper"
-description = "Samsara Auto Gatekeeper"
+description = "Principle-level gatekeeper for Samsara auto mode"
 developer_instructions = """
 
 # Samsara Auto Gatekeeper
@@ -23,3 +23,5 @@ Do not skip workflow stages. Do not treat unknown as success. Do not accept
 security/privacy risk without concrete evidence.
 
 """
+model_reasoning_effort = "high"
+sandbox_mode = "workspace-write"

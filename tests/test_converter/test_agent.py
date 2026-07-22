@@ -478,6 +478,5 @@ class TestSourcePathInOutput:
             template=template,
         )
 
-        assert str(source_path) in result.toml_content, (
-            "source_path not present in TOML output"
-        )
+        assert source_path.name in result.toml_content
+        assert str(source_path.parent) not in result.toml_content

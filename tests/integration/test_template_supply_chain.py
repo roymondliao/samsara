@@ -44,9 +44,6 @@ FIXTURE_SOURCE = Path(__file__).parent.parent / "fixtures" / "source"
 FIXTURE_EXPECTED_CODEX = (
     Path(__file__).parent.parent / "fixtures" / "expected" / "codex"
 )
-FIXTURE_EXPECTED_GEMINI = (
-    Path(__file__).parent.parent / "fixtures" / "expected" / "gemini-cli"
-)
 
 # The nested companion template in the fixture source (neutral vehicle for
 # the nesting-survival property).
@@ -55,10 +52,9 @@ _SOURCE_TEMPLATE = (
 )
 
 # Output paths are derived from the platform's skills_dir + naming convention
-# (samsara_cli/config/platform/{codex,gemini-cli}.yaml) plus the companion
+# (samsara_cli/config/platform/codex.yaml) plus the companion
 # file's relative path under the source skill dir — this preserves nesting.
 _CODEX_OUTPUT_REL = ".agents/skills/samsara-implement/templates/nested-template.yaml"
-_GEMINI_OUTPUT_REL = ".gemini/skills/samsara-implement/templates/nested-template.yaml"
 
 
 class TestNewTemplateSurvivesSourceFixture:
@@ -105,23 +101,6 @@ class TestNewTemplateSurvivesCommittedSnapshots:
             "difference means rule-application leaked into a YAML file."
         )
 
-    def test_death__gemini_expected_snapshot_contains_converted_template(
-        self,
-    ) -> None:
-        output_path = FIXTURE_EXPECTED_GEMINI / _GEMINI_OUTPUT_REL
-        assert output_path.exists(), (
-            f"Missing from committed gemini-cli snapshot: {output_path}. "
-            "The new templates/*.yaml companion file was silently dropped "
-            "from the multi-platform output — this is the I2 death case."
-        )
-        assert output_path.read_text(encoding="utf-8") == _SOURCE_TEMPLATE.read_text(
-            encoding="utf-8"
-        ), (
-            "Converted gemini-cli template content differs from the "
-            "fixture source. YAML companion files must be copied verbatim — "
-            "any difference means rule-application leaked into a YAML file."
-        )
-
 
 class TestNewTemplateSurvivesFreshConversion:
     """Unit test (contract-bound): a FRESH ConversionEngine run (independent
@@ -142,23 +121,6 @@ class TestNewTemplateSurvivesFreshConversion:
         emitted = output_dir / _CODEX_OUTPUT_REL
         assert emitted.exists(), (
             f"Fresh codex conversion did not emit {emitted}. "
-            "The new nested templates/*.yaml companion file was dropped by "
-            "the live converter, independent of any committed snapshot."
-        )
-        assert emitted.read_text(encoding="utf-8") == _SOURCE_TEMPLATE.read_text(
-            encoding="utf-8"
-        )
-
-    def test_unit__fresh_gemini_conversion_emits_nested_yaml_companion(
-        self, tmp_path: Path
-    ) -> None:
-        output_dir = tmp_path / "gemini_output"
-        engine = ConversionEngine("gemini-cli")
-        engine.run(source_dir=FIXTURE_SOURCE, output_dir=output_dir)
-
-        emitted = output_dir / _GEMINI_OUTPUT_REL
-        assert emitted.exists(), (
-            f"Fresh gemini-cli conversion did not emit {emitted}. "
             "The new nested templates/*.yaml companion file was dropped by "
             "the live converter, independent of any committed snapshot."
         )

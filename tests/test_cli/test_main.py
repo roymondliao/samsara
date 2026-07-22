@@ -49,7 +49,7 @@ def make_converted_output(tmp_path: Path) -> Path:
     skill_dir = output / ".agents" / "skills" / "samsara-research"
     skill_dir.mkdir(parents=True)
     (skill_dir / "SKILL.md").write_text(
-        "---\nname: samsara:research\ndescription: research skill\n---\n\n# research\n"
+        "---\nname: research\ndescription: research skill\n---\n\n# research\n"
     )
     agents_dir = output / ".codex" / "agents"
     agents_dir.mkdir(parents=True)
@@ -86,15 +86,6 @@ class TestCLIListPlatforms:
         result = runner.invoke(app, ["list-platforms"])
         assert "codex" in result.output.lower(), (
             f"list-platforms must include 'codex' in output. Got: {result.output!r}"
-        )
-
-    def test_list_platforms_includes_gemini_cli(self):
-        """list-platforms output includes 'gemini-cli'."""
-        from samsara_cli.main import app
-
-        result = runner.invoke(app, ["list-platforms"])
-        assert "gemini-cli" in result.output.lower(), (
-            f"list-platforms must include 'gemini-cli'. Got: {result.output!r}"
         )
 
 
@@ -274,25 +265,6 @@ class TestCLIInstall:
             f"install must exit 0 on success. exit: {result.exit_code}, output: {result.output}"
         )
 
-    def test_install_gemini_cli_constructs_gemini_installer(self, tmp_path):
-        """install gemini-cli must pass gemini-cli to Installer."""
-        from samsara_cli.main import app
-
-        source_dir = make_minimal_source(tmp_path)
-
-        with patch("samsara_cli.main.Installer") as MockInstaller:
-            mock_installer = MagicMock()
-            MockInstaller.return_value = mock_installer
-            mock_installer.install.return_value = "installed"
-
-            result = runner.invoke(
-                app,
-                ["install", "gemini-cli", "--source", str(source_dir)],
-            )
-
-        assert result.exit_code == 0
-        MockInstaller.assert_called_once_with(platform="gemini-cli")
-
     def test_install_prints_post_install_instructions(self, tmp_path):
         """install must print post-install instructions."""
         from samsara_cli.main import app
@@ -412,25 +384,6 @@ class TestCLIUpdate:
             f"update must exit 0. exit: {result.exit_code}, output: {result.output}"
         )
 
-    def test_update_gemini_cli_constructs_gemini_installer(self, tmp_path):
-        """update gemini-cli must pass gemini-cli to Installer."""
-        from samsara_cli.main import app
-
-        source_dir = make_minimal_source(tmp_path)
-
-        with patch("samsara_cli.main.Installer") as MockInstaller:
-            mock_installer = MagicMock()
-            MockInstaller.return_value = mock_installer
-            mock_installer.update.return_value = "updated"
-
-            result = runner.invoke(
-                app,
-                ["update", "gemini-cli", "--source", str(source_dir)],
-            )
-
-        assert result.exit_code == 0
-        MockInstaller.assert_called_once_with(platform="gemini-cli")
-
     def test_update_invalid_platform_exits_nonzero(self):
         """update with invalid platform exits non-zero."""
         from samsara_cli.main import app
@@ -472,37 +425,6 @@ class TestCLIValidate:
         assert result.exit_code == 0, (
             f"validate must exit 0 when no errors. exit: {result.exit_code}, "
             f"output: {result.output}"
-        )
-
-    def test_validate_passes_gemini_platform_to_validator(self, tmp_path):
-        """validate --platform gemini-cli must pass platform context to validator."""
-        from samsara_cli.main import app
-
-        converted_dir = make_converted_output(tmp_path)
-
-        with patch("samsara_cli.main.TargetValidator") as MockValidator:
-            mock_validator = MagicMock()
-            MockValidator.return_value = mock_validator
-            mock_validator.validate.return_value = []
-
-            result = runner.invoke(
-                app,
-                [
-                    "validate",
-                    "--platform",
-                    "gemini-cli",
-                    "--source",
-                    str(converted_dir),
-                ],
-            )
-
-        assert result.exit_code == 0
-        mock_validator.validate.assert_called_once_with(
-            output_dir=converted_dir,
-            platform="gemini-cli",
-            # CLI default is non-strict: repo-root validation legitimately
-            # contains colon-form source names (ISSUE-002 live-surface mode).
-            strict_namespace=False,
         )
 
     def test_validate_with_errors_exits_nonzero(self, tmp_path):

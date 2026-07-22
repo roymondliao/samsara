@@ -1,11 +1,11 @@
 """Death tests — samsara: namespace residue in converted output (DC: dead reference).
 
-The corruption signature: converted output for codex/gemini-cli still contains
+The corruption signature: converted Codex output still contains
 `samsara:X` (colon form) — a name that does not exist on the target platform
-(the target name is `samsara-X`). A weaker model following the converted skill
-hits a dead reference at dispatch time, and the old TargetValidator reported
-PASS because it only enumerated two known patterns (invoke `samsara:X`,
-subagent_type:) instead of scanning for the residue signature itself.
+(skills use SKILL.md.name; Samsara agents use a generated hyphenated name). A
+weaker model following the converted skill hits a dead reference at dispatch
+time, and the old TargetValidator reported PASS because it only enumerated two
+known patterns instead of scanning for the residue signature itself.
 
 These tests pin the strict-namespace lane:
 - strict_namespace=True: ANY `samsara:X` in scannable output is an error.
@@ -60,12 +60,13 @@ class TestNamespaceResidueStrictLane:
         )
         assert any("samsara:implement" in e for e in errors)
 
-    def test_hyphen_form_is_not_flagged(self, tmp_path: Path) -> None:
-        """Decoy: the correct target-form name `samsara-X` must pass strict —
-        otherwise the check reddens on every valid conversion."""
+    def test_frontmatter_skill_id_and_hyphenated_agent_name_are_not_flagged(
+        self, tmp_path: Path
+    ) -> None:
+        """Codex skill IDs are unprefixed; agent names remain hyphenated."""
         output = _make_minimal_output(
             tmp_path,
-            "Use the `$samsara-pre-thinking` skill, then samsara-planning.\n",
+            "Use the `$pre-thinking` skill, then agent samsara-planning.\n",
         )
         errors = TargetValidator().validate(
             output_dir=output, platform="codex", strict_namespace=True
