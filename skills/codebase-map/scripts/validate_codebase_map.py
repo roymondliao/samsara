@@ -102,8 +102,7 @@ def _string(value: Any, path: str, errors: list[str]) -> str:
 def _string_list(value: Any, path: str, errors: list[str]) -> list[str]:
     values = _list(value, path, errors)
     return [
-        _string(item, f"{path}[{index}]", errors)
-        for index, item in enumerate(values)
+        _string(item, f"{path}[{index}]", errors) for index, item in enumerate(values)
     ]
 
 
@@ -190,7 +189,7 @@ def _evidence_refs(
         if line is not None:
             try:
                 line_count = len(resolved.read_text(encoding="utf-8").splitlines())
-            except (OSError, UnicodeError):
+            except OSError, UnicodeError:
                 errors.append(f"{ref_path}: line evidence is not readable text")
                 continue
             if line > line_count:
@@ -322,9 +321,7 @@ def _validate_ignored(
             errors.append(f"{relative}: output path must be ignored by Git")
 
 
-def _validate_scope(
-    value: Any, snapshot_root: Path, errors: list[str]
-) -> set[str]:
+def _validate_scope(value: Any, snapshot_root: Path, errors: list[str]) -> set[str]:
     scope = _mapping(value, "codebase-map.scan_scope", errors)
     _exact_fields(
         scope,
@@ -334,9 +331,7 @@ def _validate_scope(
     )
     roots = _list(scope.get("roots"), "codebase-map.scan_scope.roots", errors)
     for index, root in enumerate(roots):
-        root_path = _repo_path(
-            root, f"codebase-map.scan_scope.roots[{index}]", errors
-        )
+        root_path = _repo_path(root, f"codebase-map.scan_scope.roots[{index}]", errors)
         if root_path and not (snapshot_root / root_path).exists():
             errors.append(
                 f"codebase-map.scan_scope.roots[{index}]: does not exist in snapshot"
@@ -433,9 +428,7 @@ def validate_candidate(
     if not modules_dir.is_dir():
         return [f"{modules_dir}: missing"], {}
 
-    _validate_snapshot_identity(
-        project_root, snapshot_root, expected_commit, errors
-    )
+    _validate_snapshot_identity(project_root, snapshot_root, expected_commit, errors)
     _validate_ignored(snapshot_root, expected_commit, errors)
 
     try:
@@ -459,9 +452,7 @@ def validate_candidate(
 
     source = _mapping(root.get("source"), "codebase-map.source", errors)
     _exact_fields(source, {"commit"}, "codebase-map.source", errors)
-    source_commit = _string(
-        source.get("commit"), "codebase-map.source.commit", errors
-    )
+    source_commit = _string(source.get("commit"), "codebase-map.source.commit", errors)
     if source_commit and source_commit != expected_commit:
         errors.append(
             "codebase-map.source.commit: "
@@ -582,10 +573,15 @@ def validate_candidate(
     }
     for extra in sorted(actual_files - expected_files):
         errors.append(f"candidate.modules.{extra}: unreferenced module file")
-    for path in module_entries_on_disk:
-        if path.is_symlink() or not path.is_file() or path.suffix != ".yaml":
+    for module_entry_on_disk in module_entries_on_disk:
+        if (
+            module_entry_on_disk.is_symlink()
+            or not module_entry_on_disk.is_file()
+            or module_entry_on_disk.suffix != ".yaml"
+        ):
             errors.append(
-                f"candidate.modules.{path.name}: expected a regular YAML module file"
+                "candidate.modules."
+                f"{module_entry_on_disk.name}: expected a regular YAML module file"
             )
 
     for index, raw_hotspot in enumerate(hotspots):
@@ -594,11 +590,11 @@ def validate_candidate(
             f"codebase-map.summary.rot_hotspots[{index}]",
             errors,
         )
-        module_id = hotspot.get("module_id")
-        if isinstance(module_id, str) and module_id not in module_ids:
+        hotspot_module_id = hotspot.get("module_id")
+        if isinstance(hotspot_module_id, str) and hotspot_module_id not in module_ids:
             errors.append(
                 "codebase-map.summary.rot_hotspots"
-                f"[{index}].module_id: unknown module id {module_id!r}"
+                f"[{index}].module_id: unknown module id {hotspot_module_id!r}"
             )
 
     for index, raw_node in enumerate(
@@ -680,9 +676,7 @@ def validate_candidate(
                     errors.append(f"{path}.id: duplicate module-local finding id")
                 finding_ids.add(coupling_id)
             _string(coupling.get("type"), f"{path}.type", errors)
-            target = _string(
-                coupling.get("with_node"), f"{path}.with_node", errors
-            )
+            target = _string(coupling.get("with_node"), f"{path}.with_node", errors)
             if target and target not in node_ids and target not in coverage_paths:
                 errors.append(
                     f"{path}.with_node: expected node id or coverage-gap path"
@@ -764,9 +758,7 @@ def validate_candidate(
     for flow_index, raw_flow in enumerate(flows):
         path = f"codebase-map.business_flows[{flow_index}]"
         flow = _mapping(raw_flow, path, errors)
-        _exact_fields(
-            flow, {"name", "purpose", "evidence_refs", "steps"}, path, errors
-        )
+        _exact_fields(flow, {"name", "purpose", "evidence_refs", "steps"}, path, errors)
         _string(flow.get("name"), f"{path}.name", errors)
         _string(flow.get("purpose"), f"{path}.purpose", errors)
         _evidence_refs(
@@ -780,9 +772,7 @@ def validate_candidate(
         ):
             step_path = f"{path}.steps[{step_index}]"
             step = _mapping(raw_step, step_path, errors)
-            _exact_fields(
-                step, {"node", "action", "evidence_refs"}, step_path, errors
-            )
+            _exact_fields(step, {"node", "action", "evidence_refs"}, step_path, errors)
             node_id = _string(step.get("node"), f"{step_path}.node", errors)
             if node_id and node_id not in node_ids:
                 errors.append(f"{step_path}.node: dangling node id {node_id!r}")
@@ -899,9 +889,7 @@ def validate_candidate(
     ):
         path = f"codebase-map.infrastructure.data_flow.entry_points[{index}]"
         entry = _mapping(raw_entry, path, errors)
-        _exact_fields(
-            entry, {"node", "description", "evidence_refs"}, path, errors
-        )
+        _exact_fields(entry, {"node", "description", "evidence_refs"}, path, errors)
         node_id = _string(entry.get("node"), f"{path}.node", errors)
         if node_id and node_id not in node_ids:
             errors.append(f"{path}.node: dangling node id {node_id!r}")
@@ -1059,12 +1047,10 @@ def main() -> int:
         try:
             live = yaml.safe_load(live_root.read_text(encoding="utf-8"))
             value = (
-                live.get("source", {}).get("commit")
-                if isinstance(live, dict)
-                else None
+                live.get("source", {}).get("commit") if isinstance(live, dict) else None
             )
             previous_commit = value if isinstance(value, str) else None
-        except (OSError, UnicodeError, yaml.YAMLError):
+        except OSError, UnicodeError, yaml.YAMLError:
             previous_commit = None
 
     try:

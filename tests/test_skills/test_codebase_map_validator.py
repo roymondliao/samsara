@@ -39,9 +39,7 @@ def git(project: Path, *args: str) -> str:
     return result.stdout.strip()
 
 
-def create_repo(
-    tmp_path: Path, *, ignore_map: bool = True
-) -> tuple[Path, Path, str]:
+def create_repo(tmp_path: Path, *, ignore_map: bool = True) -> tuple[Path, Path, str]:
     project = tmp_path / "project"
     project.mkdir()
     git(project, "init")
@@ -91,9 +89,7 @@ def write_candidate(candidate: Path, commit: str) -> None:
                     "effect": "The example value becomes unavailable",
                     "evidence_refs": ["app.py#VALUE"],
                 },
-                "detail_ref": (
-                    f".samsara/codebase-map/{commit}/modules/app.yaml"
-                ),
+                "detail_ref": (f".samsara/codebase-map/{commit}/modules/app.yaml"),
             }
         ],
         "global_nodes": [],
@@ -257,14 +253,7 @@ def test_publish_writes_generation_then_root_manifest(tmp_path: Path) -> None:
     published_root = project / ".samsara" / "codebase-map.yaml"
     published_text = published_root.read_text(encoding="utf-8")
     root = yaml.safe_load(published_text)
-    module = (
-        project
-        / ".samsara"
-        / "codebase-map"
-        / commit
-        / "modules"
-        / "app.yaml"
-    )
+    module = project / ".samsara" / "codebase-map" / commit / "modules" / "app.yaml"
     assert root["source"]["commit"] == commit
     assert f"source:\n  commit: {commit}\n" in published_text
     assert module.is_file()

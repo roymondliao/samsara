@@ -38,12 +38,42 @@ repos:
   rev: v1.15.0
   hooks:
     - id: mypy
+      name: mypy (project modules)
       args:
         - --namespace-packages
         - --explicit-package-bases
         - --disallow-untyped-defs
         - --ignore-missing-imports
-      exclude: ^tests/
+      # Hyphenated skill directories are valid skill IDs but invalid Python
+      # package components. Check their standalone validators in isolated hooks
+      # below so mypy does not collapse both paths into module `validate_format`.
+      exclude: ^(tests/|skills/(fast-track|validate-and-ship)/scripts/validate_format\.py$)
+      additional_dependencies:
+        - pydantic>=2.12.5
+        - wandb
+        - types-PyYAML
+        - PyYAML
+    - id: mypy
+      name: mypy (fast-track validator)
+      args:
+        - --namespace-packages
+        - --explicit-package-bases
+        - --disallow-untyped-defs
+        - --ignore-missing-imports
+      files: ^skills/fast-track/scripts/validate_format\.py$
+      additional_dependencies:
+        - pydantic>=2.12.5
+        - wandb
+        - types-PyYAML
+        - PyYAML
+    - id: mypy
+      name: mypy (validate-and-ship validator)
+      args:
+        - --namespace-packages
+        - --explicit-package-bases
+        - --disallow-untyped-defs
+        - --ignore-missing-imports
+      files: ^skills/validate-and-ship/scripts/validate_format\.py$
       additional_dependencies:
         - pydantic>=2.12.5
         - wandb
