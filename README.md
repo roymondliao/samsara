@@ -47,14 +47,15 @@ Once installed, Samsara injects its axioms and constraints at session start via 
 Samsara is authored as a Claude Code plugin, but `samsara-cli` can convert and install it for other agent platforms (e.g., Codex):
 
 ```bash
-source .venv/bin/activate
-uv run samsara-cli list-platforms              # Show supported targets
-uv run samsara-cli convert --platform codex    # Convert into ./dist/codex/
-uv run samsara-cli install codex --scope project
-uv run samsara-cli validate --platform codex   # Verify converted output
+uv tool install --force /path/to/samsara
+samsara-cli list-platforms                    # Show supported targets
+samsara-cli convert --platform codex          # Convert into ./dist/codex/
+samsara-cli install codex --scope project
+samsara-cli install codex --scope global
+samsara-cli validate --platform codex         # Verify converted output
 ```
 
-The converter translates skills, agents, hooks, and references into the target platform's format; `update` refreshes an existing installation.
+`uv tool install` owns the durable CLI runtime. `samsara-cli install` separately owns the converted Codex files and records the exact runtime command they use. A global install refuses a CLI from the source checkout's `.venv`, because that runtime would break when the checkout moves or is removed. The converter translates skills, agents, hooks, and references into the target platform's format; `update` refreshes an existing installation.
 
 ## Workflow
 

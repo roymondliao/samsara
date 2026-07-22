@@ -1,0 +1,17 @@
+task_id: task-2
+completion_status: done
+known_shortcuts: []
+silent_failure_conditions: []
+assumptions_made:
+  - assumption: "Every distributed companion parses with Python 3.11 grammar"
+    verified: true
+    note: "test_all_companion_scripts_parse_with_python_311_grammar"
+debt_registered: false
+debt_location: null
+structural_decisions:
+  - decision: "Codex conversion attaches one target-specific no-fallback contract"
+    serves_seam: command-materialization
+    forced_by:
+      - "seam: command-materialization"
+    refused: "Duplicating runtime fallback prose across source workflow skills"
+    risk_if_wrong: "A converted consumer may infer system Python when the runner is absent"

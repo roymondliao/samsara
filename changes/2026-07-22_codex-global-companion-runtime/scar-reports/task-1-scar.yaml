@@ -1,0 +1,20 @@
+task_id: task-1
+completion_status: done
+known_shortcuts: []
+silent_failure_conditions: []
+assumptions_made:
+  - assumption: "The installer can resolve and persist one executable CLI path"
+    verified: true
+    note: "test_schema_one_manifest_migrates_and_materializes_runtime_command"
+  - assumption: "A companion can be checked without entering its CLI main function"
+    verified: true
+    note: "test_check_companion_loads_dependencies_without_entering_main"
+debt_registered: false
+debt_location: null
+structural_decisions:
+  - decision: "Installer owns runtime provenance; CLI owns companion execution"
+    serves_seam: runtime-provenance
+    forced_by:
+      - "seam: runtime-provenance"
+    refused: "Bundling a private Python runtime or silently running uv tool install"
+    risk_if_wrong: "Installed commands can outlive or disagree with their recorded runner"

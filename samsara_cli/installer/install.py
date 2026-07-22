@@ -31,9 +31,12 @@ Assumptions:
 import json
 import logging
 import os
+import platform
 import re
 import shlex
 import shutil
+import subprocess
+import sys
 import tomllib
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
@@ -51,7 +54,7 @@ logger = logging.getLogger(__name__)
 
 Scope = Literal["project", "global"]
 DEPRECATED_FEATURE_FLAGS = {"codex_hooks": "hooks"}
-_INSTALL_MANIFEST_SCHEMA = 1
+_INSTALL_MANIFEST_SCHEMA = 2
 _SHARED_CONFIG_PATHS = {".codex/config.toml", ".codex/hooks.json"}
 
 
@@ -82,7 +85,7 @@ class Installer:
     4. Return post-install instructions string
     """
 
-    def __init__(self, platform: str) -> None:
+    def __init__(self, platform: str, runtime_command: Path | None = None) -> None:
         """Initialize Installer for the given platform.
 
         Args:
@@ -92,6 +95,7 @@ class Installer:
             ValueError: If platform is unknown or config load fails.
         """
         self._platform = platform
+        self._runtime_command = runtime_command
         self._detector = PlatformDetector()
         # Load config eagerly — fail fast on invalid platform
         self._config: PlatformConfig = load_platform_config(platform)
@@ -125,6 +129,7 @@ class Installer:
 
         # DC-8-1: Check CLI presence FIRST — before any file operations
         self._check_cli_installed()
+        runtime = self._resolve_runtime_contract(source_dir=source_dir, scope=scope)
 
         # Convert if needed
         if converted_source_dir is not None:
@@ -135,11 +140,21 @@ class Installer:
                 source_dir=source_dir, output_dir=output_dir
             )
 
+        self._smoke_companions(converted_dir=converted_dir, runtime=runtime)
+
         # Install based on scope
         if scope == "project":
-            return self._install_project(converted_dir=converted_dir, cwd=cwd)
+            return self._install_project(
+                converted_dir=converted_dir,
+                cwd=cwd,
+                runtime=runtime,
+            )
         elif scope == "global":
-            return self._install_global(converted_dir=converted_dir, cwd=cwd)
+            return self._install_global(
+                converted_dir=converted_dir,
+                cwd=cwd,
+                runtime=runtime,
+            )
         else:
             raise InstallerError(
                 f"Unknown scope: {scope!r}. Valid scopes are: 'project', 'global'."
@@ -183,6 +198,87 @@ class Installer:
                 f"Install the {self._platform} CLI before running samsara-cli install."
             )
 
+    def _resolve_runtime_contract(self, *, source_dir: Path, scope: Scope) -> dict:
+        """Resolve the durable CLI that installed companion commands will execute."""
+        command = self._runtime_command
+        if command is None:
+            argv_command = Path(sys.argv[0])
+            if argv_command.name == "samsara-cli" and argv_command.exists():
+                command = argv_command
+            else:
+                discovered = shutil.which("samsara-cli")
+                command = Path(discovered) if discovered else None
+
+        if command is None:
+            raise InstallerError(
+                "Cannot resolve the samsara-cli executable that installed companions "
+                "would use. Install the runtime first with "
+                f"`uv tool install --force {source_dir.resolve()}` and retry."
+            )
+
+        command = command.expanduser().resolve()
+        if not command.is_file() or not os.access(command, os.X_OK):
+            raise InstallerError(
+                f"Resolved samsara-cli runtime is not executable: {command}. "
+                "Install it with `uv tool install --force <samsara-source>` and retry."
+            )
+
+        source = source_dir.expanduser().resolve()
+        if scope == "global" and command.is_relative_to(source):
+            raise InstallerError(
+                "Global install cannot depend on a samsara-cli executable inside the "
+                f"source tree ({command}). That runtime disappears when the checkout "
+                "or its .venv moves. Install a durable runtime first with "
+                f"`uv tool install --force {source}` and run the installed samsara-cli."
+            )
+
+        try:
+            package_version = version("samsara")
+        except PackageNotFoundError:
+            package_version = "unknown"
+        return {
+            "command": str(command),
+            "samsara_version": package_version,
+            "python_version": platform.python_version(),
+        }
+
+    def _smoke_companions(self, *, converted_dir: Path, runtime: dict) -> None:
+        """Prove each converted Python companion starts under the selected runtime."""
+        command = runtime["command"]
+        roots = (
+            converted_dir / ".agents/skills",
+            converted_dir / ".codex/agent-resources",
+        )
+        scripts = sorted(
+            path
+            for root in roots
+            if root.exists()
+            for path in root.rglob("*.py")
+            if path.is_file()
+        )
+        for script in scripts:
+            try:
+                result = subprocess.run(
+                    [command, "check-companion", str(script)],
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                    check=False,
+                )
+            except (OSError, subprocess.TimeoutExpired) as exc:
+                raise InstallerError(
+                    f"Cannot run companion smoke check for {script} with {command}: {exc}. "
+                    "No target files were installed."
+                ) from exc
+            if result.returncode != 0:
+                detail = (
+                    result.stderr or result.stdout
+                ).strip() or "no diagnostic output"
+                raise InstallerError(
+                    f"Companion smoke check failed for {script} with {command} "
+                    f"(exit {result.returncode}): {detail}. No target files were installed."
+                )
+
     def _default_output_dir(self, cwd: Path) -> Path:
         """Return default output directory for conversion."""
         return cwd / "dist" / self._platform
@@ -215,7 +311,7 @@ class Installer:
         except FileNotFoundError as e:
             raise InstallerError(f"Source directory not found: {e}") from e
 
-    def _install_project(self, converted_dir: Path, cwd: Path) -> str:
+    def _install_project(self, *, converted_dir: Path, cwd: Path, runtime: dict) -> str:
         """DC-8-2: Project scope install — copy to CWD, NEVER touch global config.
 
         Args:
@@ -230,6 +326,7 @@ class Installer:
         self._rewrite_companion_placeholders(
             converted_dir=converted_dir,
             target_root=cwd,
+            runtime=runtime,
         )
         self._rewrite_hook_commands_for_scope(install_root=cwd)
         manifest = self._prepare_install_state(
@@ -237,6 +334,7 @@ class Installer:
             target_root=cwd,
             scope="project",
             old_manifest=old_manifest,
+            runtime=runtime,
         )
         self._write_install_manifest(cwd, manifest)
 
@@ -284,7 +382,7 @@ class Installer:
 
         return "\n".join(lines)
 
-    def _install_global(self, converted_dir: Path, cwd: Path) -> str:
+    def _install_global(self, *, converted_dir: Path, cwd: Path, runtime: dict) -> str:
         """Global scope install — copy native platform files under the user's home.
 
         Args:
@@ -342,6 +440,7 @@ class Installer:
         self._rewrite_companion_placeholders(
             converted_dir=converted_dir,
             target_root=home,
+            runtime=runtime,
         )
 
         # --- Step 3b: Rewrite samsara's relative hook commands to absolute ---
@@ -358,6 +457,7 @@ class Installer:
             target_root=home,
             scope="global",
             old_manifest=old_manifest,
+            runtime=runtime,
         )
 
         # --- Step 4: DC-8-4 Modify config.toml (idempotent) ---
@@ -428,7 +528,7 @@ class Installer:
                 f"Cannot read Samsara install ownership manifest {path}: {exc}. "
                 "Refusing update because stale-file ownership is unknown."
             ) from exc
-        if not isinstance(data, dict) or data.get("schema_version") != 1:
+        if not isinstance(data, dict) or data.get("schema_version") not in {1, 2}:
             raise InstallerError(
                 f"Unsupported Samsara install ownership manifest: {path}."
             )
@@ -451,6 +551,20 @@ class Installer:
                     f"Install ownership manifest field {field!r} must be a list "
                     f"of strings: {path}."
                 )
+        if data["schema_version"] == 2:
+            runtime = data.get("runtime")
+            if not isinstance(runtime, dict) or not all(
+                isinstance(runtime.get(field), str) and runtime[field]
+                for field in ("command", "samsara_version", "python_version")
+            ):
+                raise InstallerError(
+                    f"Install ownership manifest field 'runtime' must contain "
+                    f"command, samsara_version, and python_version strings: {path}."
+                )
+            if not Path(runtime["command"]).is_absolute():
+                raise InstallerError(
+                    f"Install ownership manifest runtime command must be absolute: {path}."
+                )
         return data
 
     def _owned_paths_from_converted(self, converted_dir: Path) -> set[str]:
@@ -465,7 +579,7 @@ class Installer:
         return owned
 
     def _rewrite_companion_placeholders(
-        self, *, converted_dir: Path, target_root: Path
+        self, *, converted_dir: Path, target_root: Path, runtime: dict
     ) -> None:
         """Resolve scope-agnostic companion paths after their install root is known."""
         replacements: dict[str, str] = {}
@@ -507,6 +621,10 @@ class Installer:
                 continue
             target = target_root / relative
             content = target.read_text(encoding="utf-8")
+            content = content.replace(
+                "samsara-cli run-companion",
+                f"{shlex.quote(runtime['command'])} run-companion",
+            )
             for placeholder, installed_path in replacements.items():
                 content = content.replace(placeholder, installed_path)
             remaining = sorted(set(unresolved.findall(content)))
@@ -523,6 +641,7 @@ class Installer:
         target_root: Path,
         scope: Scope,
         old_manifest: dict,
+        runtime: dict,
     ) -> dict:
         """Reconcile only paths previously declared as Samsara-owned."""
         new_owned = self._owned_paths_from_converted(converted_dir)
@@ -557,6 +676,7 @@ class Installer:
             "platform": self._platform,
             "scope": scope,
             "samsara_version": package_version,
+            "runtime": runtime,
             "owned_paths": sorted(new_owned),
             "hook_commands": sorted(new_hook_commands),
             "shared_paths": sorted(_SHARED_CONFIG_PATHS),

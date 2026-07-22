@@ -34,6 +34,14 @@ def _install(installer: Installer, converted: Path, project: Path) -> str:
         )
 
 
+def _runtime_command(root: Path, *, exit_code: int = 0) -> Path:
+    runtime = root / "bin" / "samsara-cli"
+    runtime.parent.mkdir(parents=True, exist_ok=True)
+    runtime.write_text(f"#!/bin/sh\nexit {exit_code}\n")
+    runtime.chmod(0o755)
+    return runtime
+
+
 def test_project_install_writes_samsara_owned_manifest(tmp_path: Path) -> None:
     project = tmp_path / "project"
     project.mkdir()
@@ -48,6 +56,109 @@ def test_project_install_writes_samsara_owned_manifest(tmp_path: Path) -> None:
     assert ".agents/skills/samsara-research/SKILL.md" in manifest["owned_paths"]
     assert ".codex/config.toml" not in manifest["owned_paths"]
     assert ".codex/hooks.json" not in manifest["owned_paths"]
+
+
+def test_global_install_rejects_source_venv_runtime_before_writing(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "samsara-source"
+    source.mkdir()
+    runtime = _runtime_command(source / ".venv")
+    converted = _converted(tmp_path, skill_name="samsara-research")
+    home = tmp_path / "home"
+    home.mkdir()
+    installer = Installer("codex", runtime_command=runtime)
+
+    with (
+        patch.object(installer._detector, "detect", return_value=True),
+        patch.dict("os.environ", {"HOME": str(home)}),
+        pytest.raises(InstallerError, match="uv tool install"),
+    ):
+        installer.install(
+            source_dir=source,
+            scope="global",
+            cwd=tmp_path,
+            converted_source_dir=converted,
+        )
+
+    assert not (home / ".codex").exists()
+    assert not (home / ".samsara").exists()
+
+
+def test_schema_one_manifest_migrates_and_materializes_runtime_command(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "source"
+    source.mkdir()
+    project = tmp_path / "project with spaces"
+    project.mkdir()
+    runtime = _runtime_command(tmp_path / "durable runtime")
+    converted = _converted(tmp_path, skill_name="samsara-research")
+    skill = converted / ".agents/skills/samsara-research/SKILL.md"
+    skill.write_text(
+        "---\nname: research\ndescription: test\n---\n\n"
+        "Run `samsara-cli run-companion "
+        "<installed-research-skill-directory>/scripts/check.py`.\n"
+    )
+    script = converted / ".agents/skills/samsara-research/scripts/check.py"
+    script.parent.mkdir(parents=True)
+    script.write_text("print('ok')\n")
+    manifest_path = project / ".samsara/install-manifest.codex.json"
+    manifest_path.parent.mkdir(parents=True)
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "platform": "codex",
+                "scope": "project",
+                "samsara_version": "1.0.0",
+                "owned_paths": [],
+                "hook_commands": [],
+                "shared_paths": [".codex/config.toml", ".codex/hooks.json"],
+            }
+        )
+    )
+    installer = Installer("codex", runtime_command=runtime)
+
+    with patch.object(installer._detector, "detect", return_value=True):
+        installer.install(
+            source_dir=source,
+            scope="project",
+            cwd=project,
+            converted_source_dir=converted,
+        )
+
+    manifest = json.loads(manifest_path.read_text())
+    assert manifest["schema_version"] == 2
+    assert manifest["runtime"]["command"] == str(runtime.resolve())
+    installed = (project / ".agents/skills/samsara-research/SKILL.md").read_text()
+    assert f"'{runtime.resolve()}' run-companion" in installed
+
+
+def test_companion_smoke_failure_leaves_target_untouched(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    source.mkdir()
+    project = tmp_path / "project"
+    project.mkdir()
+    runtime = _runtime_command(tmp_path / "broken runtime", exit_code=7)
+    converted = _converted(tmp_path, skill_name="samsara-research")
+    script = converted / ".agents/skills/samsara-research/scripts/check.py"
+    script.parent.mkdir(parents=True)
+    script.write_text("print('ok')\n")
+    installer = Installer("codex", runtime_command=runtime)
+
+    with (
+        patch.object(installer._detector, "detect", return_value=True),
+        pytest.raises(InstallerError, match="[Cc]ompanion smoke check"),
+    ):
+        installer.install(
+            source_dir=source,
+            scope="project",
+            cwd=project,
+            converted_source_dir=converted,
+        )
+
+    assert list(project.iterdir()) == []
 
 
 def test_update_prunes_only_paths_owned_by_previous_manifest(tmp_path: Path) -> None:

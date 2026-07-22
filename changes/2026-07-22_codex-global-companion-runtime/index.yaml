@@ -1,0 +1,72 @@
+feature: codex-global-companion-runtime
+status: in_progress
+iteration_entry: null
+
+sources:
+  pre_thinking: pre-thinking.md
+  plan: 2-plan.md
+  acceptance: acceptance.yaml
+  overview: overview.md
+
+tasks:
+  - id: task-1
+    task_file: tasks/task-1.md
+    title: "Own durable runner installation state"
+    status: done
+    scar_count: 0
+    unresolved_assumptions: 0
+    planning_refs: [PL-D1]
+    decision_refs: [PT-D1, PT-D2, PT-D3, PT-S1, PT-S2, PT-S3]
+    acceptance_refs: [AC-1, AC-2]
+    depends_on: []
+    seam: runtime-provenance
+    affects:
+      - task: task-2
+        needs: "Preserve the scope-agnostic command that Task 1 materializes."
+      - task: task-3
+        needs: "Consume the recorded runtime and absolute command behavior."
+    anchors:
+      - path: "samsara_cli/installer/install.py"
+        why: "Existing ownership, placeholder, hook, and manifest lifecycle."
+      - path: "samsara_cli/main.py"
+        why: "CLI entrypoint that supplies runner identity to Installer."
+
+  - id: task-2
+    task_file: tasks/task-2.md
+    title: "Make companion guidance and syntax portable"
+    status: done
+    scar_count: 0
+    unresolved_assumptions: 0
+    planning_refs: [PL-D2]
+    decision_refs: [PT-D4, PT-D5, PT-S2]
+    acceptance_refs: [AC-3, AC-4]
+    depends_on: []
+    seam: command-materialization
+    affects:
+      - task: task-1
+        needs: "Replace the scope-agnostic runner token emitted by Task 2."
+      - task: task-3
+        needs: "Prove no-fallback guidance and syntax portability in live output."
+    anchors:
+      - path: "samsara_cli/config/platform/codex.yaml"
+        why: "Canonical target transformation rules."
+      - path: "pyproject.toml"
+        why: "Ruff target-version authority."
+
+  - id: task-3
+    task_file: tasks/task-3.md
+    title: "Prove and document clean-environment execution"
+    status: done
+    scar_count: 0
+    unresolved_assumptions: 0
+    planning_refs: [PL-D3]
+    decision_refs: [PT-D1, PT-D2, PT-D3, PT-D4, PT-EVAL, PT-S3]
+    acceptance_refs: [AC-5]
+    depends_on: [task-1, task-2]
+    seam: installation-evidence
+    affects: []
+    anchors:
+      - path: "tests/integration/test_codex_runtime_contract.py"
+        why: "Existing live conversion-to-install runtime evaluator."
+      - path: "README.md"
+        why: "Current Codex installation commands incorrectly use uv run."

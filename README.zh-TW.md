@@ -47,14 +47,15 @@ claude plugins add /path/to/samsara
 Samsara 以 Claude Code 插件的形式撰寫，但 `samsara-cli` 可以把它轉換並安裝到其他 agent 平台（例如 Codex）：
 
 ```bash
-source .venv/bin/activate
-uv run samsara-cli list-platforms              # 列出支援的目標平台
-uv run samsara-cli convert --platform codex    # 轉換輸出到 ./dist/codex/
-uv run samsara-cli install codex --scope project
-uv run samsara-cli validate --platform codex   # 驗證轉換結果
+uv tool install --force /path/to/samsara
+samsara-cli list-platforms                    # 列出支援的目標平台
+samsara-cli convert --platform codex          # 轉換輸出到 ./dist/codex/
+samsara-cli install codex --scope project
+samsara-cli install codex --scope global
+samsara-cli validate --platform codex         # 驗證轉換結果
 ```
 
-Converter 會把 skills、agents、hooks、references 轉換成目標平台的格式；`update` 可更新既有安裝。
+`uv tool install` 負責可長期使用的 CLI runtime；`samsara-cli install` 另外負責轉換後的 Codex files，並記錄它們實際使用的 runtime command。全域安裝會拒絕使用 source checkout 內的 `.venv` CLI，因為 checkout 移動或刪除後該 runtime 就會失效。Converter 會把 skills、agents、hooks、references 轉換成目標平台的格式；`update` 可更新既有安裝。
 
 ## 工作流程
 

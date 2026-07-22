@@ -189,7 +189,7 @@ def _evidence_refs(
         if line is not None:
             try:
                 line_count = len(resolved.read_text(encoding="utf-8").splitlines())
-            except OSError, UnicodeError:
+            except (OSError, UnicodeError):
                 errors.append(f"{ref_path}: line evidence is not readable text")
                 continue
             if line > line_count:
@@ -1050,7 +1050,7 @@ def main() -> int:
                 live.get("source", {}).get("commit") if isinstance(live, dict) else None
             )
             previous_commit = value if isinstance(value, str) else None
-        except OSError, UnicodeError, yaml.YAMLError:
+        except (OSError, UnicodeError, yaml.YAMLError):
             previous_commit = None
 
     try:

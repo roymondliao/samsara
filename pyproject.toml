@@ -44,6 +44,10 @@ markers = [
   "requires_codex: marks tests that require a local Codex CLI installation"
 ]
 
+[tool.ruff.per-file-target-version]
+"skills/*/scripts/*.py" = "py311"
+"agents/*/scripts/*.py" = "py311"
+
 [tool.uv.build-backend]
 module-name = "samsara_cli"
 module-root = ""

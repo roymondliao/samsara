@@ -1,0 +1,38 @@
+schema_version: 1
+bug_report_ref: "bug-report.yaml"
+
+root_cause:
+  status: "confirmed"
+  hypothesis: "The installer publishes companion commands that assume samsara-cli is persistently available on PATH, but uv run only exposes the repo-local executable during installation; Python 3.14-only formatter output then makes direct fallback execution fail on older Python runtimes."
+  evidence_refs:
+    - "samsara_cli/config/platform/codex.yaml:105"
+    - "samsara_cli/installer/install.py:467"
+    - "skills/codebase-map/scripts/validate_codebase_map.py:192"
+    - "pyproject.toml:11"
+  refuting_evidence: []
+  why_hidden: "Conversion and install tests checked file and placeholder resolution but did not launch an installed companion from a clean project environment without the source virtualenv on PATH."
+
+reproduction:
+  status: "reproduced"
+  evidence_ref: "Python 3.13 grammar parsing fails at skills/codebase-map/scripts/validate_codebase_map.py:195, and ~/.local/bin/samsara-cli does not exist."
+
+rot_path:
+  - from: "uv run samsara-cli install codex --scope global"
+    to: "installed SKILL.md companion command"
+    failed_guard: "Installer does not prove that the command runner remains resolvable after the installation process exits."
+    evidence_ref: "samsara_cli/installer/install.py:467"
+  - from: "missing samsara-cli command"
+    to: "direct system-Python fallback"
+    failed_guard: "Installed companion source is not constrained to a cross-version Python syntax floor."
+    evidence_ref: "skills/codebase-map/scripts/validate_codebase_map.py:192"
+
+death_test:
+  status: "specified"
+  evidence_ref: null
+  specification: "Install the live Codex conversion globally from an isolated launcher, remove the source virtualenv from PATH, enter a different Git project, and prove every installed run-companion command resolves and the Codebase Map validator parses under the declared companion syntax floor."
+
+repair:
+  authorized: false
+  scope: "structural"
+  route: "diagnosis_only"
+  rationale: "The repair changes installer/runtime ownership and the portability contract for every companion, so it requires explicit repair authorization rather than a task-local syntax edit."

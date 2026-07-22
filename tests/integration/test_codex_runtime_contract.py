@@ -10,6 +10,7 @@ import json
 import os
 import re
 import subprocess
+import sys
 import tomllib
 from pathlib import Path
 from unittest.mock import patch
@@ -22,6 +23,29 @@ from samsara_cli.installer.install import Installer
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 _SKILL_REF_RE = re.compile(r"\$([a-z][a-z0-9-]*)")
+
+
+def _durable_test_runtime(root: Path) -> Path:
+    runtime = root / "tool-bin" / "samsara-cli"
+    runtime.parent.mkdir(parents=True)
+    runtime.write_text(
+        f"#!{sys.executable}\n"
+        "import subprocess\n"
+        "import sys\n"
+        "import runpy\n"
+        "if len(sys.argv) >= 3 and sys.argv[1] == 'run-companion':\n"
+        "    result = subprocess.run([sys.executable, *sys.argv[2:]], check=False)\n"
+        "    raise SystemExit(result.returncode)\n"
+        "if len(sys.argv) == 3 and sys.argv[1] == 'check-companion':\n"
+        "    runpy.run_path(sys.argv[2], run_name='__samsara_companion_check__')\n"
+        "    raise SystemExit(0)\n"
+        "if len(sys.argv) == 2 and sys.argv[1] == 'version':\n"
+        "    print('samsara-cli test-runtime')\n"
+        "    raise SystemExit(0)\n"
+        "raise SystemExit(2)\n"
+    )
+    runtime.chmod(0o755)
+    return runtime
 
 
 def _convert_live(tmp_path: Path) -> Path:
@@ -65,6 +89,25 @@ def test_death__auto_gatekeeper_companion_is_shipped(tmp_path: Path) -> None:
         (output / ".codex/agents/samsara-auto-gatekeeper.toml").read_text()
     )
     assert "validate_auto_decisions.py" in gatekeeper["developer_instructions"]
+
+
+def test_death__converted_companion_commands_forbid_runtime_fallback(
+    tmp_path: Path,
+) -> None:
+    output = _convert_live(tmp_path)
+    consumers = []
+    for path in output.rglob("*"):
+        if not path.is_file() or path.suffix not in {".md", ".toml", ".txt"}:
+            continue
+        content = path.read_text(encoding="utf-8")
+        if "samsara-cli run-companion" not in content:
+            continue
+        consumers.append(path)
+        assert "CANNOT VALIDATE" in content
+        assert "python3" in content
+        assert "uv" in content
+
+    assert consumers, "Live Codex conversion must contain companion consumers"
 
 
 def test_death__codex_session_start_hooks_are_model_context_producers(
@@ -166,3 +209,62 @@ def test_death__live_conversion_installs_without_unresolved_companions(
         "validate_auto_decisions.py"
     )
     assert companion in manifest["owned_paths"]
+
+
+def test_death__global_companion_runs_from_foreign_cwd_with_clean_path(
+    tmp_path: Path,
+) -> None:
+    converted = _convert_live(tmp_path)
+    runtime = _durable_test_runtime(tmp_path / "runtime outside source")
+    home = tmp_path / "isolated home"
+    home.mkdir()
+    foreign_cwd = tmp_path / "foreign project"
+    foreign_cwd.mkdir()
+    installer = Installer("codex", runtime_command=runtime)
+
+    with (
+        patch.object(installer._detector, "detect", return_value=True),
+        patch.dict(
+            os.environ,
+            {"HOME": str(home), "PATH": "/usr/bin:/bin"},
+            clear=False,
+        ),
+    ):
+        installer.install(
+            source_dir=REPO_ROOT,
+            converted_source_dir=converted,
+            scope="global",
+            cwd=foreign_cwd,
+        )
+
+    manifest = json.loads((home / ".samsara/install-manifest.codex.json").read_text())
+    assert manifest["schema_version"] == 2
+    assert manifest["runtime"]["command"] == str(runtime.resolve())
+    installed_skill = (home / ".agents/skills/samsara-codebase-map/SKILL.md").read_text(
+        encoding="utf-8"
+    )
+    assert str(runtime.resolve()) in installed_skill
+    assert " run-companion" in installed_skill
+    assert str(REPO_ROOT / ".venv") not in installed_skill
+    validator = (
+        home / ".agents/skills/samsara-codebase-map/scripts/validate_codebase_map.py"
+    )
+    result = subprocess.run(
+        [manifest["runtime"]["command"], "run-companion", str(validator), "--help"],
+        cwd=foreign_cwd,
+        env={"HOME": str(home), "PATH": "/usr/bin:/bin"},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "--candidate" in result.stdout
+    assert "--expected-commit" in result.stdout
+
+
+def test_documented_codex_install_uses_durable_runtime() -> None:
+    for readme in (REPO_ROOT / "README.md", REPO_ROOT / "README.zh-TW.md"):
+        content = readme.read_text(encoding="utf-8")
+        assert "uv tool install --force /path/to/samsara" in content
+        assert "samsara-cli install codex --scope global" in content
+        assert "uv run samsara-cli install codex" not in content

@@ -5,6 +5,8 @@ Entry point: samsara-cli = "samsara_cli.main:app"
 
 Commands:
 - version: Show samsara-cli version
+- check-companion: Verify an installed companion can load in the managed runtime
+- run-companion: Execute an installed companion in the managed runtime
 - list-platforms: List available target platforms
 - convert: Convert samsara source to a target platform format
 - install: Install converted output to project or global scope
@@ -25,6 +27,7 @@ Source discovery convention:
 """
 
 import json
+import runpy
 import subprocess
 import sys
 from pathlib import Path
@@ -89,6 +92,23 @@ def run_companion(
         typer.echo(result.stderr, err=True, nl=False)
     if result.returncode:
         raise typer.Exit(code=result.returncode)
+
+
+@app.command(name="check-companion")
+def check_companion(
+    script: Annotated[
+        Path,
+        typer.Argument(help="Installed Samsara companion Python script"),
+    ],
+) -> None:
+    """Load a companion without entering its command-line main function."""
+    if not script.is_file():
+        _exit_with_error(f"Companion script does not exist: {script}", exit_code=2)
+    try:
+        runpy.run_path(str(script), run_name="__samsara_companion_check__")
+    except Exception as exc:
+        _exit_with_error(f"Companion cannot start: {script}: {exc}", exit_code=2)
+    typer.echo(f"COMPANION READY: {script}")
 
 
 # ---------------------------------------------------------------------------

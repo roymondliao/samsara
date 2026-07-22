@@ -1,0 +1,11 @@
+task_id: task-3
+completion_status: done
+known_shortcuts: []
+silent_failure_conditions: []
+assumptions_made:
+  - assumption: "A global companion starts from a foreign cwd with a clean PATH"
+    verified: true
+    note: "test_death__global_companion_runs_from_foreign_cwd_with_clean_path"
+debt_registered: false
+debt_location: null
+structural_decisions: []

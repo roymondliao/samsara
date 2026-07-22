@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import importlib.util
 import subprocess
 from pathlib import Path
@@ -27,6 +28,21 @@ def load_validator() -> ModuleType:
 
 
 VALIDATOR = load_validator()
+
+
+def test_all_companion_scripts_parse_with_python_311_grammar() -> None:
+    scripts = sorted(
+        path
+        for root in (ROOT / "skills", ROOT / "agents")
+        for path in root.glob("*/scripts/*.py")
+    )
+    assert scripts
+    for script in scripts:
+        ast.parse(
+            script.read_text(encoding="utf-8"),
+            filename=str(script),
+            feature_version=(3, 11),
+        )
 
 
 def git(project: Path, *args: str) -> str:

@@ -301,6 +301,50 @@ class ConversionEngine:
                 f"References conversion failed: {e}. No partial output will be kept."
             ) from e
 
+        self._attach_companion_runtime_contracts(temp_dir)
+
+    def _attach_companion_runtime_contracts(self, temp_dir: Path) -> None:
+        """Attach the Codex failure contract to every companion command consumer."""
+        if self._platform != "codex":
+            return
+        contract = (
+            "## Companion Runtime Contract\n\n"
+            "Run the installed `samsara-cli run-companion` command exactly as written. "
+            "If that executable is missing or cannot start, report `CANNOT VALIDATE: "
+            "Samsara companion runtime unavailable` and stop. Do not replace it with "
+            "`python`, `python3`, `uv`, or another inferred runtime."
+        )
+        for path in sorted(temp_dir.rglob("*")):
+            if not path.is_file() or path.suffix.lower() not in {
+                ".md",
+                ".toml",
+                ".txt",
+            }:
+                continue
+            content = path.read_text(encoding="utf-8")
+            if (
+                "samsara-cli run-companion" not in content
+                or "## Companion Runtime Contract" in content
+            ):
+                continue
+            if path.suffix.lower() == ".toml":
+                closing_quote = content.rfind('"""')
+                if closing_quote < 0:
+                    raise EngineError(
+                        f"Cannot attach companion runtime contract to TOML without "
+                        f"a multiline instruction body: {path}."
+                    )
+                content = (
+                    content[:closing_quote].rstrip()
+                    + "\n\n"
+                    + contract
+                    + "\n"
+                    + content[closing_quote:]
+                )
+            else:
+                content = content.rstrip() + "\n\n" + contract + "\n"
+            path.write_text(content, encoding="utf-8")
+
     def _get_naming(self) -> NamingConfig:
         """Get NamingConfig from platform config.
 
