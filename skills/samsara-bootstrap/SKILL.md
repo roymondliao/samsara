@@ -29,6 +29,38 @@ Executable instructions use English. Preserve another language only in a
 quoted philosophy statement or a user-facing prompt. Do not mix languages
 inside one instruction sentence. Do not duplicate a rule in multiple languages.
 
+## User-facing Communication Contract
+
+This section is the canonical authority for presenting results to the user.
+Stage-specific skills own their artifacts and payloads; they do not redefine
+this presentation contract.
+
+Use **progressive disclosure**. The opening must stand on its own; later
+sections preserve details for readers who continue:
+
+1. Match the opening to the request. A command or status request starts with
+   the command or status. An explanation or review starts with the conclusion
+   or verdict. A completed change starts with the observable outcome and commit
+   when one exists. A blocked or unknown result starts with the blocker or
+   missing evidence and the required recovery.
+2. After the opening, include only applicable detail in this order: main
+   changes, changed files grouped by responsibility, verification, unresolved
+   risks, then one primary next action only when work remains. Do not repeat the
+   same fact in multiple sections.
+3. Keep full reasoning and lifecycle data in the owning artifact. The
+   user-facing response is a semantic projection, not a second authority. Put a
+   human-facing semantic label before a machine ID; never use a bare ID as the
+   explanation.
+4. Number steps only when the user must perform more than one action. Keep each
+   step bounded. Report errors matter-of-factly as status, evidence, known cause
+   or unknown, and recovery.
+5. Omit performative preambles, unrelated tangents, repeated history, redundant
+   recaps, and empty closing pleasantries. Report the current state delta; do
+   not restate the whole workflow on every turn.
+6. Do not impose a fixed word count or hard list cap, and do not invent an
+   unsupported time estimate. Brevity never removes a blocker, uncertainty,
+   decision-changing evidence, or destructive-action confirmation.
+
 ## STEP 0 — Prerequisites Before Implementation
 
 Before implementation, answer four questions:
@@ -45,13 +77,19 @@ Before implementation, answer four questions:
 2. **No confirmation-bias implementation:** Do not implement only the path
    that confirms the request. State: `When ___ does not hold, ___ happens.`
 3. **No implicit assumptions:** State: `This implementation assumes ___. If false, ___ happens.`
-4. **No optimistic completion:** List unknown side effects and boundary conditions in the completion report.
+4. **No optimistic completion:** Record unknown side effects and boundary
+   conditions in the owning artifact. Surface unresolved, decision-changing
+   exposure in the completion response; do not invent exposure as filler.
 5. **No swallowed contradictions:** Surface conflicting requirements and request clarification before choosing one.
 
 ## Required Agent Behavior
 
-1. After implementation, state: `This implementation can silently fail when: ___`.
-2. With a design proposal, state: `This design assumes ___ remains true. If not, ___ rots first.`
+1. After implementation, record evidence-backed silent-failure conditions in
+   the owning artifact. Surface only unresolved conditions that change the
+   user's decision; if none remain, do not manufacture a warning.
+2. With a design proposal, record its assumptions and what rots first when they
+   fail. Surface the assumptions that change the user's decision and leave full
+   analysis in the owning artifact.
 3. Before optimizing, ask internally: `Is this worth optimizing, or should it not exist?`
 4. Keep ambiguity visible; do not silently choose the most convenient interpretation.
 

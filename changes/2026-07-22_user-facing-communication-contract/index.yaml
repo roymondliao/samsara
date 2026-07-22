@@ -1,0 +1,46 @@
+feature: user-facing-communication-contract
+status: in_progress
+iteration_entry: null
+
+sources:
+  pre_thinking: pre-thinking.md
+  plan: 2-plan.md
+  acceptance: acceptance.yaml
+  overview: overview.md
+
+tasks:
+  - id: task-1
+    task_file: tasks/task-1.md
+    title: "Define the canonical presentation contract"
+    status: done
+    scar_count: 0
+    unresolved_assumptions: 0
+    planning_refs: [PL-D1]
+    decision_refs: [PT-D1, PT-D2, PT-D3, PT-D4, PT-S1, PT-S2]
+    acceptance_refs: [AC-1, AC-2, AC-3, AC-4]
+    depends_on: []
+    seam: artifact-to-response
+    affects:
+      - task: task-2
+        needs: "Guard the canonical semantics without freezing exact prose."
+    anchors:
+      - path: "skills/samsara-bootstrap/SKILL.md"
+        why: "Session-wide instruction authority injected into every workflow."
+
+  - id: task-2
+    task_file: tasks/task-2.md
+    title: "Guard and evaluate communication behavior"
+    status: done
+    scar_count: 0
+    unresolved_assumptions: 0
+    planning_refs: [PL-D2]
+    decision_refs: [PT-D1, PT-D3, PT-D4, PT-EVAL, PT-S1, PT-S2]
+    acceptance_refs: [AC-2, AC-3, AC-4, AC-5]
+    depends_on: [task-1]
+    seam: result-to-detail
+    affects: []
+    anchors:
+      - path: "tests/test_skills/test_bootstrap_routing_scope.py"
+        why: "Existing semantic guard style for Bootstrap behavior."
+      - path: "samsara_cli/converter/engine.py"
+        why: "Live Codex conversion path that must preserve Bootstrap content."
