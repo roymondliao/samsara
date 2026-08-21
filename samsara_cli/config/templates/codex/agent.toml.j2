@@ -10,6 +10,9 @@ developer_instructions = """
 {% if model is defined and model %}
 model = "{{ model }}"
 {% endif %}
+{% if model_reasoning_effort is defined and model_reasoning_effort %}
+model_reasoning_effort = "{{ model_reasoning_effort }}"
+{% endif %}
 {% if sandbox_mode is defined and sandbox_mode %}
 sandbox_mode = "{{ sandbox_mode }}"
 {% endif %}

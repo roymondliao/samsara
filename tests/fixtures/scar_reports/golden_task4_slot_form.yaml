@@ -1,0 +1,75 @@
+task_id: task-4
+completion_status: done
+# Golden re-expression (task-5, feature scar-report-subtraction): every content
+# point in the 232-line source report lands here, in the commit message, in
+# review-record.md, or is folded into an item below with the fold noted — see
+# changes/2026-07-07_scar-report-subtraction/golden-re-expression.md for the
+# full traceability table. Source (read-only): changes/2026-07-02_workflow-
+# subtraction-optimization/scar-reports/task-4-scar.yaml
+
+known_shortcuts:
+  - what: "Auto Mode Gate pointer sections exceed the task's own <=8-line cap: research/planning=11, pre-thinking=15, implement=18, iteration=18, validate-and-ship=48 lines"
+    bites_when: "a reader takes the <=8 cap literally without checking actual per-skill counts"
+    where: "skills/{research,pre-thinking,planning,implement,iteration,validate-and-ship}/SKILL.md"
+    accepted_because: "task anticipated the overage —「它的指針段預期超過 8 行上限，記錄實際行數與理由即可」; each overage names required content (prompt sources, decision-point lists), not filler"
+  - what: "canonical Stage Gate Protocol addition (+27 raw lines) is ~59% of the 6 skills' combined decrease (-46 lines), not far smaller as a strict ratio"
+    bites_when: "a reader expects the acceptance criteria's ratio wording literally as a strict numeric bound"
+    where: "references/auto-mode.md Stage Gate Protocol vs skills/*/SKILL.md Auto Mode Gate"
+    accepted_because: "the +27 lines is new content (dispatch mechanism, decision-value semantics) no skill stated explicitly before, not moved/duplicated text"
+  - what: "validate-and-ship Step 0 body still generally restates unknown/fail meaning, overlapping the Auto Mode Gate override list"
+    bites_when: "Step 0's Result/Red-Flags wording or the Auto Gate override wording is edited without checking the other"
+    where: "skills/validate-and-ship/SKILL.md Step 0 body vs Auto Mode Gate overrides"
+    accepted_because: "test-guarded belt-and-suspenders (test_security_gate_fold.py pins the phrase inside Auto Gate specifically); re-review when either wording changes"
+  - what: "3 literal test-required phrases were split mid-phrase by a markdown line-wrap while drafting pointer sections"
+    bites_when: "a future edit re-wraps these lines without keeping the exact phrase on one physical line"
+    where: "skills/implement/SKILL.md:248-250, skills/validate-and-ship/SKILL.md:209-214"
+    status: resolved
+    resolution: "re-wrapped so each phrase stays on one line; grep-confirmed single-line match, full suite green"
+
+silent_failure_conditions:
+  - systemic_ref: doc-vs-runtime-obedience
+    note: "6 Auto Mode Gate sections assume the executing agent opens auto-mode.md's Stage Gate Protocol; nothing enforces the read"
+  - what: "anti-duplication death test matches 4 VERBATIM canonical-decision substrings; a paraphrased re-embedding is not caught"
+    bites_when: "a skill re-embeds the same meaning in different words instead of copy-pasting the canonical text"
+    where: "tests/test_auto_mode/test_skill_auto_mode_protocol_death.py"
+    accepted_because: "same doc-vs-runtime-obedience-adjacent limit as any grep-based doc-contract test; durable guard is deleting residue when found, not paraphrase-matching regex"
+  - what: "a live byte-identical 'reject stops the auto run' residue had already shipped in 5 skills, green under the anti-dup test"
+    bites_when: "pre-existing duplicate text is never retroactively flagged by a test written after the text already landed"
+    where: "5 skills' Auto Mode Gate sections (see review-record.md for the review round that found this)"
+    status: resolved
+    resolution: "5 residue lines deleted inline (canonical already covers reject); 829 tests green"
+  - what: "anti-dup predicate initially matched only 1 of 4 canonical decision-value definitions (revise), missing proceed/reject/accept_gap re-embedding"
+    bites_when: "a skill re-embeds proceed/reject/accept_gap's canonical wording without also copying revise's wording"
+    where: "tests/test_auto_mode/test_skill_auto_mode_protocol_death.py"
+    status: resolved
+    resolution: "broadened to check all 4 via any(); verified by injecting the accept_gap phrase and confirming the test caught it, then restored + 829 passed"
+  - what: "auto-mode.md's Security And Privacy Unknowns trim (restatement collapsed to policy axiom + pointer) has no test pinning it"
+    bites_when: "someone re-adds the trimmed procedure restatement"
+    where: "references/auto-mode.md Security And Privacy Unknowns"
+
+assumptions_made:
+  - assumption: "fast-track/debugging/codebase-map/writing-skills have no Auto Mode Gate section, so dedup skips them"
+    verified: true
+    note: "grep -rn 'Auto Mode Gate' skills/{fast-track,debugging,codebase-map,writing-skills}/ -> 0 matches"
+  - assumption: "integration tests mentioning auto-decisions.md/Auto Mode Gate target the converted gatekeeper agent output, not any workflow skill's full text"
+    verified: true
+    note: "tests/integration/test_codex_runtime_contract.py::test_death__auto_gatekeeper_companion_is_shipped"
+  - assumption: "test_auto_mode_docs_death.py asserts only README/overview text, not any individual skill's Auto Mode Gate section"
+    verified: true
+    note: "grep 'Auto Mode Gate' tests/test_auto_mode/test_auto_mode_docs_death.py -> 0 matches"
+  - assumption: "test_security_gate_fold.py stays green against the redesigned validate-and-ship section with no edit to that test"
+    verified: true
+    note: "uv run pytest tests/test_skills/test_security_gate_fold.py -> 21 passed, unchanged"
+
+debt_registered: true
+debt_location: "skills/validate-and-ship/SKILL.md Step 0 vs Auto Mode Gate overlap; references/auto-mode.md canonical home"
+
+structural_decisions: []
+
+narrative: |
+  Design choice not built (Structural Honesty refusal): the canonical Stage
+  Gate Protocol section does not restate the Decision Log Contract's Required
+  Fields/Entry Template — it points at them. A second canonical home was
+  tempting but there is only ONE consumer (the gatekeeper writing an entry)
+  and no second force requiring a split; restating it would be exactly the
+  re-duplication this task exists to remove.

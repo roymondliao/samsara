@@ -1,0 +1,17 @@
+task_id: task-2
+completion_status: done
+known_shortcuts: []
+silent_failure_conditions: []
+assumptions_made:
+  - assumption: "Codex conversion preserves Bootstrap prose without semantic rewriting"
+    verified: true
+    note: "test_codex_conversion_preserves_the_communication_contract"
+debt_registered: false
+debt_location: null
+structural_decisions:
+  - decision: "Guard load-bearing semantics instead of exact response formatting"
+    serves_seam: result-to-detail
+    forced_by:
+      - "seam: result-to-detail"
+    refused: "Exact paragraph counts, exact prose snapshots, and arbitrary length assertions"
+    risk_if_wrong: "A wording change could weaken behavior while retaining the guarded terms"

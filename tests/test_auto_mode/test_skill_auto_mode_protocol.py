@@ -25,7 +25,10 @@ from tests.test_auto_mode.test_protocol_helpers import (
     ALL_WORKFLOW_SKILLS,
     BOOTSTRAP,
     EARLY_STAGE_SKILLS,
+    ITERATION_FLOW,
     LATER_STAGE_SKILLS,
+    PLANNING_FLOW,
+    PRE_THINKING_FLOW,
     REQUIRED_WORKFLOW_STAGES,
     read,
     section,
@@ -38,17 +41,21 @@ def _content_line_count(section_text: str) -> int:
     return len([line for line in section_text.splitlines() if line.strip()])
 
 
-class TestBootstrapExecutionModeProtocol:
-    def test_bootstrap_declares_two_execution_modes(self):
-        mode_section = section(read(BOOTSTRAP), "Execution Mode Selection")
+class TestResearchExecutionModeProtocol:
+    def test_research_declares_two_execution_modes(self):
+        mode_section = section(
+            read(EARLY_STAGE_SKILLS["research"]),
+            "Step 0: Execution Mode Selection",
+        )
+        normalized = mode_section.lower()
 
         assert "`human-in-the-loop`" in mode_section
         assert "`auto`" in mode_section
-        assert "Default" in mode_section
-        assert "session-level" in mode_section
+        assert "default" in normalized
+        assert "workflow-run" in mode_section
         assert "Execution mode:" in mode_section
         assert "Execution mode? Choose `human-in-the-loop` or `auto`." in mode_section
-        assert 'subagent_type: "samsara:auto-gatekeeper"' in mode_section
+        assert "1-kickoff.md" in mode_section
 
 
 class TestStageGateProtocolCanonicalContract:
@@ -75,7 +82,7 @@ class TestStageGateProtocolCanonicalContract:
         Fields / Entry Template sections above it, not re-declare the field
         list — the field list has exactly one home (Required Fields)."""
         protocol = self._protocol()
-        assert "Required Fields" in protocol or "Decision Log Contract" in protocol
+        assert "Entry Shape" in protocol or "Decision Log Contract" in protocol
 
     def test_protocol_defines_all_four_decision_values_with_meaning(self):
         protocol = self._protocol()
@@ -128,7 +135,8 @@ class TestStageSpecificInlineBehaviorPreserved:
 
     def test_implement_names_execution_strategy_and_completion_prompts(self):
         auto_section = section(read(LATER_STAGE_SKILLS["implement"]), "Auto Mode Gate")
-        assert "implementation execution-mode selection" in auto_section
+        assert "implementation strategy selection" in auto_section
+        assert "implementation.strategy" in auto_section
         assert "Subagent parallel" in auto_section
         assert "Inline sequential" in auto_section
 
@@ -153,7 +161,7 @@ class TestStageSpecificInlineBehaviorPreserved:
             "unknown result",
             "accepted risk",
             "prior gate entries",
-            "after appending the final validation decision",
+            "after the Gatekeeper appends the final validation decision",
         ):
             assert term in auto_section
 
@@ -195,33 +203,36 @@ class TestPrimaryEvaluatorProtocol:
         decision_sections = {
             "research transition": (EARLY_STAGE_SKILLS["research"], "Transition"),
             "pre-thinking gap questions": (
-                EARLY_STAGE_SKILLS["pre-thinking"],
-                "Step 5 — Ask what must be asked",
+                PRE_THINKING_FLOW,
+                "Execution Mode Routing",
             ),
             "pre-thinking evaluation contract": (
-                EARLY_STAGE_SKILLS["pre-thinking"],
-                "Evaluation Contract",
+                PRE_THINKING_FLOW,
+                "Execution Mode Routing",
             ),
             "pre-thinking commitment": (
-                EARLY_STAGE_SKILLS["pre-thinking"],
-                "Commitment",
+                PRE_THINKING_FLOW,
+                "Execution Mode Routing",
             ),
-            "planning transition": (EARLY_STAGE_SKILLS["planning"], "Transition"),
-            "implement execution mode": (
+            "planning transition": (PLANNING_FLOW, "7. Transition"),
+            "implement execution strategy": (
                 LATER_STAGE_SKILLS["implement"],
-                "Execution Mode Selection",
+                "Execution Strategy Selection",
             ),
-            "implement transition": (LATER_STAGE_SKILLS["implement"], "Transition"),
+            "iteration entry triage": (
+                ITERATION_FLOW,
+                "Entry Triage",
+            ),
             "iteration triage": (
-                LATER_STAGE_SKILLS["iteration"],
-                "Step 2: Triage (Human Gate)",
+                ITERATION_FLOW,
+                "Step 2: Triage (Execution-Mode Gate)",
             ),
             "iteration fix handling": (
-                LATER_STAGE_SKILLS["iteration"],
+                ITERATION_FLOW,
                 "Step 3: Fix (Per-Fix Commit)",
             ),
             "iteration round gate": (
-                LATER_STAGE_SKILLS["iteration"],
+                ITERATION_FLOW,
                 "Step 4: Round Check + Safety Valve",
             ),
             "security step0 gate": (
@@ -235,7 +246,7 @@ class TestPrimaryEvaluatorProtocol:
         }
 
         for label, (path, heading) in decision_sections.items():
-            decision_section = section(read(path), heading)
+            decision_section = " ".join(section(read(path), heading).split())
             assert "`Execution mode: human-in-the-loop`" in decision_section, label
             assert "`Execution mode: auto`" in decision_section, label
             assert "do not ask the user" in decision_section, label

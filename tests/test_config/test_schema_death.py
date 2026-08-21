@@ -123,7 +123,7 @@ class TestInvalidRegexPattern:
             scope="body",
             type="regex",
             match=r'invoke `samsara:([\w-]+)`',
-            replace=r'use the `$samsara-\1` skill',
+            replace=r'use the `$\1` skill',
             priority="high",
         )
         assert rule.match == r'invoke `samsara:([\w-]+)`'
@@ -249,7 +249,7 @@ class TestRegexReplaceBackrefValidation:
                 scope="body",
                 type="regex",
                 match=r"invoke `samsara:([\w-]+)`",
-                replace=r"use the `$samsara-$1` skill",
+                replace=r"use the `$$1` skill",
                 priority="high",
             )
         errors = exc_info.value.errors()
@@ -275,7 +275,7 @@ class TestRegexReplaceBackrefValidation:
             scope="body",
             type="regex",
             match=r"invoke `samsara:([\w-]+)`",
-            replace=r"use the `$samsara-\1` skill",
+            replace=r"use the `$\1` skill",
             priority="high",
         )
         assert r"\1" in rule.replace
@@ -293,13 +293,13 @@ class TestRegexReplaceBackrefValidation:
         assert rule.replace == "$100"
 
     def test_dollar_sign_not_followed_by_digit_passes(self):
-        """$samsara (not a backref) must pass — only $N is dangerous."""
+        """$skill (not a backref) must pass — only $N is dangerous."""
         rule = TransformationRule(
             id="dollar_non_backref",
             scope="body",
             type="regex",
             match=r"samsara:([\w-]+)",
-            replace=r"$samsara-\1",
+            replace=r"$skill-\1",
             priority="high",
         )
-        assert "$samsara" in rule.replace
+        assert "$skill" in rule.replace

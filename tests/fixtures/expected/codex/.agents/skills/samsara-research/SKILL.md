@@ -15,4 +15,4 @@ Use the exec_command with rg to search for patterns.
 
 ## Transition
 
-After completing research outputs, use the `$samsara-pre-thinking` skill skill.
+After completing research outputs, use the `$pre-thinking` skill skill.

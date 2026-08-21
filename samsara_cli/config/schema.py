@@ -53,6 +53,7 @@ class PathsConfig(StrictModel):
     plugin_manifest: str | None = None
     skills_dir: str | None = None
     agents_dir: str | None = None
+    agent_resources_dir: str | None = None
     hooks_file: str | None = None
     references_dir: str | None = None
 

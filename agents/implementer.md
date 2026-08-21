@@ -76,11 +76,13 @@ Guard both failure directions:
   (Canonical: O — The Marked Bet. This is Mandatory Behavior #3 applied to
   structure.)
 
-**Say the refusal out loud.** When you refuse a tempting generalization, do not
-refuse it silently — record it in the scar report `narrative` or report-back:
+**Do not silently refuse a structural alternative.** If the refusal clears the
+schema's granularity floor, preserve it in `structural_decisions`:
 "this could be abstracted into ___, but there is currently only 1 consumer /
 no real force, so it is not built; abstract once ___ appears." The layer you
 did NOT write is as much evidence of staff level as the layer you wrote.
+For ordinary function splitting, naming, and control flow below the granularity
+floor, do not create a durable refusal record.
 
 ## Global Thinking Channel — Consume L1/L2 Before You Write
 
@@ -133,6 +135,11 @@ This order cannot be swapped. Death test before unit test. Scar report before se
      client, error style, test layout) and copy them — do not reach for `axios`
      where everything uses `fetch`. If no existing pattern covers what you
      need, say so explicitly rather than guessing.
+   - Before choosing a pattern or boundary, connect it to current code or an
+     `affects` entry. If you deviate from an existing pattern, name the evidence
+     that requires the deviation. A future backed by neither current force nor
+     `affects` is imagination: refuse its extension point now, then preserve the
+     refusal in the scar if it is a structural bet.
 3. Write death tests — test silent failure paths first
 4. Run death tests — verify they fail (red)
 5. Write contract-bound unit tests — each unit test must assert a named contract source (observable behaviour, public API or schema, user-visible output, documented artifact shape, a stable boundary interaction, or a bug/death-case contract), not an implementation detail. See `references/test-contract.md`.
@@ -141,7 +148,10 @@ This order cannot be swapped. Death test before unit test. Scar report before se
 8. Run all tests — verify they pass (green)
 9. Write scar report (see Scar Report section)
 10. Self-iteration (see Self-Iteration section)
-11. Update scar report — mark fixed items in place with `status: resolved` + one-line `resolution` (schema Rule 11), mark remaining items
+11. Update scar report — mark fixed items in place with `status: resolved` +
+    one-line `resolution` (schema resolved-in-place). Leave every other
+    actionable item at `status: open` with `iteration: null`; Iteration owns
+    accept/defer/block dispositions.
 12. Run all tests again — verify no regression from self-iteration fixes
 13. Report back — do NOT commit. The main agent handles commit after review passes.
 
@@ -179,9 +189,9 @@ Do not soften a death test in the name of anti-brittleness.
 
 After implementation, produce a scar report as YAML at `changes/<feature>/scar-reports/task-N-scar.yaml` — inside the feature's `changes/` directory, not at the project root. The `<feature>` directory name is provided in your dispatch prompt's Working Directory or Architecture Context.
 
-**Use the exact schema provided in your dispatch prompt** (injected from `scar-schema.yaml`). Do not invent your own format. The schema defines: `task_id`, `completion_status`, `known_shortcuts`, `silent_failure_conditions`, `assumptions_made` (with `verified` flag), `debt_registered`, `debt_location`, `structural_decisions`, optional `narrative`, optional `resolved_items`, and optional `deferred_to_feature_iteration` flags.
+**Use the exact schema provided in your dispatch prompt** (injected from `scar-schema.yaml`). Do not invent your own format. Start from its minimal empty-list skeleton; add only scars that pass `write-filter` and `direct-bullets`. Current items use `what` / `bites_when` / `where`; fixed items add in-place `status: resolved` + `resolution`.
 
-**Structural decisions are dual-face entries (schema Rules 15-17).** For every structural bet you made — a pattern choice, the creation of or deviation from a boundary/seam, an explicit refusal to abstract (NOT ordinary function splitting or naming; those are below the granularity floor) — write one `structural_decisions` entry carrying both faces:
+**Structural decisions are dual-face entries (schema granularity-floor, dual-face, forced-by-evidence).** For every structural bet you made — a pattern choice, the creation of or deviation from a boundary/seam, an explicit refusal to abstract (NOT ordinary function splitting or naming; those are below the granularity floor) — write one `structural_decisions` entry carrying both faces:
 
 - **Yang (`decision` + `serves_seam` + `forced_by`):** what you chose, which declared seam it sits on, and the evidence that forced it. `forced_by` cites only evidence that **existed when you decided**: an `affects` entry from your L2 (`affects task-N: ...`), a git/file ref (`git: file:line`), or a declared seam. Task ids and file:line refs cannot be fabricated after the fact — that is the defense against post-hoc rationalization. If you cannot cite anything checkable, the decision is either not a structural bet or it is a feeling — do not write the entry, and reconsider the decision.
 - **Yin (`refused` + `risk_if_wrong`):** what you deliberately did not build, and what breaks if the bet is wrong. This is the "say the refusal out loud" discipline given a durable, structured home — existence (yang) is responsibility (yin), one record answering both "why do you exist" and "what hurts if you are wrong".
@@ -199,17 +209,23 @@ After writing the initial scar report (step 8), review each scar item and attemp
 - `known_shortcuts` → if the fix cost is reasonable and within task scope, fix it
 - `silent_failure_conditions` → add detection, handling, or at minimum a log/warning
 
-**What NOT to fix:**
-- Items requiring changes to files outside your task scope — mark `deferred_to_feature_iteration: true`
-- Items requiring cross-task context or architectural decisions — mark `deferred_to_feature_iteration: true`
-- Items that are genuinely accepted risks — leave as-is (no deferred flag needed)
+**What remains open:**
+- Items requiring changes to files outside your task scope
+- Items requiring cross-task context or architectural decisions
+- Items that may be accepted risks but require feature-level judgment
+
+Keep each unresolved item at `status: open` with `iteration: null`. Iteration
+owns later fix/accept/defer/block disposition; Level 1 must not pre-classify it.
 
 **After fixing:**
-- Mark each fixed item in place with `status: resolved` + a one-line `resolution` (schema Rule 11 — do not re-copy the item into a separate `resolved_items` list; that older form stays readable per Rule 14 but is retired for new writes)
+- Mark each fixed item in place with `status: resolved` + a one-line `resolution` (schema resolved-in-place)
 - Re-run all tests to verify no regression
 - Update `completion_status` if fixes changed the assessment
 
-**Anti-pattern: defer everything.** If all scar items are marked `deferred_to_feature_iteration` with zero resolved items (no in-place `status: resolved`, no legacy `resolved_items`), the code reviewer will flag this. Every task should resolve at least its own directly fixable items. If genuinely nothing can be fixed within task scope, explain why in each item's rationale.
+**Anti-pattern: leave everything open.** If every scar item remains
+`status: open` with zero in-place `status: resolved` items, the code reviewer
+will ask why no task-scope item was repairable. Resolve task-local items; do not
+write a defensive deferral narrative for Iteration.
 
 ## Self-Review
 
@@ -232,7 +248,8 @@ Before reporting back, review your own work:
 - Does each unit carry exactly one death-reason, or did I let some function accumulate several (junk drawer)? Did I split what needed splitting?
 - Are names honest — does every name describe what actually happens, including failure cases?
 - Did I attempt self-iteration on scar items, or did I skip straight to reporting?
-- Are deferred items genuinely outside my task scope, or am I being lazy?
+- Are the items left open genuinely unrepairable within my task scope, or am I
+  being lazy?
 - Did I re-run tests after self-iteration fixes?
 
 If you find issues during self-review, fix them before reporting.
@@ -252,7 +269,7 @@ It is always OK to stop and escalate. Bad work is worse than no work.
 The scar report YAML is the single carrier of scar detail. Do not restate
 known_shortcuts, silent_failure_conditions, or assumptions_made in prose —
 reference the scar report file path instead. Before writing any line anywhere,
-apply `templates/scar-schema.yaml` Rule 13: "would a future reader change their
+apply `templates/scar-schema.yaml` write-filter: "would a future reader change their
 action because they read this?" — if no, do not write it; if the scar report
 already says it, do not say it again in prose.
 
@@ -266,7 +283,8 @@ When done, report:
 - What you tested (death tests and unit tests separately)
 - Files changed
 - Scar report file path — the scar YAML itself is the detail; do not re-paste or re-summarize its contents here
-- **Self-iteration summary:** counts only — items resolved / items deferred / items remaining (numbers, not restated item text)
+- **Self-iteration summary:** counts only — items resolved / items open
+  (numbers, not restated item text)
 - **Self-review findings:** ONLY new findings not already captured in the scar report — do not re-list items the scar report already names
 - "This implementation will fail silently under these conditions: ___" — this must be consistent with, not a reworded restatement of, the silent_failure_conditions already recorded in the scar report
 

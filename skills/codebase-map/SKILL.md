@@ -1,25 +1,92 @@
 ---
 name: codebase-map
-description: Use when entering a new project for the first time, or when the codebase has changed significantly — generates a yin-side codebase map with structural analysis and silent failure surface assessment
+description: Use when entering a Git project for the first time or when its committed HEAD no longer matches the recorded codebase map
 ---
 
-# Codebase Map — Yin-Side Project Analysis
+# Codebase Map — Committed Project Knowledge Graph
 
-Generate a map of the project that answers both "what is this system?" (yang) and "where is this system pretending to be healthy?" (yin).
+Map one committed Git snapshot: what exists, what each part provides, why it
+exists, and how parts relate. Git owns repository facts; this skill owns the
+structural and semantic graph for `source.commit`. The map is derived context,
+not feature authority.
 
-> 一般的 codebase map 是陽面的 —「系統長什麼樣」。Samsara 的 codebase map 回答「系統在哪裡假裝健康」。
+## Entry Contract
 
-## Triggers
+1. Require a Git repository with a valid `HEAD`. Do not map an unborn branch or
+   non-Git directory.
+2. Verify `.samsara/codebase-map.yaml` and
+   `.samsara/codebase-map/<HEAD>/` are ignored with `git check-ignore`. Stop if
+   either path could be committed; do not edit ignore rules automatically.
+3. Resolve scan scope once by content role, not fixed folder names. Default
+   `roots` to the project root unless the user supplies a narrower scope.
+4. Exclude workflow artifacts under `changes/`, prior map output under
+   `.samsara/`, VCS internals, caches, temporary files, binary payloads, and
+   secret values. Record excluded or referenced-but-unscanned paths.
 
-1. **User-invoked:** `samsara:codebase-map` is invoked directly by the user.
-2. **Auto-initiated:** `samsara:pre-thinking` auto-initiates regeneration when
-   the map is present but stale and churn exceeds the threshold.
-   - Churn = changed source files since `last_updated`, excluding paths under
-     `changes/`, `docs/`, `bugfix/`.
-   - Threshold = the `staleness_churn_threshold` field (default 30) in
-     `.samsara/codebase-map.yaml`.
-   - In human-in-the-loop mode, Phase 4 human review is retained for
-     auto-initiated runs.
+Codebase Map describes committed `HEAD` only. Never read or persist uncommitted
+working-tree content. Feature workflows inspect their own working changes.
+
+## Git Snapshot State
+
+Read `source.commit` from `.samsara/codebase-map.yaml` and compare it with
+`git rev-parse HEAD`:
+
+- `CURRENT`: equal.
+- `UPDATE_REQUIRED`: different.
+- `MISSING`: no root manifest.
+- `UNKNOWN`: Git, HEAD, schema, or recorded commit cannot be resolved.
+
+Do not persist changed paths, commit lists, churn counts, thresholds, or state.
+Git computes them when needed. A legacy map without `schema_version: 2` and
+`source.commit` requires a Level 3 rebuild.
+
+For every generation, create a detached temporary worktree at the captured
+HEAD. Pass its root, the same resolved scan scope, and the captured commit to
+every explorer. If HEAD changes before publish, reject the candidate.
+
+```text
+git rev-parse HEAD
+git worktree add --detach <temporary-snapshot-root> <captured-HEAD>
+```
+
+Remove the temporary worktree after validation or failure:
+
+```text
+git worktree remove --force <temporary-snapshot-root>
+```
+
+Do not fall back to the working tree when worktree creation or cleanup fails.
+
+## Update Level
+
+Inspect the cumulative Git diff from the recorded commit to HEAD. File count
+never selects the level.
+
+```text
+git merge-base --is-ancestor <recorded-commit> <captured-HEAD>
+git diff --name-status --find-renames <recorded-commit>..<captured-HEAD>
+git diff --find-renames <recorded-commit>..<captured-HEAD> -- <affected-paths>
+```
+
+Git reports paths, renames, and content changes. The workflow owner classifies
+which recorded map surfaces those changes affect; it does not copy Git output
+into the map.
+
+- **Level 0 — Snapshot checkpoint:** no mapped structure, semantics, evidence,
+  config, schema, flow, or risk changed. Reuse all module files.
+- **Level 1 — Targeted refresh:** existing local nodes changed without module,
+  public-interface, dependency, config, schema, or flow topology changes. The
+  main agent refreshes affected nodes and evidence.
+- **Level 2 — Structural incremental:** mapped topology or meaning changed.
+  Dispatch only the Structure or Infrastructure explorer required by the diff,
+  then Yin Explorer when failure surfaces may change. Refresh the affected
+  dependency closure.
+- **Level 3 — Full rebuild:** map missing or legacy, base commit invalid or not
+  an ancestor, scope changed, module boundaries were broadly reorganized,
+  impact cannot be classified, or incremental validation cannot recover.
+
+Comments or formatting in a referenced file require Level 1 when line evidence
+moves. Stable `path#symbol` evidence may allow Level 0 when it still resolves.
 
 ## Process
 
@@ -27,105 +94,104 @@ Generate a map of the project that answers both "what is this system?" (yang) an
 digraph codebase_map {
     node [shape=box];
 
-    start [label="使用者執行 /samsara:codebase-map\n或 bootstrap 提醒後觸發" shape=doublecircle];
-    check [label="檢查 .samsara/codebase-map.yaml\n是否已存在？" shape=diamond];
-    mode [label="生成 or 更新？" shape=diamond];
+    start [label="Capture committed HEAD" shape=doublecircle];
+    usable [label="Valid v2 map at ancestor commit?" shape=diamond];
+    diff [label="Inspect cumulative Git diff"];
+    impact [label="Which map surface changed?" shape=diamond];
+    checkpoint [label="Level 0\nReuse verified modules"];
+    targeted [label="Level 1\nRefresh affected nodes"];
+    structural [label="Level 2\nRefresh affected closure"];
+    full [label="Level 3\nRebuild full graph"];
+    validate [label="Validate candidate snapshot"];
+    valid [label="Candidate resolves?" shape=diamond];
+    repair [label="Repair or raise update level"];
+    publish [label="Publish root manifest last"];
+    done [label="Map matches committed HEAD" shape=doublecircle];
 
-    explore_parallel [label="Phase 1: 平行探索\nAgent 1 (結構) + Agent 3 (基礎設施)\n同時派出"];
-    explore_yin [label="Phase 2: 陰面探索\nAgent 2 拿到 Phase 1 結果\n分析 rot risks + hidden coupling"];
-    synthesize [label="Phase 3: 合成\n匯總三個 explorer 的產出\n生成 codebase-map.yaml + modules/*.yaml"];
-    review [label="Human Review\n呈現摘要，確認或修正\n（特別是 confidence: low 的項目）" shape=diamond];
-    write [label="寫入 .samsara/\ncodebase-map.yaml + modules/*.yaml"];
-    done [label="完成" shape=doublecircle];
-
-    start -> check;
-    check -> mode [label="exists"];
-    check -> explore_parallel [label="not exists"];
-    mode -> explore_parallel [label="full regenerate"];
-    mode -> explore_yin [label="incremental update\n(結構沒大變，只更新陰面)"];
-    explore_parallel -> explore_yin;
-    explore_yin -> synthesize;
-    synthesize -> review;
-    review -> write [label="confirmed"];
-    review -> synthesize [label="revise"];
-    write -> done;
+    start -> usable;
+    usable -> full [label="no"];
+    usable -> diff [label="yes"];
+    diff -> impact;
+    impact -> checkpoint [label="no mapped impact"];
+    impact -> targeted [label="local evidence"];
+    impact -> structural [label="topology or meaning"];
+    checkpoint -> validate;
+    targeted -> validate;
+    structural -> validate;
+    full -> validate;
+    validate -> valid;
+    valid -> repair [label="no"];
+    repair -> validate;
+    valid -> publish [label="yes"];
+    publish -> done;
 }
 ```
 
-## Phase 1: Parallel Exploration
+## Artifact Authority
 
-Dispatch two agents simultaneously:
+`codebase-map.yaml` owns the source commit, scan scope, project summary, module
+index, global nodes, cross-module relationships, business flows, and
+infrastructure overview. Each `modules/<id>.yaml` owns only that module's local
+nodes, internal relationships, interfaces, and yin findings.
 
-1. **structure-explorer** — modules, paths, dependencies, interfaces
-2. **infra-explorer** — build system, config sources, data flow, external services
+- Every module index entry has one stable `id` and one `detail_ref`.
+- Every node belongs to one module or `global_nodes`.
+- Cross-module dependency exists only in `cross_module_relationships`.
+- Business-flow steps cite node IDs and evidence.
+- Structural facts use `path#symbol` when available; line refs are fallback.
+- Unsupported responsibility, capability, flow, or risk stays `unknown`.
+- Counts and Git diff metadata are derived on demand and are not stored.
 
-These two agents have no dependencies on each other. Dispatch in parallel.
+## Build by Level
 
-## Phase 2: Yin-Side Exploration
+- Level 0 copies the prior module files into the new candidate generation and
+  updates `source.commit`, generation metadata, and module `detail_ref` values.
+  It does not rewrite semantic map content.
+- Level 1 reads affected files from the detached worktree, updates their module
+  fragments, and copies unaffected modules.
+- Level 2 supplies the same snapshot scope to the relevant explorers. Their
+  output matches template fragments; the main agent merges and de-duplicates
+  without flattening structured evidence.
+- Level 3 dispatches Structure and Infrastructure explorers in parallel, then
+  Yin Explorer with both results and the same scope.
 
-After Phase 1 completes, dispatch:
+Deterministic paths, symbols, imports, calls, config refs, and Git state come
+from the detached snapshot. LLM analysis may explain responsibility,
+capability, flow, and risk only with cited snapshot evidence.
 
-3. **yin-explorer** — receives Phase 1 results as context. Analyzes rot risks, hidden coupling, assumptions, death impact for each module.
+## Validate and Publish
 
-## Phase 3: Synthesis
+Build a candidate directory containing `codebase-map.yaml` and `modules/`, then
+run:
 
-After all three agents report back:
+```text
+uv run python <installed-codebase-map-skill-directory>/scripts/validate_codebase_map.py \
+  --candidate <candidate-directory> \
+  --project-root <project-root> \
+  --snapshot-root <detached-worktree> \
+  --expected-commit <captured-HEAD> \
+  --publish
+```
 
-1. Merge structure-explorer output (modules, deps) + infra-explorer output (build, config, data flow) + yin-explorer output (rot risks, coupling, assumptions)
-2. Generate summary: count rot_hotspots (top 3 by failure_level), count high_risk_coupling, count assumptions
-3. Compute `silent_failure_surface`: low (<3 rot risks), medium (3-7), high (>7 or any level 4)
-4. Generate `codebase-map.yaml` (Layer 1+2) from templates
-5. Generate one `modules/<name>.yaml` (Layer 3) per module from templates
+The companion checks schema, Git commit identity, ignored output paths, unique
+IDs, module refs, edge endpoints, flow nodes, and evidence paths. It never
+judges semantic quality. On success it publishes an immutable
+`.samsara/codebase-map/<HEAD>/` generation and atomically replaces the root
+manifest last. The publisher normalizes the root to block-style YAML so the
+session hook can read `schema_version` and `source.commit` deterministically.
 
-## Phase 4: Human Review
-
-Present to user:
-- Summary: module count, silent failure surface, top 3 rot hotspots
-- List all `confidence: low` items — ask user to confirm or correct
-- Ask: "Anything missing or wrong?"
-
-After user confirms → write files to `.samsara/`
-
-## Fail-Honest Write Contract
-
-`last_updated` must not be advanced unless new content was actually written and
-(in HITL) reviewed. If regeneration is abandoned, aborted, or fails partway
-through:
-
-1. **Do not advance `last_updated`.** The existing timestamp must be preserved.
-   The corruption signature this contract guards against is `last_updated`
-   bumped without a real content refresh — which makes a stale map appear fresh
-   to the next pre-thinking session.
-2. **Mark the map stale.** Write a `stale_reason` field to
-   `.samsara/codebase-map.yaml` recording why the regen did not complete
-   (e.g., `"regen aborted — Phase 4 review rejected"`,
-   `"regen failed — explorer agent error"`).
-3. **Do not bump `last_updated` on partial regen.** If the write step is
-   reached but the user rejects the content in Phase 4 review, leave
-   `last_updated` untouched and mark the map stale with the rejection reason.
-
-A regen run is complete only when all three phases finish AND (in HITL) Phase 4
-review confirms. Anything short of that must not advance `last_updated`.
-
-## Update Modes
-
-When `.samsara/codebase-map.yaml` already exists, ask user:
-
-> 「Codebase map 已存在（上次更新：YYYY-MM-DD）。選擇更新方式：
-> (A) Full regenerate — 重跑三個 agent，完整重建
-> (B) Incremental update — 只重跑陰面分析，保留結構不變」
+If validation, publication, or worktree cleanup fails, do not advance
+`source.commit`. Preserve the previous root manifest and report the failure.
+The main agent is the workflow owner; explorers return evidence only, and the
+companion performs the owner's mechanical publish.
 
 ## Output
 
-Files written to target project:
-
-```
-project/.samsara/
-├── codebase-map.yaml      # Layer 1+2: summary + module index + infrastructure
-└── modules/               # Layer 3: per-module detail (yang + yin)
-    ├── <module-1>.yaml
-    ├── <module-2>.yaml
-    └── ...
+```text
+.samsara/
+├── codebase-map.yaml
+└── codebase-map/<HEAD>/
+    └── modules/<module-id>.yaml
 ```
 
-Use templates at `templates/codebase-map.yaml` and `templates/module.yaml`.
+This skill creates no `changes/` artifact and no Auto Mode gate.

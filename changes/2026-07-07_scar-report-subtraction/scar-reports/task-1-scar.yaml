@@ -1,0 +1,40 @@
+task_id: task-1
+completion_status: done_with_concerns
+# Gen-2→Gen-3 一次性機械遷移 by main agent（task-3 no-grandfather 決定的 follow-up；
+# 內容語意不變，僅格式壓入預算。原 Gen-2 版本見 git history）。
+
+known_shortcuts:
+  - what: "Gen-2 bullet 初稿重述了 SKILL.md:77 已有的 resolved_items/status:resolved 細節"
+    bites_when: "兩段近鄰文字之一被單獨修改時彼此漂移"
+    where: "skills/iteration/SKILL.md:87"
+    status: resolved
+    resolution: "改為交叉引用 item 2 不重述；無測試 token 釘住被刪措辭，改後測試保綠"
+
+silent_failure_conditions:
+  - systemic_ref: doc-vs-runtime-obedience
+    note: "SKILL.md:88 先於 task-2 寫定 Gen-3 欄名；task-2 已以一致欄名（what/bites_when）落地並由 adjacency 測試綁定，殘餘為 doc-presence 測試的固有限制"
+
+assumptions_made:
+  - assumption: "含編號的過渡 token（rules 7 and 8…）與測試斷言耦合，task-4 必須同一變更內同改兩處"
+    verified: true
+    note: "grep 證實兩檔同 token；task-4 已執行無編號化（測試更名 legacy_invalid）"
+  - assumption: "重綁後 noise-rules 測試無任何斷言仍讀 SCAR_SCHEMA 的三代 compat 內容"
+    verified: true
+    note: "grep SCAR_SCHEMA → 3 hits 均非 compat（常數定義／寫入側 systemic_ref form／verified-true 契約）"
+
+debt_registered: true
+debt_location: "skills/iteration/SKILL.md:85-90（Gen-3 doc 先行 — task-2 已對齊欄名）"
+
+structural_decisions:
+  - decision: "compat 世代讀取的 canonical home 以 inline prose 落在 iteration Step 1（非共享檔、非 schema_version 欄位），沿 systemic-ref anchor 既有先例"
+    serves_seam: "write-read-boundary"
+    forced_by:
+      - "git: skills/implement/templates/scar-schema.yaml — systemic-ref anchor 先例（原編號制時期即宣告 canonical in iteration Step 1，eb4ae07）"
+      - "affects task-2: needs 'compat 規則已有新 canonical home，schema 重寫才被允許刪除 Rules 7/8/11/14 文字而不失單一源'"
+    refused: "不加 schema_version 欄位（D6：欄形推斷是唯一版本訊號）；不抽共享 markdown 檔給兩端 import"
+    risk_if_wrong: "第四代欄形若與 Gen 2/3 模糊，形狀推斷靜默失效，須對全歷史 report 回填 version 欄位的破壞性遷移"
+
+narrative: |
+  測試綁定沿 write-read seam 拆分：systemic_ref item-FORM 檢查留在 schema（寫入側），
+  read-parsing 斷言重綁 iteration Step 1（讀取側）。此舉使兩個測試對同一 Step 1 句子
+  形成刻意冗餘（任一轉紅都能抓回歸）— 已接受，非疏漏。

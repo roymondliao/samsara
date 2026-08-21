@@ -55,11 +55,11 @@ class TestReferenceConverterTextConversion:
             id="skill",
             type="regex",
             match=r"invoke `samsara:([\w-]+)`",
-            replace=r"use the `$samsara-\1` skill",
+            replace=r"use the `$\1` skill",
         )
         converter = ReferenceConverter()
         result = converter.convert_text(text, rules=[rule])
-        assert result == "use the `$samsara-my-skill` skill here"
+        assert result == "use the `$my-skill` skill here"
 
     def test_empty_rules_list_returns_text_unchanged(self):
         """No rules means no transformation."""

@@ -19,6 +19,15 @@ tests assert the positive contract. The rules here govern unit tests. The one
 section that distinguishes the two — and protects death tests from being softened
 — is deliberate and load-bearing; see "Unit tests are not death tests".
 
+### Death-case ID scope
+
+`DC-*` (Death Case) is a stable, file-scoped evidence label, not an
+authority-graph key. Its meaning comes from the death case declared beside it;
+two files may each define `DC-1` without referring to the same failure. Within
+the declaring file, never renumber or reuse a cited `DC-*` for another failure.
+A cross-file contract uses the source path plus ID, or an `AC-*` acceptance ID
+when the case belongs to Planning's authority graph.
+
 ---
 
 ## Purpose

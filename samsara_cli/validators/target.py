@@ -72,6 +72,7 @@ import json
 import logging
 import os
 import re
+import subprocess
 import tomllib
 from pathlib import Path
 
@@ -87,12 +88,12 @@ _INVOKE_SAMSARA_PATTERN = re.compile(r"invoke `samsara:[\w-]+`")
 # `subagent_type:` is the Claude Code-specific agent dispatch syntax.
 _SUBAGENT_TYPE_PATTERN = re.compile(r"subagent_type:")
 
-# Colon-form namespace residue (strict lane only). The target platforms name
-# everything `samsara-X`; any surviving `samsara:X` in converted output is a
-# dead reference for the executing agent. This is broader than the two legacy
-# patterns above on purpose: enumerating known phrasings ("invoke `samsara:X`")
-# missed 94 residues in a live conversion (2026-07-07) while still reporting
-# PASS — the residue signature itself is the thing to scan for.
+# Colon-form namespace residue (strict lane only). Codex uses the unprefixed
+# SKILL.md.name for skills and a hyphenated name for Samsara agents. Neither
+# target identity uses `samsara:X`, so any surviving colon form is dead. This is
+# broader than the two legacy patterns above on purpose: enumerating known
+# phrasings ("invoke `samsara:X`") missed 94 residues in a live conversion
+# (2026-07-07) while still reporting PASS.
 # Strict-only because repo-root validation (ISSUE-002 live-surface mode)
 # legitimately contains source-form names everywhere.
 _SAMSARA_NAMESPACE_PATTERN = re.compile(r"samsara:[\w-]+")
@@ -103,7 +104,16 @@ _AGENT_REF_PATTERN = re.compile(r'agent named "([^"]+)"')
 
 # File extensions that receive source pattern scanning.
 # YAML files are excluded — they may legitimately contain samsara namespace strings.
-_SCAN_EXTENSIONS = {".md", ".txt"}
+_SCAN_EXTENSIONS = {".md", ".txt", ".toml", ".sh"}
+
+_SKILL_REF_PATTERN = re.compile(r"\$([a-z][a-z0-9-]*)")
+_SKILL_COMPANION_PATTERN = re.compile(
+    r"<installed-([a-z0-9-]+)-skill-directory>/([^\s`]+)"
+)
+_AGENT_COMPANION_PATTERN = re.compile(
+    r"<installed-auto-gatekeeper-companion-directory>/([^\s`]+)"
+)
+_EXPECTED_SESSION_START_MATCHERS = {"startup", "resume", "clear", "compact"}
 
 # Live-surface source-tree scan boundary (SS-1, ISSUE-002).
 #
@@ -128,11 +138,12 @@ _LIVE_SURFACE_EXCLUDED_TOP_LEVEL_DIRS = frozenset(
     {"changes", "docs", "bugfix", "tests"}
 )
 
-# Colon character in skill directory names indicates source format (samsara:X).
-# Target format uses hyphen (samsara-X).
+# A colon in an installed skill directory is invalid. The folder is an install
+# path such as samsara-research; Codex invocation identity comes from SKILL.md.name.
 _COLON_IN_NAME_MSG = (
     "Skill directory '{}' contains a colon — this is the source format (samsara:X), "
-    "not the target format (samsara-X). Rename to use the separator character."
+    "not a valid Codex install path. Use a filesystem-safe directory name; keep "
+    "the invocation ID in SKILL.md.name."
 )
 
 
@@ -203,8 +214,16 @@ class TargetValidator:
                 if skill_dir.is_dir() and ":" in skill_dir.name:
                     errors.append(_COLON_IN_NAME_MSG.format(skill_dir.name))
 
-        if platform == "gemini-cli":
-            errors.extend(self._validate_gemini_layout(output_dir))
+        native_codex_contract = platform == "codex" and (
+            (output_dir / ".codex/config.toml").exists()
+            or (output_dir / ".codex/hooks.json").exists()
+        )
+        if native_codex_contract:
+            errors.extend(self._validate_codex_layout(output_dir))
+
+        if native_codex_contract:
+            errors.extend(self._validate_skill_identity_graph(output_dir, platform))
+            errors.extend(self._validate_companion_references(output_dir, platform))
 
         # --- Check 2: Source pattern scan across all scannable files ---
         pattern_errors = self._scan_source_patterns(
@@ -215,9 +234,7 @@ class TargetValidator:
         # --- Check 3: TOML file validation ---
         agents_dir = self._get_agents_dir(output_dir, platform)
         if agents_dir.exists():
-            if platform == "gemini-cli":
-                errors.extend(self._validate_gemini_agents(agents_dir))
-            else:
+            if platform == "codex":
                 toml_errors = self._validate_toml_files(agents_dir)
                 errors.extend(toml_errors)
 
@@ -229,10 +246,218 @@ class TargetValidator:
 
         return errors
 
+    def _validate_codex_layout(self, output_dir: Path) -> list[str]:
+        """Validate Codex-native files and executable SessionStart seams."""
+        errors: list[str] = []
+        skills_dir = output_dir / ".agents/skills"
+        agents_dir = output_dir / ".codex/agents"
+        hooks_path = output_dir / ".codex/hooks.json"
+        config_path = output_dir / ".codex/config.toml"
+
+        if not skills_dir.is_dir():
+            errors.append("Codex output is missing .agents/skills directory.")
+        if not agents_dir.is_dir():
+            errors.append("Codex output is missing .codex/agents directory.")
+        if not config_path.is_file():
+            errors.append("Codex output is missing .codex/config.toml.")
+        else:
+            try:
+                tomllib.loads(config_path.read_text(encoding="utf-8"))
+            except (OSError, tomllib.TOMLDecodeError) as exc:
+                errors.append(f"Codex config.toml is invalid: {exc}")
+
+        if not hooks_path.is_file():
+            errors.append("Codex output is missing .codex/hooks.json.")
+            return errors
+        try:
+            hooks_doc = json.loads(hooks_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            errors.append(f"Codex hooks.json is invalid: {exc}")
+            return errors
+
+        session_start = hooks_doc.get("hooks", {}).get("SessionStart")
+        if not isinstance(session_start, list) or not session_start:
+            errors.append("Codex hooks.json has no SessionStart entries.")
+            return errors
+
+        commands: list[str] = []
+        matchers: set[str] = set()
+        for entry in session_start:
+            if not isinstance(entry, dict):
+                errors.append("Codex SessionStart entry must be an object.")
+                continue
+            matcher = entry.get("matcher")
+            if isinstance(matcher, str):
+                matchers.update(part for part in matcher.split("|") if part)
+            handlers = entry.get("hooks")
+            if not isinstance(handlers, list):
+                errors.append("Codex SessionStart entry has no hooks list.")
+                continue
+            for handler in handlers:
+                if not isinstance(handler, dict):
+                    errors.append("Codex SessionStart handler must be an object.")
+                    continue
+                command = handler.get("command")
+                if not isinstance(command, str) or not command:
+                    errors.append("Codex SessionStart handler is missing command.")
+                    continue
+                commands.append(command)
+
+        if matchers != _EXPECTED_SESSION_START_MATCHERS:
+            errors.append(
+                "Codex SessionStart matchers must be startup|resume|clear|compact; "
+                f"got {sorted(matchers)}."
+            )
+
+        basenames = {Path(command).name for command in commands}
+        expected_scripts = {"samsara-session-start.sh", "check-codebase-map.sh"}
+        if basenames != expected_scripts:
+            errors.append(
+                f"Codex SessionStart commands must resolve {sorted(expected_scripts)}; "
+                f"got {sorted(basenames)}."
+            )
+
+        for command in commands:
+            if os.path.isabs(command):
+                errors.append(
+                    f"Converted Codex hook command must be relative: {command!r}."
+                )
+                continue
+            target = output_dir / command
+            if not target.is_file():
+                errors.append(f"Codex hook command target does not exist: {command}.")
+                continue
+            if not os.access(target, os.X_OK):
+                errors.append(
+                    f"Codex hook command target is not executable: {command}."
+                )
+                continue
+            result = subprocess.run(
+                [str(target)],
+                cwd=output_dir,
+                input=json.dumps(
+                    {"cwd": str(output_dir), "hook_event_name": "SessionStart"}
+                ),
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if result.returncode != 0:
+                errors.append(
+                    f"Codex hook command failed during format validation: {command}: "
+                    f"{result.stderr.strip()}"
+                )
+                continue
+            if not result.stdout.strip():
+                # A current Codebase Map legitimately emits nothing.
+                continue
+            try:
+                payload = json.loads(result.stdout)
+            except json.JSONDecodeError as exc:
+                errors.append(f"Codex hook output is not JSON for {command}: {exc}")
+                continue
+            if "systemMessage" in payload:
+                errors.append(
+                    f"Codex hook {command} uses systemMessage, which is not "
+                    "model-visible SessionStart context."
+                )
+            specific = payload.get("hookSpecificOutput")
+            if not isinstance(specific, dict):
+                errors.append(f"Codex hook {command} is missing hookSpecificOutput.")
+                continue
+            if specific.get("hookEventName") != "SessionStart":
+                errors.append(f"Codex hook {command} has the wrong hookEventName.")
+            context = specific.get("additionalContext")
+            if not isinstance(context, str) or not context.strip():
+                errors.append(
+                    f"Codex hook {command} has no model-visible additionalContext."
+                )
+        return errors
+
+    def _validate_skill_identity_graph(
+        self, output_dir: Path, platform: str
+    ) -> list[str]:
+        """Resolve every explicit Codex $skill ref through SKILL.md.name."""
+        if platform != "codex":
+            return []
+        errors: list[str] = []
+        skills_dir = self._get_skills_dir(output_dir, platform)
+        known: set[str] = set()
+        for skill_md in skills_dir.glob("*/SKILL.md"):
+            content = skill_md.read_text(encoding="utf-8")
+            frontmatter, parse_error = self._extract_markdown_frontmatter(content)
+            if frontmatter is None:
+                errors.append(
+                    f"Codex skill {skill_md.parent.name} has invalid frontmatter: "
+                    f"{parse_error or 'missing'}."
+                )
+                continue
+            name = frontmatter.get("name")
+            description = frontmatter.get("description")
+            if not name:
+                errors.append(f"Codex skill {skill_md.parent.name} has no name.")
+                continue
+            if not description:
+                errors.append(f"Codex skill {skill_md.parent.name} has no description.")
+            if name in known:
+                errors.append(f"Duplicate Codex skill identity: {name}.")
+            known.add(name)
+
+        for path in output_dir.rglob("*"):
+            if not path.is_file() or path.suffix.lower() not in {".md", ".toml"}:
+                continue
+            content = path.read_text(encoding="utf-8", errors="replace")
+            for ref in _SKILL_REF_PATTERN.findall(content):
+                if ref == "skill-name":
+                    continue
+                if ref not in known:
+                    errors.append(
+                        f"Unresolved Codex skill reference '${ref}' in "
+                        f"{path.relative_to(output_dir)}. Known skill IDs: {sorted(known)}."
+                    )
+        return errors
+
+    def _validate_companion_references(
+        self, output_dir: Path, platform: str
+    ) -> list[str]:
+        """Resolve installed skill/agent companion placeholders mechanically."""
+        if platform != "codex":
+            return []
+        errors: list[str] = []
+        skills_by_name: dict[str, Path] = {}
+        skills_dir = self._get_skills_dir(output_dir, platform)
+        for skill_md in skills_dir.glob("*/SKILL.md"):
+            frontmatter, _ = self._extract_markdown_frontmatter(
+                skill_md.read_text(encoding="utf-8")
+            )
+            if frontmatter and frontmatter.get("name"):
+                skills_by_name[frontmatter["name"]] = skill_md.parent
+
+        for path in output_dir.rglob("*"):
+            if not path.is_file() or path.suffix.lower() not in {".md", ".toml"}:
+                continue
+            content = path.read_text(encoding="utf-8", errors="replace")
+            for skill_name, relative in _SKILL_COMPANION_PATTERN.findall(content):
+                root = skills_by_name.get(skill_name)
+                if root is None or not (root / relative).is_file():
+                    errors.append(
+                        f"Unresolved companion for skill '{skill_name}': {relative}."
+                    )
+            for relative in _AGENT_COMPANION_PATTERN.findall(content):
+                target = (
+                    output_dir
+                    / ".codex/agent-resources/samsara-auto-gatekeeper"
+                    / relative
+                )
+                if not target.is_file():
+                    errors.append(
+                        "Unresolved Auto Gatekeeper companion: "
+                        f"{target.relative_to(output_dir)}."
+                    )
+        return errors
+
     def _get_skills_dir(self, output_dir: Path, platform: str = "codex") -> Path:
         """Return the skills directory path within the output dir."""
-        if platform == "gemini-cli":
-            return output_dir / ".gemini" / "skills"
         # Codex native layout uses .agents/skills. Legacy/plugin-style converted
         # output used skills/. Prefer the native path when present, but keep the
         # fallback so older fixture-level tests can still validate legacy output.
@@ -243,156 +468,12 @@ class TargetValidator:
 
     def _get_agents_dir(self, output_dir: Path, platform: str = "codex") -> Path:
         """Return the agents directory path within the output dir."""
-        if platform == "gemini-cli":
-            return output_dir / ".gemini" / "agents"
         # Codex native layout uses .codex/agents. Legacy/plugin-style converted
         # output used agents/.
         native = output_dir / ".codex" / "agents"
         if native.exists():
             return native
         return output_dir / "agents"
-
-    def _validate_gemini_layout(self, output_dir: Path) -> list[str]:
-        """Validate Gemini-specific output layout and settings JSON."""
-        errors: list[str] = []
-
-        alias_skills = output_dir / ".agents" / "skills"
-        if alias_skills.exists():
-            errors.append(
-                "Gemini output must not create .agents/skills. "
-                "Use .gemini/skills for Gemini skill discovery."
-            )
-
-        gemini_dir = output_dir / ".gemini"
-        skills_dir = gemini_dir / "skills"
-        agents_dir = gemini_dir / "agents"
-        settings_path = gemini_dir / "settings.json"
-
-        if not skills_dir.is_dir():
-            errors.append("Gemini output is missing .gemini/skills directory.")
-        if not agents_dir.is_dir():
-            errors.append("Gemini output is missing .gemini/agents directory.")
-        if not settings_path.exists():
-            errors.append("Gemini output is missing .gemini/settings.json.")
-            return errors
-
-        try:
-            settings = json.loads(settings_path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError as e:
-            errors.append(f"Gemini settings.json is invalid JSON: {e}")
-            return errors
-        except OSError as e:
-            errors.append(f"Cannot read Gemini settings.json: {e}")
-            return errors
-
-        hooks = settings.get("hooks")
-        if not isinstance(hooks, dict):
-            errors.append("Gemini settings.json missing object field hooks.")
-            return errors
-
-        session_start = hooks.get("SessionStart")
-        if not isinstance(session_start, list) or not session_start:
-            errors.append("Gemini settings.json missing hooks.SessionStart entries.")
-        else:
-            errors.extend(
-                self._validate_gemini_session_start_commands(
-                    output_dir=output_dir,
-                    entries=session_start,
-                )
-            )
-
-        return errors
-
-    def _validate_gemini_session_start_commands(
-        self,
-        output_dir: Path,
-        entries: list,
-    ) -> list[str]:
-        """Validate Gemini SessionStart hook command targets."""
-        errors: list[str] = []
-
-        for entry_idx, entry in enumerate(entries):
-            if not isinstance(entry, dict):
-                errors.append(
-                    f"Gemini SessionStart entry {entry_idx} is not an object."
-                )
-                continue
-            hooks = entry.get("hooks")
-            if not isinstance(hooks, list) or not hooks:
-                errors.append(
-                    f"Gemini SessionStart entry {entry_idx} has no hooks list."
-                )
-                continue
-
-            for hook_idx, hook in enumerate(hooks):
-                if not isinstance(hook, dict):
-                    errors.append(
-                        f"Gemini SessionStart hook {entry_idx}.{hook_idx} is not an object."
-                    )
-                    continue
-                command = hook.get("command")
-                if not isinstance(command, str) or not command.strip():
-                    errors.append(
-                        f"Gemini SessionStart hook {entry_idx}.{hook_idx} missing command."
-                    )
-                    continue
-                if command.startswith("/") or Path(command).is_absolute():
-                    errors.append(
-                        f"Gemini SessionStart hook command is absolute: {command!r}. "
-                        "Commands must be relative to the project root."
-                    )
-                    continue
-
-                command_path = output_dir / command
-                try:
-                    command_path.resolve(strict=False).relative_to(output_dir.resolve())
-                except ValueError:
-                    errors.append(
-                        f"Gemini SessionStart hook command escapes output directory: {command!r}."
-                    )
-                    continue
-                if not command_path.exists():
-                    errors.append(
-                        f"Gemini SessionStart hook command target does not exist: {command}."
-                    )
-                    continue
-                if not os.access(command_path, os.X_OK):
-                    errors.append(
-                        f"Gemini SessionStart hook command target is not executable: {command}."
-                    )
-
-        return errors
-
-    def _validate_gemini_agents(self, agents_dir: Path) -> list[str]:
-        """Validate Gemini markdown agent files."""
-        errors: list[str] = []
-
-        for toml_file in agents_dir.glob("*.toml"):
-            errors.append(f"Gemini agent must be markdown, not TOML: {toml_file.name}.")
-
-        for md_file in agents_dir.glob("*.md"):
-            try:
-                content = md_file.read_text(encoding="utf-8")
-            except (OSError, UnicodeDecodeError) as e:
-                errors.append(f"Cannot read Gemini agent {md_file.name}: {e}")
-                continue
-
-            frontmatter, parse_error = self._extract_markdown_frontmatter(content)
-            if frontmatter is None:
-                detail = f": {parse_error}" if parse_error else ""
-                errors.append(
-                    f"Gemini agent {md_file.name} is missing YAML frontmatter{detail}."
-                )
-                continue
-
-            if not frontmatter.get("name"):
-                errors.append(f"Gemini agent {md_file.name} missing frontmatter name.")
-            if not frontmatter.get("description"):
-                errors.append(
-                    f"Gemini agent {md_file.name} missing frontmatter description."
-                )
-
-        return errors
 
     def _extract_markdown_frontmatter(
         self, content: str
@@ -488,18 +569,20 @@ class TargetValidator:
                     "It must be converted to the target platform format before output is valid."
                 )
 
-            # Strict lane: any colon-form namespace residue is a dead reference
-            # on the target platform (target names are samsara-X). Skip files
-            # already flagged by the invoke pattern to avoid double-reporting.
+            # Strict lane: any colon-form namespace residue is a dead reference.
+            # The correct replacement depends on whether the reference targets a
+            # skill (SKILL.md.name) or an agent (hyphenated agent name), so the
+            # validator reports the residue without guessing the target identity.
+            # Skip files already flagged above to avoid double-reporting.
             if strict_namespace and not match:
                 match3 = _SAMSARA_NAMESPACE_PATTERN.search(content)
                 if match3:
                     errors.append(
                         f"Colon-form namespace residue '{match3.group()}' found in "
-                        f"output file '{relative}'. The target platform names this "
-                        f"'{match3.group().replace(':', '-', 1)}' — a colon-form "
-                        "reference is a dead reference for the executing agent. "
-                        "Add or fix a transformation rule; do not ship this output."
+                        f"output file '{relative}'. Codex skills use SKILL.md.name; "
+                        "Samsara agents use their generated hyphenated name. Add or "
+                        "fix the context-specific transformation rule; do not ship "
+                        "this output."
                     )
 
         return errors
@@ -568,27 +651,15 @@ class TargetValidator:
 
         # Build a set of known agent names from target agent files.
         known_agent_names: set[str] = set()
-        if platform == "gemini-cli":
-            for md_file in agents_dir.glob("*.md"):
-                try:
-                    content = md_file.read_text(encoding="utf-8")
-                    frontmatter, _parse_error = self._extract_markdown_frontmatter(
-                        content
-                    )
-                    if frontmatter and frontmatter.get("name"):
-                        known_agent_names.add(frontmatter["name"])
-                except OSError, UnicodeDecodeError:
-                    pass
-        else:
-            for toml_file in agents_dir.glob("*.toml"):
-                try:
-                    content = toml_file.read_text(encoding="utf-8")
-                    name = self._extract_agent_name_from_toml(content)
-                    if name:
-                        known_agent_names.add(name)
-                except OSError, UnicodeDecodeError:
-                    # Malformed TOML is caught by _validate_toml_files — skip here
-                    pass
+        for toml_file in agents_dir.glob("*.toml"):
+            try:
+                content = toml_file.read_text(encoding="utf-8")
+                name = self._extract_agent_name_from_toml(content)
+                if name:
+                    known_agent_names.add(name)
+            except OSError, UnicodeDecodeError:
+                # Malformed TOML is caught by _validate_toml_files — skip here
+                pass
 
         if not known_agent_names:
             # No agents converted — cannot cross-validate

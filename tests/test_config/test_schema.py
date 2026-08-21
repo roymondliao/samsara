@@ -37,7 +37,7 @@ class TestTransformationRule:
             scope="body",
             type="regex",
             match=r"invoke `samsara:([\w-]+)`",
-            replace=r"use the `$samsara-\1` skill",
+            replace=r"use the `$\1` skill",
             priority="high",
         )
         assert rule.id == "skill_invocation"

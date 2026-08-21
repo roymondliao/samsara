@@ -1,39 +1,67 @@
-# Ship Manifest — Format Guide
+# Ship Manifest — Evidence Contract
 
-The ship manifest is delivered alongside the feature. It documents what was built and how it can die.
+The manifest proves why one committed candidate is or is not ready for
+delivery. `templates/ship-manifest.yaml` is the sole shape authority. This file
+defines field meaning only.
 
-> 交付物除了功能本身，必須附帶它的傷疤。
+## Evidence Rules
 
-## Format
+- `snapshot` freezes the base and candidate commits validated by every step.
+  Any code or test change invalidates the results and requires a new snapshot.
+- `delivered_capability.summary` is the only narrative summary. Its
+  `source_refs` point to the PT, PL, or AC authority that defines the delivery.
+- Validation sections record status plus evidence refs. Do not copy Scar,
+  acceptance, planning, or review text into the manifest.
+- Empty exposure lists are valid after inspection. Never invent a failure mode
+  to make the manifest look complete.
+- `accepted_refs` and `deferred_refs` cite final Scar dispositions. `open_refs`,
+  `blocked_refs`, and unresolved legacy items prevent `ready_for_delivery`.
+- Security or privacy risk acceptance is human-only. Each accepted risk
+  requires a finding ref, rationale, `re_review_signal`, and owner. Re-review
+  is signal-driven; do not add calendar expiry. Auto mode leaves
+  `accepted_risks` empty. This rule is defined by Validate & Ship Step 0.
 
-```yaml
-delivered_capability: "<what was delivered — one sentence>"
+## Validation Findings
 
-known_failure_modes:
-  - mode: "<failure description>"
-    severity: crash | degradation | silent_corruption
-    detection: "<how it's detected — monitoring hook, log pattern, etc.>"
+`validation.findings` is the durable handoff for every failed or unknown result
+returned to another layer. The template is the shape authority. Each finding
+inherits `snapshot.candidate_commit`; do not copy the commit into every item.
 
-accepted_risks:
-  - risk: "<risk description>"
-    accepted_by: "<who accepted this risk — typically 'human'>"
-    re_review_signal: "<observable condition that should trigger re-review — not a calendar date>"
-    owner: "<who is responsible for noticing the signal and re-reviewing>"
+- Allocate the ID from `next_finding_number`, then increment the counter. The
+  counter is feature-scoped: preserve it when findings clear and never reset or
+  reuse a number across candidates.
+- Use one stable `VF-*` ID and name the validation step, result, owner,
+  observable result, and non-empty evidence refs.
+- Use `path` and `location` for a code, test, or artifact surface. Use
+  `source_ref` for authority drift. At least one locator form is required.
+- Severity is optional. Record it only when the source evidence provides it;
+  never infer severity to fill the field.
+- A `blocked` manifest has at least one finding; a `ready_for_delivery`
+  manifest has none.
 
-silent_failure_surface: low | medium | high
-# low: <3 known silent failure paths
-# medium: 3-7 known silent failure paths
-# high: >7 known silent failure paths or any unverified critical assumptions
+A Scar cites a finding as
+`ship-manifest.yaml@<manifest-commit>#VF-N`. Resolve the file from that blocked
+manifest commit, not `snapshot.candidate_commit` or the working tree. The
+manifest commit preserves the finding after a later candidate clears the
+current list.
 
-monitoring_hooks:
-  - "<what monitoring/alerting is in place for when this rots>"
+## Operational Controls
 
-kill_switch: "<how to disable this feature immediately if it starts rotting>"
-```
+Monitoring and rollback use an explicit status:
 
-## Rules
+- `available` — a real mechanism exists; mechanism and evidence refs are
+  required.
+- `absent` — no mechanism exists. Keep the absence visible.
+- `not_applicable` — the feature has no applicable runtime control surface.
+- `unknown` — evidence is insufficient. Unknown is never rewritten as
+  available.
 
-1. **No empty failure modes.** Every feature can fail. If `known_failure_modes` is empty, the analysis was insufficient.
-2. **accepted_risks must have a re-review signal and an owner, not an expiry date.** Risk acceptance is not permanent — but no mechanism anywhere in this repo (hooks, CLI, tests, skills) has ever read or acted on an `expires` date; a time-driven re-review promise is an alarm clock that never rings. Every accepted risk must instead name `re_review_signal` (the observable condition — a metric, an error pattern, a new dependency, a specific event — that should trigger re-review) and `owner` (who is responsible for noticing that signal and acting on it). Do not reintroduce `expires`/`expiry`; if the only real trigger available is a calendar date, write it INTO the `re_review_signal` text (e.g. "re-review at next quarterly audit"), but the field stays signal-shaped, not date-shaped.
-3. **kill_switch is mandatory.** If you can't describe how to disable the feature, you can't ship it safely.
-4. **silent_failure_surface** is computed from scar reports. Count the unique `silent_failure_conditions` across all task scar reports.
+Operational control status is evidence, not an automatic shipping verdict.
+The Primary evaluator, acceptance contract, or a recorded exposure determines
+whether an absence blocks delivery.
+
+## Delivery
+
+`delivery.action` records the selected action. Validate & Ship prepares the
+commands or instructions in `preparation`; it does not merge, create a PR, or
+discard a branch. Auto mode also records the matching decision-log ref.

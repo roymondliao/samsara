@@ -1,41 +1,30 @@
 # Overview: <feature-name>
 
-## Goal
-<!-- One sentence. -->
+> Derived implementation projection. Do not add or revise decisions here;
+> regenerate this file from the referenced authority artifacts.
 
-## Core Identity (L1 — cited from pre-thinking, not re-derived)
-<!-- One or two lines: what this system, within feature scope, essentially IS.
-     Structural decisions must serve this identity. Copied from pre-thinking.md
-     Step 6 L1 handoff — planning does not rewrite it. -->
+## Sources
 
-## Architecture
-<!-- 2-3 sentences about approach. -->
+- Design authority: `pre-thinking.md`
+- Planning judgment: `2-plan.md`
+- Acceptance contract: `acceptance.yaml`
+- Execution graph: `index.yaml`
 
-## Tech Stack
-<!-- Key technologies/libraries. -->
+## Core Identity Projection
 
-## Key Decisions
-<!-- Decisions made during research/planning that affect implementation. -->
-- <decision>: <rationale>
+- source_ref: PT-CI
+  consequence: <what all tasks must preserve>
 
-### Real Seams (L1 — single source of seam declarations)
-<!-- Every seam that any task's `seam` field in index.yaml references MUST be
-     declared here, and only here. Content comes from pre-thinking.md Step 4
-     (Real seams) — planning MAPS tasks onto these seams and ANNOTATES them
-     with planned-change evidence; it never invents a new seam. If task
-     decomposition reveals a seam pre-thinking did not identify, STOP and
-     return to pre-thinking (design-decision gap), do not declare it here. -->
-- seam: <semantic-name>  <!-- e.g. parser-boundary — self-documenting, not a code -->
-  what: <the module/abstraction boundary, one line>
-  evidence: <already-happened (cite git/file ref) | domain-essential (rationale)>
-  planned: <task ids that will extend it (planning's annotation), or "none">
+## Shared Execution Context
 
-## Death Cases Summary
-<!-- Top 3 most dangerous silent failure paths from acceptance.yaml. -->
-1. <death case>
-2. <death case>
-3. <death case>
+- source_ref: <PL-D1 | PT-D1>
+  consequence: <shared constraint needed by multiple tasks>
 
-## File Map
-<!-- Which files will be created or modified. -->
-- `path/to/file` — <responsibility>
+## Real Seams Projection
+
+- seam: <semantic-name>
+  source_ref: <PT-S1>
+  source: <pre-thinking.md heading or anchor>
+  what: <execution-facing boundary summary>
+  evidence: <already-happened | domain-essential>
+  planned: <task ids that extend it, or none>

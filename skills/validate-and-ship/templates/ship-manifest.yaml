@@ -1,19 +1,93 @@
-delivered_capability: "<what was delivered>"
+# Ship Manifest — current write contract
+# Write to: changes/<feature>/ship-manifest.yaml
+# Writer: Validate & Ship workflow owner only.
+# Dispatched agents return evidence; they do not edit this manifest.
+# Keep refs stable; do not restate source artifacts.
 
-known_failure_modes:
-  - mode: "<failure description>"
-    severity: degradation  # crash | degradation | silent_corruption
-    detection: "<how it's detected>"
+feature: <feature-name>
 
-accepted_risks:
-  - risk: "<risk description>"
-    accepted_by: "human"
-    re_review_signal: "<observable condition that should trigger re-review — required, not a calendar date>"
-    owner: "<who is responsible for noticing the signal — required, cannot be empty>"
+delivered_capability:
+  summary: "<one concise sentence>"
+  source_refs: []  # PT-*, PL-D*, or AC-* IDs
 
-silent_failure_surface: low  # low | medium | high
+snapshot:
+  base_commit: <git-sha>
+  candidate_commit: <last_commit from the iteration_entry mapping in index.yaml>
 
-monitoring_hooks:
-  - "<monitoring description>"
+validation_status: in_progress  # in_progress | ready_for_delivery | blocked
 
-kill_switch: "<how to disable this feature>"
+validation:
+  next_finding_number: 1  # feature-scoped; increment after allocation, never reset
+  findings: []
+  # - id: VF-1
+  #   step: acceptance  # security_privacy | remaining_exposure | acceptance | primary_evaluator | e2e | reconciliation | review_evidence
+  #   result: fail  # fail | unknown
+  #   owner: iteration  # iteration | implement | planning | pre-thinking
+  #   observable_result: "<failed or missing observable>"
+  #   evidence_refs: ["<durable evidence pointer>"]
+  #   severity: null  # critical | high | medium | low | null; evidence-backed only
+  #   path: "<affected path | null>"
+  #   location: "<line, symbol, field, or section | null>"
+  #   source_ref: null  # PT-* | PL-D* | AC-*; use for authority drift
+
+  security_privacy:
+    status: unknown  # pass | accepted_risk | fail | unknown
+    scope_ref: "<base-commit>...<candidate-commit>"
+    evidence_refs: []
+    accepted_risks: []
+    # Human-only accepted-risk form:
+    # - finding_ref: "<review evidence pointer>"
+    #   rationale: "<why shipping with this exposure is acceptable>"
+    #   re_review_signal: "<observable trigger>"
+    #   owner: "<who notices and acts>"
+
+  remaining_exposure:
+    status: unknown  # pass | blocked | unknown
+    accepted_refs: []  # scar-reports/<file>#SC-N
+    deferred_refs: []
+    open_refs: []
+    blocked_refs: []
+
+  acceptance:
+    status: unknown  # pass | fail | unknown
+    scenario_results: []
+    # - scenario_ref: AC-N
+    #   status: pass  # pass | fail | unknown
+    #   evidence_refs: ["<test, command output, or file pointer>"]
+
+  primary_evaluator:
+    evaluator_ref: PT-EVAL
+    status: unknown  # pass | fail | unknown
+    evidence_refs: []
+
+  e2e:
+    status: unknown  # pass | fail | not_applicable | unknown
+    evidence_refs: []
+
+  reconciliation:
+    status: unknown  # pass | fail | unknown
+    drift: []
+    # - source_ref: <PT-*, PL-D*, or AC-*>
+    #   disposition: <accepted | unresolved>
+    #   evidence_refs: []
+    #   decision_ref: <human decision or auto-decisions.md anchor | null>
+
+  review_evidence:
+    status: unknown  # pass | fail | unknown
+    evidence_refs: []  # both Yin and Quality entries in review-record.md
+
+operational_controls:
+  monitoring:
+    status: unknown  # available | absent | not_applicable | unknown
+    mechanism: null
+    evidence_refs: []
+  rollback_or_disable:
+    status: unknown  # available | absent | not_applicable | unknown
+    mechanism: null
+    evidence_refs: []
+
+delivery:
+  action: pending  # pending | merge | create_pr | keep_branch | discard
+  selected_by: null  # human | auto-gatekeeper | null
+  decision_ref: null  # required for auto-gatekeeper
+  preparation: []  # commands or instructions only; this skill does not execute them

@@ -1,28 +1,27 @@
 feature: <feature-name>
-coverage_type: verified  # verified | prayer (prayer = only happy paths, REJECTED)
+evaluator_ref: PT-EVAL
 
 scenarios:
-  # --- Death paths first ---
-  - name: "<Silent failure description>"
+  - id: AC-1
+    label: <semantic label>
     type: death_path
-    given: "<precondition>"
+    source_refs: [PT-D1]
+    given: "<evidence-backed precondition>"
     when: "<action>"
     then:
       - "<observable outcome>"
 
-  # --- Degradation paths ---
-  - name: "<Degradation description>"
-    type: degradation
-    given: "<precondition>"
-    when: "<action>"
-    then:
-      - "<observable outcome>"
-
-  # --- Happy paths with evidence ---
-  - name: "<Success description>"
+  - id: AC-2
+    label: <semantic label>
     type: happy_path
+    source_refs: [PT-D1]
     given: "<precondition>"
     when: "<action>"
     then:
       - "<observable outcome>"
-      - "<evidence chain requirement>"
+      - "<evidence required to call this success>"
+
+not_applicable: []
+# When a type truly cannot occur:
+#   - type: <degradation | unknown_outcome>
+#     rationale: "<why this outcome cannot occur for this feature>"

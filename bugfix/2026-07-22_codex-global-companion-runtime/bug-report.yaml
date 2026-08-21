@@ -1,0 +1,28 @@
+schema_version: 1
+
+bug:
+  title: "Global Codex install cannot run the Codebase Map companion"
+  reported_by: "user"
+  observable_result: "Codebase Map publication stops because samsara-cli is unavailable and the installed validator does not parse under the fallback Python runtime."
+  evidence_refs:
+    - "user report 2026-07-22"
+    - "/Users/yuyu_liao/.agents/skills/samsara-codebase-map/SKILL.md:168"
+
+failure:
+  level: 3
+  rationale: "Global installation reported success and installed the companion files, but a later project cannot execute the required publication validator."
+
+impact:
+  scope: "Every project consuming this global Codex installation"
+  duration: "Since the global installation produced commands that require an unavailable executable"
+  detection_delay: "Detected on the first Codebase Map publication attempt"
+  evidence_refs:
+    - "/Users/yuyu_liao/.samsara/install-manifest.codex.json"
+
+containment:
+  required: "no"
+  action: null
+  authorization: "not_requested"
+
+unknowns:
+  - "Whether project-scope installs made through an ephemeral virtual environment fail through the same command-resolution path."

@@ -1,6 +1,8 @@
 # Pre-thinking Flow — Detailed Procedures
 
-This file expands the SKILL.md six-step descriptions into agent-executable instructions. Read this alongside SKILL.md; do not treat it as a standalone script.
+**Sole owner: executable procedure.** `SKILL.md` owns entry, routing overview,
+output, and transition; templates own shapes. If another source conflicts with
+this file's procedure, this file wins.
 
 **Cross-cutting principles (the design's load-bearing spine):**
 
@@ -9,6 +11,29 @@ This file expands the SKILL.md six-step descriptions into agent-executable instr
 3. **Facts parallel, judgment sequential.** Gathering facts can fan out (facts don't fight); making decisions must be single-file (decisions are interdependent; parallel forks into contradictions).
 4. **Leave convergence traces.** Every decision carries "why not the others" and "what rots first" as signposts for the next person who iterates.
 5. **Prefer failures that alarm.** Choose the option that fails loudly over the one that fails silently. A guess isn't dangerous; a silent guess is.
+
+### Stable ID contract
+
+These prefixes have one fixed meaning:
+
+- `PT-CI` (Pre-thinking Core Identity)
+- `PT-D*` (Pre-thinking Design Decision)
+- `PT-S*` (Pre-thinking Real Seam)
+- `PT-EVAL` (Pre-thinking Evaluation Contract)
+
+An ID is an immutable authority key, not a label to rewrite. Once downstream
+artifacts cite an ID, never renumber it, never reuse it for another meaning, and
+never change its canonical label. A correction that preserves the same decision
+identity keeps both. A repurpose, split, merge, or semantic replacement gets a
+new ID and all consumers update their refs; retired IDs are not recycled.
+
+The canonical human resolver is the Step 2 `Canonical label` for `PT-CI`, the
+Step 4 decision label for `PT-D*`, the Step 4 seam name for `PT-S*`, and the fixed
+label `evaluation-contract` for `PT-EVAL`. Human-facing Markdown cites
+`ID (canonical label)`. Machine-facing YAML reference fields store the bare ID.
+Canonical labels are short semantic phrases without parentheses.
+The label beside a reference is a checked projection of its declaration, never a
+second place to redefine it.
 
 ---
 
@@ -32,7 +57,10 @@ The ruler has exactly one real gate: **deep thinking is the default; fast-track 
 - **fast-track**: prove *both axes approach zero* (no unresolved design question; wrong = bounded, known damage) → no thinking needed. What lets you skip is not "small change" — "small" is only the surface.
 - **deep thinking**: everything else, all through the same flow (Step 2 assume → Step 3 gather → Step 4 converge).
 - The rule is one-directional: fast-track needs proof; unsure = deep. Do not assume you can judge "this one needs no depth." Misjudging into deep only costs tokens; misjudging into fast-track drops blind spots — asymmetric cost.
-- **No "light thinking" middle tier.** Whether to dispatch searchers, and how many, is the *emergent result* of Step 2's not-confident-assumption count — 0 not-confident assumptions → 0 searchers (equivalent to the old "light" case), with no separate first-step judgment call.
+- **No "light thinking" middle tier.** Whether to dispatch searchers, and how
+  many, emerges from Step 2's not-confident assumptions and the distinct evidence
+  surfaces they require. Zero not-confident assumptions means zero searchers
+  (equivalent to the old "light" case), with no separate first-step judgment call.
 
 **Revisable (depth one-way valve + mid-flight upgrade):** if later steps surface new evidence, the main agent upgrades depth on its own (never downgrades). Not a new mechanism — the existing single-directional valve.
 
@@ -63,11 +91,25 @@ Assumptions then split naturally: **confident** → used to frame scope; **not c
 
 Framing needs live system facts (module boundaries, entrypoints, config/env sources, external services, data flow, existing tests). Derive them from live codebase artifacts:
 
-1. Check `.samsara/codebase-map.yaml`.
-2. If present and fresh, read it as derived context for module boundaries, entrypoints, config sources, external services, data flow, hidden coupling, and assumptions.
-3. If present but stale and churn (changed source files since `last_updated`, excluding paths under `changes/`, `docs/`, `bugfix/`) exceeds `staleness_churn_threshold` (canonical definition: codebase-map SKILL.md Triggers): **auto-initiate** `samsara:codebase-map` regeneration before continuing. In human-in-the-loop mode, retain **Phase 4 human review**. Do not proceed past this step until regeneration completes. **If auto-initiated regeneration fails, aborts, or is rejected at Phase 4 review, do NOT treat it as completed and do NOT block indefinitely: proceed with the map explicitly marked stale, record an information gap noting the failed regeneration, and continue planning on that basis.** If present but stale and churn is at or below `staleness_churn_threshold`: use it only as a starting hypothesis. Verify any fact needed for planning against live codebase artifacts; record stale or unverifiable facts as information gaps.
-4. If missing, do not invent a map from memory. For a small, localized task, run targeted local inspection of the affected files and their immediate entrypoints/config/external interactions. For broad or unclear scope, record an information gap recommending `samsara:codebase-map`.
-5. If the map and live codebase disagree, live codebase artifacts win. Surface the drift as an information gap or update requirement; do not silently trust the map.
+1. Check `.samsara/codebase-map.yaml` and compare its `source.commit` with
+   committed Git `HEAD`.
+2. If `CURRENT`, read the map as derived context for module boundaries,
+   entrypoints, config sources, external services, data flow, hidden coupling,
+   and assumptions.
+3. If `UPDATE_REQUIRED`, **auto-initiate** `samsara:codebase-map` before
+   continuing. Codebase Map owns its snapshot verification; do not add a
+   feature execution-mode gate. If regeneration fails or aborts, do not claim
+   completion and do not block indefinitely. Keep the old map identified by
+   its source commit, record the failed refresh as an information gap, and
+   verify every planning-critical fact against committed `HEAD`.
+4. If `MISSING` or `UNKNOWN`, do not invent a map from memory. For a localized
+   task, inspect affected files and their immediate entrypoints, config, and
+   external interactions. For broad or unclear scope, record an information
+   gap recommending `samsara:codebase-map`.
+5. The map describes committed code only. Current feature artifacts and
+   targeted working-tree evidence own the proposed change. If the map
+   conflicts with its recorded Git snapshot, or an old map conflicts with
+   committed `HEAD`, the Git evidence wins and the drift remains visible.
 
 ### Codebase-craft — distil the domain core identity
 
@@ -78,6 +120,8 @@ While framing, produce one more named output: the **domain core identity**.
 - **Operability test (guards against empty slogans):** the identity must be able to **adjudicate a concrete structural decision**. Test: if two opposite structural choices both "serve" your written identity, it is too vague — rewrite it. (Same "replace anything foolable with checkable" principle.)
 
 Core identity is a **design decision** and rides the Step 6 handoff channel (planning Key Decisions single source). It is feature-level, produced once here (design note 2 §4.1).
+Assign it the stable ID `PT-CI` so downstream artifacts cite it instead of
+copying it as a new decision.
 
 ---
 
@@ -85,13 +129,28 @@ Core identity is a **design decision** and rides the Step 6 handoff channel (pla
 
 Go find evidence for the not-confident assumptions. **Why multi-lens and not the main agent alone:** the main agent only searches where it already thought to look — its blind spots decide what it can find. Independent searchers at **different lenses** hit what it didn't think to look for. This is the only reason multi-lens exists: cover blind spots.
 
+Derive the dynamic evidence strategy from decision-relevant, not-confident
+assumptions and the distinct evidence surfaces they require. This is not a
+one-to-one mapping. One lens may cover multiple assumptions when they depend on
+the same evidence surface; one assumption may require multiple lenses when its
+evidence or blind spots span different surfaces. Before dispatch, record each
+lens's assumptions, evidence surface, and independent blind-spot rationale in
+`pre-thinking.md`.
+
 - **No cap on lens count** — dispatch as many as this run needs, decided by "which kinds of places the evidence is scattered across." No cap is possible because **searchers bring back only facts, and facts don't fight — they only complement** (let them judge, and many of them return contradictory advice built on different premises — so they don't judge).
 - **Each searcher returns:** facts found (with sources), things found along the way that weren't on the list (this is the real blind-spot value), things not found. **No "recommendation" field.** (Return shape: `templates/lens-report.md`.)
 - **How to dispatch:** the lens (question to answer) + thinking scope (Step 2's box) + starting points (a few entry files, but a *start* not "only search these," else you smuggle the main agent's blind spot into the searcher) + return format.
 - A lens that fails or comes back blank → record it as an "unverified gap," do not carry on as if nothing happened.
-- **Searcher count comes from Step 2, not Step 1:** lenses dispatched = how many not-confident assumptions Step 2 had / how many kinds of places evidence is scattered across — 0 not-confident assumptions → 0 searchers, main agent looks itself. This is the direct consequence of deleting the "light thinking" tier, not a new rule.
-- A **default lens list** (`references/lenses.md`) serves as a reminder (not a cap): after deriving lenses, check it for known-important ones you missed; deliberately skipping one needs a written reason.
-- **codebase-map as a start, not truth:** when `.samsara/codebase-map.yaml` exists and is fresh enough, searchers take it as a starting hypothesis (saves re-digging), but **live codebase wins** — where map and reality disagree, trust reality and surface the drift. Map missing or stale → don't invent from memory; search.
+- **Searcher count comes from Step 2, not Step 1:** derive the uncapped lens set
+  from the many-to-many mapping above. Zero not-confident assumptions means zero
+  searchers and the main agent looks itself. This follows from deleting the
+  "light thinking" tier; it is not a separate depth rule.
+- A **default lens list** (skill-local `references/lenses.md`) serves as a reminder (not a cap): after deriving lenses, check it for known-important ones you missed; deliberately skipping one needs a written reason.
+- **codebase-map as a start, not truth:** a `CURRENT` map is a starting
+  hypothesis for committed project structure. `UPDATE_REQUIRED`, `MISSING`, or
+  `UNKNOWN` means searchers verify needed facts from targeted evidence instead
+  of inventing from memory. Feature artifacts and current working changes own
+  the proposed feature; the map does not.
 - **Sole writer:** searchers only *return results* to the main agent; they write no file. `pre-thinking.md` is written by the main agent alone (avoids many searchers writing one file at once).
 
 ### Codebase-craft — which lenses gather seam facts
@@ -131,6 +190,8 @@ Type checklist (reminder, not a cap; Step 1's type decides which rows to read):
 ### Each dimension lands in one of three boxes
 
 Core mechanism, one sentence: **every decision must land in one of three boxes — there is no fourth box called "I feel."**
+Assign each decision a unique stable ID (`PT-D1`, `PT-D2`, ...). Preserve the ID
+when revising the decision; Planning cites the ID and never allocates a `PT-*` ID.
 
 1. **Evidence-decided** — Step 3's facts forced a single answer; cite the source.
 2. **Self-derived** — evidence didn't force it, but you derive it from a **nameable root** and **write the chain out**. Root = **Samsara axiom + the problem's hard requirements + existing convention/contract (if found and confirmed not rotten)**. You don't need to first classify this change's "novelty/maturity" to decide what to check: go look for a convention/contract; not found → fall back to axiom + hard requirements. The act of looking gives the situated answer; classify-then-check and check-directly are equivalent.
@@ -148,6 +209,8 @@ Core mechanism, one sentence: **every decision must land in one of three boxes �
 ### Codebase-craft — real seams as a named decision category
 
 The domain's essential boundaries the feature **sits on or creates** (module/abstraction boundaries) are a **named decision category** in Step 4 — run through the same three boxes, **not a separate structural pass**.
+Assign each seam decision a unique stable ID (`PT-S1`, `PT-S2`, ...); the
+semantic seam name remains the human-facing resolver key.
 
 - **Where produced:** Step 3's structure/boundary/evolution lenses gathered the facts → converge here into named seam decisions.
 - **Evidence-tier marker (key) + accrues along the pipeline:** the full tier order is
@@ -176,9 +239,13 @@ You may declare "no gaps" only when **every dimension that grew (including check
 Step 4 recognized and marked which decisions "need an external call"; this step actually asks and records the answers. The most dangerous thing: **how you ask decides whether you get a real decision or a rubber stamp.** So two rules:
 
 - **Every question is a real multiple-choice:** ≥2 options + each option's trade-off. Never ask "shall we do it the way I recommend?" (that yes/no is exactly the samsara "shall we do all of it?" disease).
+- Give every question a stable slug and dispatch it as
+  `pre-thinking.step5.<group-slug>.<question-slug>`. A rewrite keeps the same ID;
+  a different question gets a new ID.
 - **Answers recorded as traces**, not just the conclusion: which was chosen / why not the others / what this decision assumes / what rots first when that assumption breaks. So the next person can pick it up and change it without re-litigating the whole thing.
 
-Practice: human asks via multiple-choice; auto has the gatekeeper answer per question (mark (b)-type as guess). Ask a small batch at a time, split rounds if many. If an answer overturns a Step 4 derivation, propagate the fix downstream (decisions are interdependent).
+Ask a small batch at a time, split rounds if many. If an answer overturns a Step
+4 derivation, propagate the fix downstream because decisions are interdependent.
 
 ### Grouping and overflow
 
@@ -203,16 +270,25 @@ Hand three things to planning; be honest about your own state.
 ### (1) L1 handoff — core identity + real seams (codebase-craft)
 
 The feature-level **core identity** (Step 2) and **real seams** (Step 4) are design decisions. They travel through the **existing "planning Key Decisions single source" channel** (the same channel Step 4's other design decisions use) — planning cites them, does **not** re-derive them and does **not** add new placement decisions. This is the **L1 contract** the implementer's global-thinking channel later consumes (design notes 1 §10, 2 §7). No new file, no new mechanism: L1 = the shared (identity + seams) + planning's per-task (position) added at decomposition.
+The L1 handoff lists the corresponding `PT-CI` and `PT-S*` IDs.
+Each ref includes its canonical label so a human can resolve its meaning without
+copying the decision content.
 
 Do not build the seam's future abstraction now — structural-honesty rules still govern: write the concrete first, abstract when the second real force appears. L1 says *where the joint should be soft*, it does not authorize growing the joint pre-emptively (design note 1 §6).
 
 ### (2) Evaluation Contract (single standard, existing format)
 
-Define one Primary evaluator — something that, when it holds, means done; the agent can actually run/inspect it, not "feels done." This is not a new thing — it's the existing Evaluation Contract. Write it in this exact structure:
+Evaluation is never optional, including fast-track.
+
+Define one agent-evaluable Primary evaluator — something that, when it holds,
+means done; the agent can actually run or inspect it, not "feels done." This is
+the existing Evaluation Contract. Write it in this exact structure:
 
 ```
 ## Evaluation Contract
 
+**Contract ID:** PT-EVAL
+**Canonical label:** evaluation-contract
 **Primary evaluator:** <one canonical method>
 **Agent can perform it by:** <command, browser flow, artifact inspection, snapshot comparison, log check, or stable rubric>
 **Pass signal:** <observable condition>
@@ -231,6 +307,28 @@ Rules:
 ### (3) Commitment (one of three) + residual list
 
 **Proceed / Accept gap / Return to Research** — forces an explicit stance so no one slips into planning while pretending everything's solved. Residual list = things unsolvable here, handed to planning or later (e.g. "this step needs an operator to fill a value manually"). Auto: commitment made by the gatekeeper too; "Return to Research" is allowed (a flow redirect, not a fallback to a human).
+
+Only Proceed or Accept gap may invoke `samsara:planning`.
+
+---
+
+## Execution Mode Routing
+
+Apply this routing to every Step 5 choice, Evaluation Contract selection, and
+Step 6 commitment:
+
+- If `Execution mode: human-in-the-loop`, ask the user using the active prompt.
+- If `Execution mode: auto`, do not ask the user. Dispatch
+  `samsara:auto-gatekeeper` with the active stable gate ID, wait for its validated
+  decision, and write the answer to `pre-thinking.md`. The Gatekeeper alone
+  appends `auto-decisions.md`.
+
+- Step 5: preserve the choice trace and mark human-only answers as unconfirmed
+  guesses.
+- Evaluation Contract: record exactly one Primary evaluator.
+- Evaluation Contract uses `pre-thinking.evaluator`.
+- Commitment uses `pre-thinking.commitment`; invoke planning only for Proceed or
+  Accept gap.
 
 ---
 
@@ -262,7 +360,7 @@ Rules:
 
 ## 8. AskUserQuestion Header Constraint
 
-All `AskUserQuestion` calls in this skill must use a `header` field of **≤ 12 characters** for broadest client compatibility (Codex CLI, Gemini CLI v0.29.0+).
+All `AskUserQuestion` calls in this skill must use a `header` field of **≤ 12 characters** for broad client compatibility.
 
 Compliant headers: `"Pre-thinking"` (12), `"Lens review"` (11), `"Commitment"` (10), `"Resume?"` (7).
 
@@ -275,10 +373,14 @@ Compliant headers: `"Pre-thinking"` (12), `"Lens review"` (11), `"Commitment"` (
 1. Check if `pre-thinking.md` exists in `changes/<feature>/`.
 2. **If absent:** proceed normally to Step 1.
 3. **If present AND complete:** read the `Decision:` field and Evaluation Contract.
-   - `Decision: Proceed` or `Decision: Accept gap` + complete Evaluation Contract + L1 (core identity + real seams) present = planning-ready.
+   - `Decision: Proceed` or `Decision: Accept gap` + complete Evaluation Contract
+     + L1 refs present = planning-ready only when the refs contain `PT-CI` and
+     every cited `PT-S*`, and each ref resolves to exactly one Step 2/4
+     declaration. A heading or copied L1 prose is not completion.
    - `Decision: Return to Research` = complete but NOT planning-ready. Stop and ask the user to re-invoke `samsara:research` with the unresolved gaps.
    - A Step 6 heading without one of these decisions is incomplete.
-   - Any Step 6 without Evaluation Contract, or without L1, is incomplete.
+   - Any Step 6 without Evaluation Contract, without L1 refs, or with an
+     unresolved/duplicate `PT-CI` or `PT-S*` ref is incomplete.
 4. **If present AND incomplete:** session was interrupted (K3b state).
    - Identify the last completed step (which of Steps 1–6 are written? which Step 5 groups are present?).
      - A Step 5 group is **complete** if its `### Group N:` header is followed by at least one `**A:**` answer line before the next `### Group` header or end of file.

@@ -5,10 +5,9 @@ These tests target SILENT FAILURE paths — cases where a wrong conversion
 produces output that looks valid but is semantically broken, with no error raised.
 
 Death case taxonomy:
-  DC-1: Hook script outputs hookSpecificOutput.additionalContext instead of
-        systemMessage — Codex silently ignores it. User sees no context injection.
-  DC-2: hooks.json with Codex-invalid matchers (clear, compact) — Codex silently
-        ignores hooks that don't fire, user sees no injection on session start.
+  DC-1: Hook script outputs UI-only systemMessage instead of model-visible
+        hookSpecificOutput.additionalContext.
+  DC-2: hooks.json matchers drift from the platform lifecycle contract.
   DC-3: Hook script references Claude-only runtime env vars — these don't exist
         in Codex, causing a bash no-such-variable error (with set -u) or an empty
         path (without set -u), silently breaking native layout lookups.
@@ -53,20 +52,12 @@ def converter():
 
 
 class TestDC1WrongOutputFormat:
-    """DC-1: Converted hook script must NOT output hookSpecificOutput.additionalContext.
+    """DC-1: Converted hooks must emit model-visible SessionStart context."""
 
-    Rationale: Codex hook scripts are expected to write a JSON object with a
-    'systemMessage' key to stdout. If the converter produces a script that
-    outputs Claude Code's format (hookSpecificOutput.additionalContext), Codex
-    silently ignores the output — the model receives no injected context.
-
-    This is the core death case for the hook converter.
-    """
-
-    def test_converted_script_does_not_contain_hookspecificoutput(
+    def test_converted_script_contains_hookspecificoutput(
         self, converter, codex_config, codex_env
     ):
-        """The converted session-start script must not reference hookSpecificOutput."""
+        """The session-start script uses Codex's model-context output field."""
         template = codex_env.get_template("hook.sh.j2")
         result = converter.convert_script(
             hook_name="session-start",
@@ -74,20 +65,13 @@ class TestDC1WrongOutputFormat:
             platform_config=codex_config,
             template=template,
         )
-        assert "hookSpecificOutput" not in result, (
-            "Converted script contains 'hookSpecificOutput' — this is Claude Code's "
-            "output format. Codex silently ignores this field. The converter must "
-            "produce 'systemMessage' instead."
-        )
-        assert "additionalContext" not in result, (
-            "Converted script contains 'additionalContext' — this is Claude Code's "
-            "context injection field. Codex will silently ignore it."
-        )
+        assert "hookSpecificOutput" in result
+        assert "additionalContext" in result
 
-    def test_converted_script_outputs_system_message(
+    def test_converted_script_does_not_output_system_message(
         self, converter, codex_config, codex_env
     ):
-        """The converted session-start script must reference the systemMessage field."""
+        """UI-only systemMessage must not replace model-visible context."""
         template = codex_env.get_template("hook.sh.j2")
         result = converter.convert_script(
             hook_name="session-start",
@@ -95,10 +79,7 @@ class TestDC1WrongOutputFormat:
             platform_config=codex_config,
             template=template,
         )
-        assert "systemMessage" in result, (
-            "Converted script does not contain 'systemMessage'. Codex hook scripts "
-            "must output JSON with a 'systemMessage' key for context injection."
-        )
+        assert '"systemMessage"' not in result
 
     def test_converted_hooks_json_uses_command_hook_schema(
         self, converter, codex_config, codex_env
@@ -122,40 +103,24 @@ class TestDC1WrongOutputFormat:
 
 
 class TestDC2IncorrectMatchers:
-    """DC-2: Matchers 'clear' and 'compact' are Claude Code-specific.
+    """DC-2: Rendered matchers must equal the Codex platform contract."""
 
-    Rationale: Claude Code uses 'startup|clear|compact' as session start matchers.
-    Codex uses 'startup' and 'resume'. If the converter passes Claude Code matchers
-    to hooks.json.j2, the hook will never fire for Codex's session events — the user
-    sees no context injection with no error message from Codex.
-
-    This test verifies the converter uses Codex matchers from the platform config,
-    NOT the source file's matchers.
-    """
-
-    def test_converted_hooks_json_does_not_contain_claude_code_matchers(
+    def test_converted_hooks_json_contains_all_configured_matchers(
         self, converter, codex_config, codex_env
     ):
-        """hooks.json must not contain 'clear' or 'compact' as matchers."""
+        """Lifecycle coverage includes startup, resume, clear, and compact."""
         template = codex_env.get_template("hooks.json.j2")
         result = converter.convert_hooks_json(
             platform_config=codex_config,
             template=template,
         )
-        result_str = json.dumps(result)
-        assert "clear" not in result_str, (
-            "Converted hooks.json contains 'clear' matcher — this is a Claude Code "
-            "session event. Codex does not fire on 'clear', so this hook never runs."
-        )
-        assert "compact" not in result_str, (
-            "Converted hooks.json contains 'compact' matcher — this is a Claude Code "
-            "session event. Codex ignores this matcher silently."
-        )
+        matcher = result["hooks"]["SessionStart"][0]["matcher"]
+        assert set(matcher.split("|")) == {"startup", "resume", "clear", "compact"}
 
     def test_converted_hooks_json_uses_codex_matchers(
         self, converter, codex_config, codex_env
     ):
-        """hooks.json must use Codex session matchers: startup and resume."""
+        """hooks.json must include Codex's startup session matcher."""
         template = codex_env.get_template("hooks.json.j2")
         result = converter.convert_hooks_json(
             platform_config=codex_config,
@@ -243,70 +208,7 @@ class TestDC3EnvVarAdaptation:
         )
 
 
-# ---------------------------------------------------------------------------
-# DC-4: Special characters in system message content
-# ---------------------------------------------------------------------------
-
-
-class TestDC4SpecialCharactersInSystemMessage:
-    """DC-4: System message with special chars must produce valid JSON from hooks.json.
-
-    Rationale: hooks.json.j2 renders system_message via | tojson. If the converter
-    passes a system_message value with unescaped quotes, newlines, or backslashes,
-    Jinja2's tojson filter handles them — but only if the converter passes a Python
-    string (not raw JSON or pre-escaped text). A converter that pre-escapes and then
-    passes to tojson would double-escape, producing broken JSON.
-
-    The death condition: a hooks.json that fails JSON parsing is ignored by Codex
-    with no error surfaced to the user.
-    """
-
-    def test_system_message_with_quotes_produces_valid_json(
-        self, converter, codex_config, codex_env
-    ):
-        """System message with double quotes must produce valid JSON hooks.json."""
-        template = codex_env.get_template("hooks.json.j2")
-        system_message = 'He said "hello" and she said "goodbye".'
-        result_dict = converter.convert_hooks_json(
-            platform_config=codex_config,
-            template=template,
-            system_message=system_message,
-        )
-        # Must be JSON-serializable (round-trip check)
-        json_str = json.dumps(result_dict)
-        reparsed = json.loads(json_str)
-        assert "hooks" in reparsed
-
-    def test_system_message_with_newlines_produces_valid_json(
-        self, converter, codex_config, codex_env
-    ):
-        """System message with newlines must produce valid JSON hooks.json."""
-        template = codex_env.get_template("hooks.json.j2")
-        system_message = "Line one.\nLine two.\nLine three."
-        result_dict = converter.convert_hooks_json(
-            platform_config=codex_config,
-            template=template,
-            system_message=system_message,
-        )
-        json_str = json.dumps(result_dict)
-        reparsed = json.loads(json_str)
-        assert "hooks" in reparsed
-
-    def test_system_message_with_backslashes_produces_valid_json(
-        self, converter, codex_config, codex_env
-    ):
-        """System message with backslashes must produce valid JSON hooks.json."""
-        template = codex_env.get_template("hooks.json.j2")
-        system_message = "Path: C:\\Users\\samsara\\plugin"
-        result_dict = converter.convert_hooks_json(
-            platform_config=codex_config,
-            template=template,
-            system_message=system_message,
-        )
-        json_str = json.dumps(result_dict)
-        reparsed = json.loads(json_str)
-        assert "hooks" in reparsed
-
+class TestDC4HooksJsonShape:
     def test_convert_hooks_json_output_is_valid_json_dict(
         self, converter, codex_config, codex_env
     ):

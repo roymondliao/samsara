@@ -40,7 +40,6 @@ import re
 
 from tests.test_auto_mode.test_protocol_helpers import (
     AUTO_MODE_REFERENCE,
-    BOOTSTRAP,
     EARLY_STAGE_SKILLS,
     LATER_STAGE_SKILLS,
     REQUIRED_WORKFLOW_STAGES,
@@ -99,7 +98,11 @@ def has_double_trace_check(auto_section_lower: str) -> bool:
     double check the task requires."""
     return (
         "prior gate entries" in auto_section_lower
-        and "after appending the final validation decision" in auto_section_lower
+        and re.search(
+            r"after (?:the gatekeeper )?append(?:s|ing) the final validation decision",
+            auto_section_lower,
+        )
+        is not None
     )
 
 
@@ -432,29 +435,29 @@ def test_death__reembed_decoy_is_detected_as_present() -> None:
 # ---------------------------------------------------------------------------
 
 
-class TestBootstrapExecutionModeDeath:
-    def test_bootstrap_requires_session_mode_selection_before_research(self):
-        text = read(BOOTSTRAP)
-        mode_section = section(text, "Execution Mode Selection")
+class TestResearchExecutionModeDeath:
+    def test_research_requires_workflow_mode_selection_before_interrogation(self):
+        text = read(EARLY_STAGE_SKILLS["research"])
+        mode_section = section(text, "Step 0: Execution Mode Selection")
 
         required = (
-            "before invoking `samsara:research`",
+            "Before Step 1",
             "`human-in-the-loop`",
             "`auto`",
-            "default",
             "Execution mode:",
-            "ask the user to choose",
+            "If the user does not choose",
             "Execution mode? Choose `human-in-the-loop` or `auto`.",
+            "1-kickoff.md",
         )
         for term in required:
             assert term in mode_section, (
-                "SILENT FAILURE [AUTO-MODE-1]: bootstrap can enter research "
+                "SILENT FAILURE [AUTO-MODE-1]: Research can interrogate "
                 f"without an explicit execution mode contract. Missing {term!r}."
             )
 
-    def test_bootstrap_marks_persistent_config_out_of_scope(self):
-        text = read(BOOTSTRAP)
-        mode_section = section(text, "Execution Mode Selection")
+    def test_research_marks_persistent_config_out_of_scope(self):
+        text = read(EARLY_STAGE_SKILLS["research"])
+        mode_section = section(text, "Step 0: Execution Mode Selection").lower()
 
         assert "persistent config" in mode_section
         assert "out of scope" in mode_section
@@ -568,7 +571,8 @@ class TestLaterWorkflowAutoGateDeath:
     def test_implement_auto_gate_covers_execution_mode_selection(self):
         auto_section = section(read(LATER_STAGE_SKILLS["implement"]), "Auto Mode Gate")
 
-        assert "implementation execution-mode selection" in auto_section
+        assert "implementation strategy selection" in auto_section
+        assert "implementation.strategy" in auto_section
         assert "Subagent parallel" in auto_section
         assert "Inline sequential" in auto_section
 
@@ -603,7 +607,9 @@ class TestLaterWorkflowAutoGateDeath:
         )
 
         assert "prior gate entries" in auto_section
-        assert "after appending the final validation decision" in auto_section
+        assert (
+            "after the Gatekeeper appends the final validation decision" in auto_section
+        )
 
 
 class TestPrimaryEvaluatorCoverageDeath:

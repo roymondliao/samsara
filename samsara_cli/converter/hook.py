@@ -2,17 +2,16 @@
 Hook Converter — Script output and hooks.json adaptation for Codex.
 
 Converts Claude Code hook artifacts to Codex format:
-  - Hook scripts: renders hook.sh.j2 template with Codex-specific variables.
-    The rendered script uses 'systemMessage' JSON output, not Claude Code's
-    'hookSpecificOutput.additionalContext'. This difference is SILENT on failure —
-    Codex ignores unrecognized output fields without error.
-  - hooks.json: renders hooks.json.j2 template using Codex matchers from platform
-    config (startup, resume) instead of Claude Code's (startup, clear, compact).
+  - The bootstrap script injects model-visible SessionStart context through
+    hookSpecificOutput.additionalContext.
+  - The Codebase Map script checks the committed Git snapshot and emits context
+    only when freshness is missing, unknown, or requires an update.
+  - hooks.json uses the lifecycle matchers declared by the Codex platform config.
 
 Design assumptions:
   1. platform_config.formats.hook_output is a dict with keys:
      - 'session_start_matchers': list[str]
-     - 'context_injection_field': str (expected: 'systemMessage')
+     - 'context_injection_field': str
      - 'template': str (hooks.json.j2)
      - 'script_template': str (hook.sh.j2)
      If any required key is missing, KeyError is raised immediately (no silent default).
@@ -23,7 +22,6 @@ Design assumptions:
   4. The template variables passed to hooks.json.j2 are:
      - session_start_matchers: list[str]
      - hooks_dir: str (path to hooks scripts dir)
-     - system_message: str
   5. The template variables passed to hook.sh.j2 are:
      - hook_name: str
      - event: str
@@ -34,11 +32,6 @@ If assumption 1 breaks (missing key), KeyError is raised at access time — not 
 If assumption 2 breaks (paths is None), AttributeError propagates — not silent.
 If assumption 4 or 5 breaks (template variable name mismatch), Jinja2 StrictUndefined
 raises UndefinedError at render time — not silent.
-
-Known gap: check-codebase-map hook references ${CLAUDE_PROJECT_DIR} which has no
-verified Codex equivalent. The generated script via hook.sh.j2 does NOT replicate
-the codebase-map logic — it only generates a structural placeholder. This is
-documented in the scar report as a known shortcut.
 
 This design assumes: all-or-nothing. Partial conversion is worse than no conversion.
 Any missing required config raises immediately — no fallbacks.
@@ -53,15 +46,6 @@ from jinja2 import Template
 from samsara_cli.config.schema import PlatformConfig
 
 logger = logging.getLogger(__name__)
-
-# Default system message for Codex hook context injection.
-# This is a structural placeholder — it identifies samsara is active.
-# The actual bootstrap content would be injected by the running hook script.
-_DEFAULT_SYSTEM_MESSAGE = (
-    "You are operating under the Samsara framework (向死而驗). "
-    "Samsara provides structured skills for code review, planning, iteration, "
-    "and implementation. Follow the samsara protocols for all tasks."
-)
 
 
 def _extract_hook_output_config(platform_config: PlatformConfig) -> dict[str, Any]:
@@ -154,11 +138,8 @@ class HookConverter:
     """Converts Claude Code hook artifacts to Codex format.
 
     This converter handles two artifact types:
-    1. Hook shell scripts — rendered via hook.sh.j2 with Codex-specific variables.
-       CRITICAL: The rendered script outputs 'systemMessage' JSON, not Claude Code's
-       'hookSpecificOutput.additionalContext'. Codex silently ignores the latter.
-    2. hooks.json — rendered via hooks.json.j2 with Codex matchers and paths.
-       CRITICAL: Matchers must be ['startup', 'resume'] not ['startup', 'clear', 'compact'].
+    1. Hook shell scripts emit model-visible SessionStart additional context.
+    2. hooks.json binds those scripts to the configured Codex lifecycle events.
 
     Usage:
         converter = HookConverter()
@@ -171,7 +152,6 @@ class HookConverter:
         hooks_dict = converter.convert_hooks_json(
             platform_config=codex_config,
             template=env.get_template("hooks.json.j2"),
-            system_message="optional custom system message",
         )
 
     This class is stateless — safe to reuse across multiple conversions.
@@ -188,22 +168,12 @@ class HookConverter:
 
         The rendered script is a structural Codex hook that:
         - Reads bootstrap context from the native Codex skills directory
-        - Sources skill env.sh files from SKILLS_DIR when present
-        - Outputs 'systemMessage' JSON (not Claude Code's hookSpecificOutput format)
+        - Outputs hookSpecificOutput.additionalContext for SessionStart
 
         Note on ${CLAUDE_PLUGIN_ROOT}: The source hook scripts use this env var,
         which is set by Claude Code's plugin runtime. Codex does NOT set this var.
         This method does NOT read the source script — it renders the hook.sh.j2
         template with Codex config values instead of Claude-only environment vars.
-
-        Note on check-codebase-map: The source check-codebase-map hook checks
-        ${CLAUDE_PROJECT_DIR} for map freshness. Codex does not set CLAUDE_PROJECT_DIR.
-        For non-session-start hooks (e.g., check-codebase-map), the template renders
-        a Codex-compatible hook that outputs 'systemMessage' with a placeholder
-        indicating the codebase-map check is not yet adapted for Codex.
-        This is an honest behavioral regression documented in the scar report —
-        rather than injecting wrong content silently, the script exits 0 with no output
-        when the Codex project directory equivalent is not available.
 
         Args:
             hook_name: The hook's logical name (e.g., "session-start",
@@ -238,15 +208,12 @@ class HookConverter:
     ) -> str:
         """Render a Codex-compatible check-codebase-map hook script.
 
-        The source check-codebase-map hook checks ${CLAUDE_PROJECT_DIR} for map
-        freshness. Codex does not set CLAUDE_PROJECT_DIR. This method renders a
-        hook script that exits 0 silently when CODEX_WORKSPACE is not set,
-        avoiding the unbound variable error (set -u) that would occur if the
-        original Claude Code env var reference were used.
-
-        This is an intentional behavioral reduction: rather than silently injecting
-        wrong content or crashing, the Codex version of this hook is a no-op when
-        the project directory env var is unavailable.
+        The Claude source hook relies on CLAUDE_PROJECT_DIR, which Codex does not
+        define. The converted hook asks Git for the repository root from the
+        active working directory, compares committed HEAD with the map's
+        source.commit, and emits model-visible context only when the map is
+        missing, stale, or cannot be verified. Uncommitted files do not change
+        freshness because Codebase Map follows committed snapshots.
 
         Args:
             event: Hook event name (e.g., "session_start").
@@ -273,13 +240,12 @@ class HookConverter:
         self,
         platform_config: PlatformConfig,
         template: Template,
-        system_message: str | None = None,
     ) -> dict:
         """Render a Codex-compatible hooks.json and return as a Python dict.
 
-        CRITICAL: This method uses matchers from platform_config.formats.hook_output,
-        NOT from the source hooks.json file. This ensures Codex-specific event names
-        ('startup', 'resume') replace Claude Code's ('startup', 'clear', 'compact').
+        This method uses matchers from platform_config.formats.hook_output, not
+        from the source hooks.json file. The Codex configuration is therefore the
+        sole authority for the session lifecycle events that trigger Samsara.
 
         The returned dict has the structure required by Codex:
         {
@@ -287,28 +253,19 @@ class HookConverter:
                 {
                     "name": "samsara-session-start",
                     "event": "session_start",
-                    "matchers": ["startup", "resume"],
+                    "matchers": ["startup", "resume", "clear", "compact"],
                     "command": "<plugin_dir>/hooks/samsara-session-start.sh",
-                    "systemMessage": "..."
                 }
             ]
         }
 
-        Note on output format: Codex hooks.json uses 'systemMessage' at the hook
-        entry level. Claude Code hooks.json does not have this field. If a template
-        produces 'additionalContext' or 'hookSpecificOutput' instead, Codex silently
-        ignores the context injection.
+        The command scripts, not hooks.json, produce model-visible context through
+        hookSpecificOutput.additionalContext.
 
         Args:
             platform_config: Validated PlatformConfig for the target platform.
             template: Jinja2 Template for hooks.json.j2. Must be from a StrictUndefined
                       environment — missing variables raise UndefinedError.
-            system_message: Optional custom system message string. If not provided,
-                            uses the default samsara framework description.
-                            Pass a Python string — do NOT pre-escape for JSON. Jinja2's
-                            tojson filter handles all escaping. Pre-escaping would cause
-                            double-escape and produce broken JSON.
-
         Returns:
             Python dict representing the hooks.json content. Use json.dumps() to
             serialize to a file. Returning a dict (not a string) ensures the caller
@@ -325,8 +282,6 @@ class HookConverter:
         plugin_dir = _get_plugin_dir(platform_config)
 
         # Extract matchers from platform config — NOT from source hooks.json.
-        # Claude Code matchers: ["startup", "clear", "compact"]
-        # Codex matchers: ["startup", "resume"] (from codex.yaml)
         # Accessing a missing key raises KeyError immediately — this is intentional.
         session_start_matchers: list[str] = hook_output_config["session_start_matchers"]
 
@@ -337,30 +292,13 @@ class HookConverter:
                 "silent failure. Add at least one matcher (e.g., 'startup')."
             )
 
-        # Validate no Claude Code matchers leaked through
-        claude_code_only_matchers = {"clear", "compact"}
-        leaked = set(session_start_matchers) & claude_code_only_matchers
-        if leaked:
-            raise ValueError(
-                f"Claude Code-specific matchers found in session_start_matchers: {leaked}. "
-                "These matchers ('clear', 'compact') are Claude Code session events — "
-                "Codex does not fire on them. Remove them from the platform config or "
-                "this is a config error. Codex uses 'startup' and 'resume'."
-            )
-
         # Build hooks directory path: platform plugin_dir + "/hooks"
         # This is where the rendered hook scripts will be placed.
         hooks_dir = f"{plugin_dir}/hooks"
 
-        # Use provided system_message or fall back to default.
-        # IMPORTANT: Do NOT pre-escape. Jinja2's tojson filter handles escaping.
-        # Pre-escaping causes double-escape in the output (\\n becomes \\\\n).
-        effective_system_message = system_message or _DEFAULT_SYSTEM_MESSAGE
-
         rendered = template.render(
             session_start_matchers=session_start_matchers,
             hooks_dir=hooks_dir,
-            system_message=effective_system_message,
         )
 
         # Parse rendered JSON into a Python dict.
@@ -372,8 +310,7 @@ class HookConverter:
             raise json.JSONDecodeError(
                 f"Rendered hooks.json.j2 is not valid JSON: {e.msg}. "
                 "This indicates a template rendering error or unexpected content "
-                "in template variables. Check that system_message does not contain "
-                "raw control characters outside of a Python string context.",
+                "in template variables.",
                 e.doc,
                 e.pos,
             ) from e

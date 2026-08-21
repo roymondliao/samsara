@@ -47,38 +47,54 @@ Once installed, Samsara injects its axioms and constraints at session start via 
 Samsara is authored as a Claude Code plugin, but `samsara-cli` can convert and install it for other agent platforms (e.g., Codex):
 
 ```bash
-source .venv/bin/activate
-uv run samsara-cli list-platforms              # Show supported targets
-uv run samsara-cli convert --platform codex    # Convert into ./dist/codex/
-uv run samsara-cli install codex --scope project
-uv run samsara-cli validate --platform codex   # Verify converted output
+uv tool install --force /path/to/samsara
+samsara-cli list-platforms                    # Show supported targets
+samsara-cli convert --platform codex          # Convert into ./dist/codex/
+samsara-cli install codex --scope project
+samsara-cli install codex --scope global
+samsara-cli validate --platform codex         # Verify converted output
 ```
 
-The converter translates skills, agents, hooks, and references into the target platform's format; `update` refreshes an existing installation.
+`uv tool install` owns the durable CLI runtime. `samsara-cli install` separately owns the converted Codex files and records the exact runtime command they use. A global install refuses a CLI from the source checkout's `.venv`, because that runtime would break when the checkout moves or is removed. The converter translates skills, agents, hooks, and references into the target platform's format; `update` refreshes an existing installation.
 
 ## Workflow
 
-Samsara provides a structured workflow from research to shipping. Each phase produces specific artifacts that feed into the next.
+Samsara routes state-changing engineering work through a death-first workflow.
+
+> **Derived overview.** The canonical executable routing contract lives in
+> [`skills/samsara-bootstrap/SKILL.md`](skills/samsara-bootstrap/SKILL.md).
+> If this overview disagrees with that contract, the Bootstrap contract wins.
 
 ```
-research ──> pre-thinking ──> planning ──> implement ──> iteration (optional)
-                                               │              │
-                                               v              v
-                                          validate-and-ship (Step 0: security & privacy gate)
-
-fast-track (small, low-risk changes) ──────> done
-debugging (production failures) ──> small fix: fast-track / large fix: implement
+User request
+├─ explicit Samsara skill command -> named skill
+├─ read-only / explanation / meta-audit -> handle directly
+├─ production failure -> debugging
+│  ├─ bounded authorized repair -> fast-track -> done
+│  └─ structural / wide / unknown repair -> research
+├─ proven low-risk state change -> fast-track -> done
+└─ other state-changing feature work
+   └─ research
+      ├─ Step 0: select and persist this workflow run's execution mode
+      └─ interrogate -> pre-thinking -> planning -> implement
+         -> iteration entry triage
+            ├─ skip fix rounds
+            └─ run feature-level fix rounds
+         -> validate-and-ship
 ```
 
-Each transition is a human gate (or an `auto-gatekeeper` decision in auto mode).
+`validate-and-ship` starts with the security and privacy Step 0 gate. Workflow
+transitions use a human gate or an `auto-gatekeeper` decision in auto mode.
 
 ## Auto Mode
 
-The selection happens before `samsara:research`: Samsara asks for an execution mode, either `human-in-the-loop` or `auto`. `human-in-the-loop` keeps the existing workflow gates. In `auto`, the same workflow still runs from `research -> pre-thinking -> planning -> implement -> iteration -> validate-and-ship`, but former human questions and confirmations are routed to `samsara:auto-gatekeeper`.
+Research Step 0 selects the workflow-run execution mode: `human-in-the-loop` or `auto`. It persists that mode in the feature's `1-kickoff.md`; Bootstrap only injects global policy and routes feature work to Research. `human-in-the-loop` keeps the existing workflow gates. In `auto`, the same workflow still runs from `research -> pre-thinking -> planning -> implement -> iteration -> validate-and-ship`, but former human questions and confirmations are routed to `samsara:auto-gatekeeper`.
 
-The gatekeeper answers as a reusable principle-level reviewer with project context, architecture judgment, and first-principles reasoning. Every auto decision is appended to `changes/<feature>/auto-decisions.md` as an append-only record that preserves the original `workflow_prompt`, the `gatekeeper_answer`, rationale, uncertainty, and consequences.
+The gatekeeper is the Staff-level workflow decision authority: symmetric with the human for gate judgment, but not for external execution authority or consent. It uses the Codebase Map for broad structural awareness, feature artifacts for change authority, and targeted live evidence for current truth.
 
-First-cut scope is intentionally session-level: `samsara_config.yaml` is not supported. After an auto run starts, it does not reintroduce user gates during that run; uncertainty is recorded in `auto-decisions.md`, and security/privacy unknowns become high-uncertainty reject decisions.
+The gatekeeper is the sole writer of `changes/<feature>/auto-decisions.md`. Each append-only entry preserves the exact prompt, concise answer, decision-changing reasons, evidence refs, uncertainty, and next action in a validated compact YAML block. Calling workflows wait for that decision; they do not rewrite it.
+
+The mode is feature-scoped and workflow-run-specific; `samsara_config.yaml` is not supported. A separate feature does not inherit the current feature's mode. After an auto run starts, it does not reintroduce user gates during that run; uncertainty is recorded in `auto-decisions.md`, and security/privacy unknowns become high-uncertainty reject decisions.
 
 ### Skills
 
@@ -88,12 +104,13 @@ First-cut scope is intentionally session-level: `samsara_config.yaml` is not sup
 | `samsara:pre-thinking` | After research, before planning — always invoked | Pre-thinking audit log of user–LLM assumption gaps |
 | `samsara:planning` | After pre-thinking commitment (Proceed / Accept gap) | Death-first spec + tasks with acceptance criteria |
 | `samsara:implement` | Plan with tasks is ready | Code with death tests + scar reports |
-| `samsara:iteration` | After implement (optional) — feature-level scar resolution | Iteration log of cross-task patterns + system-level rot fixes |
+| `samsara:iteration` | After every completed implement — cheap entry triage, then feature-level fixes only when needed | Final scar dispositions + index checkpoint |
 | `samsara:validate-and-ship` | Implement/iteration complete — Step 0 runs the security & privacy STOP gate first | Ship manifest with failure budget |
-| `samsara:fast-track` | Small, low-risk changes (< 100 lines) | Compressed workflow, death test still first |
-| `samsara:debugging` | Production failure in existing code | Four-phase yin-side root cause analysis |
-| `samsara:codebase-map` | Entering a new project or after significant changes | Structural map + silent failure surface assessment |
-| `samsara:writing-skills` | Creating or modifying samsara skills | Death-first TDD applied to skill development |
+| `samsara:fast-track` | Evidence proves bounded damage, no unresolved design, and deterministic verification | Bounded implementation, review, validation, and commit record |
+| `samsara:debugging` | Production failure in existing code | Diagnosis artifacts plus repair routing; no implementation |
+| `samsara:codebase-map` | No map exists, or its source commit differs from committed Git HEAD | Committed-snapshot graph: responsibilities, capabilities, relationships, flows, and silent failure surfaces |
+| `samsara:level-analysis` | Auto Gatekeeper needs comparable engineering perspectives before a difficult judgment | Advisory Senior/Staff/Principal analysis; no gate decision |
+| `samsara:writing-skills` | Creating, revising, or reviewing Samsara skills | Skill authoring and proportional verification guidance |
 
 ### Agents
 
@@ -182,7 +199,7 @@ samsara/
 ├── hooks/
 │   ├── hooks.json               # SessionStart hook registration
 │   ├── session-start            # Injects samsara-bootstrap at session start
-│   └── check-codebase-map       # Reminds to generate codebase map if missing/stale
+│   └── check-codebase-map       # Compares map source commit with Git HEAD
 ├── skills/
 │   ├── samsara-bootstrap/       # Session initialization (axiom + constraints)
 │   ├── research/                # Problem investigation + kickoff
@@ -191,10 +208,11 @@ samsara/
 │   ├── implement/               # Subagent orchestration + scar reports
 │   ├── iteration/               # Feature-level scar resolution
 │   ├── validate-and-ship/       # Step 0 security & privacy gate + validation + ship manifest
-│   ├── fast-track/              # Compressed workflow for small changes
-│   ├── debugging/               # Four-phase yin-side debugging
+│   ├── fast-track/              # Evidence-bounded direct implementation path
+│   ├── debugging/               # Yin-side diagnosis + repair routing
 │   ├── codebase-map/            # Project structural + failure surface mapping
-│   └── writing-skills/          # TDD for skill development
+│   ├── level-analysis/          # Advisory Senior/Staff/Principal analysis
+│   └── writing-skills/          # Skill authoring + proportional verification
 ├── references/                  # Domain checklists loaded by review agents
 ├── samsara_cli/                 # Release tooling + multi-platform converter/installer
 ├── tests/                       # Plugin test suite (pytest)
@@ -219,9 +237,9 @@ Samsara produces structured artifacts throughout the workflow:
 | Planning | Acceptance criteria | YAML | Success + failure conditions |
 | Planning | Index | YAML | Task list with dependencies |
 | Implement | Scar report | YAML | Per-task wounds: assumptions, silent failures, edge cases |
-| Iteration | Iteration log | YAML | Feature-level scar triage + resolution record |
+| Iteration | Updated scar state + index checkpoint | YAML | Feature-level dispositions, evidence, and resume state |
 | Auto mode | Auto decisions | Markdown | Append-only gate decisions with rationale and uncertainty |
-| Fast-track | Fast-track record | YAML | Compressed workflow record for small changes |
+| Fast-track | Fast-track record | YAML | Evidence-bounded implementation, review, and validation record |
 | Validate | Ship manifest | YAML | Delivery summary with failure budget |
 
 All artifacts live under `changes/<feature>/` — per-feature directories are the authoritative workflow record.

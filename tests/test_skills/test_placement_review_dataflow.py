@@ -1,22 +1,13 @@
-"""Doc-contract tests for the review-side placement gate + Key Decisions data
-flow (A4 / Task 2).
+"""Doc-contract tests for the review-side placement-authority data flow.
 
-The corruption signature (DC-1): agents/code-reviewer.md gains an Architectural
-Placement review dimension, but the yin-reviewer dispatch never carries the plan's
-Key Decisions — so the reviewer "checks placement" against nothing and silently
-passes. The load-bearing assertion here is the DATA FLOW: Key Decisions must reach
-the yin code-reviewer dispatch in BOTH skills/implement/dispatch-template.md AND
-skills/iteration/SKILL.md. Implement-only is a FAIL (DC-5: iteration fixes reviewed
-blind to placement).
-
-Assertions target behavioral tokens (architectural placement, key decisions,
-placement/ownership), not exact prose. Doc-presence != runtime judgement: these
-guard that the wiring is WRITTEN, not that the reviewer judges placement correctly
-at runtime (deferred to dogfood).
+The corruption signature is a placement review with no cited authority. The
+load-bearing assertion is that both Implement and Iteration resolve task refs to
+the authoritative planning/design entries; the derived Overview cannot silently
+become a second decision owner.
 
 A second concern lives here too (added in Level-2 iteration): the three-state
 placement protocol (matches/contradicts/out-of-scope) is stated by TWO independent
-gates — the planning File Map Consistency Check and this reviewer dimension. The
+gates — Planning's File Allocation Consistency and this reviewer dimension. The
 parity tests below guard that the two gates do not drift apart in their state labels
 or lose the cross-reference that keeps them aligned. This reads skills/planning
 (PLANNING) in addition to the reviewer-dispatch files.
@@ -29,8 +20,8 @@ ROOT = Path(__file__).resolve().parents[2]
 
 CODE_REVIEWER = "agents/code-reviewer.md"
 IMPLEMENT_DISPATCH = "skills/implement/dispatch-template.md"
-ITERATION = "skills/iteration/SKILL.md"
-PLANNING = "skills/planning/SKILL.md"
+ITERATION = "skills/iteration/flow.md"
+PLANNING = "skills/planning/flow.md"
 
 
 def read(path: str) -> str:
@@ -53,8 +44,8 @@ def _section(text: str, marker: str, ends=("\n### ", "\n## ", "\n---")) -> str:
 
 def _yin_dispatch(dispatch_template: str) -> str:
     """The yin code-reviewer dispatch block only — NOT the code-quality block.
-    Key Decisions belong in the yin dispatch (placement = plan-compliance = yin
-    scope); asserting on the yin block guards against wiring the wrong reviewer."""
+    Placement authority belongs in the yin dispatch; asserting on this block
+    guards against wiring the wrong reviewer."""
     return _section(
         dispatch_template, "### Yin reviewer", ends=("\n### Code Quality reviewer",)
     )
@@ -67,27 +58,29 @@ def _iteration_fix_section(iteration: str) -> str:
 # --- DC-1: the corruption signature (Primary-evaluator core) ---
 
 
-def test_dc1_key_decisions_reach_implement_yin_dispatch() -> None:
-    """Implement-phase yin dispatch must carry the plan's Key Decisions, or the
-    placement dimension checks against nothing."""
+def test_dc1_authority_refs_reach_implement_yin_dispatch() -> None:
     yin = _yin_dispatch(read(IMPLEMENT_DISPATCH))
     lowered = yin.lower()
 
-    assert "key decisions" in lowered
+    assert "placement authority" in lowered
+    assert "planning_refs" in yin
+    assert "decision_refs" in yin
+    assert "2-plan.md" in yin
+    assert "pre-thinking.md" in yin
+    assert "do not source decisions from overview.md" in lowered
     assert "placement" in lowered
 
 
-def test_dc5_key_decisions_reach_iteration_yin_dispatch() -> None:
-    """DC-5 (iteration forgotten): the per-fix yin dispatch in iteration must ALSO
-    carry Key Decisions — covering only implement leaves iteration-phase fixes
-    reviewed blind to placement. This path is checked INDEPENDENTLY of implement."""
+def test_dc5_iteration_fix_reenters_implement_with_authority_refs() -> None:
     fix_section = _iteration_fix_section(read(ITERATION))
     lowered = fix_section.lower()
 
-    assert "key decisions" in lowered
-    assert "placement" in lowered
-    # tie the data flow to the yin reviewer specifically, not just anywhere in Step 3
-    assert "code-reviewer" in lowered
+    assert "samsara:implement" in lowered
+    assert "pt/pl/ac refs" in lowered
+    for token in ("complete compact", "seam", "affects", "anchors"):
+        assert token in lowered
+    assert "implement owns implementation and review orchestration" in lowered
+    assert "do not curate code excerpts" in lowered
 
 
 def test_dc1_data_flow_present_in_both_paths_not_just_one() -> None:
@@ -96,11 +89,11 @@ def test_dc1_data_flow_present_in_both_paths_not_just_one() -> None:
     implement_yin = _yin_dispatch(read(IMPLEMENT_DISPATCH)).lower()
     iteration_fix = _iteration_fix_section(read(ITERATION)).lower()
 
-    assert "key decisions" in implement_yin, (
-        "implement yin dispatch missing Key Decisions"
+    assert "placement authority" in implement_yin, (
+        "implement yin dispatch missing Placement Authority"
     )
-    assert "key decisions" in iteration_fix, (
-        "iteration yin dispatch missing Key Decisions"
+    assert "samsara:implement" in iteration_fix and "pt/pl/ac refs" in iteration_fix, (
+        "iteration re-entry work order missing authority refs"
     )
 
 
@@ -114,21 +107,20 @@ def test_code_reviewer_has_architectural_placement_dimension() -> None:
 
     assert "placement" in lowered
     assert "ownership" in lowered
-    # the reviewer must be told to check against the plan's Key Decisions
-    assert "key decisions" in lowered
+    assert "placement authority" in lowered
+    assert "pt-*" in lowered
+    assert "pl-d*" in lowered
 
 
 def test_placement_dimension_documents_three_state_out_of_scope() -> None:
-    """Three-state honesty: a non-placement Key Decision is out of scope, not
+    """Three-state honesty: a non-placement decision is out of scope, not
     forced into matches/contradicts."""
     reviewer = read(CODE_REVIEWER)
     section = _section(reviewer, "Architectural Placement")
     lowered = section.lower()
 
     assert "out of scope" in lowered
-    # and the reviewer must not silently pass when the dispatch carried no Key
-    # Decisions — absence is itself a finding, not a pass
-    assert "no key decisions" in lowered or "absent" in lowered
+    assert "absent" in lowered or "missing placement authority" in lowered
 
 
 # --- Iteration fix: three-state DRY (Gate 1 / Gate 2 parity) ---
@@ -152,7 +144,7 @@ def test_three_state_labels_consistent_across_both_gates() -> None:
     or a maintainer reading one gate mislearns the protocol. Guards the third
     state's bullet LABEL specifically — 'out of scope' already appears mid-sentence
     in both, so only the leading bullet label distinguishes drift."""
-    planning_sec = _section(read(PLANNING), "File Map Consistency Check — STOP Gate")
+    planning_sec = _section(read(PLANNING), "File Allocation Consistency — STOP Gate")
     reviewer_sec = _section(read(CODE_REVIEWER), "Architectural Placement")
 
     for token in ("matches", "contradicts", "out of scope"):
@@ -170,7 +162,7 @@ def test_reviewer_gate_cross_references_planning_gate() -> None:
     the same protocol, so a maintainer changing one gate knows to align the other
     (the anti-drift anchor the DRY concern asked for, without a shared file)."""
     reviewer_sec = _section(read(CODE_REVIEWER), "Architectural Placement")
-    assert "file map consistency check" in reviewer_sec.lower(), (
+    assert "file allocation consistency" in reviewer_sec.lower(), (
         "reviewer Architectural Placement section missing cross-reference to the "
-        "planning File Map Consistency Check — the two gates can silently drift"
+        "planning File Allocation Consistency gate — the two gates can silently drift"
     )

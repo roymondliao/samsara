@@ -1,44 +1,100 @@
+schema_version: 2
 project: "<project name>"
-last_updated: "YYYY-MM-DD"
-# stale_reason: "<reason>"  # OPTIONAL — present ONLY when regen failed/aborted; omitted on a successful run.
-#   Written by the Fail-Honest Write Contract (see SKILL.md) when a regeneration is
-#   abandoned, aborted, or Phase-4-rejected.  Examples: "regen aborted — Phase 4 review
-#   rejected", "regen failed — explorer agent error".  A later successful full regen
-#   overwrites this file and this field is not written, so its absence signals success.
-staleness_churn_threshold: 30  # changed source files since last_updated (exclude changes/ docs/ bugfix/)
+source:
+  commit: "<full Git commit returned by git rev-parse HEAD>"
+generated_at: "<ISO-8601 timestamp>"
 generated_by: "samsara:codebase-map"
 
-# --- Layer 1: Summary ---
+scan_scope:
+  roots:
+    - "."
+  exclusions:
+    - path: "<excluded repository-relative path>"
+      reason: "<content-role reason or user-supplied exclusion>"
+  coverage_gaps:
+    - path: "<referenced but unscanned path>"
+      referenced_by: "<node id, config path, or submodule>"
+      reason: "<outside roots, excluded, or unavailable in the snapshot>"
+
 summary:
-  module_count: 0
-  silent_failure_surface: low  # low | medium | high
+  purpose: "<what this project exists to provide | unknown>"
+  capabilities:
+    - "<externally or internally provided capability>"
+  silent_failure_surface: unknown  # low | medium | high | unknown
   rot_hotspots:
-    - "<module>: <rot risk description> (level N)"
-  high_risk_coupling_count: 0
-  assumption_inventory_count: 0
+    - module_id: "<stable module id>"
+      description: "<evidence-backed rot risk>"
+      evidence_refs:
+        - "<path#symbol or path:line>"
 
-# --- Layer 2: Module Index ---
 modules:
-  - name: "<module name>"
-    path: "<directory path>"
-    responsibility: "<one sentence>"
-    death_impact: unknown  # high | medium | low | unknown
-    rot_risk_count: 0
-    hidden_coupling_count: 0
-    dependencies: []
+  - id: "<stable module id>"
+    name: "<human-facing module name>"
+    path: "<repository-relative directory path>"
+    responsibility: "<one sentence | unknown>"
+    provides:
+      - "<capability, interface, data, or command>"
+    death_impact:
+      severity: unknown  # high | medium | low | unknown
+      effect: "unknown"
+      evidence_refs: []
+    detail_ref: ".samsara/codebase-map/<source commit>/modules/<module id>.yaml"
 
-# --- Infrastructure ---
+global_nodes:
+  - id: "<path or path#symbol>"
+    kind: "<file | function | class | interface | command | config | schema>"
+    path: "<repository-relative path>"
+    responsibility: "<what this node does | unknown>"
+    provides:
+      - "<capability, interface, data, or command>"
+    evidence_refs:
+      - "<path#symbol or path:line>"
+
+cross_module_relationships:
+  - from: "<node id>"
+    to: "<node id>"
+    type: "<imports | calls | implements | configures | reads | writes | emits | consumes>"
+    evidence_refs:
+      - "<path#symbol or path:line>"
+
+business_flows:
+  - name: "<flow name>"
+    purpose: "<observable outcome | unknown>"
+    evidence_refs:
+      - "<path#symbol or path:line>"
+    steps:
+      - node: "<node id>"
+        action: "<what this node contributes>"
+        evidence_refs:
+          - "<path#symbol or path:line>"
+
 infrastructure:
   build:
-    tool: "<build tool>"
-    test_command: "<command>"
-    build_command: "<command>"
+    tool: "<build tool | unknown>"
+    test_command: "<verified command | unknown>"
+    build_command: "<verified command | unknown>"
+    ci_config: "<repository-relative path | unknown>"
   config_sources:
-    - "<source description>"
+    - type: "<env | yaml | json | toml | secrets | code>"
+      path: "<file path or env prefix>"
+      scope: "<runtime | build-time | both | unknown>"
+      evidence_refs:
+        - "<path#symbol or path:line>"
   data_flow:
     entry_points:
-      - "<entry point>"
+      - node: "<node id>"
+        description: "<what enters>"
+        evidence_refs:
+          - "<path#symbol or path:line>"
     storage:
-      - "<storage technology>"
+      - type: "<database | cache | file-system | external>"
+        technology: "<technology | unknown>"
+        purpose: "<what it stores | unknown>"
+        evidence_refs:
+          - "<path#symbol or path:line>"
     external_services:
-      - "<service name>"
+      - name: "<service name>"
+        purpose: "<what it provides | unknown>"
+        connection: "<SDK | REST | gRPC | queue | unknown>"
+        evidence_refs:
+          - "<path#symbol or path:line>"

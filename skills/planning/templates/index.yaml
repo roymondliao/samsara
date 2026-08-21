@@ -1,33 +1,36 @@
 feature: <feature-name>
-status: pending  # pending | in_progress | done | blocked
+status: pending
+iteration_entry: null
+# Iteration owns this checkpoint. It replaces null with:
+# status: <in_progress | ready_for_validation | blocked>
+# route: <skip_rounds | fix_rounds | unknown>
+# round: <N>
+# evaluator: <pass | fail | unknown>
+# signal_lost: <unresolved scar count proxy>
+# stagnation_count: <N>
+# reason: <evidence-backed one-line result>
+# last_commit: <git SHA | null>
+# reversible: true
+
+sources:
+  pre_thinking: pre-thinking.md
+  plan: 2-plan.md
+  acceptance: acceptance.yaml
+  overview: overview.md
 
 tasks:
   - id: task-1
+    task_file: tasks/task-1.md
     title: "<task description>"
-    status: pending  # pending | in_progress | done | blocked | completion_unverified
+    status: pending
     scar_count: null
     unresolved_assumptions: null
-    depends_on: []  # ORDERING (forward): which tasks must complete before this one runs
-    seam: <seam-name>  # L1 per-task position — the semantic seam name this task sits on
-                       # or creates (e.g. parser-boundary, not SEAM-1). MUST reference a
-                       # seam declared in overview.md Key Decisions → Real Seams (single
-                       # source — planning never invents a seam here). Use null only when
-                       # the task genuinely touches no declared seam.
-    affects: []  # L2 reverse projection — who will build on this task's structure.
-                 # Entry form:
-                 #   - task: task-7
-                 #     needs: "one line: what task-7 needs from this task's boundary"
-                 # `affects` is STRUCTURAL impact (reverse: me → downstream consumers);
-                 # `depends_on` is ORDERING (forward: me → prerequisites). Neither
-                 # replaces the other. A `needs` that only restates ordering
-                 # ("runs after me") is noise — consumption discipline will flag it.
-    anchors: []  # L2 pull-starting-points — files the implementer must read BEFORE
-                 # writing (pointers, not content: keep raw content narrow).
-                 # Entry form:
-                 #   - path: exact/path/to/neighbor.py
-                 #     why: "one line: caller / sibling module / pattern already in use"
-                 # When depends_on is non-empty, anchors MUST include the interface
-                 # file(s) of each depended-on task — the implementer reads the LIVE
-                 # signatures to honor upstream contracts (a prose summary would drift).
-                 # Anchors are a starting set, never a whitelist — the implementer
-                 # still pulls further along the trail (L4).
+    planning_refs: [PL-D1]
+    decision_refs: [PT-D1, PT-S1]
+    acceptance_refs: [AC-1]
+    depends_on: []
+    seam: <semantic-name | null>
+    affects: []
+    anchors: []
+    # When needed: {path: <live/interface/file>, why: <contract to preserve>}.
+    # Anchors are read-first starting points, never a whitelist.

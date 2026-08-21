@@ -300,7 +300,7 @@ class TestTomlFormatValidity:
         instructions = parsed["developer_instructions"]
         assert "auto-decisions.md" in instructions
         assert "workflow_prompt" in instructions
-        assert "gatekeeper_answer" in instructions
+        assert "answer" in instructions
 
 
 class TestJsonFormatValidity:

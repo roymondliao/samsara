@@ -1,330 +1,81 @@
 ---
 name: iteration
-description: Use when implement is complete and feature-level scar items need review — aggregates remaining scars across tasks, triages cross-task patterns, and fixes system-level rot before validate-and-ship
+description: Use when implementation is committed and task scar reports may contain unresolved, accepted, deferred, blocked, or cross-task wounds before shipping
 ---
 
 # Iteration — Feature-Level Scar Resolution
 
-Aggregate remaining scar items from all tasks, triage cross-task patterns, fix system-level rot. This is Level 2 iteration — Level 1 (task-scope self-iteration) already happened inside each implementer.
+Scar reports are the item-level SSOT. Iteration reads them directly, applies feature-level judgment, and records each disposition on the original item. It never creates a second item inventory.
 
-> Level 1 問「這個 function 自己壞掉時知道嗎」。Level 2 問「這些 functions 組在一起時，哪裡在假裝健康」。
+## Authority
 
-## Prerequisites
+- `1-kickoff.md` supplies the workflow-run execution mode; never infer it from
+  another feature or unscoped session context.
+- Implement owns initial task wounds, wounds found during fix execution, and code/test/review execution.
+- Iteration solely owns Level 2 entry triage and `status`/`iteration` updates.
+- Iteration may append evaluator/triage-discovered wounds to the affected task scar.
+- `PT-EVAL` is the canonical Primary evaluator and Feedback loop source.
+- The `iteration_entry` mapping in `index.yaml` is the compact feature checkpoint.
+- `changes/<feature>/review-record.md` supplies reviewer verdict reasoning and arbitration evidence; Iteration consumes it but does not modify it.
+- `changes/<feature>/auto-decisions.md` supplies prior auto-mode gate decisions when auto mode was used; Iteration consumes it but does not modify prior entries.
+- Git history is the chronological record.
+- Validate & Ship reads final scar state without reclassifying it.
 
-Read from the feature's `changes/` directory:
-- `index.yaml` — task list with scar_count and unresolved_assumptions
-- `pre-thinking.md` — Evaluation Contract with Primary evaluator and Feedback loop
-- `scar-reports/task-N-scar.yaml` — all scar reports (post Level 1 self-iteration)
-
-## Iteration-Entry Criteria (Reference)
-
-Whether to enter this skill is decided BEFORE it runs.
-
-- The canonical entry criteria (cross-task pattern OR a `signal_lost`
-  threshold, the threshold's historical-estimate rationale, and the
-  three-state gate/default-skip/unknown branch) live in
-  `skills/implement/SKILL.md` → **Transition**. Do not redefine the entry
-  threshold here — the criteria has exactly one place to evolve.
-- Step 1 below is the canonical home for the `signal_lost` computation formula
-  and parse-failure semantics that BOTH places use.
-- If implement's Transition section is renamed or restructured, update this
-  pointer in the same change — a stale pointer silently breaks the
-  single-owner claim.
-
-## Process
+Read `flow.md` completely. It is the sole executable Iteration procedure. This graph is a derived overview; `flow.md` wins if they differ.
 
 ```dot
 digraph iteration {
     node [shape=box];
+    start [label="Restore scar/index/git state" shape=doublecircle];
+    entry [label="Entry triage\nscars + PT-EVAL" shape=diamond];
+    classify [label="Record fix / accept / defer"];
+    fix [label="Delegate fix through Implement"];
+    safety [label="Show safety observations"];
+    gate [label="Execution-mode gate" shape=diamond];
+    repair [label="Repair missing evidence" shape=diamond];
+    blocked [label="Blocked checkpoint" shape=doublecircle];
+    commit [label="Commit dispositions + checkpoint"];
+    ship [label="Validate & Ship" shape=doublecircle];
 
-    entry [label="Entry\n讀取 scar-reports/\n+ index.yaml\n+ pre-thinking.md\n計算 signal_lost" shape=doublecircle];
-    empty [label="有 actionable items？" shape=diamond];
-    triage [label="Triage（execution-mode gate）\n每個 remaining item:\nfix / accept / defer\nFocus: cross-task patterns"];
-    fix [label="Fix\nbudget-aware dispatch\nper-fix commit\nscar report per fix"];
-    round_check [label="Round check\nsignal_lost 下降？\n還有 fix items？" shape=diamond];
-    safety [label="Safety valve check\n(advisory)" shape=diamond];
-    gate [label="Execution-mode gate\n繼續？停止？\n(safety warnings shown)" shape=diamond];
-    log [label="寫 iteration-log.yaml"];
-    exit [label="Exit → validate-and-ship\n(Step 0 security gate)" shape=doublecircle];
-
-    entry -> empty;
-    empty -> triage [label="yes"];
-    empty -> exit [label="no remaining items"];
-    triage -> fix [label="有 fix items"];
-    triage -> log [label="全部 accept/defer"];
-    fix -> round_check;
-    round_check -> gate [label="有更多 items"];
-    round_check -> log [label="全部處理完"];
-    gate -> safety;
-    safety -> triage [label="within limits\n+ gate: 繼續"];
-    safety -> log [label="gate: 停止\n(with or without\nsafety warning)"];
-    log -> exit;
+    start -> entry;
+    entry -> commit [label="skip_rounds"];
+    entry -> classify [label="fix_rounds"];
+    entry -> repair [label="unknown"];
+    repair -> entry [label="repair"];
+    repair -> blocked [label="cannot repair"];
+    classify -> fix [label="fix"];
+    classify -> commit [label="no fixes"];
+    fix -> safety;
+    safety -> gate;
+    gate -> classify [label="continue"];
+    gate -> commit [label="stop"];
+    commit -> ship;
 }
 ```
 
-## Step 1: Aggregate Remaining Scars
+## Output
 
-Read `pre-thinking.md` first and extract:
-- **Primary evaluator** — the canonical feedback source
-- **Pass signal / Fail signal**
-- **Feedback loop** — the first correction path when the evaluator fails
+- Updated items in `changes/<feature>/scar-reports/`.
+- Updated `iteration_entry` checkpoint in `changes/<feature>/index.yaml`.
+- Committed fixes and disposition evidence.
 
-If implementation appears complete but the Primary evaluator fails, add that evaluator failure to the remaining scar set as a cross-task pattern. Do not invent a new success standard during iteration.
-
-Read all `scar-reports/task-N-scar.yaml` files. Collect remaining items:
-
-1. Items with `deferred_to_feature_iteration: true` — explicitly deferred by Level 1
-2. Items without `resolved_items` coverage AND without an in-place `status: resolved` marker — not addressed by Level 1. Both forms count as resolved: the newer in-place `status: resolved` + `resolution` form (`scar-schema.yaml` Rule 11), and the older separate `resolved_items` list, which remains valid per Rule 14 backward-compat extension.
-3. Items in non-conforming scar reports — **list as parse failures, do not skip silently**
-
-**systemic_ref resolution:** For each item written as `systemic_ref: <id>` (see `scar-schema.yaml` Rule 9), resolve `<id>` against `.samsara/systemic-scars.yaml`:
-- Registry exists and `<id>` is present → treat the item using the registry entry's `description` for triage context.
-- Registry exists and `<id>` is NOT present (dangling reference) → **list as a parse failure**, naming the scar report file and the dangling id explicitly. Never silently skip a dangling systemic_ref.
-- Registry file is missing or unreadable → every `systemic_ref` item is marked `unknown` and **passes through the gate** — it is still counted in `signal_lost` like any other item, it is not dropped, and it is not itself treated as a parse failure. A missing registry file must never cause systemic_ref items to silently disappear from aggregation.
-
-Calculate initial `signal_lost`:
-```
-signal_lost = count(known_shortcuts)
-            + count(silent_failure_conditions)
-            + count(assumptions_made where verified == false)
-```
-
-All three scar categories contribute. Only count items from the remaining set (exclude Level 1 resolved items — both the `resolved_items`-list form and the in-place `status: resolved` form).
-
-**Parse failure handling:** two conditions are parse failures — list each
-file (and, for dangling refs, the id) explicitly:
-- The scar report does not conform to `scar-schema.yaml` (e.g. markdown format
-  instead of YAML). This is NOT the old plain-string
-  `known_shortcuts`/`silent_failure_conditions` format —
-  Rule 8 requires counting the old plain-string format normally, never treating it as a parse failure.
-- The report contains a dangling `systemic_ref`.
-
-> 「以下 scar reports 無法解析：[files]。這些 files 的 items 未被計入 signal_lost。」
-> 「以下 systemic_ref 懸空：[file: id, ...]。這些 items 未被計入 signal_lost，比照非 conforming items 處理。」
-
-## Step 2: Triage (Human Gate)
-
-Use the same triage prompt for both execution modes:
-
-```
-Feature-level scar items (K items, signal_lost = N):
-
-Cross-task patterns:
-  - [items that appear in multiple task scars]
-
-Deferred from Level 1:
-  - [items explicitly deferred by implementers]
-
-Unaddressed:
-  - [items not covered by Level 1 resolved_items]
-
-每個 item 需要分類：
-  (F) Fix — 有 actionable code change
-  (A) Accept — 已知風險，接受（必須附 re-review signal：什麼可觀測訊號出現時重審 + 誰負責（owner）+ rationale）
-  (D) Defer — 不在本次處理
-```
-
-- If `Execution mode: human-in-the-loop`, present all remaining items to the
-  user, grouped by type. The user triages each item; AI can suggest
-  classifications but the user decides.
-- If `Execution mode: auto`, do not ask the user. Use the Auto Mode Gate below
-  to dispatch `samsara:auto-gatekeeper` for triage, append the decision to
-  `auto-decisions.md`, and follow the recorded fix / accept / defer
-  classification for each item.
-
-When a remaining item maps to the Evaluation Contract, prefer the documented Feedback loop as the first suggested fix path.
-
-## Step 3: Fix (Per-Fix Commit)
-
-For each item triaged as `fix`, ordered by signal_lost contribution (highest first):
-
-1. Build `iteration_budget_context` for this fix (see Iteration Budget Context below)
-2. Dispatch `samsara:implementer` with fix context + `iteration_budget_context` (see Fix Dispatch Guidance below)
-3. Implementer writes death test for the specific scar item → implements fix → scar report
-4. Main agent: parallel dispatch `samsara:code-reviewer` AND `samsara:code-quality-reviewer` with the same `iteration_budget_context` (single message, two Agent calls, no shared state). The `samsara:code-reviewer` (yin) dispatch MUST also include the plan's placement/ownership **Key Decisions** (curated from `overview.md`), so the reviewer's Architectural Placement dimension can check whether the fix put files in the right place — otherwise iteration-phase fixes are reviewed blind to placement (the same corruption signature the implement dispatch guards).
-5. Await both review outputs — **aggregation rule applies** (see below)
-6. If both reviewers PASS → **per-fix commit** (commit message references original scar item)
-7. Recalculate signal_lost after each fix
-
-### Iteration Budget Context
-
-Every implementer and reviewer dispatch MUST include an `iteration_budget_context` built from current runtime state. Do not copy placeholder values; compute every field before dispatch.
-
-| Field | Purpose |
-|---|---|
-| `round` | Current iteration round number |
-| `max_rounds` | Safety valve round limit |
-| `remaining_rounds` | Rounds left before the max-round safety valve |
-| `signal_lost_before` | Current signal_lost before this fix |
-| `stagnation_count` | Consecutive rounds where signal_lost did not decrease |
-| `net_rot_previous_round` | New scar items minus resolved scar items in the previous round |
-| `reviewer_retry_budget_remaining` | Remaining re-dispatch attempts for missing reviewer output |
-| `expected_signal_reduction` | Scar categories this fix is expected to reduce |
-| `strategy_hint` | One of `explore`, `converge`, `minimal_fix` |
-
-Dispatch envelope shape:
-```yaml
-iteration_budget_context:
-  round: "<current round number>"
-  max_rounds: "<configured max rounds>"
-  remaining_rounds: "<max_rounds - round>"
-  signal_lost_before: "<current signal_lost>"
-  stagnation_count: "<current stagnation count>"
-  net_rot_previous_round: "<previous round net rot, or 0 for round 1>"
-  reviewer_retry_budget_remaining: "<remaining reviewer re-dispatch attempts>"
-  expected_signal_reduction: ["<known_shortcuts | silent_failure_conditions | unverified_assumptions>"]
-  strategy_hint: "<explore | converge | minimal_fix>"
-```
-
-**Strategy hints:**
-- `explore` — early round, budget available: identify the smallest fix that proves the scar is real
-- `converge` — signal_lost is flat or remaining_rounds is 1: prioritize death test + focused fix, avoid broad cleanup
-- `minimal_fix` — safety valve is near/active or retry budget is low: only address the named scar item; report residual risk instead of expanding scope
-
-Sub-agents must treat remaining budget as a strategy signal. Before spending another review retry or validation run, state what uncertainty it resolves.
-
-### Review Aggregation Rule (Per-Fix)
-
-Both reviewers must PASS before the per-fix commit is allowed. Either reviewer returning FAIL blocks the commit.
-
-| Outcome | Action |
-|---|---|
-| Both PASS | Per-fix commit allowed |
-| Either FAIL | Block per-fix commit — implementer must fix and re-review |
-| Missing reviewer (only one output received) | **FAIL with "missing reviewer" error** — block per-fix commit, log the missing reviewer by name, re-dispatch (max 2 retries); if still missing after retries, escalate and do not proceed |
-
-**Missing reviewer handling:** absent reviewer output is never PASS. This is a
-structural block, not an advisory warning — follow the table row above.
-
-**Re-review rule:** After implementer fixes issues from FAIL, dispatch both reviewers in parallel again. Do not dispatch only the reviewer that failed — both must re-review after any code change.
-
-**Budget-aware review:** Reviewer dispatch MUST include current round and retry budget. When retry budget is low, reviewers still block correctness/security/privacy regressions, but should separate blocking issues from non-blocking cleanup so the main agent can make a bounded decision.
-
-**Blocked fix handling:** If implementer reports BLOCKED or NEEDS_CONTEXT for a fix item:
-- Do NOT retry the same item automatically in the next round
-- Use the blocked-fix prompt:
-  > 「Fix item "[description]" 被 implementer 回報 BLOCKED: [reason]。(A) 提供更多 context 重試 (B) 重新分類為 defer」
-- If `Execution mode: human-in-the-loop`, present the prompt to the user. The
-  user decides; do not auto-reclassify without human judgment.
-- If `Execution mode: auto`, do not ask the user. Use the Auto Mode Gate below
-  to dispatch `samsara:auto-gatekeeper`, append the decision to
-  `auto-decisions.md`, and follow the recorded retry or defer decision.
-- Log the outcome in iteration-log
-
-### Fix Dispatch Guidance
-
-Fix dispatch differs from initial implementation dispatch. The dispatch-template pattern applies but the context is different:
-
-| | Initial Impl Dispatch | Fix Dispatch |
-|---|---|---|
-| **Task context** | Paste full `task-N.md` | Paste the **scar item description** + the **file(s) involved** |
-| **Architecture context** | Curate from `overview.md` | Curate from `overview.md` + include **relevant scar reports from other tasks** if the fix involves cross-task code |
-| **Goal framing** | "Implement Task N: [title]" | "Fix scar item: [description]. The current code [does X], but it should [do Y] to address [silent failure / unverified assumption / shortcut]" |
-| **Scope** | Defined by task file | Defined by the scar item — keep the fix minimal and focused |
-| **Scar schema** | Paste `scar-schema.yaml` | Same — paste `scar-schema.yaml` (the fix also produces a scar report) |
-| **Budget context** | Task-level plan constraints | Paste computed `iteration_budget_context` and require `budget_spent`, `evidence_gained`, `residual_risk` in the result |
-
-**Key difference:** Fix dispatch must include enough surrounding code context for the implementer to understand the scar item. Read the relevant file(s) and paste the affected sections into the prompt.
-
-**Fix result budget report:** Implementer output must include:
-```yaml
-budget_spent:
-  validation_runs: "<count>"
-  reviewer_retries_consumed: "<count>"
-evidence_gained:
-  - "<death test, review finding, or concrete observation>"
-residual_risk:
-  - "<known remaining risk, or []>"
-```
-
-## Step 4: Round Check + Safety Valve
-
-After processing all fix items in this round:
-
-**Safety valve checks:**
-- **Max rounds:** 3 rounds. If reached → forced stop with remaining items listed.
-- **Signal lost stagnation:** If signal_lost did not decrease for 2 consecutive rounds → emit warning:
-  > 「signal_lost 連續 2 輪未下降（N → N'）。Iteration 可能在原地轉圈。建議停止。」
-- **Net rot increase:** If this round's fixes produced more new scar items than they resolved → emit warning:
-  > 「本輪 fix 產出 M 個新 scar items，修復了 K 個。淨 rot 增加。建議停止。」
-
-**Round continuation gate (if within limits):**
-> 「Round R 完成。signal_lost: N → N'。修復了 K 個 items，剩餘 J 個。
->
-> (A) 繼續下一輪
-> (B) 停止，進入 Validation」
-
-- If `Execution mode: human-in-the-loop`, ask the user this question and follow
-  the selected next step.
-- If `Execution mode: auto`, do not ask the user. Use the Auto Mode Gate below
-  to dispatch `samsara:auto-gatekeeper`, append the decision to
-  `auto-decisions.md`, and follow the recorded continue or stop decision.
-
-## Step 5: Write Iteration Log
-
-Write `iteration-log.yaml` to the feature's `changes/` directory. Use template `templates/iteration-log.yaml`.
-
-## Yin-Side Constraints
-
-- **No silent skip:** Non-conforming scar reports must be explicitly listed, never silently excluded
-- **Per-fix commit:** Each fix is an independent commit. No batching fixes into a single commit.
-- **Triage is a recorded gate decision:** human mode asks the user; auto mode
-  records the gatekeeper decision before classification is applied.
-- **Safety valve is advisory:** Forced stop emits a warning and suggestion, but
-  the active execution-mode gate makes the final decision.
-- **Accept requires a re-review signal, not an expiry date:** every `accept`
-  must include a `re_review_signal` (the observable condition that triggers
-  re-review) and an `owner` (who is responsible for noticing it). No mechanism
-  in this repo has ever read or acted on an `expiry_date` — a time-driven
-  re-review promise is an alarm clock that never rings.
-- **Legacy `expiry_date` is tolerated on read:** Historical `iteration-log.yaml` entries or scar reports carrying the old `expiry_date` field are read without error and without requiring backfill to `re_review_signal`/`owner` — this is a read-time compatibility guarantee only; new `accept` entries must use `re_review_signal` + `owner`.
-
-## Red Flags
-
-**Never:**
-- Skip triage and auto-fix all items (an execution-mode gate decision is mandatory)
-- Batch multiple fixes into one commit (per-fix commit is mandatory)
-- Silently exclude scar reports that don't parse (list parse failures explicitly)
-- Continue after safety valve triggers without the active execution-mode gate decision
-- Accept items without a re-review signal and an owner
-- Skip `code-quality-reviewer` dispatch — both reviewers are required per fix; skipping one means the review is incomplete
-- Assume an absent review output means PASS — missing reviewer output is always a FAIL
-
-**Watch for:**
-- Accept ratio > 80% with zero fixes → cargo-cult triage warning
-- All deferred items from Level 1 getting accepted at Level 2 without scrutiny
-- Fixes that touch the same files as other pending fixes (potential conflicts)
-
-## Support Files
-
-- `./templates/iteration-log.yaml` — iteration log format
+Write durable instruction artifacts in English. Ask questions and report results in the user's language.
 
 ## Transition
 
-Iteration complete (by human choice, all items processed, or safety valve). Then:
-
-> 「Iteration 完成。R 輪執行，signal_lost: N₀ → N_final。K items fixed, J items accepted, D items deferred。進入 Validate & Ship（Step 0 security gate）。」
-
-Invoke `samsara:validate-and-ship` skill.
+Invoke `samsara:validate-and-ship` only after `flow.md`'s format, commit, and clean-working-tree gate passes.
 
 ## Auto Mode Gate
 
-Canonical protocol: `references/auto-mode.md` Stage Gate Protocol —
-dispatch, the append-only decision log, and what `proceed`/`revise`/
-`reject`/`accept_gap` mean all live there; this section only names what
-Iteration adds.
+Canonical protocol: `references/auto-mode.md` Stage Gate Protocol.
 
-- `workflow_prompt` source: the iteration completion transition, including
-  the current signal_lost, fixed item count, accepted item count, and
-  deferred item count.
-- Decision points this gate covers — not only the final transition; each
-  point appends its own `auto-decisions.md` entry before the iteration flow
-  follows the recorded decision:
-  - triage of remaining scar items into fix / accept / defer
-  - blocked-fix handling when an implementer reports BLOCKED or NEEDS_CONTEXT
-  - round continuation after signal_lost changes
-  - safety valve decisions when round limits or stagnation warnings trigger
-- `proceed` — invoke `samsara:validate-and-ship`; `revise` revises iteration
-  output or remaining scar classification then re-runs this gate;
-  `accept_gap` invokes `samsara:validate-and-ship` with the recorded gap
-  visible in the review context.
+- `workflow_prompt` sources: entry triage, item disposition, blocked-fix handling, round continuation, and safety valve observations.
+- Gate IDs: `iteration.entry-unknown`, `iteration.disposition.<scar-id>`,
+  `iteration.blocked-fix.<scar-id>`, and `iteration.round.<n>`.
+- Decision points: repair or stop on unknown input; fix/accept/defer an item;
+  retry/defer a blocked fix; continue/stop after the safety valve. The
+  Gatekeeper is the sole decision-log writer.
+- `proceed` — invoke `samsara:validate-and-ship` only when the committed transition gate is satisfied.
+- `revise` repairs evidence or continues the recorded fix path; `reject` stops.
+  Iteration gates do not allow `accept_gap`; accepted/deferred Scar dispositions
+  already provide the durable lifecycle vocabulary.

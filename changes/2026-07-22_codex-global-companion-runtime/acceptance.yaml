@@ -1,0 +1,58 @@
+feature: codex-global-companion-runtime
+evaluator_ref: PT-EVAL
+
+scenarios:
+  - id: AC-1
+    label: ephemeral-runner-rejected
+    type: death_path
+    source_refs: [PT-D1, PT-S1]
+    given: "samsara-cli install codex --scope global is launched from the Samsara source virtualenv"
+    when: "the installer evaluates runtime provenance before conversion or file writes"
+    then:
+      - "installation exits non-zero with the exact uv tool installation command"
+      - "no success manifest is written"
+
+  - id: AC-2
+    label: runtime-manifest-migrates
+    type: happy_path
+    source_refs: [PT-D2, PT-D3, PT-S3]
+    given: "a schema-1 Codex ownership manifest and a durable absolute runner"
+    when: "global update succeeds"
+    then:
+      - "the manifest upgrades to schema 2 without deleting foreign files"
+      - "runtime command, Samsara version, and Python version are recorded"
+      - "every installed run-companion command uses the absolute recorded runner"
+
+  - id: AC-3
+    label: missing-runner-no-fallback
+    type: unknown_outcome
+    source_refs: [PT-D4]
+    given: "an installed companion runner is unavailable"
+    when: "a converted skill or agent reaches validation"
+    then:
+      - "the instruction requires CANNOT VALIDATE"
+      - "python, python3, uv, and inferred runtime fallback are prohibited"
+
+  - id: AC-4
+    label: companion-syntax-floor
+    type: death_path
+    source_refs: [PT-D5]
+    given: "all Python files distributed under skill or agent scripts directories"
+    when: "their source is parsed with the declared Python 3.11 grammar floor"
+    then:
+      - "every companion parses successfully"
+      - "Ruff formatting cannot introduce Python 3.14-only syntax"
+
+  - id: AC-5
+    label: foreign-cwd-global-execution
+    type: happy_path
+    source_refs: [PT-EVAL, PT-D1, PT-D2, PT-D3]
+    given: "a live Codex global conversion installed with a durable runner"
+    when: "the source virtualenv is absent from PATH and execution starts in another Git project"
+    then:
+      - "every installed companion starts through the manifest-recorded runner"
+      - "the Codebase Map validator reaches its declared format result"
+
+not_applicable:
+  - type: degradation
+    rationale: "A companion command either starts through the recorded runner or produces a visible cannot-validate result; no reduced-success state is accepted."

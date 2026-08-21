@@ -53,7 +53,7 @@ CODEX_RULES = [
         scope="body",
         type="regex",
         match=r"invoke `samsara:([\w-]+)`",
-        replace=r"use the `$samsara-\1` skill",
+        replace=r"use the `$\1` skill",
         priority="high",
     ),
     TransformationRule(
@@ -61,7 +61,7 @@ CODEX_RULES = [
         scope="body",
         type="regex",
         match=r"invoke `samsara:([\w-]+)` skill",
-        replace=r"use the `$samsara-\1` skill",
+        replace=r"use the `$\1` skill",
         priority="high",
     ),
     TransformationRule(
@@ -283,7 +283,7 @@ class TestBodyTransformation:
                 scope="body",
                 type="regex",
                 match=r"invoke `samsara:([\w-]+)`",
-                replace=r"use the `$samsara-\1` skill",
+                replace=r"use the `$\1` skill",
                 priority="high",
             )
         ]
@@ -291,7 +291,7 @@ class TestBodyTransformation:
         result = converter.convert(skill_dir, rules, make_naming())
 
         body = result.skill_md_content.split("---", 2)[2]
-        assert "use the `$samsara-planning` skill" in body
+        assert "use the `$planning` skill" in body
         assert "invoke `samsara:planning`" not in body
 
     def test_agent_dispatch_rule_converts_subagent_type(self, tmp_path: Path):
@@ -601,7 +601,7 @@ class TestAllElevenSkills:
                 scope="body",
                 type="regex",
                 match=r"invoke `samsara:([\w-]+)`",
-                replace=r"use the `$samsara-\1` skill",
+                replace=r"use the `$\1` skill",
                 priority="high",
             )
         ]
@@ -611,8 +611,8 @@ class TestAllElevenSkills:
         body = result.skill_md_content.split("---", 2)[2]
         assert "invoke `samsara:research`" not in body
         assert "invoke `samsara:debugging`" not in body
-        assert "use the `$samsara-research` skill" in body
-        assert "use the `$samsara-debugging` skill" in body
+        assert "use the `$research` skill" in body
+        assert "use the `$debugging` skill" in body
 
     def test_research_transitions_converted(self, tmp_path: Path):
         """research: invoke `samsara:planning` transition converted."""
@@ -629,7 +629,7 @@ class TestAllElevenSkills:
                 scope="body",
                 type="regex",
                 match=r"invoke `samsara:([\w-]+)`",
-                replace=r"use the `$samsara-\1` skill",
+                replace=r"use the `$\1` skill",
                 priority="high",
             ),
         ]
@@ -653,7 +653,7 @@ class TestAllElevenSkills:
                 scope="body",
                 type="regex",
                 match=r"invoke `samsara:([\w-]+)`",
-                replace=r"use the `$samsara-\1` skill",
+                replace=r"use the `$\1` skill",
                 priority="high",
             )
         ]
@@ -696,7 +696,7 @@ class TestAllElevenSkills:
                 scope="body",
                 type="regex",
                 match=r"invoke `samsara:([\w-]+)`",
-                replace=r"use the `$samsara-\1` skill",
+                replace=r"use the `$\1` skill",
                 priority="high",
             )
         ]
@@ -705,7 +705,7 @@ class TestAllElevenSkills:
 
         body = result.skill_md_content.split("---", 2)[2]
         assert "invoke `samsara:security-privacy-review`" not in body
-        assert "use the `$samsara-security-privacy-review` skill" in body
+        assert "use the `$security-privacy-review` skill" in body
 
     def test_security_privacy_review_tool_refs_converted(self, tmp_path: Path):
         """security-privacy-review: tool references in body converted."""
@@ -736,7 +736,7 @@ class TestAllElevenSkills:
                 scope="body",
                 type="regex",
                 match=r"invoke `samsara:([\w-]+)`",
-                replace=r"use the `$samsara-\1` skill",
+                replace=r"use the `$\1` skill",
                 priority="high",
             )
         ]

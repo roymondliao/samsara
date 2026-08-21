@@ -18,4 +18,4 @@ On entry, read index.yaml to analyze task dependencies.
 Use `agent named "samsara-implementer"` for agent dispatch.
 See dispatch-template.md for the Subagent dispatch: template.
 
-After all tasks complete, use the `$samsara-security-privacy-review` skill skill.
+After all tasks complete, use the `$security-privacy-review` skill skill.

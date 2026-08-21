@@ -39,7 +39,9 @@ import re
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
+import yaml
 from jinja2 import Template
 
 from samsara_cli.config.schema import NamingConfig, TransformationRule
@@ -96,6 +98,35 @@ def _strip_frontmatter(text: str) -> str:
             return "".join(lines[i + 1 :])
     # Opening --- found but no closing --- -- treat as no frontmatter
     return text
+
+
+def _parse_frontmatter(text: str) -> tuple[dict[str, Any], str]:
+    """Return validated YAML frontmatter and body.
+
+    Agent frontmatter is conversion authority for description, reasoning effort,
+    and write capability. Silently discarding it changes agent behavior.
+    """
+    lines = text.splitlines(keepends=True)
+    if not lines or lines[0].rstrip("\r\n") != "---":
+        return {}, text
+    closing_idx = next(
+        (
+            index
+            for index, line in enumerate(lines[1:], start=1)
+            if line.rstrip("\r\n") == "---"
+        ),
+        None,
+    )
+    if closing_idx is None:
+        raise ValueError("Agent frontmatter starts with '---' but is not closed.")
+    raw = "".join(lines[1:closing_idx])
+    try:
+        parsed = yaml.safe_load(raw) or {}
+    except yaml.YAMLError as exc:
+        raise ValueError(f"Agent frontmatter is invalid YAML: {exc}") from exc
+    if not isinstance(parsed, dict):
+        raise ValueError("Agent frontmatter must be a YAML mapping.")
+    return parsed, "".join(lines[closing_idx + 1 :])
 
 
 def _extract_description(body: str) -> str | None:
@@ -186,9 +217,9 @@ _AGENT_NAME_PATTERN = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]*$")
 def _validate_agent_name(agent_name: str, source_path: Path) -> None:
     """Validate target agent name before rendering.
 
-    Gemini and Codex both need stable names without whitespace or punctuation that
-    would break references. A bad generated name should fail before a file is
-    written, not become an undiscoverable agent.
+    Codex needs stable names without whitespace or punctuation that would break
+    references. A bad generated name should fail before a file is written, not
+    become an undiscoverable agent.
     """
     if not _AGENT_NAME_PATTERN.fullmatch(agent_name):
         raise ValueError(
@@ -235,6 +266,7 @@ class AgentConverter:
         rules: list[TransformationRule],
         naming: NamingConfig,
         template: Template,
+        metadata: dict[str, Any] | None = None,
     ) -> ConvertedAgent:
         """Convert an agent body (already extracted from .md) to Codex .toml.
 
@@ -276,8 +308,22 @@ class AgentConverter:
                 "_strip_frontmatter(body) before passing to convert()."
             )
 
-        # Extract description from original body (before rules change content)
-        description = _extract_description(body)
+        metadata = metadata or {}
+        canonical_description = metadata.get("description")
+        description = (
+            canonical_description.strip()
+            if isinstance(canonical_description, str) and canonical_description.strip()
+            else _extract_description(body)
+        )
+
+        effort = metadata.get("effort")
+        model_reasoning_effort = effort if isinstance(effort, str) else None
+
+        tools = metadata.get("tools", [])
+        if not isinstance(tools, list):
+            raise ValueError(f"Agent tools must be a list for {source_path}.")
+        write_capable = any(tool in {"Write", "Edit"} for tool in tools)
+        sandbox_mode = "workspace-write" if write_capable else "read-only"
 
         # Build agent name
         agent_name = _build_agent_name(source_path, naming)
@@ -299,7 +345,9 @@ class AgentConverter:
             name=agent_name,
             description=description or agent_name,
             developer_instructions=escaped_body,
-            source_path=str(source_path),
+            source_path=source_path.name,
+            model_reasoning_effort=model_reasoning_effort,
+            sandbox_mode=sandbox_mode,
         )
 
         # Self-validate: parse the rendered output with tomllib.
@@ -322,79 +370,6 @@ class AgentConverter:
             description=description,
             rendered_content=toml_content,
             output_extension=".toml",
-        )
-
-    def convert_markdown(
-        self,
-        body: str,
-        source_path: Path,
-        rules: list[TransformationRule],
-        naming: NamingConfig,
-        template: Template,
-    ) -> ConvertedAgent:
-        """Convert an agent body to Gemini markdown subagent format."""
-        if not body or not body.strip():
-            raise ValueError(
-                f"Agent body is empty for source file: {source_path}. "
-                "Cannot convert an agent with no instructions -- this would produce a "
-                "silently broken Gemini subagent."
-            )
-
-        first_line = body.splitlines()[0].rstrip("\r\n") if body.splitlines() else ""
-        if first_line == "---":
-            raise ValueError(
-                f"Agent body appears to still contain frontmatter (starts with '---') "
-                f"for source file: {source_path}. "
-                "Use convert_markdown_from_text() to handle frontmatter stripping."
-            )
-
-        description = _extract_description(body)
-        agent_name = _build_agent_name(source_path, naming)
-        _validate_agent_name(agent_name, source_path)
-        transformed_body = self._rules_engine.apply(body, rules, scope="body")
-
-        rendered_content = template.render(
-            name=agent_name,
-            description=description or agent_name,
-            body=transformed_body.rstrip(),
-            source_path=source_path.name,
-        )
-
-        if not rendered_content.startswith("---\n"):
-            raise ValueError(
-                f"Rendered Gemini agent does not start with YAML frontmatter: {source_path}. "
-                "Gemini may silently ignore malformed subagents."
-            )
-        if "\n---\n" not in rendered_content[4:]:
-            raise ValueError(
-                f"Rendered Gemini agent frontmatter is not closed: {source_path}."
-            )
-
-        return ConvertedAgent(
-            agent_name=agent_name,
-            toml_content=rendered_content,
-            transformed_body=transformed_body,
-            description=description,
-            rendered_content=rendered_content,
-            output_extension=".md",
-        )
-
-    def convert_markdown_from_text(
-        self,
-        source_text: str,
-        source_path: Path,
-        rules: list[TransformationRule],
-        naming: NamingConfig,
-        template: Template,
-    ) -> ConvertedAgent:
-        """Convert a full agent .md file to Gemini markdown subagent format."""
-        body = _strip_frontmatter(source_text)
-        return self.convert_markdown(
-            body=body,
-            source_path=source_path,
-            rules=rules,
-            naming=naming,
-            template=template,
         )
 
     def convert_from_text(
@@ -423,11 +398,12 @@ class AgentConverter:
         Raises:
             ValueError: If the body (after frontmatter strip) is empty.
         """
-        body = _strip_frontmatter(source_text)
+        metadata, body = _parse_frontmatter(source_text)
         return self.convert(
             body=body,
             source_path=source_path,
             rules=rules,
             naming=naming,
             template=template,
+            metadata=metadata,
         )

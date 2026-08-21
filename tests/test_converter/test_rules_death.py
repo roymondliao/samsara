@@ -128,7 +128,7 @@ class TestDC1BodyRuleCannotModifyFrontmatter:
             scope="body",
             type="regex",
             match=r"invoke `samsara:([\w-]+)`",
-            replace=r"use the `$samsara-\1` skill",
+            replace=r"use the `$\1` skill",
         )
         text = """\
 ---
@@ -148,7 +148,7 @@ invoke `samsara:my-skill`
 
         # Body must be transformed
         body = result.split("---", 2)[2]
-        assert "use the `$samsara-my-skill` skill" in body, (
+        assert "use the `$my-skill` skill" in body, (
             "Regex rule did not apply to body content."
         )
 
@@ -159,7 +159,7 @@ invoke `samsara:my-skill`
 # Silent failure: If capture groups are handled wrong (e.g., using $1 instead
 # of \1 semantics, or not handling backref at all), the substitution produces
 # literal '\1' in the output. The output looks like valid text but with garbage
-# in skill references. First discovery: Codex cannot resolve '$samsara-\1'.
+# in skill references. First discovery: Codex cannot resolve '$\1'.
 # ---------------------------------------------------------------------------
 
 
@@ -167,10 +167,10 @@ class TestDC2RegexCaptureGroupSubstitution:
     def test_capture_group_backref_substitutes_correctly(self):
         """
         Pattern: invoke `samsara:([\\w-]+)`
-        Replace: use the `$samsara-\\1` skill
+        Replace: use the `$\\1` skill
         Input:   invoke `samsara:my-skill`
-        Expected: use the `$samsara-my-skill` skill
-        NOT:      use the `$samsara-\\\\1` skill (literal backref)
+        Expected: use the `$my-skill` skill
+        NOT:      use the `$\\\\1` skill (literal backref)
         """
         engine = RulesEngine()
         rule = make_rule(
@@ -178,11 +178,11 @@ class TestDC2RegexCaptureGroupSubstitution:
             scope="body",
             type="regex",
             match=r"invoke `samsara:([\w-]+)`",
-            replace=r"use the `$samsara-\1` skill",
+            replace=r"use the `$\1` skill",
         )
         text = "invoke `samsara:my-skill`"
         result = engine.apply(text, [rule], scope="body")
-        assert result == "use the `$samsara-my-skill` skill", (
+        assert result == "use the `$my-skill` skill", (
             f"SILENT FAILURE: capture group not substituted. Got: {result!r}"
         )
 
@@ -213,7 +213,7 @@ class TestDC2RegexCaptureGroupSubstitution:
             scope="body",
             type="regex",
             match=r"invoke `samsara:([\w-]+)`",
-            replace=r"use the `$samsara-\1` skill",
+            replace=r"use the `$\1` skill",
         )
         text = "invoke `samsara:my-skill`"
         result = engine.apply(text, [rule], scope="body")
@@ -443,7 +443,7 @@ class TestDC6NonMatchingPatternBehavior:
             id="test",
             type="regex",
             match=r"invoke `samsara:([\w-]+)`",
-            replace=r"use the `$samsara-\1` skill",
+            replace=r"use the `$\1` skill",
         )
         original = "Some body text with no skill invocations."
         result = engine.apply(original, [rule], scope="body")

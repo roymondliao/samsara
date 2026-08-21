@@ -1,0 +1,59 @@
+feature: user-facing-communication-contract
+evaluator_ref: PT-EVAL
+
+scenarios:
+  - id: AC-1
+    label: request-shaped-opening
+    type: happy_path
+    source_refs: [PT-D1, PT-D2, PT-S2]
+    given: "a command, review, completed change, or blocked result"
+    when: "the agent opens its user-facing response"
+    then:
+      - "the first paragraph directly carries the result required by that request shape"
+      - "the opening stands alone for a reader who stops there"
+
+  - id: AC-2
+    label: evidence-preserved-without-repetition
+    type: happy_path
+    source_refs: [PT-D1, PT-D3, PT-S1]
+    given: "a completed change with file, verification, and unresolved-risk evidence"
+    when: "the agent presents applicable detail after the opening"
+    then:
+      - "changed files are grouped by responsibility"
+      - "verification and unresolved risk remain visible"
+      - "the same fact is not repeated across sections"
+
+  - id: AC-3
+    label: human-readable-machine-reference
+    type: death_path
+    source_refs: [PT-D4]
+    given: "a user-facing result cites PT, PL, AC, SC, or VF machine identifiers"
+    when: "the identifier is presented as evidence"
+    then:
+      - "a human-facing semantic label appears before the machine ID"
+      - "the identifier alone is never used as the explanation"
+
+  - id: AC-4
+    label: safety-survives-brevity
+    type: unknown_outcome
+    source_refs: [PT-D3]
+    given: "the result contains a blocker, uncertainty, decision-changing risk, or destructive next action"
+    when: "the response is shortened"
+    then:
+      - "the safety-relevant fact remains visible"
+      - "destructive action still requires explicit confirmation"
+      - "no unsupported time estimate or invented warning is added"
+
+  - id: AC-5
+    label: codex-conversion-preserves-contract
+    type: happy_path
+    source_refs: [PT-EVAL, PT-S1]
+    given: "the repository is converted to Codex output"
+    when: "the converted Bootstrap skill is inspected"
+    then:
+      - "the canonical communication contract is present exactly once"
+      - "stage skills do not define a competing authority"
+
+not_applicable:
+  - type: degradation
+    rationale: "The contract either preserves applicable evidence or fails its decision-ready purpose; no reduced-evidence success state is accepted."

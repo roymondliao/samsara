@@ -301,6 +301,50 @@ class ConversionEngine:
                 f"References conversion failed: {e}. No partial output will be kept."
             ) from e
 
+        self._attach_companion_runtime_contracts(temp_dir)
+
+    def _attach_companion_runtime_contracts(self, temp_dir: Path) -> None:
+        """Attach the Codex failure contract to every companion command consumer."""
+        if self._platform != "codex":
+            return
+        contract = (
+            "## Companion Runtime Contract\n\n"
+            "Run the installed `samsara-cli run-companion` command exactly as written. "
+            "If that executable is missing or cannot start, report `CANNOT VALIDATE: "
+            "Samsara companion runtime unavailable` and stop. Do not replace it with "
+            "`python`, `python3`, `uv`, or another inferred runtime."
+        )
+        for path in sorted(temp_dir.rglob("*")):
+            if not path.is_file() or path.suffix.lower() not in {
+                ".md",
+                ".toml",
+                ".txt",
+            }:
+                continue
+            content = path.read_text(encoding="utf-8")
+            if (
+                "samsara-cli run-companion" not in content
+                or "## Companion Runtime Contract" in content
+            ):
+                continue
+            if path.suffix.lower() == ".toml":
+                closing_quote = content.rfind('"""')
+                if closing_quote < 0:
+                    raise EngineError(
+                        f"Cannot attach companion runtime contract to TOML without "
+                        f"a multiline instruction body: {path}."
+                    )
+                content = (
+                    content[:closing_quote].rstrip()
+                    + "\n\n"
+                    + contract
+                    + "\n"
+                    + content[closing_quote:]
+                )
+            else:
+                content = content.rstrip() + "\n\n" + contract + "\n"
+            path.write_text(content, encoding="utf-8")
+
     def _get_naming(self) -> NamingConfig:
         """Get NamingConfig from platform config.
 
@@ -405,30 +449,19 @@ class ConversionEngine:
 
         template = self._template_env.get_template(template_name)
         converter = AgentConverter()
-        agent_format_type = (agent_format or {}).get("type", "toml")
-
         seen_agent_names: dict[str, str] = {}
 
         for agent_file in sorted(source_agents_dir.glob("*.md")):
             logger.info("Converting agent: %s", agent_file.name)
             source_text = agent_file.read_text(encoding="utf-8")
             source_text = self._prepare_agent_reference_resolution(source_text)
-            if agent_format_type == "markdown":
-                converted = converter.convert_markdown_from_text(
-                    source_text=source_text,
-                    source_path=agent_file,
-                    rules=rules,
-                    naming=naming,
-                    template=template,
-                )
-            else:
-                converted = converter.convert_from_text(
-                    source_text=source_text,
-                    source_path=agent_file,
-                    rules=rules,
-                    naming=naming,
-                    template=template,
-                )
+            converted = converter.convert_from_text(
+                source_text=source_text,
+                source_path=agent_file,
+                rules=rules,
+                naming=naming,
+                template=template,
+            )
 
             name_key = converted.agent_name.casefold()
             if name_key in seen_agent_names:
@@ -451,6 +484,17 @@ class ConversionEngine:
             out_file = output_agents_dir / f"{converted.agent_name}{output_extension}"
             out_file.write_text(rendered_content, encoding="utf-8")
 
+            # Agent companions are source-owned by agents/<agent-name>/ and must
+            # survive conversion. Codex scans only standalone TOML files in
+            # .codex/agents, so resources live in a separate stable directory.
+            source_resources = source_agents_dir / agent_file.stem
+            if source_resources.is_dir():
+                resources_dir_name = ".codex/agent-resources"
+                if self._config.paths and self._config.paths.agent_resources_dir:
+                    resources_dir_name = self._config.paths.agent_resources_dir
+                target_resources = temp_dir / resources_dir_name / converted.agent_name
+                shutil.copytree(source_resources, target_resources, dirs_exist_ok=True)
+
     def _prepare_agent_reference_resolution(self, source_text: str) -> str:
         """Replace cwd-relative reference paths with a platform resolver contract."""
         rewritten = _REFERENCE_PATH_PATTERN.sub(r"reference id `\1`", source_text)
@@ -461,12 +505,8 @@ class ConversionEngine:
 
     def _reference_resolver_contract(self) -> str:
         """Return platform-specific reference lookup rules for converted agents."""
-        if self._platform == "gemini-cli":
-            shared_dir = ".gemini/references"
-            skill_refs_glob = ".gemini/skills/*/references"
-        else:
-            shared_dir = ".agents/references"
-            skill_refs_glob = ".agents/skills/*/references"
+        shared_dir = ".agents/references"
+        skill_refs_glob = ".agents/skills/*/references"
 
         return (
             "## Reference Resolution Protocol\n\n"
@@ -527,6 +567,25 @@ class ConversionEngine:
         # Using os.chmod with explicit flags rather than stat module constants
         # for clarity: 0o755 = rwxr-xr-x (owner rwx, group rx, other rx).
         script_path.chmod(0o755)
+
+        codebase_template_name = "check-codebase-map.sh.j2"
+        if (
+            self._config.formats
+            and self._config.formats.hook_output
+            and "codebase_map_script_template" in self._config.formats.hook_output
+        ):
+            codebase_template_name = self._config.formats.hook_output[
+                "codebase_map_script_template"
+            ]
+        codebase_template = self._template_env.get_template(codebase_template_name)
+        codebase_script = converter.convert_check_codebase_map_script(
+            event="session_start",
+            platform_config=self._config,
+            template=codebase_template,
+        )
+        codebase_script_path = output_hooks_dir / "check-codebase-map.sh"
+        codebase_script_path.write_text(codebase_script, encoding="utf-8")
+        codebase_script_path.chmod(0o755)
 
         # Render hooks.json
         hooks_json_template_name = "hooks.json.j2"

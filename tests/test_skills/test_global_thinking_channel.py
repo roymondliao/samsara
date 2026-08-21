@@ -7,8 +7,8 @@ that the channel's pieces stay present, single-sourced, and correctly wired —
 not runtime obedience (doc-presence != runtime obedience; deferred to dogfood).
 
 Guarded contracts:
-  C1 planning declares seams in ONE place (overview Real Seams) and STOPs back
-     to pre-thinking on a missing seam — never invents one in planning.
+  C1 pre-thinking owns seam decisions; planning projects cited seams into the
+     derived Overview and STOPs back on a missing seam.
   C2 index.yaml template carries the L1/L2 fields (seam / affects / anchors)
      and distinguishes affects (structural, reverse) from depends_on (ordering).
   C3 dispatch copies L1/L2 from planning products, never composes them, and an
@@ -42,13 +42,13 @@ def _section(text: str, marker: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# C1 — planning: seam single source + STOP gate
+# C1 — planning: seam authority + derived projection + STOP gate
 # ---------------------------------------------------------------------------
 
 
 def test_planning_has_codebase_craft_products_step() -> None:
-    planning = read("skills/planning/SKILL.md")
-    section = _section(planning, "## Step 5: Codebase-Craft Products")
+    planning = read("skills/planning/flow.md")
+    section = _section(planning, "## 4. Task Decomposition and Reference Graph")
     lowered = section.lower()
     assert "seam" in lowered
     assert "affects" in lowered
@@ -60,7 +60,8 @@ def test_planning_missing_seam_stops_back_to_pre_thinking() -> None:
     """A seam pre-thinking did not identify is a design-decision gap: planning
     must STOP and return, never invent the seam locally (ISSUE-001 shape)."""
     section = _section(
-        read("skills/planning/SKILL.md"), "## Step 5: Codebase-Craft Products"
+        read("skills/planning/flow.md"),
+        "## 4. Task Decomposition and Reference Graph",
     )
     assert "STOP" in section
     assert "samsara:pre-thinking" in section
@@ -70,7 +71,8 @@ def test_planning_missing_seam_stops_back_to_pre_thinking() -> None:
 
 def test_planning_affects_is_not_depends_on() -> None:
     section = _section(
-        read("skills/planning/SKILL.md"), "## Step 5: Codebase-Craft Products"
+        read("skills/planning/flow.md"),
+        "## 4. Task Decomposition and Reference Graph",
     )
     lowered = section.lower()
     # both relations named, with the structural-vs-ordering distinction
@@ -84,7 +86,8 @@ def test_planning_volume_discipline_is_consumption_not_line_count() -> None:
     """A hard line-count gate trains gaming the number (KD-5 lesson) — the
     written discipline must be consumption-driven and soft."""
     section = _section(
-        read("skills/planning/SKILL.md"), "## Step 5: Codebase-Craft Products"
+        read("skills/planning/flow.md"),
+        "## 4. Task Decomposition and Reference Graph",
     )
     lowered = section.lower()
     assert "consumption" in lowered
@@ -93,8 +96,8 @@ def test_planning_volume_discipline_is_consumption_not_line_count() -> None:
 
 
 def test_planning_format_validation_section_wired() -> None:
-    planning = read("skills/planning/SKILL.md")
-    section = _section(planning, "## Format Validation")
+    planning = read("skills/planning/flow.md")
+    section = _section(planning, "## 6. Format Validation")
     assert "validate_format.py" in section
     lowered = section.lower()
     assert "judgment" in lowered, "format/judgment split must be stated at the gate"
@@ -131,10 +134,13 @@ def test_index_template_upstream_contract_is_live_interface_anchor() -> None:
     assert "whitelist" in index, "anchors must be marked starting-set-not-whitelist"
 
 
-def test_overview_template_declares_real_seams_single_source() -> None:
+def test_overview_template_projects_cited_real_seams() -> None:
     overview = read("skills/planning/templates/overview.md")
-    assert "### Real Seams" in overview
+    assert "## Real Seams Projection" in overview
     lowered = overview.lower()
+    assert "derived implementation projection" in lowered
+    assert "source_ref" in overview
+    assert "single source of seam declarations" not in lowered
     assert "core identity" in lowered
     assert "pre-thinking" in lowered, "seam content must be cited from pre-thinking"
     assert "evidence" in lowered, "seam declarations must carry an evidence tier"
@@ -172,6 +178,19 @@ def test_dispatch_prompt_carries_l1_l2_sections() -> None:
     dispatch = read("skills/implement/dispatch-template.md")
     assert "## Global Position (L1)" in dispatch
     assert "## Context Projection (L2)" in dispatch
+
+
+def test_dispatch_pushes_the_complete_compact_overview() -> None:
+    """Broad awareness comes from Planning's whole projection, not curation."""
+    dispatch = read("skills/implement/dispatch-template.md")
+    implementer_part = dispatch.split("## Review Dispatch", 1)[0]
+    normalized = " ".join(implementer_part.split()).lower()
+
+    assert "complete compact overview" in normalized
+    assert "all real seams" in normalized
+    assert "current task seam" in normalized
+    assert "relevant derived projections" not in normalized
+    assert "curate overview" not in normalized
 
 
 def test_implement_skill_arbitration_path_present() -> None:
@@ -226,7 +245,7 @@ def test_scar_schema_granularity_floor() -> None:
     """Rule 15: only structural bets earn an entry; function splitting and
     naming sit below the floor. Empty list valid, missing key distinct."""
     schema = read("skills/implement/templates/scar-schema.yaml").lower()
-    assert "granularity floor" in schema
+    assert "# granularity-floor:" in schema
     assert "structural bet" in schema
     assert "structural_decisions: []" in schema, (
         "the empty-list-vs-missing-key distinction must be spelled out"
@@ -317,13 +336,14 @@ def test_yin_reviewer_seam_placement_dimension() -> None:
 
 def test_research_problem_essence_is_named_product() -> None:
     skill = read("skills/research/SKILL.md")
-    assert "問題本質" in skill
+    assert "Problem Essence" in skill
+    assert "named handoff to pre-thinking" in skill
     kickoff = read("skills/research/templates/kickoff.md")
     assert "## Problem Essence" in kickoff
-    assert "## Boundary Scope" in kickoff
+    assert "## Scope Contract" in kickoff
 
 
 def test_research_boundary_scope_three_lists() -> None:
     kickoff = read("skills/research/templates/kickoff.md")
-    for token in ("真正要解什麼", "涉及哪些", "哪些現在不做"):
+    for token in ("What must be solved", "Areas involved", "Not solved now"):
         assert token in kickoff, f"boundary-scope list missing: {token}"

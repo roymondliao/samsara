@@ -1,88 +1,133 @@
 ---
 name: writing-skills
-description: Use when creating or modifying samsara skills — applies death-first TDD to skill development itself
+description: Use when creating, revising, or reviewing Samsara skills
 ---
 
-# Writing Skills — Death-First TDD for Skills
+# Writing Skills — Authoring Guide
 
-Skills are behavior-shaping code. They are subject to the same rigor as production code: test first, verify behavior change, document assumptions.
+Match a skill's form and verification method to the behavior it must shape.
+Put mechanical constraints in tools; keep reusable judgment and guidance in the
+skill. This is a support tool, not a Samsara workflow stage.
 
-## Process
+## Authoring Decision
 
 ```dot
 digraph writing_skills {
     node [shape=box];
 
-    start [label="Define target behavior\nWhat should the agent do differently?" shape=doublecircle];
-    baseline [label="Baseline test\nRun scenario WITHOUT skill\nRecord agent behavior"];
-    write [label="Write SKILL.md\n+ support files"];
-    test [label="Test with skill\nRun same scenario WITH skill\nRecord agent behavior"];
-    compare [label="Behavior changed?" shape=diamond];
-    refine [label="Refine skill content"];
-    done [label="Commit" shape=doublecircle];
+    start [label="Candidate guidance" shape=doublecircle];
+    reusable [label="Reusable agent guidance?" shape=diamond];
+    local [label="Use project instructions,\ndocs, or no artifact" shape=doublecircle];
+    mechanical [label="Only a mechanical constraint?" shape=diamond];
+    automate [label="Use schema, validator,\nformatter, or test" shape=doublecircle];
+    classify [label="Classify skill and failure"];
+    author [label="Author the smallest\ncomplete contract"];
+    verify [label="Choose proportional\nverification"];
+    done [label="Commit verified skill" shape=doublecircle];
 
-    start -> baseline;
-    baseline -> write;
-    write -> test;
-    test -> compare;
-    compare -> done [label="yes, as intended"];
-    compare -> refine [label="no or wrong direction"];
-    refine -> test;
+    start -> reusable;
+    reusable -> local [label="no"];
+    reusable -> mechanical [label="yes"];
+    mechanical -> automate [label="yes"];
+    mechanical -> classify [label="no"];
+    classify -> author -> verify -> done;
 }
 ```
 
-## SKILL.md Conventions
+## 1. Decide Whether a Skill Should Exist
 
-### Frontmatter
+Create a skill for reusable techniques, workflows, patterns, references, or
+advice that agents must discover and apply across tasks.
+
+- Put project-specific rules in project instructions.
+- Put one-off explanations in docs or the work artifact that consumes them.
+- Automate constraints that can be decided from syntax, shape, type, enum, or
+  reference resolution.
+- For mixed cases, tools own mechanical validity; the skill owns judgment and
+  tool usage.
+
+## 2. Classify Before Writing
+
+Name one primary type; preserve secondary types only when they affect use.
+
+- **Workflow:** authority, inputs, decisions, artifacts, failure routes, and
+  transitions.
+- **Technique:** ordered method, conditions, evidence, and recovery.
+- **Pattern:** recognition signals, application, trade-offs, and counter-cases.
+- **Reference:** retrieval structure, exact facts, and application examples.
+- **Advisory:** evidence, perspectives, options, and an explicit non-decision
+  boundary.
+
+## 3. Author the Contract
+
+Frontmatter is a discovery contract:
 
 ```yaml
 ---
 name: kebab-case-name
-description: Use when [triggering conditions — symptoms, not workflow summary]
+description: Use when [observable triggering conditions]
 ---
 ```
 
-- `name`: letters, numbers, hyphens only
-- `description`: starts with "Use when", describes TRIGGERING CONDITIONS, not the process
-  - **CSO critical:** If the description summarizes the workflow, agents read the description and skip the full skill. Tested and confirmed.
-- Max 1024 characters total frontmatter
+- Use only letters, numbers, and hyphens in `name`.
+- Start `description` with `Use when`; describe triggers, not the process.
+- Keep frontmatter within 1024 characters.
+- Use stable domain terms. Define IDs or abbreviations before human-facing use.
+- Identify canonical authority and label every repeated view as derived.
+- Choose sections from the skill type; do not force one universal outline.
 
-### Token Budget
+For a persisted artifact, define its workflow owner, consumers, format
+authority, lifecycle, and failure route. Humans and dispatched agents may
+provide input, but only the declared workflow owner writes it. Split
+owner-written and user-editable state instead of creating a dual-writer file.
 
-- SKILL.md body: < 500 words
-- Heavy reference material: split into support files in the same directory
-- Templates: put in `templates/` subdirectory
+Keep principles and short examples inline. Put heavy reference, reusable tools,
+scripts, and templates in named support files only when a step consumes them.
 
-### Content Structure
+## 4. Match Form to Failure
 
-1. **Core principle** — 1-2 sentences
-2. **Process** — Graphviz digraph showing decision points and steps
-3. **Steps** — concrete instructions with yin-side constraints inline
-4. **Output** — what files are produced, where they go
-5. **Transition** — what skill to invoke next (if applicable)
+- Wrong output shape: give a positive recipe or template.
+- Omitted required data: add a structural field or slot.
+- Conditional behavior: key the rule to an observable predicate.
+- Discipline skipped under pressure: state the prohibition and test the actual
+  rationalization.
+- Non-obvious branching: use a small graph with semantic labels; read
+  `graphviz-conventions.dot` before writing it.
+- Linear procedure: use numbered steps.
 
-### Digraph Conventions
+Word counts are optimization targets, not validity gates. Frequently loaded
+skills should be shortest; other skills should aim for fewer than 500 words
+when completeness and authority remain intact. Remove duplicate authority
+before splitting a coherent contract.
 
-- Use `shape=doublecircle` for start/end nodes
-- Use `shape=diamond` for decision points
-- Use `shape=box` for action steps (default)
-- Use `style=dashed` for optional/conditional steps
-- Use `label="condition"` on edges for decision outcomes
+## 5. Verify Proportionally
 
-### Anti-Patterns
+- Schema, enum, field, or reference change: deterministic validator and unit
+  tests.
+- Behavior or discipline change: compare the same realistic scenario without
+  and with the guidance; use pressure only when an incentive to violate exists.
+- Discovery change: test representative trigger and non-trigger requests.
+- Reference change: test retrieval and application.
+- Editorial, translation, or clarity change: semantic review plus format
+  checks; no fabricated behavior baseline.
+- Derived overview change: verify visibility and source links, not exact prose.
 
-- **Narrative storytelling** — skills are instructions, not essays
-- **Multi-language examples** — one excellent example beats mediocre coverage
-- **Describing what NOT to do without saying what TO do** — always pair negatives with positives
-- **Flowcharts for linear processes** — use digraph only for decision points, not for step-1-step-2-step-3
+Tests assert stable contracts or observable outputs. Do not pin natural wording
+unless the literal text is itself a protocol. If a baseline does not exhibit
+the target failure, do not invent a test to justify more guidance.
 
-## Yin-Side Check for Skills
+## 6. Commit Discipline
 
-Before committing a new skill, answer:
-1. **If this skill disappeared, would agent behavior degrade?** If no, the skill shouldn't exist.
-2. **What behavior does this skill assume will never change?** Document that assumption.
-3. **How would you know if this skill stopped working?** Define the observable signal.
-4. **Does this skill produce a persisted artifact?** If yes: who is the sole writer?
-   - LLM must be the sole writer. User interaction goes through AskUserQuestion — the LLM writes answers to the artifact, not the user directly.
-   - Dual-writer artifacts (user + LLM both write the same file) introduce K3b cross-session state. Do not design them.
-   - If you find yourself needing the user to directly edit a file: split the artifact (LLM-only part + user-editable part) or redesign as AskUserQuestion.
+If a change alters a route, gate, required field, or other observable workflow
+behavior, the commit body must state `Behavior change: <old> -> <new>`. Pure
+rewording or file movement may omit this line.
+
+## 7. Yin-Side Check
+
+Before committing:
+
+1. If this skill disappeared, what observable agent behavior would degrade?
+2. What assumption or authority could drift without detection?
+3. Which instruction could a weak model interpret in two valid ways?
+4. Does each persisted artifact have one writer and named consumers?
+5. Does verification test the contract rather than its current wording?

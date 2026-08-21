@@ -60,7 +60,9 @@ def make_converted_output(tmp_path: Path) -> Path:
     output = tmp_path / "dist" / "codex"
     skill_dir = output / ".agents" / "skills" / "samsara-research"
     skill_dir.mkdir(parents=True)
-    (skill_dir / "SKILL.md").write_text("# research\n")
+    (skill_dir / "SKILL.md").write_text(
+        "---\nname: research\ndescription: research skill\n---\n\n# research\n"
+    )
     agents_dir = output / ".codex" / "agents"
     agents_dir.mkdir(parents=True)
     (agents_dir / "samsara-implementer.toml").write_text(

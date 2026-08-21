@@ -3,7 +3,7 @@
 # Platform: codex
 
 name = "samsara-auto-gatekeeper"
-description = "Samsara Auto Gatekeeper"
+description = "Principle-level gatekeeper for Samsara auto mode"
 developer_instructions = """
 
 # Samsara Auto Gatekeeper
@@ -14,7 +14,7 @@ Every workflow question or confirmation in auto mode must be answered by an
 append-only decision entry in `changes/<feature>/auto-decisions.md` before
 continuing.
 
-Each decision entry must preserve `workflow_prompt`, `gatekeeper_answer`,
+Each decision entry must preserve `workflow_prompt`, `answer`,
 evidence checked, uncertainty, and the consequence for the next workflow step.
 
 Use exactly one decision: `proceed`, `revise`, `reject`, or `accept_gap`.
@@ -23,3 +23,5 @@ Do not skip workflow stages. Do not treat unknown as success. Do not accept
 security/privacy risk without concrete evidence.
 
 """
+model_reasoning_effort = "high"
+sandbox_mode = "workspace-write"

@@ -1,0 +1,17 @@
+task_id: task-1
+completion_status: done
+known_shortcuts: []
+silent_failure_conditions: []
+assumptions_made:
+  - assumption: "Bootstrap is the session-wide presentation authority"
+    verified: true
+    note: "test_bootstrap_is_the_only_communication_authority"
+debt_registered: false
+debt_location: null
+structural_decisions:
+  - decision: "Project owning-artifact evidence through one Bootstrap presentation contract"
+    serves_seam: artifact-to-response
+    forced_by:
+      - "seam: artifact-to-response"
+    refused: "Duplicating response rules across stage skills, agents, and schemas"
+    risk_if_wrong: "A stage-specific presentation need may require a narrow referenced projection"

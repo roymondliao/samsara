@@ -1,0 +1,35 @@
+task_id: task-5
+completion_status: done
+
+known_shortcuts:
+  - systemic_ref: doc-vs-runtime-obedience
+    note: "mixed-generation aggregation test is a test-layer synthetic reader (test_scar_aggregation_generations.py), not the real iteration skill an agent follows"
+
+silent_failure_conditions:
+  - what: "golden fixture could misclassify a genuine historical scar as no-reader-defense-text and delete it instead of preserving it"
+    bites_when: "a reader trusts golden-re-expression.md's table without spot-checking the one deleted row against the source"
+    where: "changes/2026-07-07_scar-report-subtraction/golden-re-expression.md deletion row"
+  - what: "對照表首版的『已腳本驗證』覆蓋宣稱不實（漏 210/212 兩行實質內容）且去向欄把規範性寫成描述性"
+    bites_when: "審計宣稱被當事實信任而無人獨立重跑驗證腳本"
+    where: "golden-re-expression.md Counts 段與 Destination semantics 段"
+    status: resolved
+    resolution: "yin review 抓出；重跑覆蓋腳本（12 未覆蓋行全空行）、row 36 範圍修正、去向加規範性 legend＋judgment call #4"
+
+assumptions_made:
+  - assumption: "golden-re-expression.md's table covers every line of the 232-line source (structural completeness)"
+    verified: true
+    note: "re-run after correction: 12 uncovered lines (3,21,47,84,93,114,148,157,176,195,213,224), all pure blanks — script-reproducible"
+  - assumption: "each row's content classification (scar vs review-verdict vs before/after count vs no-action defense text) is semantically correct"
+    verified: false
+    note: "judgment-based, not mechanically checkable; boundary items named in golden-re-expression.md's Judgment calls section"
+
+debt_registered: true
+debt_location: "changes/2026-07-07_scar-report-subtraction/golden-re-expression.md Judgment calls section"
+
+structural_decisions: []
+
+narrative: |
+  Kill-condition #3 (budget forcing a true scar to be cut) did NOT trigger:
+  every genuine scar in the 232-line source fit within budget via
+  compression or splitting, never deletion. The single deletion (a
+  self-justifying process-defense clause) was never itself a scar.

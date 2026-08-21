@@ -4,8 +4,8 @@
 # Event: {{ event }}
 set -euo pipefail
 
-# Session start hook for samsara on Codex
-# Injects context into the session system message.
+# Session start hook for Samsara on Codex.
+# Returns model-visible SessionStart additional context.
 
 # Resolve the install root from this script's location:
 #   <install-root>/.codex/hooks/samsara-session-start.sh
@@ -17,13 +17,6 @@ if [[ "${CONFIGURED_SKILLS_DIR}" = /* ]]; then
   SKILLS_DIR="${CONFIGURED_SKILLS_DIR}"
 else
   SKILLS_DIR="${INSTALL_ROOT}/${CONFIGURED_SKILLS_DIR}"
-fi
-
-# Source any skill-specific environment setup
-if [ -d "${SKILLS_DIR}" ]; then
-  for skill_env in "${SKILLS_DIR}"/*/env.sh; do
-    [ -f "${skill_env}" ] && source "${skill_env}"
-  done
 fi
 
 # Read samsara-bootstrap content for context injection
@@ -45,11 +38,10 @@ escape_for_json() {
 }
 
 bootstrap_escaped=$(escape_for_json "$bootstrap_content")
-session_context="<IMPORTANT>\nYou are operating under the Samsara framework (向死而驗).\n\n**Below is the full content of your 'samsara:samsara-bootstrap' skill:**\n\n${bootstrap_escaped}\n</IMPORTANT>"
+session_context="<IMPORTANT>\nYou are operating under the Samsara framework (向死而驗).\n\n**Below is the full content of your 'samsara-bootstrap' skill:**\n\n${bootstrap_escaped}\n</IMPORTANT>"
 
-# Output context injection as JSON for Codex — uses systemMessage field.
-# IMPORTANT: Codex reads 'systemMessage' at the top level of the JSON output.
-# Using any other field name causes silent context loss (Codex ignores unknown fields).
-printf '{"systemMessage":"%s"}\n' "$session_context"
+# Codex exposes systemMessage to the UI/event stream. Model context belongs in
+# hookSpecificOutput.additionalContext for SessionStart.
+printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"}}\n' "$session_context"
 
 exit 0

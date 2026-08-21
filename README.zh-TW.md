@@ -47,38 +47,48 @@ claude plugins add /path/to/samsara
 Samsara 以 Claude Code 插件的形式撰寫，但 `samsara-cli` 可以把它轉換並安裝到其他 agent 平台（例如 Codex）：
 
 ```bash
-source .venv/bin/activate
-uv run samsara-cli list-platforms              # 列出支援的目標平台
-uv run samsara-cli convert --platform codex    # 轉換輸出到 ./dist/codex/
-uv run samsara-cli install codex --scope project
-uv run samsara-cli validate --platform codex   # 驗證轉換結果
+uv tool install --force /path/to/samsara
+samsara-cli list-platforms                    # 列出支援的目標平台
+samsara-cli convert --platform codex          # 轉換輸出到 ./dist/codex/
+samsara-cli install codex --scope project
+samsara-cli install codex --scope global
+samsara-cli validate --platform codex         # 驗證轉換結果
 ```
 
-Converter 會把 skills、agents、hooks、references 轉換成目標平台的格式；`update` 可更新既有安裝。
+`uv tool install` 負責可長期使用的 CLI runtime；`samsara-cli install` 另外負責轉換後的 Codex files，並記錄它們實際使用的 runtime command。全域安裝會拒絕使用 source checkout 內的 `.venv` CLI，因為 checkout 移動或刪除後該 runtime 就會失效。Converter 會把 skills、agents、hooks、references 轉換成目標平台的格式；`update` 可更新既有安裝。
 
 ## 工作流程
 
 Samsara 提供從研究到交付的結構化流程。每個階段產生特定的產出物，餵入下一階段。
 
-```
-research ──> pre-thinking ──> planning ──> implement ──> iteration（可選）
-                                               │              │
-                                               v              v
-                                          validate-and-ship（Step 0：security & privacy gate）
+> **Derived overview。** 可執行的 routing contract 以
+> [`skills/samsara-bootstrap/SKILL.md`](skills/samsara-bootstrap/SKILL.md)
+> 為準；若此處圖示與該 contract 不一致，以 Bootstrap 為準。
 
-fast-track（小型低風險改動）──────> 完成
-debugging（production 故障）──> 小 fix 走 fast-track / 大 fix 走 implement
+```
+research ──> pre-thinking ──> planning ──> implement
+  ──> iteration entry triage
+       ├─ 跳過 fix rounds
+       └─ 執行 feature-level fix rounds
+  ──> validate-and-ship（Step 0：security & privacy gate）
+
+fast-track（有證據證明風險有界）──────> 完成
+debugging（production 故障）
+  ├─ 已授權且範圍有界的修復 ──> fast-track
+  └─ 結構性、廣泛或未知修復 ──> research
 ```
 
 每個階段轉換都是 human gate（auto mode 下則由 `auto-gatekeeper` 決策）。
 
 ## Auto Mode
 
-在 `samsara:research` 之前，Samsara 會先詢問 execution mode：`human-in-the-loop` 或 `auto`。`human-in-the-loop` 保留現有的 human gate；`auto` 仍然完整跑同一條 workflow：`research -> pre-thinking -> planning -> implement -> iteration -> validate-and-ship`，但原本要問 human 的問題與確認，會交給 `samsara:auto-gatekeeper` 回答。
+Research Step 0 會選擇這次 workflow run 的 execution mode：`human-in-the-loop` 或 `auto`，並寫入該 feature 的 `1-kickoff.md`。Bootstrap 只注入全域準則並將 feature work 路由到 Research，不代替 Research 選擇 mode。`human-in-the-loop` 保留現有的 human gate；`auto` 仍然完整跑同一條 workflow：`research -> pre-thinking -> planning -> implement -> iteration -> validate-and-ship`，但原本要問 human 的問題與確認，會交給 `samsara:auto-gatekeeper` 回答。
 
-這個 gatekeeper 是可重用的 principle-level reviewer，帶有 project context、architecture judgment、first-principles reasoning。每一個 auto decision 都會 append 到 `changes/<feature>/auto-decisions.md`，這是一份 append-only 記錄，保留原始 `workflow_prompt`、`gatekeeper_answer`、rationale、uncertainty、consequences。
+Gatekeeper 是 Staff-level workflow decision authority：在 gate judgment 上與 human 對稱，但不取得 human consent 或外部執行權。它以 Codebase Map 取得整體結構認知、以 feature artifacts 取得變更 authority，再用定向 live evidence 確認當下事實。
 
-第一版 scope 刻意只做 session-level：不支援 `samsara_config.yaml`。Auto run 啟動後，同一輪 run 不會重新請 user 接手 gate；不確定性會記錄在 `auto-decisions.md`，security/privacy unknown 會成為 high-uncertainty reject decision。
+Gatekeeper 是 `changes/<feature>/auto-decisions.md` 的唯一 writer。每筆 append-only decision 以經過驗證的 compact YAML block 保存 exact prompt、具體 answer、改變裁決的理由、evidence refs、uncertainty 與 next action；calling workflow 只等待並套用，不改寫 decision。
+
+Execution mode 以 feature 與 workflow run 為範圍，不支援 `samsara_config.yaml`，不同 feature 不會繼承目前 feature 的 mode。Auto run 啟動後，同一輪 run 不會重新請 user 接手 gate；不確定性會記錄在 `auto-decisions.md`，security/privacy unknown 會成為 high-uncertainty reject decision。
 
 ### Skills
 
@@ -88,12 +98,13 @@ debugging（production 故障）──> 小 fix 走 fast-track / 大 fix 走 imp
 | `samsara:pre-thinking` | 研究完成後、planning 前——恆被 invoke | User–LLM assumption gap 的 pre-thinking audit log |
 | `samsara:planning` | Pre-thinking commitment 後（Proceed / Accept gap） | Death-first 規格 + 帶驗收條件的任務 |
 | `samsara:implement` | Plan 與 tasks 就緒 | 帶 death test 的程式碼 + scar reports |
-| `samsara:iteration` | Implement 完成後（可選）——feature-level scar resolution | Cross-task patterns + 系統級腐爛修復的 iteration log |
+| `samsara:iteration` | 每次 Implement 完成後——先做廉價 entry triage，有需要才進 feature-level fixes | Scar 最終 disposition + index checkpoint |
 | `samsara:validate-and-ship` | Implement/iteration 完成——Step 0 先跑 security & privacy STOP gate | 帶失敗預算的交付清單 |
-| `samsara:fast-track` | 小型低風險改動（< 100 行） | 簡化流程，death test 仍先行 |
-| `samsara:debugging` | 既有程式碼的 production 故障 | 四階段陰面根因分析 |
-| `samsara:codebase-map` | 進入新專案或程式碼大幅變動後 | 結構地圖 + 靜默失敗面評估 |
-| `samsara:writing-skills` | 建立或修改 samsara skills | 以 death-first TDD 開發 skill |
+| `samsara:fast-track` | 有證據證明 damage 有界、沒有未決設計且可 deterministic 驗證 | 有界實作、review、驗證與 commit 紀錄 |
+| `samsara:debugging` | 既有程式碼的 production 故障 | 診斷 artifacts 與 repair routing；不負責實作 |
+| `samsara:codebase-map` | 尚無地圖，或地圖的 source commit 與已 commit 的 Git HEAD 不同 | Committed snapshot graph：責任、能力、關係、流程與靜默失敗面 |
+| `samsara:level-analysis` | Auto Gatekeeper 在困難判斷前需要可比較的工程觀點 | Senior／Staff／Principal advisory analysis；不作 gate decision |
+| `samsara:writing-skills` | 建立、修訂或 review Samsara skills | Skill 撰寫與適度驗證準則 |
 
 ### Agents
 
@@ -182,7 +193,7 @@ samsara/
 ├── hooks/
 │   ├── hooks.json               # SessionStart hook 註冊
 │   ├── session-start            # 注入 samsara-bootstrap
-│   └── check-codebase-map       # 提醒生成 / 更新過期的 codebase map
+│   └── check-codebase-map       # 比對地圖 source commit 與 Git HEAD
 ├── skills/
 │   ├── samsara-bootstrap/       # Session 初始化（公理 + 約束）
 │   ├── research/                # 問題調查 + kickoff
@@ -191,10 +202,11 @@ samsara/
 │   ├── implement/               # Subagent 協調 + scar reports
 │   ├── iteration/               # Feature-level scar resolution
 │   ├── validate-and-ship/       # Step 0 security & privacy gate + 驗證 + 交付清單
-│   ├── fast-track/              # 小改動的簡化流程
-│   ├── debugging/               # 四階段陰面 debugging
+│   ├── fast-track/              # 證據有界的直接實作路徑
+│   ├── debugging/               # 陰面診斷 + 修復路由
 │   ├── codebase-map/            # 專案結構 + 失敗面掃描
-│   └── writing-skills/          # Skill 開發的 TDD
+│   ├── level-analysis/          # Senior／Staff／Principal advisory analysis
+│   └── writing-skills/          # Skill 撰寫 + 適度驗證
 ├── references/                  # Review agents 載入的 domain checklists
 ├── samsara_cli/                 # Release 工具 + 多平台 converter/installer
 ├── tests/                       # 插件測試（pytest）
@@ -219,9 +231,9 @@ Samsara 在工作流程中產出結構化的產出物：
 | Planning | 驗收條件 | YAML | 成功 + 失敗條件 |
 | Planning | Index | YAML | 任務清單，含依賴關係 |
 | Implement | Scar report | YAML | 每個任務的傷疤：假設、靜默失敗、邊界條件 |
-| Iteration | Iteration log | YAML | Feature-level scar 分類 + 解決記錄 |
+| Iteration | 更新後的 scar state + index checkpoint | YAML | Feature-level disposition、evidence 與 resume state |
 | Auto mode | Auto decisions | Markdown | Append-only gate 決策，含 rationale 與 uncertainty |
-| Fast-track | Fast-track record | YAML | 小改動的簡化流程記錄 |
+| Fast-track | Fast-track record | YAML | 證據有界的實作、review 與驗證紀錄 |
 | Validate | Ship manifest | YAML | 交付摘要，含失敗預算 |
 
 所有產出物都存放在 `changes/<feature>/` 之下——per-feature 目錄是 workflow 的 authoritative record。

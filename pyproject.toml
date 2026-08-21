@@ -6,7 +6,7 @@ build-backend = "uv_build"
 
 [project]
 name = "samsara"
-version = "1.0.0"
+version = "1.0.1"
 description = "Samsara (向死而驗) — a death-first verification workflow of skills, agents, and hooks for Claude Code and other agent platforms"
 readme = "README.md"
 requires-python = ">=3.14"
@@ -41,9 +41,12 @@ filterwarnings = [
 minversion = "9.0"
 markers = [
   "integration: marks tests as integration tests (require API key and --model)",
-  "requires_codex: marks tests that require a local Codex CLI installation",
-  "requires_gemini: marks tests that require a local Gemini CLI installation"
+  "requires_codex: marks tests that require a local Codex CLI installation"
 ]
+
+[tool.ruff.per-file-target-version]
+"skills/*/scripts/*.py" = "py311"
+"agents/*/scripts/*.py" = "py311"
 
 [tool.uv.build-backend]
 module-name = "samsara_cli"

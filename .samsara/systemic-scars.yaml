@@ -6,7 +6,7 @@
 # features and is not specific to one task's code — it is recorded HERE once.
 # Every scar report that hits the same fact references it via
 # `systemic_ref: <id>` instead of re-describing it in full (see
-# skills/implement/templates/scar-schema.yaml Rule 9).
+# skills/implement/templates/scar-schema.yaml systemic-ref).
 #
 # Write timing: an entry is added here ONLY when Level 2 iteration
 # (skills/iteration/SKILL.md) or validate-and-ship judges a scar item to be a
@@ -22,7 +22,7 @@
 #   applies_when: what kind of task/change tends to hit this fact
 #
 # systemic_ref syntax and the dangling-id=parse-failure rule: see
-# skills/implement/templates/scar-schema.yaml Rule 9. The full resolution
+# skills/implement/templates/scar-schema.yaml systemic-ref. The full resolution
 # procedure (present / dangling / missing-registry) is canonical in
 # skills/iteration/SKILL.md Step 1 — not restated here.
 

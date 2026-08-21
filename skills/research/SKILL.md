@@ -9,29 +9,70 @@ The starting point for any new work in samsara. Before building anything, interr
 
 > 陽面問「怎麼解決這個問題」，陰面先問「這個問題的定義是誰給的」。
 
+## Language
+
+Follow the Bootstrap Language Contract. Write artifact prose in the user's language.
+Keep template headings and schema keys in English.
+
+## Step 0: Execution Mode Selection
+
+Research owns the **workflow-run execution mode**. Bootstrap routes feature work
+here but does not select the mode.
+
+Before Step 1:
+
+1. Resolve `changes/YYYY-MM-DD_<feature-name>/` and create it when absent.
+2. If that feature's `1-kickoff.md` already records exactly one valid
+   `Execution mode:`, reuse it. Do not inherit a mode from another feature.
+3. Otherwise ask:
+
+   > Execution mode? Choose `human-in-the-loop` or `auto`.
+
+   - `human-in-the-loop` is the default and waits for the user at workflow gates.
+   - `auto` routes those same gates to `samsara:auto-gatekeeper`.
+4. If the user does not choose, record
+   `Execution mode: human-in-the-loop` and proceed. An unknown mode is invalid
+   and must never silently become `auto`.
+5. Initialize `1-kickoff.md` from its template and persist the exact mode before
+   interrogation. Research remains the sole writer of the kickoff artifact.
+
+Persistent config, including `samsara_config.yaml`, is out of scope. The
+mode belongs to this workflow run and feature directory, not the whole session.
+Later stages read it from `1-kickoff.md`.
+
+### Debugging Handoff
+
+When Debugging routes a repair here, consume
+`bugfix/<bug>/bug-report.yaml` and `bugfix/<bug>/root-cause.yaml` as diagnosis
+evidence. Record their refs in Research artifacts and do not restate the
+diagnosis. Research still owns execution mode, Problem Essence, Scope Contract,
+and every downstream feature artifact.
+
 ## Process
 
 ```dot
 digraph research {
     node [shape=box];
 
-    start [label="使用者描述問題/需求" shape=doublecircle];
-    interrogate [label="Interrogate\n- 問題形狀是誰給的？\n- 什麼條件下不該解決？\n- 誰會因此受損？"];
-    essence [label="Problem Essence\n- 一兩行，需求語言\n- 剝掉實作形狀"];
-    scope [label="Scope\n- 消失了什麼會痛？\n- must-have 附帶死亡條件\n- boundary scope 三清單\n(要解什麼/涉及哪些/現在不做)"];
-    north_star [label="北極星指標\n- 失效條件\n- corruption signature\n- proxy confidence"];
-    output_kickoff [label="產出 1-kickoff.md"];
-    output_autopsy [label="產出 problem-autopsy.md"];
+    start [label="User describes problem or request" shape=doublecircle];
+    mode [label="0. Select execution mode\npersist in 1-kickoff.md" shape=diamond];
+    interrogate [label="Interrogate\n- Who shaped the problem?\n- When should it not be solved?\n- Who could be harmed?"];
+    output_autopsy [label="Write problem-autopsy.md"];
+    essence [label="Problem Essence\n- One or two lines\n- Requirement language\n- No implementation shape"];
+    scope [label="Scope\n- What hurts if this disappears?\n- Death condition per must-have\n- Three boundary lists"];
+    north_star [label="North Star\n- Invalidation condition\n- Corruption signature\n- Proxy confidence"];
+    output_kickoff [label="Write 1-kickoff.md"];
     gate [label="Execution-mode gate\nhuman: confirm\nauto: gatekeeper" shape=diamond];
     next [label="invoke samsara:pre-thinking" shape=doublecircle];
 
-    start -> interrogate;
-    interrogate -> essence;
+    start -> mode;
+    mode -> interrogate;
+    interrogate -> output_autopsy;
+    output_autopsy -> essence;
     essence -> scope;
     scope -> north_star;
     north_star -> output_kickoff;
-    output_kickoff -> output_autopsy;
-    output_autopsy -> gate;
+    output_kickoff -> gate;
     gate -> next [label="proceed"];
     gate -> interrogate [label="revise"];
 }
@@ -39,59 +80,114 @@ digraph research {
 
 ## Step 1: Interrogate
 
-先嘗試殺死問題本身。問題活下來了，才值得往下走。
+Attempt to kill the problem itself. Continue only if it survives.
 
-Ask these questions **one at a time** (not all at once):
+Present these user-facing prompts **one at a time**, then apply the instruction
+beneath each prompt. In `Execution mode: human-in-the-loop`, ask the user. In
+`Execution mode: auto`, dispatch `samsara:auto-gatekeeper` for each Step 1 prompt,
+then wait for its validated decision. Gatekeeper writes only
+`auto-decisions.md`. Research applies the returned conclusion to the section it
+owns and records `auto-decisions.md#decision-NNN` under `decision_refs`; Research
+remains the sole writer of its artifacts. It does not copy `reason`,
+`uncertainty`, or decision metadata. Resolve the ref when that detail is needed.
+The stable gate IDs are listed beside each prompt.
 
-1. **問題的形狀是誰給的？** 重述問題的來源。記錄原始措辭與你理解的措辭之間的差異。差異本身就是翻譯損失的第一層。
-2. **這個問題在什麼條件下不應該被解決？** 列出至少兩個「即使技術上可行，也應該拒絕實作」的情境。
-3. **誰會因為這個問題被解決而受損？** 任何解決方案都有成本轉移——找到承受者。
-4. **「解決」狀態長什麼樣？** 三句話內描述「解決」和「沒解決」之間的可觀測差異。描述不了代表問題還沒被真正理解。
+1. `research.problem-source` — User-facing prompt:
+   > 問題的形狀是誰給的？
+
+   Restate the problem's source. Record the original wording, your reframe, and
+   every difference. Every difference is the first layer of translation loss.
+2. `research.do-not-solve` — User-facing prompt:
+   > 這個問題在什麼條件下不應該被解決？
+
+   Seek independent cases where implementation should be refused even if
+   technically feasible. Record every case supported by the available evidence.
+   Do not invent cases to satisfy a count.
+3. `research.damage-recipient` — User-facing prompt:
+   > 誰會因為這個問題被解決而受損？
+
+   Every solution transfers cost. Identify each recipient and the cost or harm
+   they bear.
+4. `research.done-state` — User-facing prompt:
+   > 「解決」狀態長什麼樣？
+
+   State the observable difference between solved and unsolved in no more than
+   three sentences. If it cannot be stated, the problem is not understood.
 
 ## Step 2: Problem Essence — a named product
 
-Interrogation 存活下來的問題，蒸餾成一兩行的**問題本質（需求語言）**：真正要解的是什麼，剝掉任何實作形狀。
+Distill the surviving problem into a one- or two-line **Problem Essence** in
+requirement language. Strip all implementation shape from it.
 
-- **這是交棒給 pre-thinking 的具名產物。**
-- **分工**：research 產出「問題本質（需求語言）」；pre-thinking 從它蒸餾「結構身分（結構語言：code 本質上該是什麼才服務得了它）」。兩者是兩個不同的產物，research 只負責前者。
-- **檢驗**：本質若寫出了機制（「加一個 cache」「用一個 hook」），那是解法穿著問題的衣服——重寫成需求。
+- This is the named handoff to pre-thinking.
+- Research owns the requirement-language Problem Essence. Pre-thinking derives
+  the structure-language Core Identity: what the code must essentially be to
+  serve it. Keep them distinct.
+- If the essence names a mechanism such as a cache or hook, rewrite it as a need.
 
-## Step 3: Scope
+## Step 3: Scope Contract
 
-陰面的 scope 問：如果這個功能明天消失，系統哪個部分會痛？
+Ask which part of the system would hurt if the feature disappeared tomorrow.
 
-- 痛的部分是真正的 scope。不痛的部分是裝飾。
-- 每個 must-have 附帶**死亡條件**：在什麼度量指標低於什麼閾值時，這個 must-have 應被降級為 nice-to-have，並最終移除。
-- 減法的終點不是「功能少」，而是「剩下的每一個東西都有人為它的腐爛負責」。
+- What hurts defines the real scope; what does not is decoration.
+- Give every must-have a **death condition**: the metric and threshold below which
+  it is demoted to nice-to-have and ultimately removed.
+- The goal of subtraction is not fewer features; it is for every retained item
+  to have an owner responsible for its decay.
 
-**Boundary Scope（給 pre-thinking 的邊界範圍）** — 用三個清單框出結構思考發生的範圍：
+Write one **Scope Contract** for pre-thinking. It is the sole scope authority:
 
-1. 真正要解什麼
-2. 涉及哪些
-3. 哪些現在不做 — 每一項附一行「為什麼現在不做」；沒有理由的減法會靜默長回來
+1. What must be solved
+2. Areas involved
+3. Must-haves, each with its death condition
+4. Nice-to-haves
+5. What is not solved now, with one reason per item; an unexplained cut silently
+   grows back
 
-沒有這三個清單，pre-thinking 分不清哪些是本 feature 的真接縫、哪些是別人的地盤。
+Do not restate these facts in a second boundary or scope section. Without the
+must-solve boundary, involved areas, and explicit not-now boundary, pre-thinking
+cannot distinguish this feature's real seams from someone else's territory.
 
 ## Step 4: North Star
 
-定義北極星指標，同時定義：
+Define the North Star together with:
 
-- **失效條件**：在什麼條件下這個目標本身是錯的？
-- **Corruption signature**：如果指標被 game 了（數字上升但實質惡化），怎麼偵測？
-- **Proxy confidence**：proxy metrics 標記為 `high | medium | low`，並定義 proxy 和 main 脫鉤的偵測機制。
+- **Role boundary:** The North Star is the product outcome direction. It is not
+  `PT-EVAL`; Pre-thinking later defines the one agent-executable evaluator.
+
+- **Invalidation condition:** When is the goal itself wrong?
+- **Corruption signature:** How will metric improvement with real-world
+  degradation be detected?
+- **Proxy confidence:** Mark each proxy `high | medium | low` and define a
+  mechanism that detects divergence from the main metric.
+- **Evidence boundary:** Do not infer metric values. Use `unknown` when a current
+  value or target lacks support. Record the measurement source or missing input
+  in `current_basis`, and the decision rationale or missing input in `target_basis`.
 
 ## Output
 
-產出文件存放在目標專案的 `changes/YYYY-MM-DD_<feature-name>/` 目錄下：
+Write these files under `changes/YYYY-MM-DD_<feature-name>/` in the target project:
 
-1. **1-kickoff.md** — 使用 `templates/kickoff.md` 模板
-2. **problem-autopsy.md** — 使用 `templates/problem-autopsy.md` 模板
+1. **problem-autopsy.md** — use `templates/problem-autopsy.md`
+2. **1-kickoff.md** — use `templates/kickoff.md`
 
-Format details: read support file `problem-autopsy.md`
+Artifact ownership is non-overlapping:
+
+- **problem-autopsy.md owns** source wording, reframe, translation delta, kill
+  conditions, damage recipients, the observable done state, and source refs for
+  auto-mode conclusions.
+- **1-kickoff.md owns** the decision-ready handoff: problem essence, one scope
+  contract, evidence, risk of inaction, North Star, and
+  delivery stakeholders.
+- Do not restate autopsy-owned content in the kickoff; link to
+  `problem-autopsy.md` instead.
+
+Format details: read `problem-autopsy-guide.md`; write from
+`templates/problem-autopsy.md`.
 
 ## Transition
 
-產出完成後，使用同一個 transition prompt 決定下一步：
+After writing both artifacts, use the same transition prompt to determine the next step:
 
 > 「Research 完成。1-kickoff.md 和 problem-autopsy.md 已寫入 `changes/<feature>/`。確認後進入 Pre-thinking？」
 
@@ -99,22 +195,20 @@ Format details: read support file `problem-autopsy.md`
   confirmation, invoke `samsara:pre-thinking`; if the user asks for revision,
   revise the research artifacts and ask again.
 - If `Execution mode: auto`, do not ask the user. Use the Auto Mode Gate below
-  to dispatch `samsara:auto-gatekeeper`, record the decision, and follow the
-  recorded decision.
+  to dispatch `samsara:auto-gatekeeper`, wait for its validated
+  `research.transition` decision, and follow it.
 
 ## Auto Mode Gate
 
-Canonical protocol: `references/auto-mode.md` Stage Gate Protocol —
-dispatch, the append-only decision log, and what `proceed`/`revise`/
-`reject`/`accept_gap` mean all live there; this section only names what
-Research adds.
+Canonical protocol: `references/auto-mode.md` Stage Gate Protocol. The
+Gatekeeper is the sole decision-log writer; Research writes only its own
+artifacts.
 
-- `workflow_prompt` source: the transition prompt below.
-
-  > 「Research 完成。1-kickoff.md 和 problem-autopsy.md 已寫入 `changes/<feature>/`。確認後進入 Pre-thinking？」
-
-- Decision points this gate covers: the research → pre-thinking transition
-  (one decision point).
+- `workflow_prompt` sources and gate IDs: each Step 1 prompt uses its adjacent ID;
+  `research.transition` uses the exact prompt in `## Transition`; do not restate
+  it here.
+- Decision points: all four Research questions and the transition.
 - `proceed` invokes `samsara:pre-thinking`; `revise` revises the research
   artifacts (1-kickoff.md, problem-autopsy.md) then re-runs this gate;
-  `accept_gap` invokes `samsara:pre-thinking` with the gap visible.
+  `accept_gap` first records the named gap under `problem-autopsy.md` accepted
+  gaps and its ref in `1-kickoff.md`, then invokes `samsara:pre-thinking`.
