@@ -1,3 +1,12 @@
+> **V1 設計來源 — 這是 V1 六階段管線的直接祖先，不是 V2 的設計。**
+> 分類依據見 [`README.md`](./README.md)。本文的 Research / Planning / Implementation /
+> Validation / Ship / Fast Track 六段對應 V1 的實作管線。V2 從新畫布展開，不受本文的
+> 階段切分約束。本文承載的**教義**（審問四問、減法 scope、死法先行、scar report、
+> failure budget）活過 V2；**管線形狀與 artifact 檔名**不活。
+>
+> 已知過時的 artifact 名稱：`acceptance.feature`（現為 `acceptance.yaml`）、
+> `index.md`（現為 `index.yaml`）、每個 task 各自 commit（現為全部完成後一次 commit）。
+
 # 陰面軟體開發流程
 
 > 陽面問「怎麼讓它成功」，陰面問「它怎麼在成功的外表下悄悄壞掉」。

@@ -4,5 +4,6 @@
       "Bash(uv add *)",
       "Bash(uv run *)"
     ]
-  }
+  },
+  "outputStyle": "communication-contract"
 }

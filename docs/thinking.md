@@ -202,6 +202,8 @@
 
 本章是思想層。它的機制落點——planning 的 structure spec、implementer 的全局結構 context、iteration 的 structural rot signal——在寫下本章的當下尚未存在。doc-presence ≠ runtime obedience：寫在這裡不等於被執行，這個斷層在機制落地之前一直是開放的傷口。
 
+> **V2 註記**：上段點名的三個落點是 V1 的 skill 名稱，V2 重建後會消失。這段標記的**斷層本身**（doc-presence ≠ runtime obedience）是核心，V2 同樣適用；**指涉的機制名**不是。分類見 [`README.md`](./README.md)。
+
 ---
 
 ## 唯一的公理
